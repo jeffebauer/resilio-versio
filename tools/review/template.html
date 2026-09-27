@@ -337,6 +337,9 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
 (function () {
   "use strict";
   var DATA = JSON.parse(document.getElementById("rv-data").textContent);
+  // Metrics the sweep marks as not meaningful for its input (manifest ignore_flags).
+  var IGNORED = {};
+  (DATA.ignoreFlags || []).forEach(function (k) { IGNORED[k] = true; });
 
   /* ---------- helpers ---------- */
   function el(tag, attrs, children) {
@@ -449,9 +452,16 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
   }
 
   /* ---------- flag logic ---------- */
+  function withoutIgnored(metrics) {
+    var m = {};
+    Object.keys(metrics).forEach(function (k) { if (!IGNORED[k]) m[k] = metrics[k]; });
+    return m;
+  }
+
   function flagReasons(metrics) {
     var reasons = [];
     if (!metrics) return reasons;
+    metrics = withoutIgnored(metrics);
     if ((metrics.nan_inf_count || 0) > 0) reasons.push("NaN/Inf ×" + metrics.nan_inf_count);
     if ((metrics.clip_count || 0) > 0) reasons.push("clipping ×" + metrics.clip_count);
     if ((metrics.click_count || 0) > 0) reasons.push("clicks ×" + metrics.click_count);
@@ -467,6 +477,8 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     ul.className = "metrics-list";
     if (!metrics) { ul.appendChild(el("li", { text: "no metrics" })); return ul; }
     var reasons = flagReasons(metrics);
+    var shown = metrics;
+    metrics = withoutIgnored(metrics);
     var isFlag = {
       "nan_inf_count": (metrics.nan_inf_count || 0) > 0,
       "clip_count": (metrics.clip_count || 0) > 0,
@@ -486,7 +498,7 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     ul.appendChild(item("steady tone: " + (metrics.steady_tone ? "yes" : "no"), isFlag.steady_tone));
     ul.appendChild(item("NaN/Inf " + fmt(metrics.nan_inf_count, 0), isFlag.nan_inf_count));
     ul.appendChild(item("clip " + fmt(metrics.clip_count, 0), isFlag.clip_count));
-    ul.appendChild(item("click " + fmt(metrics.click_count, 0), isFlag.click_count));
+    ul.appendChild(item("click " + fmt(shown.click_count, 0) + (IGNORED.click_count ? " (n/a for this input)" : ""), isFlag.click_count));
     return ul;
   }
 

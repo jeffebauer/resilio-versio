@@ -25,7 +25,7 @@ set_target_properties(rv_host_common PROPERTIES LINKER_LANGUAGE CXX)
 
 file(GLOB RV_RENDER_SOURCES CONFIGURE_DEPENDS host/render/*.cpp)
 add_executable(rv_render ${RV_RENDER_SOURCES})
-target_link_libraries(rv_render PRIVATE rv_core rv_host_common)
+target_link_libraries(rv_render PRIVATE rv_host_common)
 
 # Every host/tests/test_*.cpp is its own test executable with its own main().
 enable_testing()
@@ -33,7 +33,7 @@ file(GLOB RV_TEST_SOURCES CONFIGURE_DEPENDS host/tests/test_*.cpp)
 foreach(src ${RV_TEST_SOURCES})
     get_filename_component(name ${src} NAME_WE)
     add_executable(rv_${name} ${src})
-    target_link_libraries(rv_${name} PRIVATE rv_core rv_host_common)
+    target_link_libraries(rv_${name} PRIVATE rv_host_common)
     add_test(NAME ${name} COMMAND rv_${name} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endforeach()
 

@@ -66,6 +66,11 @@ def clicks():
     return out
 
 
+def click_single():
+    """One click, then 12 s of silence. Short input for DECAY x BOING grids."""
+    return silence(1) + [db(-6), db(-6)] + silence(12)[2:]
+
+
 def sweep():
     """Exponential sine sweep 20 Hz-20 kHz, 10 s (Farina), 12 s silence after."""
     f1, f2, T = 20.0, 20000.0, 10.0
@@ -156,3 +161,4 @@ if __name__ == "__main__":
     write("04_skank.wav", skank())
     write("05_silence_for_kicks.wav", silence(40))
     write("06_noise_bursts.wav", noise_bursts())
+    write("07_click_single.wav", click_single())

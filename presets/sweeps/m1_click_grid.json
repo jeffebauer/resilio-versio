@@ -1,0 +1,28 @@
+{
+  "name": "m1_click_grid",
+  "input": "test_audio/stimulus/07_click_single.wav",
+  "base": {
+    "mix": 1.0,
+    "tone": 0.5,
+    "springs": "1",
+    "attitude": "CLEAN"
+  },
+  "grid": {
+    "decay": [
+      0,
+      0.25,
+      0.5,
+      0.75,
+      1
+    ],
+    "boing": [
+      0,
+      0.5,
+      1
+    ]
+  },
+  "tail_seconds": 0,
+  "ignore_flags": [
+    "click_count"
+  ]
+}

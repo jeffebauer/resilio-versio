@@ -64,9 +64,13 @@ def load_sidecar(path):
     return sidecar
 
 
-def is_flagged(metrics):
+IGNORE_FLAGS = frozenset()  # set from manifest ignore_flags in main()
+
+
+def is_flagged(metrics, ignore=frozenset()):
     if not metrics:
         return False
+    metrics = {k: v for k, v in metrics.items() if k not in ignore}
     if (metrics.get("nan_inf_count") or 0) > 0:
         return True
     if (metrics.get("clip_count") or 0) > 0:
@@ -126,7 +130,7 @@ def build_renders(out_dir, manifest):
             "params": params,
             "metrics": metrics,
             "spectrogram": sidecar.get("spectrogram"),
-            "flagged": is_flagged(metrics),
+            "flagged": is_flagged(metrics, IGNORE_FLAGS),
         }
         renders.append(render)
     return renders
@@ -159,7 +163,7 @@ def build_references(out_dir, reference_dirs):
                 "params": sidecar.get("params") or {},
                 "metrics": metrics,
                 "spectrogram": sidecar.get("spectrogram"),
-                "flagged": is_flagged(metrics),
+                "flagged": is_flagged(metrics, IGNORE_FLAGS),
             })
     return references
 
@@ -214,6 +218,8 @@ def main():
 
     manifest_path = out_dir / "manifest.json"
     manifest = load_json(manifest_path, "manifest.json")
+    global IGNORE_FLAGS
+    IGNORE_FLAGS = frozenset(manifest.get("ignore_flags") or [])
     require_keys(manifest, ["name", "created", "input", "renders"], "manifest.json", manifest_path)
 
     renders = build_renders(out_dir, manifest)
@@ -235,6 +241,7 @@ def main():
         "references": references,
         "grid": grid,
         "filterParams": filter_params,
+        "ignoreFlags": sorted(IGNORE_FLAGS),
     }
 
     template_path = Path(__file__).resolve().parent / TEMPLATE_NAME
