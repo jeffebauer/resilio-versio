@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec v0.4, 27 Sep 2026. Grill round 2 in progress. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/`. Then milestone acceptance criteria via interview (§12), then hand to Claude Code.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0 — Frozen. Milestone acceptance criteria from owner interview (§7). ADR 0019 (Howl may lean to pitch). LED_3 Kick flash dropped. §12 complete.
 - v0.4 — Grill round 2: ADRs 0006–0018 (min DECAY slap, BOING always spring, WOBBLE zones, Wellspring reference recordings, AntiRes rescoped after Wellspring correction, NE-app flashing, DECAY bend, hold-rattle deferred, DRIVE onset, smoothing tiers, Kick character, TONE range, Howl exit). Tank-level vs Spring-level stages clarified (§4.2). Flashing research (§8). Toolchain facts.
 - v0.3 — Grill round 1: ADRs 0001–0005 (DECAY fades, KICKED Howl, switch-change behaviour, plugin = test bench, fixed Kick strength). Added CONTEXT.md glossary.
 - v0.2 — Added forum research + design principles (§2), TONE reworked as tilt "hero" control, multi-stage DRIVE voicing (§4.9), anti-resonance / anti-buildup system (§4.10), three-host architecture with shared parameter layer + JUCE plugin (§6), revised milestones (§7).
@@ -107,12 +108,12 @@ CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–1
 - **Button = KICK.** Injects "tank kick" impulse (§4.6). Momentary. Fixed strength, scaled by ATTITUDE (ADR 0005). Tight thud + big crash (ADR 0016). Hold does nothing extra in v1 (ADR 0013).
 - **Gate in = KICK.** Same as button. Digital on/off input — no velocity. Sequencer/envelope can hit tank rhythmically.
 
-### LEDs (proposal)
+### LEDs
 
 - LED_0: input level / drive clip (green → red)
 - LED_1: tank energy (brightness = wet RMS)
 - LED_2: SPRINGS mode colour
-- LED_3: ATTITUDE mode colour; flashes white on KICK
+- LED_3: ATTITUDE mode colour (no Kick flash; owner choice, M9 interview)
 - Boot pattern: unique colour sequence confirming firmware loaded (NE convention).
 
 ---
@@ -344,20 +345,91 @@ resilio-versio/
 
 ## 7. Build milestones
 
-Acceptance criteria below are **drafts**. Final criteria to be written via interview (§12).
+Criteria come from the owner interview (27 Sep 2026). **[A]** = automated (Renderer/tests, must pass in CI-style runs). **[L]** = owner listening check. **[H]** = on hardware. Numbers marked *(start)* are starting thresholds, confirmed by ear at that milestone. Any change is noted in the changelog.
 
-| # | Milestone | Done when (draft) |
-|---|---|---|
-| 0 | Toolchains | Desktop CMake builds empty core + renderer; Daisy toolchain flashes Versio passthrough; knobs/switches/button/gate print over serial |
-| 1 | Core: single spring, CLEAN + renderer | Impulse render shows repeating dispersive chirps; stable at max DECAY; deterministic output; tests pass |
-| 2 | JUCE plugin shell | Plugin loads in Ableton (AU + VST3); all params visible + automatable; MIDI note triggers KICK |
-| 3 | Hardware profiling | 1 spring on Versio; CPU logged; decide M, decimation, oversampling |
-| 4 | Multi-spring, stereo, DECAY coupling | SW0 click-free; DECAY sweeps short/pingy → long/dense |
-| 5 | Drive chain + TONE tilt | All ATTITUDE drive stages; level-compensated DRIVE; reverb audible at DRIVE 0 |
-| 6 | Anti-resonance system | §4.10 criterion passes across full sweep grid |
-| 7 | SPLASH + KICK + WOBBLE + MIX | Snare in KICKED crashes; gate/MIDI kicks work; all 7 knobs respond to CV 0–5 V on hardware |
-| 8 | Tuning pass | A/B vs reference dub recordings + owner's hardware tank; final ranges/curves |
-| 9 | Polish | LEDs, boot pattern, panel overlay, README/manual |
+Shared definitions:
+- **Stimulus set** = `tools/make_stimulus.py` output. **Reference set** = Wellspring recordings (ADR 0009).
+- **Review page** = locally generated HTML per render batch: player + spectrogram + settings + metrics per file, next to the matching Reference file. WAVs also written to a folder for Ableton.
+- **Click detector** = Renderer metric flagging sample-to-sample discontinuities above the signal's local high-frequency level *(start: 20 dB above)*.
+
+### M0 — Toolchains
+- [A] `cmake` builds empty Core + Renderer + test runner on macOS arm64. The Renderer copies a WAV through unchanged (bit-identical).
+- [A] The Plugin target builds AU + VST3 (installing Xcode if Command Line Tools aren't enough). `auval` passes for the AU.
+- [A] Firmware builds with `gcc-arm-embedded`. Binary ≤ 128 KB, reported by the build (ADR 0011).
+- [H] Test firmware flashed via NE Firmware Swap (custom file). Boot LED pattern shows.
+- [H] Passthrough indistinguishable from a patch cable: level within 0.5 dB per channel, no audible added hum/hiss with the gain up, both channels, mono-in on L comes out of both sides.
+- [H] Every control verified two ways: LEDs react to each knob, switch, button and gate, and serial prints exact values. Knob+CV reads ≈0 at 0 V / knob CCW and ≈1 at 5 V or knob CW (±0.02). Switches report 3 states. Button and gate edges print once per press (no bounce).
+
+### M1 — Core: one Spring, CLEAN + Renderer
+- [A] Click render shows repeating dispersive chirps: spectrogram has descending chirps at a regular repeat time matching the configured L *(±5%)*.
+- [A] Stable at every DECAY × BOING corner (grid incl. extremes): no NaN/Inf, no growth, tail decays at max DECAY (ADR 0001). T60 at min DECAY 0.3–0.5 s (ADR 0006), at max 8–10 s.
+- [A] BOING 0 still shows a chirp (ADR 0007).
+- [A] Deterministic: same input + params → bit-identical output.
+- [A] Metrics reported per render: peak, RMS, T60, resonance ratio, NaN/Inf count, clip count, click-detector hits.
+- [A] Review page generated for the M1 grid, next to the Wellspring Reference set.
+- [L] Owner A/B vs Wellspring clicks (take A/B): "same family" (repeating boings, highs before lows, dark tail). Thin/sparse is acceptable at this stage.
+
+### M2 — JUCE Plugin shell
+- [A] AU + VST3 load in Ableton. All ParamSpec params visible and automatable. Names/ranges generated from ParamSpec, no hand-written list.
+- [A] Kick from any MIDI note on a routed MIDI track, velocity ignored, **sample-accurate** (offline test: note at sample N → Kick onset at N, with reported latency).
+- [A] Plugin latency reported to the host. The dry path stays aligned with other tracks in Ableton (null test vs a duplicate track at MIX 0).
+- [A] Plugin render == Renderer output for the same stimulus/params at 48 kHz (bit-identical, or within float tolerance −120 dBFS).
+- [A] Works at 44.1/48/96 kHz without crashing or detuning (T60 and chirp timing within 5% across rates).
+
+### M3 — Hardware profiling
+- [H] One Spring running on the Versio. CPU load logged over serial (average and peak) for each setting corner.
+- [H] Decisions recorded as an ADR: M stages, decimation factor, oversampling factor, and the headroom plan to hit ≤ 65% worst case (§5).
+- [H] CPU tradeoff order if short: simplify 3-spring mode first (fewer stages per Spring), keeping 1- and 2-spring modes at full detail.
+- [H/L] Module vs Plugin: the same stimulus recorded from the module vs rendered on the Mac. The owner can't reliably pick which is which in a blind A/B (ABX: ≤ 12/16 correct). T60 within 5%, 1/3-octave spectrum within 1.5 dB (ignoring converter noise floor).
+
+### M4 — Multi-spring, stereo, DECAY coupling
+- [A] SPRINGS switch changes are click-free (click detector) in every combination, mid-tail.
+- [A] SPRINGS levels matched: loudness of 1/2/3 within ±1.5 dB for the same input.
+- [L] 1 → 2 → 3 sounds sparse/drippy → classic → dense/lush, clearly different in a blind test.
+- [A] Stereo: clearly wide (inter-channel correlation of the wet tail < 0.5 *(start)*). Mono-safe: mono sum within 1.5 dB of stereo loudness, no comb-filter notches > 6 dB in the 200 Hz–5 kHz band.
+- [A] DECAY sweep min→max over 4 s on a held tail: no click-detector hits, smooth pitch bend (ADR 0012), no loudness jump > 3 dB in any 100 ms step.
+- [L] DECAY sweep audibly goes short/pingy → long/dense.
+
+### M5 — Drive chain + TONE tilt
+- [L] ATTITUDE at DRIVE noon on a snare: CLEAN hi-fi, DRIVEN warm tape dub, KICKED gritty/trashed. Owner picks all three correctly in a blind test.
+- [A] ATTITUDE loudness within ±2 dB of each other at the same settings.
+- [A] DRIVE sweep 0→max: loudness within ±2 dB (LUFS-style short-term). Clean-ish below ~25%, colour builds to ~85% (ADR 0014), measured as THD rising monotonically.
+- [A] Reverb clearly audible at DRIVE 0 with a 10 Vpp-equivalent input (wet within 6 dB of dry at MIX noon).
+- [A] Aliasing: a 5–15 kHz sine sweep at max DRIVE/KICKED shows alias products ≤ −60 dB relative to the fundamental.
+- [A/L] TONE: chirp still visible and audible at full CCW (ADR 0017). Full CW is splashy, not harsh (owner check on hats/cymbals; energy above 10 kHz capped *(start: ≤ +6 dB vs noon)*). TONE sweep loudness within ±3 dB.
+
+### M6 — Anti-resonance
+- [A] §4.10 criterion across the full sweep grid (DECAY max, all SPRINGS × ATTITUDE, WOBBLE 0): no narrowband peak > 12 dB above the 1/3-octave-smoothed median from 1 s on, and no steady tone > 2 s above −30 dBFS.
+- [A] The metric **catches** the owner's Wellspring delay-Ringing recording (take G) if available, or a synthetic ringing loop. Proves the test isn't toothless.
+- [A] Howl zone (KICKED, top ~10% DECAY): ADR 0019 criteria (rough, moving, may lean to a pitch, never a steady sine). Exiting the zone drops ≥ 30 dB within ~3 s (ADR 0018).
+- [L] Micro-mod floor inaudible: with WOBBLE 0 the owner hears no pitch movement on a held chord stab.
+- [A] If any grid cell fails after layers 1–3 are tuned → build layer 4 (ADR 0010) and re-run.
+
+### M7 — SPLASH + KICK + WOBBLE + MIX
+- [L] SPLASH max, KICKED, hard snare → big bright crash + pitch lurch that settles into the tail within ~1 s. Ghost notes (−18 dBFS hit in the stimulus) barely trigger it. The −6 dBFS hit clearly does.
+- [A] Hit detector monotonic: hit value rises with input level. The −18 dB hit gives < 25% of the −6 dB hit's Clatter energy.
+- [L] SPLASH 0 in DRIVEN still gives a faint natural splash on hard hits (not zero).
+- [L] Kick = tight thud + big crash (ADR 0016). [A] Energy < 100 Hz down ≥ 20 dB within 300 ms.
+- [H] Gate Kicks: every gate at up to 12/s (16ths at 180 bpm) gives exactly one Kick, onset within 1 ms of the gate edge. No double triggers.
+- [L] WOBBLE: lower half Drift (held chords in tune), top quarter Warble (clearly out of tune) (ADR 0008).
+- [A] MIX: CCW = dry only (null vs input), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
+- [A/H] Envelope on MIX CV (5 ms attack): throw lands with no audible lag (smoothing ≤ 5 ms, ADR 0015).
+- [H] All 7 knobs respond to CV 0–5 V over their full range.
+
+### M8 — Tuning pass
+All four must hold:
+- [L] Sweet-spot sweep: owner reviews a grid of renders stepping every knob. No dead zones, no cliffs, every position usable.
+- [L] Dub record A/B: on the owner's own material it sits alongside King Tubby / Basic Channel references without sounding like a "digital reverb".
+- [L] Wellspring A/B: same family as the spring Reference set, with less Ringing and more splash.
+- [H/L] Live session on the module (patching, throws, Kicks): nothing surprises in a bad way.
+- Final ranges/curves written back into ParamSpec, and SPEC starting guesses replaced with the tuned values.
+
+### M9 — Polish
+- [H] LEDs: LED_0 input level/clip (green → red), LED_1 Tank energy (glows with tail and Howl), LED_2 SPRINGS colour, LED_3 ATTITUDE colour. Boot pattern.
+- One-page manual: panel map, controls, flashing via NE Firmware Swap, recovery to NE firmware.
+- Panel overlay from NE's blank-panel/DXF template, labelled with Resilio Versio controls.
+- Tagged release with `.bin` installable via NE Firmware Swap.
+- Preset notes: a few documented starting points for classic dub sounds (as JSON presets + prose).
 
 ---
 
@@ -425,8 +497,8 @@ Research 27 Sep 2026 (sources in §11). Status per item.
 
 ---
 
-## 12. Next steps before Claude Code handoff
+## 12. Pre-build steps (complete)
 
-1. Run gap-review ("Grill Me With Docs" skill) over this spec; patch gaps.
-2. Milestone-criteria interview: plain-language musical questions → technical acceptance criteria per milestone.
-3. Freeze spec v1.0 → hand to Claude Code, starting M0.
+1. ~~Gap review~~: grill rounds 1–2, ADRs 0001–0019.
+2. ~~Milestone-criteria interview~~: §7.
+3. ~~Freeze spec v1.0~~: 27 Sep 2026. Building from M0.
