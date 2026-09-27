@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec v0.3, 27 Sep 2026. Grill pass in progress. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/`. Then milestone acceptance criteria via interview (§12), then hand to Claude Code.
+**Status:** Spec v0.4, 27 Sep 2026. Grill round 2 in progress. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/`. Then milestone acceptance criteria via interview (§12), then hand to Claude Code.
 
 ### Changelog
+- v0.4 — Grill round 2: ADRs 0006–0010 (min DECAY slap, BOING always spring, WOBBLE zones, Wellspring reference recordings, AntiRes rescoped after Wellspring correction). Tank-level vs Spring-level stages clarified (§4.2). Flashing research (§8). Toolchain facts.
 - v0.3 — Grill round 1: ADRs 0001–0005 (DECAY fades, KICKED Howl, switch-change behaviour, plugin = test bench, fixed Kick strength). Added CONTEXT.md glossary.
 - v0.2 — Added forum research + design principles (§2), TONE reworked as tilt "hero" control, multi-stage DRIVE voicing (§4.9), anti-resonance / anti-buildup system (§4.10), three-host architecture with shared parameter layer + JUCE plugin (§6), revised milestones (§7).
 - v0.1 — Initial spec. Corrected knob count to 7.
@@ -56,8 +57,9 @@ Intellijel Springray / Springray² (real-tank Eurorack module) — community fee
 - Most-praised feature: **tilt / parametric EQ** — strongly affects how present the reverb sits.
 - Voltage control of parameters valued over passive modules (e.g. Doepfer A-199).
 
-Owner's own hardware tank (Wellspring) issue:
-- **Single frequency builds up into a sine-like ringing tone** in the tail, distracting from spring character. Owner currently spends the onboard filter taming it. → Must be designed out (§4.10).
+Owner's own hardware (Wellspring = BBD delay + spring reverb):
+- *Correction (v0.4):* the sine-like **Ringing** the owner hears on the Wellspring comes from the **BBD delay's feedback network**, not the spring. The spring alone has not shown frequency buildup.
+- Still relevant: each simulated Spring is itself a delay line with feedback, the same structure that rings in the delay. Digital loops don't have analog noise and drift to break modes up, so the risk is real but unproven for this model. → Designed out by construction and measured automatically (§4.10, ADR 0010).
 
 ### 2.3 Design principles (derived)
 
@@ -76,12 +78,12 @@ Owner's own hardware tank (Wellspring) issue:
 
 | # | Name | Function | Notes |
 |---|---|---|---|
-| K0 | **DECAY** | Tail length (feedback gain) **+ coupled tank length** (§4.4) | Core "size" macro. Always fades, max ~8–10 s (ADR 0001). KICKED: top ~10% enables Howl (ADR 0002) |
+| K0 | **DECAY** | Tail length (feedback gain) **+ coupled tank length** (§4.4) | Core "size" macro. Range ~0.3–0.5 s tight slap → ~8–10 s, always fades (ADR 0001, 0006). KICKED: top ~10% enables Howl (ADR 0002) |
 | K1 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop |
-| K2 | **BOING** | Dispersion amount: allpass coefficient `a` + number of active stages | CCW smeared/diffuse, CW exaggerated chirp |
+| K2 | **BOING** | Dispersion amount: allpass coefficient `a` + number of active stages | CCW soft/washy but still a spring, CW exaggerated chirp (ADR 0007) |
 | K3 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
 | K4 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated |
-| K5 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Min floor always on (§4.10) |
+| K5 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
 | K6 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
 
 ### Switches
@@ -117,6 +119,8 @@ Parametric model from **Välimäki, Parker & Abel, "Parametric Spring Reverberat
 Claude Code should read these papers before implementing. Välimäki structure: two parallel paths — low-frequency chirps + faster wideband echoes.
 
 ### 4.2 Per-spring structure
+
+**Scope (v0.4):** DriveIn, Tilt and DriveOut are **Tank-level** stages, one copy each, shared by all Springs (input is summed mono first, §4.3). Only the Loop contents (allpass cascade, damping, AntiRes, delay, LoopSat) are per Spring. The diagram shows one Spring with the shared stages drawn around it.
 
 ```
                  ┌──────────────── LOW-CHIRP PATH (C_lf) ────────────────────────────────┐
@@ -173,7 +177,7 @@ Level scales with ATTITUDE. Debounce button; rising-edge on gate.
 
 ### 4.7 WOBBLE
 
-Slow modulation of L per spring, independent phases: sine LFO (0.1–2 Hz, scaled by knob) + smoothed random. Max depth ~0.5–1% of L. **Minimum floor always active** even at knob = 0 (§4.10).
+Slow modulation of L per spring, independent phases: sine LFO (0.1–2 Hz, scaled by knob) + smoothed random. Max depth ~0.5–1% of L (starting guess, likely too small for ADR 0008's top-quarter Warble; tune by ear). **Minimum floor always active** even at knob = 0 (§4.10).
 
 ### 4.8 Output stage
 
@@ -208,14 +212,16 @@ Requirements:
 
 ### 4.10 Anti-resonance / anti-buildup system
 
-**Problem:** feedback loop with slightly excess gain at one frequency → that mode reinforces every pass → sine-like ringing tone dominates tail (observed on owner's Wellspring). Must be prevented **without using TONE**.
+**Problem:** feedback loop with slightly excess gain at one frequency → that mode reinforces every pass → sine-like ringing tone dominates tail. Heard on the owner's Wellspring **delay** feedback (not its spring, §2.2), and structurally possible in any digital feedback loop. Must be prevented **without using TONE**.
+
+**Scope (ADR 0010):** layers 1–3 and 5 are built by default (cheap, by design). Layer 4 (adaptive suppressor) is built **only if** the automated metric below fails at M6 after layers 1–3 are tuned.
 
 Layered defence, in priority order:
 
 1. **Even loop gain by design.** Loop gain per spring kept below target at *all* frequencies, not just on average. Tone/damping filters designed so no band peaks above others. Unit test measures loop magnitude response across the band.
 2. **Always-on micro-modulation.** Tank delay L modulated continuously by slow smoothed random at a small floor depth (starting ~0.05–0.1% of L), even with WOBBLE at 0. Resonant frequencies keep moving → no mode can lock in. Depth below audible pitch wobble (confirm by ear).
 3. **Spring detuning** (§4.3): springs don't share exact modes → no common reinforcement.
-4. **Adaptive resonance suppressor (AntiRes block).** Safety net if a mode still pokes out:
+4. **Adaptive resonance suppressor (AntiRes block).** *Conditional (ADR 0010).* Safety net if a mode still pokes out:
    - Detector at control rate (not per sample): e.g. small FFT on wet tail in main loop, or bank of bandpass energy trackers. Flags narrowband peak exceeding broadband level by threshold.
    - Response: dynamic peaking-cut biquad **inside the loop** at detected frequency; depth ramps in (up to ~−6 to −12 dB), releases when peak subsides. Max 2–3 simultaneous notches.
    - Must be inaudible on normal material — only acts on runaway modes.
@@ -348,11 +354,25 @@ Acceptance criteria below are **drafts**. Final criteria to be written via inter
 
 ---
 
-## 8. Flashing / distribution — open questions (research at M0)
+## 8. Flashing / distribution
 
-- Custom libDaisy firmware via NE firmware updater, or only Daisy web programmer / DFU? Community index notes some Versio firmwares need a different bootloader (flash.daisy.audio). **Unverified — confirm at M0.**
-- Internal flash (128 KB) vs app size — bootloader build (`APP_TYPE`) needed? **Unverified.**
+Research 27 Sep 2026 (sources in §11). Status per item.
+
+- **Connection (confirmed, NE Desmodus Versio manual):** power off, take the module out, **unplug the Eurorack power cable**, plug micro-USB into the Daisy Seed on the back of the module. The module runs on USB power alone. Never have rack power and USB connected at once.
+- **Primary path: NE Firmware Swap web app with a custom .bin (verified by owner, who has flashed 1st- and 3rd-party firmwares with it many times):** noiseengineering.us/portal/firmware → "Select Custom File" → CONNECT → CHANGE FIRMWARE. The same app restores stock NE firmware, so recovery is known (ADR 0011).
+- **Fallback: Daisy Web Programmer / dfu-util (generic Daisy method, not needed unless NE's app fails):** hold BOOT, tap RESET, release BOOT → STM32 system DFU (in ROM, can't be overwritten → very low brick risk). **Unverified for Versio:** whether the Seed's BOOT/RESET buttons are reachable when mounted, and whether NE's app enters DFU for you. → Check physically at M0 before any flash.
+- **App size / bootloader:** internal flash is 128 KB. If the app exceeds it, build with the Daisy bootloader (`APP_TYPE = BOOT_SRAM`, up to 480 KB, runs from SRAM; RAM data then goes in DTCM, only 128 KB → delay lines must be placed explicitly). Install the bootloader with `make program-boot`, then flash apps with `make program-dfu` during the bootloader's LED-pulsing grace period. This is likely why some community Versio firmwares "need a different bootloader" (inferred, not stated by the index). The firmware index says bootloader-based firmwares "will not install through Noise Engineering's firmware updater". **Decision (ADR 0011):** plain internal-flash build (≤ 128 KB) so the NE app works. Binary size is checked on every firmware build.
+- **Unverified:** whether restoring NE firmware through NE's app also removes the Daisy bootloader.
+- **Flash procedure for M0:** first flash = passthrough + control-print test firmware via NE's app (custom file). Owner flashes; Claude produces the .bin.
 - NE offers blank panel + DXF overlay templates (World of Versio). Overlay at M9.
+
+### 8.1 Toolchain facts (27 Sep 2026)
+
+- ARM compiler: `brew install --cask gcc-arm-embedded` (official Arm, native arm64). **Not** the Homebrew formula `arm-none-eabi-gcc` (no newlib → `nosys.specs` error). Daisy Toolchain installer is stale (2022, Intel-era).
+- `brew install dfu-util cmake ninja`.
+- libDaisy `DaisyVersio` confirmed on master. Quirks: knobs pre-inverted (`flip=true`); `ProcessAllControls()` only processes knobs, so `tap.Debounce()` must be called separately; `Gate()` already inverted; LEDs RGB order, inverted; default block 48, 48 kHz / 24-bit.
+- Knob + CV sum clips at 0/1 in the analog stage (ADC rails), not in software. CV range 0–5 V (NE manual). Audio inputs clip ~16 Vpp.
+- JUCE: now JUCE 9. Free for this use (Starter tier ≤ $20k/yr revenue, or AGPLv3). Command Line Tools only (no full Xcode) is **unverified** for AU + VST3. Test at M0/M2; install Xcode if it fails.
 
 ---
 
@@ -389,7 +409,8 @@ Acceptance criteria below are **drafts**. Final criteria to be written via inter
 4. J. S. Abel, D. P. Berners, S. Costello, J. O. Smith — "Spring Reverb Emulation Using Dispersive Allpass Filters in a Waveguide Structure," AES 121st Conv., 2006.
 5. "Automated Calibration of a Parametric Spring Reverb Model," DAFx-11 — https://www.dafx.de/paper-archive/2011/Papers/39_e.pdf
 6. libDaisy Versio header — https://github.com/electro-smith/libDaisy/blob/master/src/daisy_versio.h
-7. NE: Create your own Versio firmware — https://noiseengineering.us/blogs/loquelic-literitas-the-blog/create-your-own-firmware-on-a-versio-module/
+7. NE: Create your own Versio firmware. NE Firmware Swap: https://noiseengineering.us/portal/firmware/. NE Desmodus Versio manual: https://noiseengineering.us/manuals/desmodus-versio/. Daisy bootloader: libDaisy `doc/md/_a7_Getting-Started-Daisy-Bootloader.md`, https://github.com/electro-smith/DaisyBootloader.
+   NE blog — https://noiseengineering.us/blogs/loquelic-literitas-the-blog/create-your-own-firmware-on-a-versio-module/
 8. Versio firmware index — https://github.com/Maxhodges/noise-engineering-firmware-index
 9. Forum research (dub spring character, Springray feedback): Gearspace dub/spring threads; ModWiggler "Which spring reverb should I get?", "Intellijel Springray 2?" threads.
 10. (Verify before use) J. Chowdhury — "Real-time Physical Modelling for Analog Tape Machines," DAFx-19.

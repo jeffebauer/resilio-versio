@@ -16,9 +16,14 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Clatter, Jolt, self-oscillation permission. |
 | **Drive chain** | Input transducer → tape → Loop saturation → output pickup (SPEC §4.9). |
 | **Howl** | Controlled self-sustaining feedback. KICKED only, top ~10% of DECAY. Noisy/crashing, never a pure tone. |
-| **Ringing / Buildup** | Unwanted single frequency growing into sine-like tone in tail. Prevented by AntiRes system. |
-| **AntiRes** | Layered anti-buildup system (SPEC §4.10). |
+| **Ringing / Buildup** | Unwanted single frequency growing into sine-like tone in tail. Prevented by AntiRes system. (Heard on the Wellspring's BBD delay feedback, not its spring.) |
+| **AntiRes** | Layered anti-buildup system (SPEC §4.10). Adaptive suppressor layer is conditional (ADR 0010). |
 | **Micro-mod floor** | Always-on tiny Loop delay modulation, active even at WOBBLE 0. Part of AntiRes. |
+| **Drift** | WOBBLE lower half: subtle, felt-not-heard pitch movement; held chords stay in tune (ADR 0008). |
+| **Warble** | WOBBLE top quarter: obvious worn-tape pitch wobble, clearly out of tune on held chords (ADR 0008). |
+| **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
+| **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
+| **Reference recording** | Wellspring spring section (delay off) recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |
 | **Morph** | Switch change applied to live tail without restarting it (Attitude changes). |
 | **Core** | Platform-independent DSP + ParamSpec. No libDaisy/JUCE. |
 | **Host** | Wrapper feeding audio + params to Core: Renderer, Plugin, Firmware. |
