@@ -23,7 +23,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Warble** | WOBBLE top quarter: obvious worn-tape pitch wobble, clearly out of tune on held chords (ADR 0008). |
 | **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
-| **Reference recording** | Wellspring spring section (delay off) recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |
+| **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |
 | **Morph** | Switch change applied to live tail without restarting it (Attitude changes). |
 | **Core** | Platform-independent DSP + ParamSpec. No libDaisy/JUCE. |
 | **Host** | Wrapper feeding audio + params to Core: Renderer, Plugin, Firmware. |

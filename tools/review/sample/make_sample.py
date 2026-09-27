@@ -6,7 +6,7 @@ Writes:
   tools/review/sample/out/manifest.json + sidecars + short WAVs
     (a 3 x 2 grid over decay x boing, ~6 renders, one deliberately flagged)
   tools/review/sample/reference/wellspring_A_test.wav + .json
-    (a fake stereo reference: dry on L, wet on R, per docs/recording-recipe.md)
+    (a fake stereo reference: wet L + R, per docs/recording-recipe.md)
 
 stdlib-only (no numpy): implements a small iterative radix-2 FFT in pure
 Python to compute spectrograms that match the Stream B sidecar contract

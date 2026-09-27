@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.2 — Fact update: Wellspring manual read. It has no spring decay control (fixed T60, one reference point), stereo springs, INPUT = drive. ADR 0009 amended, recipe rewritten, M1/M5 reference checks clarified.
 - v1.0.1 — Fact update only: toolchain verified (§8.1), firmware size watch item.
 - v1.0 — Frozen. Milestone acceptance criteria from owner interview (§7). ADR 0019 (Howl may lean to pitch). LED_3 Kick flash dropped. §12 complete.
 - v0.4 — Grill round 2: ADRs 0006–0018 (min DECAY slap, BOING always spring, WOBBLE zones, Wellspring reference recordings, AntiRes rescoped after Wellspring correction, NE-app flashing, DECAY bend, hold-rattle deferred, DRIVE onset, smoothing tiers, Kick character, TONE range, Howl exit). Tank-level vs Spring-level stages clarified (§4.2). Flashing research (§8). Toolchain facts.
@@ -59,7 +60,7 @@ Intellijel Springray / Springray² (real-tank Eurorack module) — community fee
 - Most-praised feature: **tilt / parametric EQ** — strongly affects how present the reverb sits.
 - Voltage control of parameters valued over passive modules (e.g. Doepfer A-199).
 
-Owner's own hardware (Wellspring = BBD delay + spring reverb):
+Owner's own hardware (Wellspring, Teaching Machines: desktop stereo BBD delay + stereo spring reverb, two tanks each with a pair of 15" springs; the only spring control is SPRINGS dry/wet, with no decay control; INPUT drives it into distortion):
 - *Correction (v0.4):* the sine-like **Ringing** the owner hears on the Wellspring comes from the **BBD delay's feedback network**, not the spring. The spring alone has not shown frequency buildup.
 - Still relevant: each simulated Spring is itself a delay line with feedback, the same structure that rings in the delay. Digital loops don't have analog noise and drift to break modes up, so the risk is real but unproven for this model. → Designed out by construction and measured automatically (§4.10, ADR 0010).
 
@@ -368,7 +369,7 @@ Shared definitions:
 - [A] Deterministic: same input + params → bit-identical output.
 - [A] Metrics reported per render: peak, RMS, T60, resonance ratio, NaN/Inf count, clip count, click-detector hits.
 - [A] Review page generated for the M1 grid, next to the Wellspring Reference set.
-- [L] Owner A/B vs Wellspring clicks (take A/B): "same family" (repeating boings, highs before lows, dark tail). Thin/sparse is acceptable at this stage.
+- [L] Owner A/B vs Wellspring clicks (take A), with DECAY set so T60 matches the Wellspring's measured T60 (the Wellspring has no decay control): "same family" (repeating boings, highs before lows, dark tail). Thin/sparse is acceptable at this stage.
 
 ### M2 — JUCE Plugin shell
 - [A] AU + VST3 load in Ableton. All ParamSpec params visible and automatable. Names/ranges generated from ParamSpec, no hand-written list.
@@ -395,6 +396,7 @@ Shared definitions:
 - [L] ATTITUDE at DRIVE noon on a snare: CLEAN hi-fi, DRIVEN warm tape dub, KICKED gritty/trashed. Owner picks all three correctly in a blind test.
 - [A] ATTITUDE loudness within ±2 dB of each other at the same settings.
 - [A] DRIVE sweep 0→max: loudness within ±2 dB (LUFS-style short-term). Clean-ish below ~25%, colour builds to ~85% (ADR 0014), measured as THD rising monotonically.
+- [L] DRIVEN at high DRIVE vs Wellspring hot-INPUT hits (take C): comparable warmth/grit character (reference, not a clone).
 - [A] Reverb clearly audible at DRIVE 0 with a 10 Vpp-equivalent input (wet within 6 dB of dry at MIX noon).
 - [A] Aliasing: a 5–15 kHz sine sweep at max DRIVE/KICKED shows alias products ≤ −60 dB relative to the fundamental.
 - [A/L] TONE: chirp still visible and audible at full CCW (ADR 0017). Full CW is splashy, not harsh (owner check on hats/cymbals; energy above 10 kHz capped *(start: ≤ +6 dB vs noon)*). TONE sweep loudness within ±3 dB.
