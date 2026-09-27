@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.3 — ADR 0020: Strymon Magneto recorded as a benchmark (not a target) + WOBBLE/DRIVEN calibration source. `08_held_tones` stimulus.
 - v1.0.2 — Fact update: Wellspring manual read. It has no spring decay control (fixed T60, one reference point), stereo springs, INPUT = drive. ADR 0009 amended, recipe rewritten, M1/M5 reference checks clarified.
 - v1.0.1 — Fact update only: toolchain verified (§8.1), firmware size watch item.
 - v1.0 — Frozen. Milestone acceptance criteria from owner interview (§7). ADR 0019 (Howl may lean to pitch). LED_3 Kick flash dropped. §12 complete.
@@ -415,6 +416,7 @@ Shared definitions:
 - [L] Kick = tight thud + big crash (ADR 0016). [A] Energy < 100 Hz down ≥ 20 dB within 300 ms.
 - [H] Gate Kicks: every gate at up to 12/s (16ths at 180 bpm) gives exactly one Kick, onset within 1 ms of the gate edge. No double triggers.
 - [L] WOBBLE: lower half Drift (held chords in tune), top quarter Warble (clearly out of tune) (ADR 0008).
+- [A] WOBBLE pitch deviation (cents, on `08_held_tones`) sits in the range measured from the Magneto's WOW & FLUTTER series (takes MW0–MW4): Drift ≈ the 9 o'clock–noon takes, Warble ≈ the 3 o'clock–fully CW takes.
 - [A] MIX: CCW = dry only (null vs input), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
 - [A/H] Envelope on MIX CV (5 ms attack): throw lands with no audible lag (smoothing ≤ 5 ms, ADR 0015).
 - [H] All 7 knobs respond to CV 0–5 V over their full range.
@@ -424,6 +426,7 @@ All four must hold:
 - [L] Sweet-spot sweep: owner reviews a grid of renders stepping every knob. No dead zones, no cliffs, every position usable.
 - [L] Dub record A/B: on the owner's own material it sits alongside King Tubby / Basic Channel references without sounding like a "digital reverb".
 - [L] Wellspring A/B: same family as the spring Reference set, with less Ringing and more splash.
+- [L] Magneto A/B (ADR 0020): holds up next to the Magneto's spring on the same stimulus; the owner would reach for Resilio Versio for dub.
 - [H/L] Live session on the module (patching, throws, Kicks): nothing surprises in a bad way.
 - Final ranges/curves written back into ParamSpec, and SPEC starting guesses replaced with the tuned values.
 

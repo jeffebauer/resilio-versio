@@ -11,4 +11,4 @@ The Micro-mod floor (SPEC §4.10) stays underneath at 0.
 
 **Why:** Owner's musical target. Most of the knob is a colour; the top is an effect.
 
-**Implication:** Strongly non-linear (exponential-ish) depth curve in ParamSpec. The §4.7 "max depth ~0.5–1% of L" guess is probably too small for "clearly out of tune" and must be tuned by ear. Warble pitch deviation in the top quarter is likely tens of cents.
+**Implication:** Strongly non-linear (exponential-ish) depth curve in ParamSpec. The §4.7 "max depth ~0.5–1% of L" guess is probably too small for "clearly out of tune" and must be tuned by ear. Warble pitch deviation in the top quarter is likely tens of cents. Numeric targets come from the Magneto WOW & FLUTTER series (ADR 0020).

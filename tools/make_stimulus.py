@@ -71,6 +71,20 @@ def click_single():
     return silence(1) + [db(-6), db(-6)] + silence(12)[2:]
 
 
+def held_tones():
+    """1 kHz sine for 8 s, 1 s gap, then a held A minor chord for 8 s, then 2 s.
+    Sustained tones make pitch wobble (wow & flutter, WOBBLE) measurable."""
+    out = silence(1)
+    n = int(8 * SR)
+    fade = int(0.01 * SR)
+    env = [min(1.0, i / fade, (n - 1 - i) / fade) for i in range(n)]
+    out += [db(-12) * math.sin(2 * math.pi * 1000 * i / SR) * env[i] for i in range(n)]
+    out += silence(1)
+    chord = (220.0, 261.63, 329.63)
+    out += [db(-12) * env[i] * sum(math.sin(2 * math.pi * f * i / SR) for f in chord) / 3 for i in range(n)]
+    return out + silence(2)
+
+
 def sweep():
     """Exponential sine sweep 20 Hz-20 kHz, 10 s (Farina), 12 s silence after."""
     f1, f2, T = 20.0, 20000.0, 10.0
@@ -162,3 +176,4 @@ if __name__ == "__main__":
     write("05_silence_for_kicks.wav", silence(40))
     write("06_noise_bursts.wav", noise_bursts())
     write("07_click_single.wav", click_single())
+    write("08_held_tones.wav", held_tones())

@@ -24,7 +24,7 @@ input ─► delay section (time, feedback, filter, modulation) ─► delay DRY
 python3 tools/make_stimulus.py
 ```
 
-Writes six files to `test_audio/stimulus/` (48 kHz, 24-bit, mono, deterministic):
+Writes eight files to `test_audio/stimulus/` (48 kHz, 24-bit, mono, deterministic):
 
 | File | What it is | What we learn from it |
 |---|---|---|
@@ -34,6 +34,7 @@ Writes six files to `test_audio/stimulus/` (48 kHz, 24-bit, mono, deterministic)
 | `04_skank.wav` | 4 bars of offbeat chord stabs, then tail | Musical check, A/B material |
 | `05_silence_for_kicks.wav` | 40 s of silence | Bed to record physical knocks over |
 | `06_noise_bursts.wav` | Short and long noise bursts, 10 s apart | Optional: delay-feedback Ringing example for AntiRes detector tests |
+| `07_click_single.wav`, `08_held_tones.wav` | One click; held sine + chord | Renderer grids; Magneto wow measurement (`docs/recording-recipe-magneto.md`). Not needed for the Wellspring |
 
 ## 2. Patch
 
