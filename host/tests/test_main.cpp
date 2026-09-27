@@ -48,10 +48,12 @@ void tankPassthroughIsIdentity()
 {
     rv::Tank tank;
     tank.prepare(48000.0f, 48);
-    std::vector<float> l(48), r(48), ol(48), orr(48);
-    for (int i = 0; i < 48; ++i) { l[i] = float(i) / 48.0f - 0.5f; r[i] = -l[i]; }
-    tank.process(l.data(), r.data(), ol.data(), orr.data(), 48);
-    check(l == ol && r == orr, "Tank M0 passthrough is bit-identical");
+    tank.setParam(rv::ParamId::Mix, 0.0f);
+    std::vector<float> l(4800), r(4800), ol(4800), orr(4800);
+    for (int i = 0; i < 4800; ++i) { l[i] = float(i % 48) / 48.0f - 0.5f; r[i] = -l[i]; }
+    for (int pos = 0; pos < 4800; pos += 48)
+        tank.process(l.data() + pos, r.data() + pos, ol.data() + pos, orr.data() + pos, 48);
+    check(l == ol && r == orr, "Tank mix=0 gives bit-identical dry passthrough");
 }
 
 void wavRoundTripIsBitIdentical()

@@ -1,5 +1,6 @@
 // Firmware Host, M0 test build (SPEC §7 M0).
-// - Audio: Core Tank passthrough (proves Core runs on the Versio).
+// - Audio: Core Tank at MIX 0 = bit-identical dry passthrough (proves Core
+//   runs on the Versio without judging the reverb yet).
 // - Controls -> LEDs, so every control can be checked without a computer:
 //     LED_0 R/G/B = K0 DECAY, K1 TONE, K2 BOING
 //     LED_1 R/G/B = K3 SPLASH, K4 DRIVE, K5 WOBBLE
@@ -80,6 +81,7 @@ int main()
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
     tank.prepare(hw.AudioSampleRate(), kBlockSize);
+    tank.setParam(rv::ParamId::Mix, 0.0f); // M0 test build: dry passthrough only
 
     BootPattern();
 

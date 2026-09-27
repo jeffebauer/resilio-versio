@@ -1,0 +1,287 @@
+#include "dsp/Spring.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace rv {
+
+namespace {
+
+constexpr float kLn10 = 2.302585093f;
+
+// Frequencies where the Loop gain design checks T60. The slowest-decaying
+// band sets the tail length the ear (and the Schroeder T60 metric) hears. It
+// sits in the low mids: below ~100 Hz the DC blocker drains energy, above
+// ~1 kHz the damping LPF does and the round trip is shorter.
+constexpr std::array<float, 8> kDesignHz{{70.0f, 110.0f, 170.0f, 250.0f, 370.0f, 550.0f, 800.0f, 1200.0f}};
+
+int nextPow2(int v)
+{
+    int p = 1;
+    while (p < v) p <<= 1;
+    return p;
+}
+
+int lowDelaySize(float sampleRate) { return int(std::ceil(map::kLoopDelayMaxSeconds * sampleRate * 1.02f)) + 8; }
+int highDelaySize(float sampleRate)
+{
+    return int(std::ceil(Spring::kHighDelayRatio * map::kLoopDelayMaxSeconds * sampleRate * 1.02f)) + 8;
+}
+// Each stretched section's ring holds K+1 samples; K is largest at the lowest fC.
+int ringSize(float sampleRate) { return nextPow2(int(std::ceil(map::stretchK(map::kTransitionMinHz, sampleRate) * 1.1f)) + 3); }
+
+} // namespace
+
+size_t Spring::requiredFloats(float sampleRate)
+{
+    return size_t(lowDelaySize(sampleRate)) + size_t(highDelaySize(sampleRate))
+         + size_t(kMaxStages) * size_t(ringSize(sampleRate));
+}
+
+void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
+{
+    sampleRate_ = sampleRate;
+    lowSize_    = lowDelaySize(sampleRate);
+    highSize_   = highDelaySize(sampleRate);
+    ringMask_   = ringSize(sampleRate) - 1;
+    lowBuf_     = pool;
+    highBuf_    = lowBuf_ + lowSize_;
+    rings_      = highBuf_ + highSize_;
+    seed_       = noiseSeed;
+
+    dc_.setCutoff(kDcBlockHz, sampleRate);
+    highCeiling_.setCutoff(std::min(kHighCeilingHz, 0.45f * sampleRate), sampleRate);
+    mRate_ = 1.0f / (kStageRampSeconds * sampleRate);
+
+    reset();
+    setSettings(settings_, true);
+}
+
+void Spring::reset()
+{
+    std::fill(lowBuf_, lowBuf_ + lowSize_, 0.0f);
+    std::fill(highBuf_, highBuf_ + highSize_, 0.0f);
+    std::fill(rings_, rings_ + size_t(kMaxStages) * size_t(ringMask_ + 1), 0.0f);
+    lowW_ = highW_ = ringW_ = 0;
+    thiranY1_.fill(0.0f);
+    hapX1_.fill(0.0f);
+    hapY1_.fill(0.0f);
+    dc_.reset();
+    chirpLowpass_.reset();
+    damping_.reset();
+    highpass_.reset();
+    highCeiling_.reset();
+    rng_.seed(seed_);
+}
+
+void Spring::setSettings(const SpringSettings& s, bool snap)
+{
+    // At rest (knobs still, glides finished) the coefficients can't change:
+    // skip the redesign and save its transcendental maths.
+    const bool same = s.loopDelaySeconds == settings_.loopDelaySeconds && s.t60Seconds == settings_.t60Seconds
+                   && s.transitionHz == settings_.transitionHz && s.allpassCoeff == settings_.allpassCoeff
+                   && s.stages == settings_.stages && s.dampingHz == settings_.dampingHz
+                   && s.highPathLevel == settings_.highPathLevel;
+    if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return;
+
+    settings_ = s;
+    lTarget_  = std::clamp(s.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
+    mTarget_  = std::clamp(s.stages, 1, kMaxStages);
+    if (snap) {
+        lCur_ = lTarget_;
+        mPos_ = float(mTarget_);
+        for (int j = mTarget_; j < kMaxStages; ++j) clearStage(j);
+        mActive_ = mTarget_;
+    }
+    updateCoefficients();
+}
+
+void Spring::updateCoefficients()
+{
+    const SpringSettings& s = settings_;
+
+    // Stretch K = N + d: N whole samples in the ring plus a first-order Thiran
+    // allpass for the fraction d in [0.5, 1.5). Thiran is itself an allpass, so
+    // the section stays exactly allpass for any real K and K can glide.
+    k_   = std::clamp(map::stretchK(s.transitionHz, sampleRate_), 1.6f, float(ringMask_ - 2));
+    n_   = int(k_ - 0.5f);
+    const float d = k_ - float(n_);
+    eta_ = (1.0f - d) / (1.0f + d);
+    a_   = s.allpassCoeff;
+
+    chirpLowpass_.setLowpass(s.transitionHz, 0.7071f, sampleRate_);
+    damping_.setCutoff(std::min(s.dampingHz, 0.45f * sampleRate_), sampleRate_);
+    highpass_.setHighpass(kHighPassRatio * s.transitionHz, 0.7071f, sampleRate_);
+    highPathLevel_ = s.highPathLevel;
+
+    // Loop gain g from the target T60 and the *actual* round trip. A tail
+    // loses 60 dB in T60 seconds; one trip takes RT seconds, so each trip may
+    // lose 60 * RT / T60 dB in total. The filters already take |H(f)| of that,
+    // g supplies the rest. Take the smallest g over the design band so the
+    // slowest band hits T60 and no band rings longer.
+    const float t60 = kT60DesignScale * s.t60Seconds;
+    float g = kMaxGain;
+    for (float hz : kDesignHz) {
+        const float rt = roundTripSamples(hz);
+        const float m  = loopMagnitude(hz);
+        const float gf = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / m;
+        g = std::min(g, gf);
+    }
+    g_ = std::max(0.0f, g);
+
+    // High path: no dispersion to speak of, simple T60 from its own trip.
+    lhCur_ = kHighDelayRatio * lCur_;
+    gHigh_ = std::min(kMaxGain, std::exp(-3.0f * kLn10 * lhCur_ / (kHighT60Ratio * s.t60Seconds * sampleRate_)));
+}
+
+float Spring::chainGroupDelaySamples(float freqHz) const
+{
+    return mPos_ * map::stretchedAllpassGroupDelaySamples(a_, k_, freqHz, sampleRate_);
+}
+
+float Spring::roundTripSamples(float freqHz) const
+{
+    const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
+    // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
+    const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
+    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay;
+}
+
+float Spring::loopMagnitude(float freqHz) const
+{
+    const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
+    return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * damping_.magnitudeSquared(cw));
+}
+
+float Spring::t60AtSeconds(float freqHz) const
+{
+    const float perTrip = g_ * loopMagnitude(freqHz);
+    if (perTrip <= 0.0f) return 0.0f;
+    return -3.0f * roundTripSamples(freqHz) / (sampleRate_ * std::log10(perTrip));
+}
+
+void Spring::clearStage(int j)
+{
+    float* ring = rings_ + size_t(j) * size_t(ringMask_ + 1);
+    std::fill(ring, ring + ringMask_ + 1, 0.0f);
+    thiranY1_[size_t(j)] = 0.0f;
+}
+
+float Spring::readLow(float delay) const
+{
+    // Linear interpolation between the two nearest samples: cheap fractional
+    // delay so L can glide (ADR 0012). Its slight HF loss is folded into the
+    // dark Loop anyway.
+    const int   di = int(delay);
+    const float fr = delay - float(di);
+    int i0 = lowW_ - di;
+    if (i0 < 0) i0 += lowSize_;
+    int i1 = i0 - 1;
+    if (i1 < 0) i1 += lowSize_;
+    return lowBuf_[i0] + fr * (lowBuf_[i1] - lowBuf_[i0]);
+}
+
+inline void Spring::advanceGlides()
+{
+    // Slew-limited L: a DECAY move becomes a smooth tape-speed bend, never a
+    // jump (ADR 0012). The high path follows the same tank length.
+    const float dl = lTarget_ - lCur_;
+    if (dl > kLoopSlewPerSample) lCur_ += kLoopSlewPerSample;
+    else if (dl < -kLoopSlewPerSample) lCur_ -= kLoopSlewPerSample;
+    else lCur_ = lTarget_; // land exactly, so "at rest" is detectable
+    lhCur_ = kHighDelayRatio * lCur_;
+
+    // Stage count M glides one stage at a time: the stage at the edge is
+    // cross-faded in/out, so BOING never clicks. At rest mPos_ is a whole
+    // number, so no stage is ever left half-mixed (which would comb-filter).
+    if (mPos_ != float(mTarget_)) {
+        if (mPos_ < float(mTarget_)) mPos_ = std::min(float(mTarget_), mPos_ + mRate_);
+        else mPos_ = std::max(float(mTarget_), mPos_ - mRate_);
+        const int active = int(std::ceil(mPos_));
+        for (int j = active; j < mActive_; ++j) clearStage(j); // leaving stages start clean next time
+        mActive_ = active;
+    }
+}
+
+inline float Spring::processLow(float in)
+{
+    const float fb  = readLow(lCur_);
+    const float tap = readLow(0.5f * lCur_); // pickup half way: first echo after ~half a round trip
+
+    float x = dc_.process(in + g_ * fb);
+
+    // Spectral delay filter: M stretched allpass sections, each
+    //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
+    // Schroeder form: v = x - a·D{v}, y = a·v + D{v}.
+    const int   full = int(mPos_);
+    const float frac = mPos_ - float(full);
+    const int   iw   = ringW_;
+    const int   ir0  = (iw - n_) & ringMask_;
+    const int   ir1  = (iw - n_ - 1) & ringMask_;
+    const size_t stride = size_t(ringMask_ + 1);
+    const float a = a_, eta = eta_;
+    for (int j = 0; j < full; ++j) {
+        float* ring = rings_ + size_t(j) * stride;
+        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(j)]) + ring[ir1];
+        thiranY1_[size_t(j)] = dOut;
+        const float v = x - a * dOut;
+        ring[iw] = v;
+        x = a * v + dOut;
+    }
+    if (frac > 0.0f && full < kMaxStages) {
+        float* ring = rings_ + size_t(full) * stride;
+        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
+        thiranY1_[size_t(full)] = dOut;
+        const float v = x - a * dOut;
+        ring[iw] = v;
+        x += frac * (a * v + dOut - x);
+    }
+    ringW_ = (iw + 1) & ringMask_;
+
+    x = chirpLowpass_.process(x);
+    x = damping_.process(x);
+
+    lowBuf_[lowW_] = x;
+    if (++lowW_ == lowSize_) lowW_ = 0;
+    return tap;
+}
+
+inline float Spring::processHigh(float in)
+{
+    const int   di = int(lhCur_);
+    const float fr = lhCur_ - float(di);
+    int i0 = highW_ - di;
+    if (i0 < 0) i0 += highSize_;
+    int i1 = i0 - 1;
+    if (i1 < 0) i1 += highSize_;
+    const float fb = highBuf_[i0] + fr * (highBuf_[i1] - highBuf_[i0]);
+
+    float h = in + gHigh_ * fb;
+    for (int j = 0; j < kHighStages; ++j) { // first-order allpass: y = a(x - y1) + x1
+        const float y = kHighAllpassCoeff * (h - hapY1_[size_t(j)]) + hapX1_[size_t(j)];
+        hapX1_[size_t(j)] = h;
+        hapY1_[size_t(j)] = y;
+        h = y;
+    }
+    h = highpass_.process(h);
+    h = highCeiling_.process(h);
+
+    highBuf_[highW_] = h;
+    if (++highW_ == highSize_) highW_ = 0;
+    return fb;
+}
+
+void Spring::process(const float* in, float* out, int n)
+{
+    for (int i = 0; i < n; ++i) {
+        advanceGlides();
+        // Tiny seeded noise (-200 dB) keeps every filter state far above the
+        // denormal range once a tail has died away. Inaudible, deterministic.
+        const float x    = in[i] + kDenormalNoise * rng_.bipolar();
+        const float low  = processLow(x);
+        const float high = processHigh(x);
+        out[i] = low + highPathLevel_ * high;
+    }
+}
+
+} // namespace rv
