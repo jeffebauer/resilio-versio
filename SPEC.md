@@ -6,7 +6,7 @@
 **Status:** Spec v0.4, 27 Sep 2026. Grill round 2 in progress. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/`. Then milestone acceptance criteria via interview (§12), then hand to Claude Code.
 
 ### Changelog
-- v0.4 — Grill round 2: ADRs 0006–0010 (min DECAY slap, BOING always spring, WOBBLE zones, Wellspring reference recordings, AntiRes rescoped after Wellspring correction). Tank-level vs Spring-level stages clarified (§4.2). Flashing research (§8). Toolchain facts.
+- v0.4 — Grill round 2: ADRs 0006–0018 (min DECAY slap, BOING always spring, WOBBLE zones, Wellspring reference recordings, AntiRes rescoped after Wellspring correction, NE-app flashing, DECAY bend, hold-rattle deferred, DRIVE onset, smoothing tiers, Kick character, TONE range, Howl exit). Tank-level vs Spring-level stages clarified (§4.2). Flashing research (§8). Toolchain facts.
 - v0.3 — Grill round 1: ADRs 0001–0005 (DECAY fades, KICKED Howl, switch-change behaviour, plugin = test bench, fixed Kick strength). Added CONTEXT.md glossary.
 - v0.2 — Added forum research + design principles (§2), TONE reworked as tilt "hero" control, multi-stage DRIVE voicing (§4.9), anti-resonance / anti-buildup system (§4.10), three-host architecture with shared parameter layer + JUCE plugin (§6), revised milestones (§7).
 - v0.1 — Initial spec. Corrected knob count to 7.
@@ -78,11 +78,11 @@ Owner's own hardware (Wellspring = BBD delay + spring reverb):
 
 | # | Name | Function | Notes |
 |---|---|---|---|
-| K0 | **DECAY** | Tail length (feedback gain) **+ coupled tank length** (§4.4) | Core "size" macro. Range ~0.3–0.5 s tight slap → ~8–10 s, always fades (ADR 0001, 0006). KICKED: top ~10% enables Howl (ADR 0002) |
-| K1 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop |
+| K0 | **DECAY** | Tail length (feedback gain) **+ coupled tank length** (§4.4) | Core "size" macro. Range ~0.3–0.5 s tight slap → ~8–10 s, always fades (ADR 0001, 0006). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Turning it bends the live tail's pitch (ADR 0012) |
+| K1 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
 | K2 | **BOING** | Dispersion amount: allpass coefficient `a` + number of active stages | CCW soft/washy but still a spring, CW exaggerated chirp (ADR 0007) |
 | K3 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
-| K4 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated |
+| K4 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
 | K5 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
 | K6 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
 
@@ -95,9 +95,16 @@ Owner's own hardware (Wellspring = BBD delay + spring reverb):
 
 Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003).
 
+CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–100 ms) for DECAY, WOBBLE, BOING (ADR 0015).
+
+### Audio I/O
+
+- Hardware normals In L → In R when R is unpatched (NE Versio manuals). Mono-in works with no firmware logic; libDaisy has no jack detection.
+- Outputs not normalled.
+
 ### Button + Gate
 
-- **Button = KICK.** Injects "tank kick" impulse (§4.6). Momentary. Fixed strength, scaled by ATTITUDE (ADR 0005). Hold = sustained rattle (stretch goal).
+- **Button = KICK.** Injects "tank kick" impulse (§4.6). Momentary. Fixed strength, scaled by ATTITUDE (ADR 0005). Tight thud + big crash (ADR 0016). Hold does nothing extra in v1 (ADR 0013).
 - **Gate in = KICK.** Same as button. Digital on/off input — no velocity. Sequencer/envelope can hit tank rhythmically.
 
 ### LEDs (proposal)
@@ -395,9 +402,10 @@ Research 27 Sep 2026 (sources in §11). Status per item.
 
 ## 10. Open questions (for grill pass)
 
-- Exact TONE tilt curve and pivot frequency?
-- AntiRes: FFT-based vs filter-bank detector — CPU/latency tradeoff on Daisy?
-- Hold-for-rattle on button: in v1 or later?
+- ~~Exact TONE tilt curve and pivot frequency?~~ Character decided (ADR 0017); numbers tuned at M5/M8.
+- ~~AntiRes detector type?~~ Only needed if layer 4 is built (ADR 0010); decide then.
+- ~~Hold-for-rattle?~~ Not v1 (ADR 0013).
+- No open design questions remain. Tuning numbers marked "starting guess" are confirmed by measurement or ear at their milestone.
 
 ---
 
