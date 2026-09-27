@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__RV_TITLE__</title>
+<style>
+:root {
+  --bg: #f5f4f2;
+  --bg-elev: #ffffff;
+  --fg: #1c1b19;
+  --fg-dim: #5c5954;
+  --border: #ddd9d3;
+  --accent: #8a5a3c;
+  --accent-fg: #ffffff;
+  --ok: #3c7a4f;
+  --warn-bg: #fdecea;
+  --warn-fg: #8a2c1f;
+  --warn-border: #e2a79c;
+  --focus: #2f6fed;
+  --spectro-lo: #10131c;
+  --spectro-hi: #ffe9a8;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  --chip-bg: #ece9e4;
+  --chip-fg: #3a3835;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17161a;
+    --bg-elev: #211f24;
+    --fg: #ece9e4;
+    --fg-dim: #a7a29a;
+    --border: #38353a;
+    --accent: #d99a6c;
+    --accent-fg: #201206;
+    --ok: #7fd39a;
+    --warn-bg: #3a1c18;
+    --warn-fg: #ffb4a3;
+    --warn-border: #6e352b;
+    --focus: #7fb2ff;
+    --spectro-lo: #0b0c11;
+    --spectro-hi: #ffe9a8;
+    --card-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --chip-bg: #2b2930;
+    --chip-fg: #d8d4cd;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  padding-bottom: 6.5rem; /* room for sticky AB strip */
+}
+a { color: var(--accent); }
+h1, h2, h3 { font-weight: 600; letter-spacing: 0.01em; }
+button, select, input {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--fg);
+}
+button {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem; }
+
+header.page-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+header.page-header .container { padding-top: 1.5rem; padding-bottom: 1.25rem; }
+header.page-header h1 { margin: 0 0 0.35rem; font-size: 1.4rem; }
+.meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  color: var(--fg-dim);
+  font-size: 0.92rem;
+}
+.meta-row strong { color: var(--fg); font-weight: 600; }
+.meta-row .flagged-count.has-flags { color: var(--warn-fg); font-weight: 600; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+  margin: 1.25rem 0;
+}
+.filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
+.filter-group label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-dim); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip {
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.flag-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+}
+
+main.grid-mode .grid-wrap { overflow-x: auto; }
+table.review-grid { border-collapse: separate; border-spacing: 0.6rem; }
+table.review-grid th { font-weight: 600; color: var(--fg-dim); font-size: 0.85rem; text-align: center; padding: 0.2rem; white-space: nowrap; }
+table.review-grid th.axis-label { color: var(--fg); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+table.review-grid td { vertical-align: top; }
+
+.cards, .grid-wrap td { display: block; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.85rem;
+  box-shadow: var(--card-shadow);
+  min-width: 280px;
+}
+.card.is-hidden { display: none; }
+.card h3 { font-size: 0.95rem; margin: 0 0 0.4rem; }
+.card .params-line { color: var(--fg-dim); font-size: 0.82rem; margin-bottom: 0.5rem; }
+.card audio { width: 100%; margin-bottom: 0.5rem; }
+.card canvas.spectro {
+  width: 100%;
+  height: 110px;
+  display: block;
+  border-radius: 6px;
+  cursor: zoom-in;
+  border: 1px solid var(--border);
+}
+.metrics-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem 0.5rem; font-size: 0.78rem; }
+.metrics-list li {
+  background: var(--chip-bg);
+  color: var(--chip-fg);
+  border-radius: 5px;
+  padding: 0.15rem 0.45rem;
+  white-space: nowrap;
+}
+.metrics-list li.flag {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border: 1px solid var(--warn-border);
+  font-weight: 600;
+}
+.metrics-list li.flag::before { content: "\26A0 "; }
+.card-actions { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+.card-actions button { flex: 1; font-size: 0.82rem; }
+
+.freq-axis-labels { display:flex; justify-content: space-between; font-size: 0.68rem; color: var(--fg-dim); }
+
+.reference-section { margin-top: 2rem; }
+.reference-section .cards { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+/* Modal for enlarged spectrogram */
+dialog.spectro-modal {
+  border: none;
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--bg-elev);
+  color: var(--fg);
+  width: min(92vw, 900px);
+  max-width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  margin: auto;
+}
+dialog.spectro-modal::backdrop { background: rgba(0,0,0,0.5); }
+dialog.spectro-modal h3 { margin-top: 0; }
+.modal-canvas-wrap { position: relative; }
+canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius: 6px; }
+.hover-readout {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(20,18,16,0.85);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  transform: translate(-50%, -130%);
+  white-space: nowrap;
+  display: none;
+}
+.modal-close-row { display: flex; justify-content: flex-end; margin-top: 0.6rem; }
+
+/* AB strip */
+.ab-strip {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  z-index: 20;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+}
+.ab-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  min-width: 220px;
+  flex: 1 1 260px;
+}
+.ab-slot.is-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg-elev)); }
+.ab-slot .slot-key {
+  font-weight: 700;
+  border-radius: 50%;
+  width: 1.6rem; height: 1.6rem;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--chip-bg);
+  flex-shrink: 0;
+}
+.ab-slot .slot-info { flex: 1; min-width: 0; }
+.ab-slot .slot-info .name { font-size: 0.85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-slot .slot-info .sub { font-size: 0.72rem; color: var(--fg-dim); }
+.ab-controls { display: flex; align-items: center; gap: 0.6rem; }
+.ab-controls label { font-size: 0.78rem; color: var(--fg-dim); display: flex; align-items: center; gap: 0.3rem; }
+#ab-status { font-size: 0.72rem; color: var(--fg-dim); }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 1rem; }
+  .ab-strip {
+    flex-direction: column;
+    align-items: stretch;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+  .ab-slot { min-width: 0; flex: 0 0 auto; }
+  body { padding-bottom: 13rem; }
+}
+</style>
+</head>
+<body>
+<header class="page-header">
+  <div class="container">
+    <h1 id="page-title">__RV_TITLE__</h1>
+    <div class="meta-row" id="meta-row"></div>
+  </div>
+</header>
+
+<main class="container" id="main-area">
+  <div class="toolbar" id="toolbar" role="region" aria-label="Filters"></div>
+  <div id="render-area"></div>
+  <section class="reference-section" id="reference-section" hidden>
+    <h2>Reference recordings</h2>
+    <p style="color:var(--fg-dim); font-size:0.85rem; max-width:60ch;">
+      Wellspring takes recorded stereo, dry on the left channel and wet on the right (see docs/recording-recipe.md).
+      Pin one below into the A/B strip to compare against a render.
+    </p>
+    <div class="cards" id="reference-cards"></div>
+  </section>
+</main>
+
+<dialog class="spectro-modal" id="spectro-modal">
+  <h3 id="modal-title">Spectrogram</h3>
+  <div class="modal-canvas-wrap">
+    <canvas class="spectro-large" id="modal-canvas"></canvas>
+    <div class="hover-readout" id="modal-readout"></div>
+  </div>
+  <div class="freq-axis-labels" id="modal-freq-labels"></div>
+  <div class="modal-close-row"><button id="modal-close">Close</button></div>
+</dialog>
+
+<div class="ab-strip" role="region" aria-label="A/B comparison">
+  <div class="ab-slot" id="ab-slot-a" data-slot="a">
+    <div class="slot-key" aria-hidden="true">A</div>
+    <div class="slot-info">
+      <div class="name" id="ab-a-name">No reference pinned</div>
+      <div class="sub" id="ab-a-sub">Pin a reference recording</div>
+    </div>
+    <audio id="ab-audio-a" preload="none"></audio>
+  </div>
+  <div class="ab-slot" id="ab-slot-b" data-slot="b">
+    <div class="slot-key" aria-hidden="true">B</div>
+    <div class="slot-info">
+      <div class="name" id="ab-b-name">No render pinned</div>
+      <div class="sub" id="ab-b-sub">Pin a render</div>
+    </div>
+    <audio id="ab-audio-b" preload="none"></audio>
+  </div>
+  <div class="ab-controls">
+    <button id="ab-play" class="primary" type="button">Play</button>
+    <label><input type="checkbox" id="ab-level-match"> Level-match (RMS)</label>
+    <span id="ab-status" role="status"></span>
+  </div>
+</div>
+
+<script id="rv-data" type="application/json">__RV_DATA_JSON__</script>
+<script>
+(function () {
+  "use strict";
+  var DATA = JSON.parse(document.getElementById("rv-data").textContent);
+
+  /* ---------- helpers ---------- */
+  function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    attrs = attrs || {};
+    for (var k in attrs) {
+      if (k === "text") e.textContent = attrs[k];
+      else if (k === "html") e.innerHTML = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+    (children || []).forEach(function (c) { if (c) e.appendChild(c); });
+    return e;
+  }
+  function fmt(v, digits, suffix) {
+    if (v === null || v === undefined) return "—";
+    if (typeof v === "number") return v.toFixed(digits === undefined ? 1 : digits) + (suffix || "");
+    return String(v) + (suffix || "");
+  }
+  function decodeSpectrogram(dataB64) {
+    var bin = atob(dataB64);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+
+  /* Perceptual-ish colour map: dark blue -> teal -> amber -> pale yellow. Works on light/dark bg. */
+  function turboish(t) {
+    // t in [0,1]
+    var stops = [
+      [0.00, 8, 10, 20],
+      [0.15, 20, 32, 84],
+      [0.35, 21, 96, 130],
+      [0.55, 46, 150, 116],
+      [0.72, 190, 170, 70],
+      [0.88, 235, 165, 70],
+      [1.00, 255, 233, 168]
+    ];
+    for (var i = 0; i < stops.length - 1; i++) {
+      var a = stops[i], b = stops[i + 1];
+      if (t >= a[0] && t <= b[0]) {
+        var f = (b[0] === a[0]) ? 0 : (t - a[0]) / (b[0] - a[0]);
+        return [
+          Math.round(a[1] + (b[1] - a[1]) * f),
+          Math.round(a[2] + (b[2] - a[2]) * f),
+          Math.round(a[3] + (b[3] - a[3]) * f)
+        ];
+      }
+    }
+    return [255, 233, 168];
+  }
+  var _colourCache = null;
+  function colourFor(byteVal) {
+    if (!_colourCache) {
+      _colourCache = [];
+      for (var i = 0; i < 256; i++) _colourCache.push(turboish(i / 255));
+    }
+    return _colourCache[byteVal];
+  }
+
+  function drawSpectrogram(canvas, spectro) {
+    var w = spectro.width, h = spectro.height;
+    var data = decodeSpectrogram(spectro.data_b64);
+    var off = document.createElement("canvas");
+    off.width = w; off.height = h;
+    var octx = off.getContext("2d");
+    var img = octx.createImageData(w, h);
+    for (var i = 0; i < w * h; i++) {
+      var c = colourFor(data[i]);
+      img.data[i * 4] = c[0];
+      img.data[i * 4 + 1] = c[1];
+      img.data[i * 4 + 2] = c[2];
+      img.data[i * 4 + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+
+    var cssW = canvas.clientWidth || 300;
+    var cssH = canvas.clientHeight || 110;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+    canvas._spectro = spectro;
+  }
+
+  function freqAtRow(spectro, row) {
+    // row 0 = f_max (top), row (height-1) = f_min
+    var frac = row / (spectro.height - 1);
+    var logMin = Math.log(spectro.f_min_hz), logMax = Math.log(spectro.f_max_hz);
+    return Math.exp(logMax - frac * (logMax - logMin));
+  }
+  function timeAtCol(spectro, col) {
+    var frac = col / (spectro.width - 1);
+    return spectro.t0_s + frac * (spectro.t1_s - spectro.t0_s);
+  }
+
+  function freqAxisLabelRow(spectro) {
+    var marks = [100, 1000, 10000].filter(function (f) {
+      return f >= spectro.f_min_hz && f <= spectro.f_max_hz;
+    });
+    var row = document.createElement("div");
+    row.className = "freq-axis-labels";
+    marks.forEach(function (f) {
+      var s = document.createElement("span");
+      s.textContent = (f >= 1000 ? (f / 1000) + "k" : f) + " Hz";
+      row.appendChild(s);
+    });
+    return row;
+  }
+
+  /* ---------- flag logic ---------- */
+  function flagReasons(metrics) {
+    var reasons = [];
+    if (!metrics) return reasons;
+    if ((metrics.nan_inf_count || 0) > 0) reasons.push("NaN/Inf ×" + metrics.nan_inf_count);
+    if ((metrics.clip_count || 0) > 0) reasons.push("clipping ×" + metrics.clip_count);
+    if ((metrics.click_count || 0) > 0) reasons.push("clicks ×" + metrics.click_count);
+    if (metrics.steady_tone === true) reasons.push("steady tone");
+    if (typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12) {
+      reasons.push("resonance +" + metrics.resonance_peak_db.toFixed(1) + "dB");
+    }
+    return reasons;
+  }
+
+  function metricsList(metrics) {
+    var ul = document.createElement("ul");
+    ul.className = "metrics-list";
+    if (!metrics) { ul.appendChild(el("li", { text: "no metrics" })); return ul; }
+    var reasons = flagReasons(metrics);
+    var isFlag = {
+      "nan_inf_count": (metrics.nan_inf_count || 0) > 0,
+      "clip_count": (metrics.clip_count || 0) > 0,
+      "click_count": (metrics.click_count || 0) > 0,
+      "steady_tone": metrics.steady_tone === true,
+      "resonance_peak_db": typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12
+    };
+    function item(label, flag) {
+      var li = el("li", { text: label });
+      if (flag) li.className = "flag";
+      return li;
+    }
+    ul.appendChild(item("peak " + fmt(metrics.peak_dbfs, 1, " dBFS")));
+    ul.appendChild(item("rms " + fmt(metrics.rms_dbfs, 1, " dBFS")));
+    ul.appendChild(item("T60 " + (metrics.t60_s === null || metrics.t60_s === undefined ? "—" : fmt(metrics.t60_s, 2, " s"))));
+    ul.appendChild(item("resonance " + fmt(metrics.resonance_peak_db, 1, " dB"), isFlag.resonance_peak_db));
+    ul.appendChild(item("steady tone: " + (metrics.steady_tone ? "yes" : "no"), isFlag.steady_tone));
+    ul.appendChild(item("NaN/Inf " + fmt(metrics.nan_inf_count, 0), isFlag.nan_inf_count));
+    ul.appendChild(item("clip " + fmt(metrics.clip_count, 0), isFlag.clip_count));
+    ul.appendChild(item("click " + fmt(metrics.click_count, 0), isFlag.click_count));
+    return ul;
+  }
+
+  /* ---------- render cards ---------- */
+  var abState = { a: null, b: null, active: "a", levelMatch: false, ctx: null, nodes: {} };
+
+  function paramsLine(params) {
+    if (!params) return "";
+    var keys = Object.keys(params);
+    return keys.map(function (k) { return k.toUpperCase() + " " + params[k]; }).join("  ·  ");
+  }
+
+  function buildCard(render, kind) {
+    var card = el("div", { class: "card", "data-id": render.id, "data-kind": kind });
+    card.appendChild(el("h3", { text: render.label }));
+    card.appendChild(el("div", { class: "params-line", text: paramsLine(render.params) }));
+    var audio = el("audio", { controls: "", preload: "none", src: render.wavRel });
+    audio.addEventListener("play", function () {
+      document.querySelectorAll("main audio, .cards audio").forEach(function (a) {
+        if (a !== audio) a.pause();
+      });
+    });
+    card.appendChild(audio);
+    var canvas = el("canvas", { class: "spectro", tabindex: "0", role: "button",
+      "aria-label": "Open enlarged spectrogram for " + render.label });
+    card.appendChild(canvas);
+    if (render.spectrogram) {
+      card.appendChild(freqAxisLabelRow(render.spectrogram));
+      requestAnimationFrame(function () { drawSpectrogram(canvas, render.spectrogram); });
+      canvas.addEventListener("click", function () { openModal(render); });
+      canvas.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(render); }
+      });
+    }
+    card.appendChild(metricsList(render.metrics));
+    var actions = el("div", { class: "card-actions" });
+    if (kind === "render") {
+      var pinB = el("button", { type: "button", text: "Pin as B" });
+      pinB.addEventListener("click", function () { pinToSlot("b", render); });
+      actions.appendChild(pinB);
+    } else {
+      var pinA = el("button", { type: "button", text: "Pin as A" });
+      pinA.addEventListener("click", function () { pinToSlot("a", render); });
+      actions.appendChild(pinA);
+    }
+    card.appendChild(actions);
+    return card;
+  }
+
+  function matchesFilters(render, filters) {
+    if (filters.flaggedOnly && !render.flagged) return false;
+    for (var key in filters.values) {
+      var wanted = filters.values[key];
+      if (wanted.size === 0) continue;
+      var v = render.params ? render.params[key] : undefined;
+      if (v === undefined || !wanted.has(String(v))) return false;
+    }
+    return true;
+  }
+
+  function applyFilters() {
+    var filters = readFilters();
+    document.querySelectorAll("[data-id]").forEach(function (node) {
+      var r = DATA.rendersById[node.getAttribute("data-id")];
+      if (!r || node.getAttribute("data-kind") !== "render") return;
+      var show = matchesFilters(r, filters);
+      node.classList.toggle("is-hidden", !show);
+    });
+  }
+
+  function readFilters() {
+    var filters = { flaggedOnly: false, values: {} };
+    var flagCb = document.getElementById("filter-flagged");
+    filters.flaggedOnly = !!(flagCb && flagCb.checked);
+    document.querySelectorAll(".chip-row[data-param]").forEach(function (row) {
+      var key = row.getAttribute("data-param");
+      var set = new Set();
+      row.querySelectorAll(".chip[aria-pressed='true']").forEach(function (chip) {
+        set.add(chip.getAttribute("data-value"));
+      });
+      filters.values[key] = set;
+    });
+    return filters;
+  }
+
+  function buildToolbar() {
+    var toolbar = document.getElementById("toolbar");
+    DATA.filterParams.forEach(function (fp) {
+      var group = el("div", { class: "filter-group" });
+      group.appendChild(el("label", { text: fp.key.toUpperCase() }));
+      var row = el("div", { class: "chip-row", "data-param": fp.key });
+      fp.values.forEach(function (v) {
+        var chip = el("div", { class: "chip", role: "button", tabindex: "0", "aria-pressed": "false", "data-value": String(v), text: String(v) });
+        function toggle() {
+          var pressed = chip.getAttribute("aria-pressed") === "true";
+          chip.setAttribute("aria-pressed", pressed ? "false" : "true");
+          applyFilters();
+        }
+        chip.addEventListener("click", toggle);
+        chip.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+        row.appendChild(chip);
+      });
+      group.appendChild(row);
+      toolbar.appendChild(group);
+    });
+    var flagGroup = el("div", { class: "flag-toggle" });
+    var cb = el("input", { type: "checkbox", id: "filter-flagged" });
+    cb.addEventListener("change", applyFilters);
+    flagGroup.appendChild(cb);
+    flagGroup.appendChild(el("label", { for: "filter-flagged", text: "Flagged only" }));
+    toolbar.appendChild(flagGroup);
+  }
+
+  function buildMeta() {
+    var row = document.getElementById("meta-row");
+    document.title = DATA.title;
+    document.getElementById("page-title").textContent = DATA.title;
+    function item(label, value) {
+      var d = el("div");
+      d.appendChild(el("strong", { text: label + ": " }));
+      var span = document.createElement("span");
+      span.textContent = value;
+      d.appendChild(span);
+      return d;
+    }
+    row.appendChild(item("Sweep", DATA.sweepName || "—"));
+    row.appendChild(item("Stimulus", DATA.input || "—"));
+    row.appendChild(item("Created", DATA.created || "—"));
+    row.appendChild(item("Renders", String(DATA.renders.length)));
+    var flagged = DATA.renders.filter(function (r) { return r.flagged; }).length;
+    var flagItem = item("Flagged", String(flagged));
+    if (flagged > 0) flagItem.querySelector("span").className = "flagged-count has-flags";
+    row.appendChild(flagItem);
+  }
+
+  function buildGrid() {
+    var area = document.getElementById("render-area");
+    var wrap = el("div", { class: "grid-wrap" });
+    var table = el("table", { class: "review-grid" });
+    var axisRow = DATA.grid.rowAxis, axisCol = DATA.grid.colAxis;
+    var thead = el("thead");
+    var headTr = el("tr");
+    var corner = el("th");
+    corner.appendChild(el("div", { class: "axis-label", text: axisCol.key.toUpperCase() }));
+    headTr.appendChild(corner);
+    axisCol.values.forEach(function (v) { headTr.appendChild(el("th", { text: String(v) })); });
+    thead.appendChild(headTr);
+    table.appendChild(thead);
+    var tbody = el("tbody");
+    axisRow.values.forEach(function (rv) {
+      var tr = el("tr");
+      var rowHead = el("th", { text: String(rv) });
+      if (axisRow === DATA.grid.rowAxis) {
+        // add row axis label once, on first row, via rowspan-free simple label column
+      }
+      tr.appendChild(rowHead);
+      axisCol.values.forEach(function (cv) {
+        var td = el("td");
+        var match = DATA.renders.find(function (r) {
+          return String(r.params[axisRow.key]) === String(rv) && String(r.params[axisCol.key]) === String(cv);
+        });
+        if (match) td.appendChild(buildCard(match, "render"));
+        else td.appendChild(el("div", { text: "—", style: "color:var(--fg-dim); padding:1rem; text-align:center;" }));
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    area.appendChild(el("div", { text: axisRow.key.toUpperCase() + " ↓  /  " + axisCol.key.toUpperCase() + " →", style: "color:var(--fg-dim); font-size:0.8rem; margin-bottom:0.4rem;" }));
+    area.appendChild(wrap);
+  }
+
+  function buildList() {
+    var area = document.getElementById("render-area");
+    var cards = el("div", { class: "cards" });
+    DATA.renders.forEach(function (r) { cards.appendChild(buildCard(r, "render")); });
+    area.appendChild(cards);
+  }
+
+  function buildReferences() {
+    if (!DATA.references || DATA.references.length === 0) return;
+    var section = document.getElementById("reference-section");
+    section.hidden = false;
+    var cards = document.getElementById("reference-cards");
+    DATA.references.forEach(function (r) { cards.appendChild(buildCard(r, "reference")); });
+  }
+
+  /* ---------- modal ---------- */
+  var modal = document.getElementById("spectro-modal");
+  var modalCanvas = document.getElementById("modal-canvas");
+  var modalReadout = document.getElementById("modal-readout");
+  function openModal(render) {
+    document.getElementById("modal-title").textContent = render.label + " — spectrogram";
+    var labelsHost = document.getElementById("modal-freq-labels");
+    labelsHost.innerHTML = "";
+    var row = freqAxisLabelRow(render.spectrogram);
+    while (row.firstChild) labelsHost.appendChild(row.firstChild);
+    modal.showModal();
+    requestAnimationFrame(function () {
+      drawSpectrogram(modalCanvas, render.spectrogram);
+    });
+  }
+  modalCanvas.addEventListener("mousemove", function (e) {
+    var spectro = modalCanvas._spectro;
+    if (!spectro) return;
+    var rect = modalCanvas.getBoundingClientRect();
+    var x = e.clientX - rect.left, y = e.clientY - rect.top;
+    var col = Math.max(0, Math.min(spectro.width - 1, Math.floor((x / rect.width) * spectro.width)));
+    var row = Math.max(0, Math.min(spectro.height - 1, Math.floor((y / rect.height) * spectro.height)));
+    var t = timeAtCol(spectro, col);
+    var f = freqAtRow(spectro, row);
+    modalReadout.style.display = "block";
+    modalReadout.style.left = x + "px";
+    modalReadout.style.top = y + "px";
+    var fLabel = f >= 1000 ? (f / 1000).toFixed(2) + " kHz" : Math.round(f) + " Hz";
+    modalReadout.textContent = t.toFixed(2) + " s, " + fLabel;
+  });
+  modalCanvas.addEventListener("mouseleave", function () { modalReadout.style.display = "none"; });
+  document.getElementById("modal-close").addEventListener("click", function () { modal.close(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.close(); });
+
+  /* ---------- A/B strip ---------- */
+  function pinToSlot(slot, render) {
+    abState[slot] = render;
+    var nameEl = document.getElementById("ab-" + slot + "-name");
+    var subEl = document.getElementById("ab-" + slot + "-sub");
+    var audioEl = document.getElementById("ab-audio-" + slot);
+    nameEl.textContent = render.label;
+    subEl.textContent = paramsLine(render.params) || (render.metrics ? "rms " + fmt(render.metrics.rms_dbfs, 1, " dBFS") : "");
+    audioEl.src = render.wavRel;
+    setupWebAudioNode(slot, audioEl);
+    updateAbGains();
+    setActiveSlot(slot);
+  }
+
+  function setActiveSlot(slot) {
+    abState.active = slot;
+    ["a", "b"].forEach(function (s) {
+      document.getElementById("ab-slot-" + s).classList.toggle("is-active", s === slot);
+    });
+  }
+
+  function setupWebAudioNode(slot, audioEl) {
+    try {
+      if (!abState.ctx) {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        abState.ctx = new AC();
+      }
+      if (abState.nodes[slot]) return; // MediaElementSource can only be created once per element
+      var src = abState.ctx.createMediaElementSource(audioEl);
+      var gain = abState.ctx.createGain();
+      src.connect(gain).connect(abState.ctx.destination);
+      abState.nodes[slot] = { src: src, gain: gain };
+      document.getElementById("ab-status").textContent = "";
+    } catch (err) {
+      document.getElementById("ab-status").textContent = "Level-match unavailable (Web Audio blocked on file://) — plain playback only.";
+      document.getElementById("ab-level-match").disabled = true;
+      abState.webAudioBroken = true;
+    }
+  }
+
+  function updateAbGains() {
+    if (abState.webAudioBroken) return;
+    ["a", "b"].forEach(function (s) {
+      var node = abState.nodes[s];
+      if (!node) return;
+      node.gain.gain.value = 1;
+    });
+    if (!abState.levelMatch) return;
+    var a = abState.a, b = abState.b;
+    if (!a || !b || !a.metrics || !b.metrics) return;
+    var target = -18; // dBFS reference target
+    var aDb = typeof a.metrics.rms_dbfs === "number" ? a.metrics.rms_dbfs : target;
+    var bDb = typeof b.metrics.rms_dbfs === "number" ? b.metrics.rms_dbfs : target;
+    var aGain = Math.pow(10, (target - aDb) / 20);
+    var bGain = Math.pow(10, (target - bDb) / 20);
+    if (abState.nodes.a) abState.nodes.a.gain.gain.value = aGain;
+    if (abState.nodes.b) abState.nodes.b.gain.gain.value = bGain;
+  }
+
+  document.getElementById("ab-level-match").addEventListener("change", function (e) {
+    abState.levelMatch = e.target.checked;
+    updateAbGains();
+  });
+
+  function playActive() {
+    var slot = abState.active;
+    var other = slot === "a" ? "b" : "a";
+    var audioActive = document.getElementById("ab-audio-" + slot);
+    var audioOther = document.getElementById("ab-audio-" + other);
+    if (!audioActive.src) return;
+    document.querySelectorAll("audio").forEach(function (a) { if (a !== audioActive) a.pause(); });
+    if (abState.ctx && abState.ctx.state === "suspended") abState.ctx.resume();
+    if (audioActive.paused) audioActive.play(); else audioActive.pause();
+  }
+  document.getElementById("ab-play").addEventListener("click", playActive);
+
+  document.addEventListener("keydown", function (e) {
+    var tag = (e.target && e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    if (modal.open) return;
+    if (e.key === "a" || e.key === "A") { if (abState.a) { setActiveSlot("a"); } }
+    else if (e.key === "b" || e.key === "B") { if (abState.b) { setActiveSlot("b"); } }
+    else if (e.key === " ") { e.preventDefault(); playActive(); }
+  });
+
+  /* ---------- boot ---------- */
+  buildMeta();
+  buildToolbar();
+  if (DATA.grid) buildGrid(); else buildList();
+  buildReferences();
+  applyFilters();
+})();
+</script>
+</body>
+</html>

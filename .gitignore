@@ -2,3 +2,6 @@
 build/
 *.wav
 !test_audio/reference/*.wav
+tools/review/sample/out/
+tools/review/sample/reference/
+renders/
