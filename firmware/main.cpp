@@ -4,7 +4,10 @@
 //     LED_0 R/G/B = K0 DECAY, K1 TONE, K2 BOING
 //     LED_1 R/G/B = K3 SPLASH, K4 DRIVE, K5 WOBBLE
 //     LED_2 R = K6 MIX, G = SW0 SPRINGS position, B = SW1 ATTITUDE position
-//     LED_3 white while button held, red flash on each gate rising edge
+//     LED_3 white while button held, red flash on each gate rising edge,
+//           otherwise green when every knob reads <= 0.02 or >= 0.98
+//           (checks 0 V / 5 V CV without a computer: rack power and USB
+//           must not be connected at the same time)
 // - Controls -> USB serial, 10 times a second, exact values (x1000).
 // Boot pattern: red, green, blue, white sweep across the four LEDs.
 
@@ -99,8 +102,12 @@ int main()
             hw.SetLed(DaisyVersio::LED_3, 1, 1, 1);
         else if (System::GetNow() < gateFlashUntil)
             hw.SetLed(DaisyVersio::LED_3, 1, 0, 0);
-        else
-            hw.SetLed(DaisyVersio::LED_3, 0, 0, 0);
+        else {
+            bool allAtExtremes = true;
+            for (float v : k)
+                allAtExtremes &= (v <= 0.02f || v >= 0.98f);
+            hw.SetLed(DaisyVersio::LED_3, 0, allAtExtremes ? 1.0f : 0.0f, 0);
+        }
         hw.UpdateLeds();
 
         const uint32_t now = System::GetNow();

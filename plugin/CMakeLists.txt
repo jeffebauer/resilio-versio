@@ -17,8 +17,7 @@ target_sources(ResilioVersio PRIVATE PluginProcessor.cpp)
 target_compile_definitions(ResilioVersio PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_VST3_CAN_REPLACE_VST2=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0)
+    JUCE_VST3_CAN_REPLACE_VST2=0)
 
 target_link_libraries(ResilioVersio
     PRIVATE rv_core juce::juce_audio_utils

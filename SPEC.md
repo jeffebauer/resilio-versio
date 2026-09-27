@@ -451,7 +451,8 @@ Research 27 Sep 2026 (sources in §11). Status per item.
 - `brew install dfu-util cmake ninja`.
 - libDaisy `DaisyVersio` confirmed on master. Quirks: knobs pre-inverted (`flip=true`); `ProcessAllControls()` only processes knobs, so `tap.Debounce()` must be called separately; `Gate()` already inverted; LEDs RGB order, inverted; default block 48, 48 kHz / 24-bit.
 - Knob + CV sum clips at 0/1 in the analog stage (ADC rails), not in software. CV range 0–5 V (NE manual). Audio inputs clip ~16 Vpp.
-- JUCE: now JUCE 9. Free for this use (Starter tier ≤ $20k/yr revenue, or AGPLv3). Command Line Tools only (no full Xcode) is **unverified** for AU + VST3. Test at M0/M2; install Xcode if it fails.
+- JUCE: now JUCE 9. Free for this use (Starter tier ≤ $20k/yr revenue, or AGPLv3). **Verified 28 Sep 2026:** AU + VST3 build with Command Line Tools only (CMake + Ninja, JUCE 9.0.2) and the AU passes `auval`. No Xcode needed.
+- ARM toolchain in use: Arm GNU Toolchain 15.3.rel1 tarball in `~/.local/arm-gnu-toolchain` (sha256 verified). M0 test firmware = 94 KB of 128 KB. **Watch item for M3:** ~35 KB left for DSP code. Mitigations: drop USB logging in release builds, `-Os` on non-audio code.
 
 ---
 
