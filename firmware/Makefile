@@ -1,9 +1,10 @@
 # Resilio Versio firmware (standard libDaisy app, internal flash, ADR 0011).
 TARGET = resilio_versio
 
-CPP_SOURCES = main.cpp
+CPP_SOURCES = main.cpp $(wildcard ../core/dsp/*.cpp)
 C_INCLUDES += -I../core
 CPP_STANDARD = -std=gnu++17
+OPT = -O3
 
 LIBDAISY_DIR = ../libs/libDaisy
 
