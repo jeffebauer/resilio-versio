@@ -7,7 +7,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Tank** | Whole reverb engine: 1–3 Springs + shared input/output stages. Mirrors a physical spring reverb tank. |
 | **Spring** | One simulated spring: low-chirp path + high path (SPEC §4.2). |
 | **Loop** | A Spring's feedback path (delay + allpass cascade + filters). Where energy recirculates. |
-| **Chirp / Boing** | Dispersive echo where highs arrive before lows. Signature spring sound. Controlled by BOING. |
+| **Chirp / Boing** | Dispersive echo where the highs arrive **later** than the lows, so each echo sweeps up (as measured in every real tank, ADR 0024). Signature spring sound. Controlled by BOING. |
 | **Splash** | Bright, noisy wash on hard transients. Produced by Clatter + Jolt. Controlled by SPLASH. |
 | **Clatter** | Injected noise bursts simulating springs hitting each other/housing. Part of Splash. |
 | **Jolt** | Momentary lurch of Loop parameters on impact. Part of Splash. |

@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.9 — ADR 0024: chirp direction is highs-later (owner by ear + IR library); §2.1, §7 and CONTEXT wording corrected.
 - v1.0.8 — §10: stereo-in recorded as an open question for after M3 (incl. plugin-only as a Core mode). Recipe: optional single-tank takes A-L / A-R.
 - v1.0.7 — M6: ADR 0023 (Ringing judged by calibrated `ringing_db` < 15 dB, replacing the 12 dB peak test); ADR 0019 floor band 200 Hz–2 kHz; Micro-mod floor set to ±0.05 % of L at ~0.2 Hz.
 - v1.0.6 — ADR 0022: DRIVE retune targets after owner listening (obvious from noon, cranked tape/tank at max, level constant); M5 criteria extended.
@@ -44,7 +45,7 @@ HAL: `daisy::DaisyVersio` in libDaisy. DSP helpers: DaisySP.
 
 ### 2.1 Core characteristics
 
-1. **Chirp / "boing"** — dispersive low-frequency chirps repeating at the tank round-trip time. High frequencies arrive before lows.
+1. **Chirp / "boing"** — dispersive low-frequency chirps repeating at the tank round-trip time. **High frequencies arrive after lows** (each echo sweeps up), as in every measured real tank. *(Corrected 29 Sep 2026, ADR 0024: v1.0 said the opposite, written from memory.)*
 2. **Splash** — dense, bright, noisy wash on hard transients. Real-world cause: springs driven hard, clattering against each other and the housing.
 3. **Drip / kick** — the dub move: physically hitting the tank → huge low thump + chaotic crash.
 4. **Dark, dampened tail** — dub spring is rarely bright in the tail; HF rolls off fast.
@@ -369,13 +370,13 @@ Shared definitions:
 - [H] Every control verified two ways: LEDs react to each knob, switch, button and gate, and serial prints exact values. Knob+CV reads ≈0 at 0 V / knob CCW and ≈1 at 5 V or knob CW (±0.02). Switches report 3 states. Button and gate edges print once per press (no bounce).
 
 ### M1 — Core: one Spring, CLEAN + Renderer
-- [A] Click render shows repeating dispersive chirps: spectrogram has descending chirps at a regular repeat time matching the configured L *(±5%)*.
+- [A] Click render shows repeating dispersive chirps: spectrogram has chirps (highs later, ADR 0024) at a regular repeat time matching the configured L *(±5%)*.
 - [A] Stable at every DECAY × BOING corner (grid incl. extremes): no NaN/Inf, no growth, tail decays at max DECAY (ADR 0001). T60 at min DECAY 0.3–0.5 s (ADR 0006), at max 8–10 s.
 - [A] BOING 0 still shows a chirp (ADR 0007).
 - [A] Deterministic: same input + params → bit-identical output.
 - [A] Metrics reported per render: peak, RMS, T60, resonance ratio, NaN/Inf count, clip count, click-detector hits.
 - [A] Review page generated for the M1 grid, next to the Wellspring Reference set.
-- [L] Owner A/B vs Wellspring clicks (take A), with DECAY set so T60 matches the Wellspring's measured T60 (the Wellspring has no decay control): "same family" (repeating boings, highs before lows, dark tail). Thin/sparse is acceptable at this stage.
+- [L] Owner A/B vs Wellspring clicks (take A), with DECAY set so T60 matches the Wellspring's measured T60 (the Wellspring has no decay control): "same family" (repeating boings, highs later than lows, dark tail). Thin/sparse is acceptable at this stage.
 
 ### M2 — JUCE Plugin shell
 - [A] AU + VST3 load in Ableton. All ParamSpec params visible and automatable. Names/ranges generated from ParamSpec, no hand-written list.
