@@ -28,7 +28,9 @@ echo "$SHA $(git -C "$REPO" log -1 --format=%s "$SHA") (installed $(date '+%d %b
 for b in "$DEST/Components/Resilio Versio.component" "$DEST/VST3/Resilio Versio.vst3"; do
     codesign --verify --deep --strict "$b" || { echo "ERROR: bad signature on $b"; exit 1; }
 done
-killall -9 AudioComponentRegistrar 2>/dev/null || true  # make macOS re-read AUs
+# Don't kill AudioComponentRegistrar / coreaudiod: doing so on 28 Sep 2026 left
+# CoreAudio unresponsive and Ableton hung at launch. Ableton picks up the new
+# bundles on a rescan (Option-click Rescan if it cached an old failure).
 
 echo "Installed Resilio Versio plugin from $SHA: $(git -C "$REPO" log -1 --format=%s "$SHA")"
-auval -v aumf RsVs Rslo 2>&1 | grep "AU VALIDATION" || true
+echo "Now rescan plug-ins in Ableton. Validate the AU with Ableton closed: auval -v aumf RsVs Rslo"
