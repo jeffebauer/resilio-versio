@@ -57,7 +57,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M4 stereo fix: the 1-Spring mono dip, and 2/3 Springs too narrow at short DECAY
+- M4 stereo fix: the 1-Spring mono dip, and 2/3 Springs too narrow at short DECAY (running)
+- M3 prep: profiling + release firmware builds (running; flashing waits for your M0 check)
+- M5 drive chain + TONE tilt: starts when the M4 fix lands ([brief](m5-contracts.md))
+- M6 anti-ringing: after M5
 - After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
 - After M0 passes: M3 profiling on the Versio
 
