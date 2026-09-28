@@ -10,7 +10,7 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 
 ## 2. SPLASH inaudible (0 vs 1)
 - **Heard:** no difference.
-- **Why:** hit detector calibrated for hits peaking ~−6 dBFS (DAW tracks often sit 10–15 dB lower); CLEAN is designed as a tiny HF lift; Clatter enters the quiet high path (DRIVEN −8 dB vs the hit's own 1–6 kHz).
+- **Why:** the owner's rimshot (−9 dBTP) would trigger the hit detector at roughly 3/4 strength, so it's mainly that **the crash is too quiet in the tank**: Clatter enters the quiet high path (DRIVEN −8 dB vs the hit's own 1–6 kHz). CLEAN is designed as a tiny HF lift (a dead zone; owner decision pending, TASKS 8b).
 - **Target:** KICKED SPLASH 1 unmistakable on a snare at any sensible level; DRIVEN clearly audible; CLEAN a subtle but audible sparkle; ghost notes still barely trigger.
 - **Fix direction:** level-adaptive hit detection (relative to a slow program-level tracker), more Clatter/Jolt level, possibly a Clatter share straight to the wet bus.
 
@@ -18,7 +18,9 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 - **Heard:** subtle at extreme settings.
 - **Why:** calibrated for Eurorack level (10 Vpp ≈ −4 dBFS). DAW tracks are typically 10–15 dB lower, so the plugin gets far less drive than the module will. The springs also smear input distortion.
 - **Target:** ADR 0022 as heard in the plugin, not just measured on −6 dBFS test hits.
-- **Fix direction:** (a) **plugin-only INPUT level** control (test-bench calibration so a DAW track can be driven like a modular signal; parity preserved once levels match); (b) more drive that survives the tank in KICKED (LoopSat push, DriveOut).
+- **Owner's test material (28 Sep):** a rimshot one-shot, −9 dBTP true peak, −22.9 LUFS integrated. That's only 3–5 dB under the calibration level, so level is a small factor. A short one-shot is the hardest material to hear drive on: the input drive only colours the transient; the tail only carries LoopSat.
+- **Decided:** **no plugin-only INPUT control.** Calibrate with a Utility upstream in Ableton, aiming for peaks around **−4 dBFS** (≈ a 10 Vpp modular signal). This keeps Plugin/module parity ([ableton-setup.md](ableton-setup.md)).
+- **Fix direction:** more drive that survives into the tail, especially in KICKED (LoopSat push, DriveOut), so it's audible on short hits too. Judge on hits *and* sustained material.
 
 ## 4. WOBBLE inaudible, even at 1
 - **Heard:** can't hear it.
