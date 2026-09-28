@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 in progress (stereo fix running)
+**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 built, needs your listen · M5 in progress
 
 ## To do (suggested order)
 
@@ -43,11 +43,11 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **New:** the click-grid page now has 45 real spring tanks from Ableton in its Reference section ([ADR 0021](adr/0021-ableton-ir-library.md)). Pin one as A and a render as B. Does ours sit among real tanks, or sound clearly different? Worth trying: *Space Echo Spring*, *Classic Amp Spring*, *BRX100 Gentle*, *Short Spring*
 - Ignore the stereo flags on the click grid for now: they're the 1-Spring mono dip being fixed (see "Waiting on Claude")
 
-### 6. Listen: M4 renders (≈15 min) · after the stereo fix lands
+### 6. Listen: M4 renders (≈15 min)
 - Open from Finder: `renders/m4_springs_hits/index.html`, `renders/m4_springs_skank/index.html`
 - [ ] 1 → 2 → 3 Springs: clearly **sparse/drippy → classic → dense/lush**, at similar loudness?
 - [ ] Wide on headphones, and still full when summed to mono?
-- (The first renders are already there. The fix only changes stereo width, so you can start before it lands.)
+- The stereo fix has landed and the pages are re-rendered: 0 flags
 
 ## What to send Claude
 
@@ -57,14 +57,16 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M4 stereo fix: the 1-Spring mono dip, and 2/3 Springs too narrow at short DECAY (running)
-- M3 prep: profiling + release firmware builds (running; flashing waits for your M0 check)
-- M5 drive chain + TONE tilt: starts when the M4 fix lands ([brief](m5-contracts.md))
+- M5 drive chain + TONE tilt (running, [brief](m5-contracts.md))
+- IR dispersion study (running): will add `docs/ir-dispersion-study.md`
+- M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
 - After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: M4 stereo fix (mono-safe, wide at every DECAY); M3 firmware variants ready; README added
 
 - 28 Sep 2026: Ableton spring impulse responses found and analysed (IR library, ADR 0021)
 
