@@ -92,6 +92,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
+- M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
 - M8 prep (running, 4 agents): sweet-spot sweeps (dead zones and cliffs per knob) + wet-level report; reference ingest (one command turns your recordings into aligned A/B pages) + pitch tracker for WOBBLE; chirp direction behind one switch with a tuned highs-later version and a new A/B page; firmware flash trim (profile build at 98%)
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
