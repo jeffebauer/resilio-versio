@@ -91,7 +91,7 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
     const bool same = s.loopDelaySeconds == settings_.loopDelaySeconds && s.t60Seconds == settings_.t60Seconds
                    && s.transitionHz == settings_.transitionHz && s.allpassCoeff == settings_.allpassCoeff
                    && s.stages == settings_.stages && s.dampingHz == settings_.dampingHz
-                   && s.highPathLevel == settings_.highPathLevel;
+                   && s.highPathLevel == settings_.highPathLevel && s.tapRatio == settings_.tapRatio;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return;
 
     settings_ = s;
@@ -123,6 +123,7 @@ void Spring::updateCoefficients()
     damping_.setCutoff(std::min(s.dampingHz, 0.45f * sampleRate_), sampleRate_);
     highpass_.setHighpass(kHighPassRatio * s.transitionHz, 0.7071f, sampleRate_);
     highPathLevel_ = s.highPathLevel;
+    tapRatio_      = std::clamp(s.tapRatio, 0.05f, 0.95f);
 
     // Loop gain g from the target T60 and the *actual* round trip. A tail
     // loses 60 dB in T60 seconds; one trip takes RT seconds, so each trip may
@@ -216,7 +217,7 @@ inline void Spring::advanceGlides()
 inline float Spring::processLow(float in)
 {
     const float fb  = readLow(lCur_);
-    const float tap = readLow(0.5f * lCur_); // pickup half way: first echo after ~half a round trip
+    const float tap = readLow(tapRatio_ * lCur_); // pickup ~half way: first echo after ~half a round trip
 
     float x = dc_.process(in + g_ * fb);
 

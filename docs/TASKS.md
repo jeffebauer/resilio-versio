@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 in progress (stereo fix running)
+**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 in progress (stereo fix running)
 
 ## To do (suggested order)
 
@@ -40,6 +40,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] High BOING: boings natural, or stretched?
 - [ ] DECAY 0.75 (flagged for resonance): does one note stick out of the tail?
 - [ ] Do the audio players play? (Claude couldn't test playback)
+- [ ] **New:** the click-grid page now has 45 real spring tanks from Ableton in its Reference section ([ADR 0021](adr/0021-ableton-ir-library.md)). Pin one as A and a render as B. Does ours sit among real tanks, or sound clearly different? Worth trying: *Space Echo Spring*, *Classic Amp Spring*, *BRX100 Gentle*, *Short Spring*
+- Ignore the stereo flags on the click grid for now: they're the 1-Spring mono dip being fixed (see "Waiting on Claude")
 
 ### 6. Listen: M4 renders (≈15 min) · after the stereo fix lands
 - Open from Finder: `renders/m4_springs_hits/index.html`, `renders/m4_springs_skank/index.html`
@@ -60,5 +62,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: Ableton spring impulse responses found and analysed (IR library, ADR 0021)
 
 - 28 Sep 2026: GitHub push working again (it was a network routing problem on your connection, not GitHub)

@@ -4,7 +4,7 @@
 // (SPEC §4.1–4.2).
 //
 //   LOW-CHIRP PATH (the Loop)
-//   in ─ + ─ DC block ─ M × stretched allpass ─ LPF(fC) ─ damping LPF ─ delay L ─┬─ tap L/2 ─► out
+//   in ─ + ─ DC block ─ M × stretched allpass ─ LPF(fC) ─ damping LPF ─ delay L ─┬─ tap ~L/2 ─► out
 //        ▲                                                                     │
 //        └──────────────────────────── g ◄──────────────────────────────────────┘
 //
@@ -55,6 +55,10 @@ struct SpringSettings {
     int   stages           = 44;      // M target
     float dampingHz        = 3800.0f;
     float highPathLevel    = 0.2f;
+    // Where along the delay line the pickup sits, as a fraction of L. The
+    // first echo arrives after about tapRatio·L (+ the chain's delay).
+    // Fixed per Spring (not a knob), so it never needs to glide.
+    float tapRatio         = 0.5f;
 };
 
 class Spring {
@@ -140,6 +144,7 @@ private:
     dsp::Biquad         highpass_;
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
+    float tapRatio_ = 0.5f;
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
