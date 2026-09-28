@@ -14,7 +14,8 @@
 // catches the overshoot with a curvature-free soft knee (Tank.cpp).
 //
 // Checks (all MIX 1, SPLASH 0, WOBBLE 0, 2 s tail):
-//   1. held A minor chord (08_held_tones.wav's, -12 dBFS) at DECAY 0.40 ..
+//   1. held A minor chord (08_held_tones.wav's, at -9 dBFS since M8's
+//      excitation trim) at DECAY 0.40 ..
 //      0.70 in 0.01 steps, SPRINGS 2, CLEAN, DRIVE 0: click_count 0 each;
 //   2. spot checks at DECAY 0.50 (the default) over SPRINGS 1/2/3 and
 //      ATTITUDE x DRIVE: click_count 0;
@@ -102,7 +103,10 @@ Result render(const Buf& in, float decay, int springs, float attitude, float dri
 
 void decayScan()
 {
-    const Buf in = heldChord(-12.0f);
+    // -9 dBFS: since M8 the Tank trims in-band input by the excitation trim
+    // (DriveVoicing.h; ~-3 dB on this chord), so at -12 dBFS the chord no
+    // longer reached the limiter often enough for the scan to test it.
+    const Buf in = heldChord(-9.0f);
     long worst = 0, total = 0, limited = 0;
     float worstAt = 0.0f;
     for (int k = 0; k <= 30; ++k) {

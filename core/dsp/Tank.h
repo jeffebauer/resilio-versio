@@ -27,6 +27,12 @@
 // blend of the three voicings (dsp::blendVoice). So a flip mid-tail
 // re-voices the live tail smoothly; nothing is ever stepped or restarted.
 //
+// Excitation trim (M8, DriveVoicing.h): slow followers of the raw input's
+// full power and of its power in the band the Tank resonates in; the
+// Springs' input (after Tilt) is trimmed by their ratio, so broadband or
+// bright material comes back about as loud as in-band material. It trims
+// only new input (never a ringing tail) and holds in silence.
+//
 // DRIVE (ADR 0014, 0022; curves in DriveVoicing.h): pre-gain into DriveIn,
 // plus a "push" that makes each LoopSat and the DriveOut pickups bite
 // harder, so the drive is heard in the finished tail, not only smeared in
@@ -46,8 +52,11 @@
 // numbers in params/SplashVoicing.h):
 // - Splash (one per Tank) listens to the mono signal after DriveIn, before
 //   Tilt (so TONE does not change SPLASH sensitivity). Its Clatter goes into
-//   every Spring's high path; in CLEAN the high-path input is also lifted a
-//   little on transients (SPLASH = mild HF emphasis only). Its Jolt moves
+//   every Spring's high path, and (M8) a share goes straight to the wet
+//   after the pickups, mid plus a 1.3 ms-delayed copy in the side (wide,
+//   mono-safe); in CLEAN the high-path input is also lifted a little on
+//   transients (SPLASH = mild HF emphasis only). Hit is level-adaptive
+//   (judged against a slow program level, SplashVoicing.h). Its Jolt moves
 //   each Spring's L per sample (Spring B the other way) and adds to each
 //   Spring's allpass a on the control grid (clamped |a| <= 0.85).
 // - Kick (ADR 0005, 0013, 0016): kick(offset) starts a KickVoice on its exact
@@ -195,6 +204,8 @@ public:
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }
     const dsp::Wobble&    wobble(int i) const { return wobble_[static_cast<size_t>(i)]; }
+    // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
+    float excitationTrim() const { return excTrimTo_; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
@@ -267,6 +278,15 @@ private:
     bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
     float hfGainFrom_ = 1.0f, hfGainTo_ = 1.0f; // CLEAN HF emphasis, ramped across each control tick
     float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level
+    // M8 excitation trim (DriveVoicing.h "Excitation trim"): band-weighted and
+    // full power of the driven input, slow followers, trim ramped per tick.
+    std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
+    float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
+    float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
+    // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
+    static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
+    std::array<float, kClatterSideMax> clatBuf_{};
+    int clatPos_ = 0, clatDelay_ = 62;
 };
 
 } // namespace rv
