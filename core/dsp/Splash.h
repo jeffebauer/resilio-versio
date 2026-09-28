@@ -111,7 +111,9 @@ public:
         return j_ * loopFrac_ + r;
     }
     float envelope() const { return j_; }
-    float allpassDelta() const { return -j_ * allpass_; } // add to a (a < 0: more dispersion)
+    // Add to a: pushes |a| up (more dispersion) whichever sign BOING uses
+    // (map::kChirpSign; for LowsLater this is exactly -j·allpass, as before).
+    float allpassDelta() const { return (map::kChirpSign * j_) * allpass_; }
 
 private:
     float sampleRate_ = 48000.0f;

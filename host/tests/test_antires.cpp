@@ -417,7 +417,8 @@ void loopEvenness()
                 double(rv::Spring::kT60DesignScale), worstT60Ratio, atT);
     std::printf("INFO    T60(f) bump over its 1/3-oct median x%.3f (%s), DECAY >= 0.5\n", worstT60Bump, atTB);
     std::printf("INFO    T60(f) bump below DECAY 0.5 (reported only) x%.3f\n", shortBump);
-    std::printf("INFO    cells where the design points under fC set g: %d of %d (0 expected while a < 0)\n", fcBinds, cells);
+    std::printf("INFO    cells where the design points under fC set g: %d of %d (%s)\n", fcBinds, cells,
+                rv::map::kHighsLater ? "a > 0: they may bind" : "0 expected while a < 0");
     std::snprintf(msg, sizeof msg,
                   "Layer 1, even Loop gain: every Spring at every ATTITUDE x TONE x BOING x DECAY corner outside the Howl "
                   "zone has per-trip gain < 1 (worst %.3f), no per-trip bump > 0.5 dB over its 1/3 octave (worst %.2f), "

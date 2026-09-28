@@ -11,3 +11,4 @@ Ableton Project Info/
 Backup/
 tools/__pycache__/
 .claude/worktrees/
+__pycache__/

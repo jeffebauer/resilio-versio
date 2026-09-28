@@ -150,7 +150,14 @@ constexpr float kDecorr3 = 0.50f; // w, 3 Springs
 constexpr float kCentre3 = 0.40f; // c, 3 Springs
 constexpr float kSide2   = 0.43f; // k, 2 Springs (0.5 = hard pan)
 constexpr float kSide3   = 0.45f; // k, 3 Springs
-inline constexpr std::array<float, kNumModes> kModeTrim{{1.0f, 1.0f, 1.0f}};
+// HighsLater Chirp (Mappings.h): the lows' round trip is ~20 ms shorter (the
+// allpass chain barely delays them), so with the same T60 they make more
+// trips per second and build up ~1 dB louder on low, tonal material (held
+// chords, snare bodies); the highs near fC get quieter. This trim puts the
+// Tank's level, and the limiter's headroom, back where M5-M7 tuned them.
+// LowsLater: exactly 1 (unchanged).
+constexpr float kChirpDirectionTrim = map::kHighsLater ? 0.89f : 1.0f; // -1 dB
+inline constexpr std::array<float, kNumModes> kModeTrim{{kChirpDirectionTrim, kChirpDirectionTrim, kChirpDirectionTrim}};
 
 // Loudness power of a mix: average of stereo and mono power (see "Level
 // match"), treating the Springs (and D vs mid) as independent.

@@ -775,7 +775,7 @@ Buf bandpass(const Buf& x, float lo, float hi)
 void tone()
 {
     // Chirp at full CCW, every ATTITUDE (same measure as test_spring: in the
-    // first echo, the high band arrives before 200–500 Hz).
+    // first echo, the high band arrives before 200–500 Hz, or after it for HighsLater).
     for (int a = 0; a < 3; ++a)
         for (float boing : {0.0f, 1.0f}) {
             Settings s;
@@ -791,11 +791,15 @@ void tone()
             for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
             const float fC  = rv::map::decayTransitionHz(0.5f);
             const size_t end = size_t(1.5f * rv::map::decayLoopDelaySeconds(0.5f) * kFs);
-            const double tHi = centroidSeconds(bandpass(m, 0.5f * fC, 0.85f * fC), end);
+            // High band per map::kChirpDirection, as test_spring.
+            const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
+            const double tHi = centroidSeconds(bandpass(m, hiLo * fC, hiHi * fC), end);
             const double tLo = centroidSeconds(bandpass(m, 200.0f, 500.0f), end);
-            std::snprintf(msg, sizeof msg, "TONE 0 chirp, %s BOING %.0f: highs at %.1f ms, lows at %.1f ms (lows later)",
-                          kAttName[a], boing, tHi * 1e3, tLo * 1e3);
-            check(tLo - tHi > 0.001, msg);
+            // Late band per map::kChirpDirection (lows for LowsLater).
+            const double dir = rv::map::kHighsLater ? -1.0 : 1.0;
+            std::snprintf(msg, sizeof msg, "TONE 0 chirp, %s BOING %.0f: highs at %.1f ms, lows at %.1f ms (%s later)",
+                          kAttName[a], boing, tHi * 1e3, tLo * 1e3, rv::map::kHighsLater ? "highs" : "lows");
+            check(dir * (tLo - tHi) > 0.001, msg);
         }
 
     // Level across TONE and energy above 10 kHz at CW vs noon, snare hits.

@@ -187,3 +187,64 @@ python3 tools/ir_dispersion.py renders/ir_library --json renders/ir_library/disp
 ```
 
 The model prediction in the tool (`MAP`, `DETUNE_A`) mirrors `core/params/Mappings.h` and `SpringModes.h` by hand. If those change, update it; `--renders` on fresh renders will show any drift.
+
+## Tuned HighsLater (M8 prep, for the owner's A/B, docs/TASKS.md task 7)
+
+28 Sep 2026. Nothing about the default sound changed: every render with the default switch is bit-identical to before.
+
+### The switch
+
+`core/params/Mappings.h`: `constexpr ChirpDirection kChirpDirection = ChirpDirection::LowsLater;` (default). Set it to `HighsLater` and rebuild. Everything that depends on it is a constant:
+
+| | LowsLater (default, unchanged) | HighsLater |
+|---|---|---|
+| BOING → `a` | −0.45 … −0.72 | **+0.40 … +0.55** |
+| BOING → stages M | 24 … 64 (52 in 3-Spring mode) | same |
+| Splash Jolt Δa (`Splash.h`) | −j·joltAllpass | +j·joltAllpass (always pushes \|a\| up: more smear) |
+| wet trim (`SpringModes.h` `kModeTrim`) | 1.0 | 0.89 (−1 dB) |
+| limiter attack (`Tank.h`) | 1 ms | 0.5 ms |
+
+Why the last two: with a > 0 the allpass chain barely delays the lows, so their round trip is ~20 ms shorter (DECAY 0.5, BOING 0.5). At the same T60 they make more trips per second and build up ~1 dB louder on low, tonal material (test_mix's snare bodies went 1.4 dB louder; the A/B hits below are within ±0.8 dB before the trim). And a low chord's echo onsets are no longer smeared, so they rise faster: with a 1 ms glide the limiter let them reach the soft clip's ceiling (test_clicks "limiter pushed"; LowsLater already peaks at 0.8899 of 0.89 there). The Loop gain design needed nothing new: its fC design points (M6) already cover a > 0, and with a ≤ 0.55 the low design band still sets g in all 378 test_antires cells, so T60 stays on target.
+
+Why `a` stops at +0.55: above ~0.6 the extra delay piles into a narrow band just under fC rather than lengthening the audible Chirp. The ridge becomes so steep that the tracker loses it (at DECAY 0, a = 0.60 with 64 stages measures *less* than a = 0.55: 15.6 against 23.1 ms). That is what made the quick flip (+0.35 … +0.70) non-monotonic. Size therefore comes from the stages. Real tanks do the same with more stages (a ≈ 0.2–0.4, M 45–300); our 64 are the CPU limit.
+
+### Measured: both directions against the IR library
+
+Click renders, 1 Spring (Spring A), CLEAN, TONE 0.5, 12 s tail; `tools/ir_dispersion.py` (`analyse_file`), T60 from the render sidecar. **Highs later** has two numbers. The first is the tool as is. The second is the same ridge and the same rule, with the chirp band capped at the model's fC (Spring A: 4.37 / 3.50 / 2.81 kHz at DECAY 0 / 0.5 / 1). The capped number exists because on our renders the ridge carries on smoothly past fC (a clean model, no blur). Where the tool's fC fit then fails ("fC —"), the tool reads the ridge's value at 6 kHz instead of its top, which undercounts. Where it does find fC, the two numbers agree within 1 ms.
+
+| DECAY | BOING | LowsLater: lows later 200→2k ms · repeat ms · fC · T60 s | HighsLater: highs later ms (tool / capped) · repeat ms · fC · T60 s |
+|---|---|---|---|
+| 0 | 0 | 5.3 · 33.3 · — · 0.41 | 5.3 / 5.3 · 30.3 · 4402 · 0.42 |
+| 0 | 0.25 | 10.0 · 35.2 · — · 0.39 | 8.5 / 8.5 · 30.7 · 4402 · 0.41 |
+| 0 | 0.5 | 16.9 · 36.3 · — · 0.38 | 12.4 / 12.4 · 31.0 · 4402 · 0.41 |
+| 0 | 0.75 | 25.5 · 36.8 · — · 0.37 | 17.2 / 17.2 · 31.2 · 4402 · 0.41 |
+| 0 | 1 | 38.7 · 37.3 · — · 0.37 | 23.1 / 23.1 · 31.4 · 4402 · 0.41 |
+| 0.5 | 0 | 7.2 · 57.0 · 3692 · 1.91 | 6.7 / 6.5 · 54.6 · 3596 · 1.95 |
+| 0.5 | 0.25 | 12.9 · 58.6 · 3589 · 1.89 | 13.6 / 10.5 · 55.1 · — · 1.95 |
+| 0.5 | 0.5 | 19.8 · 59.6 · — · 1.84 | 12.6 / 15.7 · 55.3 · 4002 · 1.95 |
+| 0.5 | 0.75 | 29.9 · 59.1 · 3504 · 1.79 | 13.0 / 21.9 · 55.6 · — · 1.95 |
+| 0.5 | 1 | 43.5 · 59.5 · 3473 · 1.69 | 30.2 / 29.5 · 55.8 · 3596 · 1.94 |
+| 1 | 0 | 9.2 · 100.4 · 2840 · 9.10 | 8.4 / 8.1 · 98.9 · 2908 · 9.15 |
+| 1 | 0.25 | 14.9 · 101.7 · 2847 · 9.07 | 13.7 / 12.8 · 99.7 · 2909 · 9.15 |
+| 1 | 0.5 | 24.4 · 102.1 · 2772 · 9.07 | 25.3 / 18.9 · 100.2 · — · 9.14 |
+| 1 | 0.75 | 34.8 · 102.5 · 2769 · 8.90 | 25.0 / 26.5 · 100.5 · — · 9.15 |
+| 1 | 1 | 48.3 · 101.1 · 2792 · 8.71 | 24.9 / 36.7 · 100.7 · — · 9.15 |
+| **IR library** (22 clear rising tanks) | | highs later 0 (every tank is the other way round); lows hook 0 · 1.7 · 8 ms | highs later 2 · **15** · 59 ms (most 6–35); repeat 53 · 69 · 117 ms; fC 2.0–4.9 kHz; T60 targets 0.4–9 s |
+
+T60 targets: 0.40 / 1.90 / 9.0 s. LowsLater's highs-later is 0 everywhere, and HighsLater's 200→2k is −0.7 … −9.2 ms (the sign flipped: highs later).
+
+Reading it:
+- **Size grows steadily with BOING at every DECAY** (capped numbers; also at DECAY 0.25 and 0.75 in the tuning grid: 6.0 → 26.4 and 7.3 → 32.9 ms). BOING 0: 5–8 ms, like the gentlest tanks (Amp Spring Dull 6.5 ms), still a clear rising chirp (ADR 0007). Noon: 12–19 ms, around the library median of 15 ms (Amp Spring Bright/High ~14–15, Amazing Stereo 15.5). BOING 1: 23–37 ms, the upper tanks (SNRA500 31, Farfi 21–35). Only HIC100L (59 ms) is out of reach with 64 stages. In 3-Spring mode the cap is 52 stages, so BOING 1 there sounds like about BOING 0.7.
+- **T60 is flatter than today's.** HighsLater holds 0.41 / 1.95 / 9.15 s at every BOING. LowsLater loses up to 12 % toward BOING 1.
+- **Repeat times drop 2–5 ms** (the lows' chain delay goes). The short end (30 ms) is still the dub slap (ADR 0006). The long end (~101 ms) still falls short of the Swissecho tanks (116 ms), as before.
+- **fC is unchanged** (4.4 / 3.5–3.6 / 2.9 kHz): inside the tanks' 2.0–4.9 kHz.
+
+### Checks with HighsLater (scratch worktree, switch flipped)
+
+- Full ctest: 15/15 pass, plugin_host_test included. The direction-dependent tests (test_spring "Chirp", test_drive "TONE 0 chirp", the Mappings sign check) follow `kChirpDirection`. For HighsLater they time the high band at 0.65–0.95 fC, where a rising Chirp lives, instead of 0.5–0.85 fC. Measured on the Spring alone: highs later by 2.8 / 6.9 / 11.5 ms at BOING 0 / 0.5 / 1.
+- M6 Ringing grid (`presets/sweeps/m6_*_ringing_*.json` → `renders/<name>_hl`): 270 cells, worst `ringing_db` 13.1 (limit 15), 0 flagged Ringing, 0 `steady_tone`. test_antires layer 1: worst per-trip gain 0.938, no band rings longer than designed.
+- test_clicks: pass (with the 0.5 ms limiter attack; see above).
+
+### If the owner picks HighsLater
+
+Flip the switch. Then update the wording that says "highs arrive first" (SPEC §2.1 and §7 M1, CONTEXT.md "Chirp / Boing", ADR 0007's "descending chirp"), and update `MAP["a"]` in `tools/ir_dispersion.py` to (0.40, 0.55) so `--renders` predicts the new mapping.

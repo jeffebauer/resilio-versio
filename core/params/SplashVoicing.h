@@ -101,7 +101,8 @@ constexpr float kRattleStrengthRatio = 0.6f;
 // one-pole, so the lurch has a rise (the tank stretches: L grows, pitch
 // dips) and a slow return (pitch slightly sharp while L shrinks back).
 // Outputs: Loop delay offset = j × joltLoopFrac × L, allpass offset
-// Δa = −j × joltAllpass (more negative a = more dispersion: chirp smear).
+// Δa = kChirpSign × j × joltAllpass (larger |a| = more dispersion: chirp
+// smear; −j × joltAllpass for the LowsLater Chirp, Mappings.h).
 // 18 ms: the fastest lurch (KICKED, Kick, L = 108 ms) stays under the
 // Spring's Loop slew limit of 0.08 samples/sample (test_splash).
 constexpr float kJoltAttackMs = 18.0f;
@@ -119,7 +120,8 @@ constexpr float kRattleEnergyGain = 2.0f;
 constexpr float kTankLevelSmoothMs = 50.0f;
 // Hard ceiling on |a| after the Jolt is added, so a Jolt can never push the
 // allpass toward |a| = 1. Only bites at BOING max on the most-detuned Spring
-// (−0.72 × 1.07 − 0.12 = −0.89 → −0.85).
+// (−0.72 × 1.07 − 0.12 = −0.89 → −0.85; HighsLater tops out at
+// 0.55 × 1.07 + 0.12 = 0.71, so the clamp never bites there).
 constexpr float kMaxAllpassMagnitude = 0.85f;
 
 // ---- CLEAN: SPLASH = mild HF emphasis only (SPEC §4.5 table) -------------------

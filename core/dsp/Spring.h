@@ -15,8 +15,9 @@
 //
 // Plain-language version: a click goes round a loop. Each trip it passes a
 // long chain of "stretched" allpass filters. Allpass filters don't change
-// loudness, only *when* each frequency comes out: here lows come out later
-// than highs, so every echo is smeared into a falling "peeew" (the Chirp).
+// loudness, only *when* each frequency comes out, so every echo is smeared
+// into a sweep (the Chirp): lows later, a falling "peeew", or highs later, a
+// rising one like real tanks (map::kChirpDirection, the sign of a).
 // The loop repeats it every round trip, losing a little each time (g < 1).
 //
 // Detuning (M4) is not done here: the Tank gives each Spring its own detuned
@@ -80,7 +81,7 @@ struct SpringSettings {
     float loopDelaySeconds = 0.05f; // L
     float t60Seconds       = 2.0f;
     float transitionHz     = 3400.0f; // fC -> stretch K
-    float allpassCoeff     = -0.6f;   // a
+    float allpassCoeff     = -0.6f;   // a (sign = Chirp direction, Mappings.h)
     int   stages           = 44;      // M target
     float dampingHz        = 3800.0f;
     float highPathLevel    = 0.2f;

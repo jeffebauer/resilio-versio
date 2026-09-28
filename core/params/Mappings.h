@@ -50,12 +50,36 @@ inline float stretchK(float transitionHz, float sampleRate) { return sampleRate 
 
 // ---- BOING (ADR 0007) ------------------------------------------------------
 
+// Chirp direction: the one switch (docs/TASKS.md task 7, owner decides by ear).
 // Allpass coefficient a of each stretched section H(z) = (a + z^-K)/(1 + a z^-K).
-// Negative a delays low frequencies more than high ones, so highs arrive
-// first: a descending Chirp. |a| larger = steeper, longer Chirp.
-// Floor -0.45 keeps a clear Chirp at BOING 0 (ADR 0007: never "no dispersion").
-constexpr float kBoingCoeffMin = -0.45f; // BOING 0: soft, washy, still a boing
-constexpr float kBoingCoeffMax = -0.72f; // BOING 1: exaggerated Chirp
+//   LowsLater  (a < 0): lows are delayed more than highs, so highs arrive
+//              first: a descending "peeew". The M1-M7 sound (SPEC §2.1).
+//   HighsLater (a > 0): the delay grows toward fC, so highs arrive later:
+//              a rising Chirp, as every real tank in the IR library does
+//              (docs/ir-dispersion-study.md; DAFx-11 fits a = +0.62).
+// Both keep the stage range (M 24..64). What follows the switch is constants
+// only, no code: a's sign and range here, the Jolt's sign (kChirpSign), a -1 dB
+// wet trim (SpringModes.h kModeTrim) and a faster limiter attack (Tank.h),
+// both for HighsLater's denser, unsmeared lows. |a| larger = steeper, longer
+// Chirp. The floor keeps a clear Chirp at BOING 0 (ADR 0007: never "no
+// dispersion"). The Loop gain design already checks T60 up to fC
+// (Spring.cpp kDesignFcRatios), where a > 0 puts the longest round trip.
+//
+// HighsLater tuning (M8, docs/ir-dispersion-study.md "Tuned HighsLater"):
+// highs-later per trip, ridge method, Spring A at DECAY 0 / 0.5 / 1:
+// BOING 0 ≈ 5 / 7 / 8 ms, noon ≈ 12 / 16 / 19 ms, BOING 1 ≈ 23 / 30 / 37 ms,
+// growing steadily with BOING (real tanks: 2 · 15 · 59 ms, most 6-35).
+// a stays <= 0.55: above that the Chirp piles up in a narrow band just under
+// fC instead of growing (at DECAY 0 it even shrinks), so the extra size comes
+// from the stages. Real tanks use a ≈ 0.2-0.4 with 45-300 stages.
+enum class ChirpDirection { LowsLater, HighsLater };
+constexpr ChirpDirection kChirpDirection = ChirpDirection::LowsLater;
+constexpr bool           kHighsLater     = kChirpDirection == ChirpDirection::HighsLater;
+// Sign of a (and of the Splash Jolt's Δa, which pushes |a| up: more smear).
+constexpr float kChirpSign = kHighsLater ? 1.0f : -1.0f;
+
+constexpr float kBoingCoeffMin = kHighsLater ? 0.40f : -0.45f; // BOING 0: soft, washy, still a boing
+constexpr float kBoingCoeffMax = kHighsLater ? 0.55f : -0.72f; // BOING 1: exaggerated Chirp
 inline float boingCoefficient(float v) { return kBoingCoeffMin + (kBoingCoeffMax - kBoingCoeffMin) * v; }
 
 // Number of active stretched sections M. Each section adds the same amount

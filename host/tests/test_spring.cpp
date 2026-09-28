@@ -239,10 +239,18 @@ int countClicks(const Buf& x, float fs, size_t from, double* maxRatio)
 
 char msg[256];
 
-// ---- 1. Chirp present: highs before lows in the first echo -------------------
+// ---- 1. Chirp present, in the direction map::kChirpDirection asks for ---------
+// LowsLater: in the first echo the high band (0.5-0.85 fC) arrives before
+// 200-500 Hz. HighsLater: the high band (0.65-0.95 fC: a rising Chirp's delay
+// piles up toward fC) arrives after it. `lag` is how much later the late band
+// arrives, so both directions share one check.
 void chirpHighsBeforeLows()
 {
     const float fs = 48000.0f, decay = 0.5f;
+    const double dir = rv::map::kHighsLater ? -1.0 : 1.0; // +1: lows later
+    const char* late = rv::map::kHighsLater ? "highs" : "lows";
+    const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
+    const float hiRef = rv::map::kHighsLater ? 0.8f : 0.67f; // prediction's reference in the high band
     for (float boing : {0.0f, 0.5f, 1.0f}) {
         SpringRig rig(fs, decay, boing, 0.5f);
         const float L   = rig.spring.loopDelaySamples();
@@ -251,26 +259,27 @@ void chirpHighsBeforeLows()
         // First echo: from the pickup tap (L/2) until the second echo's
         // fastest part could arrive (L/2 + L).
         const size_t end = size_t(1.5f * L);
-        const double tHi = centroidSeconds(bandpass(ir, fs, 0.5f * fC, 0.85f * fC), end, fs);
+        const double tHi = centroidSeconds(bandpass(ir, fs, hiLo * fC, hiHi * fC), end, fs);
         const double tLo = centroidSeconds(bandpass(ir, fs, 200.0f, 500.0f), end, fs);
-        const double predicted = (rig.spring.chainGroupDelaySamples(316.0f)
-                                  - rig.spring.chainGroupDelaySamples(0.67f * fC)) / fs;
+        const double predicted = dir * (rig.spring.chainGroupDelaySamples(316.0f)
+                                        - rig.spring.chainGroupDelaySamples(hiRef * fC)) / fs;
+        const double lag = dir * (tLo - tHi);
         std::snprintf(msg, sizeof msg,
                       "Chirp BOING %.1f (Spring): high band %.0f-%.0f Hz at %.1f ms, 200-500 Hz at %.1f ms "
-                      "(lows later by %.1f ms, mapping predicts %.1f ms)",
-                      boing, 0.5f * fC, 0.85f * fC, tHi * 1e3, tLo * 1e3, (tLo - tHi) * 1e3, predicted * 1e3);
-        check(tLo - tHi > 0.001 && tLo - tHi > 0.4 * predicted, msg);
+                      "(%s later by %.1f ms, mapping predicts %.1f ms)",
+                      boing, hiLo * fC, hiHi * fC, tHi * 1e3, tLo * 1e3, late, lag * 1e3, predicted * 1e3);
+        check(lag > 0.001 && lag > 0.4 * predicted, msg);
 
         // Same check through the whole Tank (high path, decorrelator, output stage).
         Settings s;
         s.decay = decay;
         s.boing = boing;
         const Buf t = tankIR(fs, s, 0.5f);
-        const double tHiT = centroidSeconds(bandpass(t, fs, 0.5f * fC, 0.85f * fC), end, fs);
+        const double tHiT = centroidSeconds(bandpass(t, fs, hiLo * fC, hiHi * fC), end, fs);
         const double tLoT = centroidSeconds(bandpass(t, fs, 200.0f, 500.0f), end, fs);
         std::snprintf(msg, sizeof msg, "Chirp BOING %.1f (Tank): highs at %.1f ms, lows at %.1f ms", boing,
                       tHiT * 1e3, tLoT * 1e3);
-        check(tLoT - tHiT > 0.001, msg);
+        check(dir * (tLoT - tHiT) > 0.001, msg);
     }
 }
 
@@ -517,7 +526,8 @@ void mappings()
            && decayT60Seconds(1) <= 10.0f;
     ok &= std::fabs(decayLoopDelaySeconds(0) - 0.030f) < 1e-4f && std::fabs(decayLoopDelaySeconds(1) - 0.100f) < 1e-4f;
     ok &= stretchK(decayTransitionHz(1), 48000) > stretchK(decayTransitionHz(0), 48000);
-    ok &= boingStages(0) >= kMinStages && boingStages(1) == kMaxStages && boingCoefficient(0) < -0.3f;
+    ok &= boingStages(0) >= kMinStages && boingStages(1) == kMaxStages && kChirpSign * boingCoefficient(0) > 0.3f
+          && kChirpSign * boingCoefficient(1) > kChirpSign * boingCoefficient(0);
     ok &= mixGains(0).dry == 1.0f && mixGains(0).wet == 0.0f && mixGains(1).dry == 0.0f && mixGains(1).wet == 1.0f;
     check(ok, "Mappings: T60 0.4-9 s, L 30-100 ms, K grows with DECAY, BOING floor, exact MIX ends");
 

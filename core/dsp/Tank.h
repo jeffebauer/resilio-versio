@@ -133,7 +133,11 @@ public:
     static constexpr float kShelfGain       = 0.7f;    // -3 dB above the corner
     static constexpr float kLimitThreshold  = 0.89f;   // ≈ -1 dBFS: wet peaks never reach 1.0
     static constexpr float kLimitKnee       = 0.82f;   // limiter aims peaks here; soft clip from here to the threshold
-    static constexpr float kLimitAttackS    = 0.001f;  // gain glides down (no corner in the waveform)
+    // Gain glides down (no corner in the waveform). HighsLater Chirp
+    // (Mappings.h): the lows are barely dispersed, so echo onsets of low
+    // chords rise faster and a 1 ms glide lets them reach the soft clip's
+    // ceiling (test_clicks "limiter pushed"); 0.5 ms keeps up, still click-free.
+    static constexpr float kLimitAttackS    = map::kHighsLater ? 0.0005f : 0.001f;
     static constexpr float kLimitReleaseS   = 0.15f;
     static constexpr int   kMaxPendingKicks = 16;
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
