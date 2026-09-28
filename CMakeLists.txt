@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "")
 
 option(RV_BUILD_PLUGIN "Build the JUCE AU/VST3 Plugin (needs libs/JUCE)" ON)
+# Off by default: development builds must not replace the plugin the owner is
+# using in Ableton. Install a milestone build with tools/install_plugin.sh.
+option(RV_INSTALL_PLUGIN "Copy AU/VST3 to ~/Library/Audio/Plug-Ins after building" OFF)
 
 # Core: platform-independent DSP + ParamSpec. No libDaisy, no JUCE.
 file(GLOB RV_CORE_SOURCES CONFIGURE_DEPENDS core/dsp/*.cpp)

@@ -10,7 +10,7 @@ juce_add_plugin(ResilioVersio
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     AU_MAIN_TYPE kAudioUnitType_MusicEffect
-    COPY_PLUGIN_AFTER_BUILD TRUE)
+    COPY_PLUGIN_AFTER_BUILD ${RV_INSTALL_PLUGIN})
 
 target_sources(ResilioVersio PRIVATE PluginProcessor.cpp)
 

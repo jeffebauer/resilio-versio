@@ -4,6 +4,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 **Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 + M5 built, need your listen · chirp-direction decision needed
 
+**Plugin installed in Ableton:** M5 build (commit `d73d818`), installed 28 Sep 14:00. It only changes when Claude installs a milestone and notes it here. **Rescan plug-ins** after any change.
+
 ## To do (suggested order)
 
 ### 1. Record the Wellspring (≈45 min) · unblocks M1
@@ -30,7 +32,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 4. M2 Ableton check (≈15 min)
 - **Doc:** [m2-ableton-check.md](m2-ableton-check.md) · MIDI clip: `test_audio/midi/kicks_16ths.mid`
-- [ ] **Rescan plug-ins first**: the plugin was rebuilt (the VST3 had ~2,000 junk "MIDI CC" parameters; now fixed)
+- [ ] **Rescan plug-ins first**: the installed plugin is now the M5 build (see the top of this page)
 - [ ] Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz
 - A 10th control, **Bypass**, is normal (added by the plugin framework)
 
@@ -78,6 +80,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: plugin in Ableton pinned to the M5 build; dev builds no longer auto-install
 
 - 28 Sep 2026: M5 drive chain + TONE built; IR dispersion study done ([report](ir-dispersion-study.md))
 
