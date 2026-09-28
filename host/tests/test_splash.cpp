@@ -1,0 +1,435 @@
+// SPLASH model tests (SPEC §4.5, §7 M7): HitDetector, Clatter, Jolt and the
+// Splash facade, stand-alone (not yet wired into the Tank).
+//
+// Stimulus: the synthetic snare and rim of tools/make_stimulus.py / 02_hits
+// (snare: 185 Hz body + 800 Hz–7 kHz noise; rim: 1.7 kHz + 480 Hz tone +
+// > 2 kHz noise), peaking at −6 / −12 / −18 dBFS, one hit per render.
+// "Clatter energy" = sum of squares of the Clatter output for one hit.
+// Jolt pitch: the Loop delay offset D[n] = jolt × L shifts one pass by
+// 1200 log2(1 − ΔD) cents (as test_wobble), L = 55 ms (DECAY noon).
+
+#include "Fft.h"
+#include "Wav.h"
+#include "dsp/Drive.h"
+#include "dsp/Splash.h"
+#include "params/DriveVoicing.h"
+#include "params/ParamSpec.h"
+#include "params/Mappings.h"
+#include "params/SplashVoicing.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
+namespace {
+
+int failures = 0;
+char msg[400];
+
+void check(bool ok, const char* what)
+{
+    std::printf("%s  %s\n", ok ? "PASS" : "FAIL", what);
+    if (!ok) ++failures;
+}
+
+using Buf = std::vector<float>;
+constexpr float kFs = 48000.0f;
+const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
+std::array<float, 3> att(int a)
+{
+    std::array<float, 3> w{{0.0f, 0.0f, 0.0f}};
+    w[size_t(a)] = 1.0f;
+    return w;
+}
+
+Buf onePoleLp(Buf x, float hz, float fs)
+{
+    const float c = 1.0f - std::exp(-2.0f * rv::map::kPi * hz / fs);
+    float y = 0;
+    for (auto& v : x) v = (y += c * (v - y));
+    return x;
+}
+Buf onePoleHp(const Buf& x, float hz, float fs)
+{
+    Buf lp = onePoleLp(x, hz, fs), y(x.size());
+    for (size_t i = 0; i < x.size(); ++i) y[i] = x[i] - lp[i];
+    return y;
+}
+
+// One snare (rim = false) or rim hit at `at` seconds, peak `peakDb` dBFS.
+Buf hit(float peakDb, bool rim, float seconds, float fs, float at = 0.2f, uint32_t seed = 1)
+{
+    rv::dsp::Rng rng;
+    rng.seed(seed);
+    const size_t len = size_t((rim ? 0.06f : 0.25f) * fs);
+    Buf nz(len), h(len);
+    for (auto& v : nz) v = rng.bipolar();
+    nz = rim ? onePoleHp(nz, 2000.0f, fs) : onePoleHp(onePoleLp(nz, 7000.0f, fs), 800.0f, fs);
+    float peak = 0;
+    for (size_t i = 0; i < len; ++i) {
+        const float t = float(i) / fs;
+        h[i] = rim ? (std::sin(2 * rv::map::kPi * 1700 * t) + 0.5f * std::sin(2 * rv::map::kPi * 480 * t) + 0.7f * nz[i]) * std::exp(-t / 0.008f)
+                   : 0.6f * std::sin(2 * rv::map::kPi * 185 * t) * std::exp(-t / 0.03f) + 1.2f * nz[i] * std::exp(-t / 0.06f);
+        peak = std::max(peak, std::fabs(h[i]));
+    }
+    Buf out(size_t(seconds * fs), 0.0f);
+    const float g = std::pow(10.0f, peakDb / 20.0f) / peak;
+    for (size_t i = 0; i < len; ++i) out[size_t(at * fs) + i] = g * h[i];
+    return out;
+}
+
+struct Run {
+    Buf clatter, jolt;
+    float maxHit = 0, maxHfGain = 1, maxAllpass = 0;
+    int impacts = 0, strokes = 0;
+};
+
+// strikeAt >= 0: a Kick strike at that absolute sample.
+Run run(const Buf& in, int attitude, float splashV, int block = 48, float fs = kFs, long strikeAt = -1,
+        uint32_t seed = 7u)
+{
+    rv::dsp::Splash sp;
+    sp.prepare(fs, seed);
+    sp.set(att(attitude), splashV);
+    Run r{Buf(in.size()), Buf(in.size())};
+    for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
+        const int n = int(std::min(size_t(block), in.size() - pos));
+        if (strikeAt >= long(pos) && strikeAt < long(pos) + n) sp.strike(1.0f, int(strikeAt - long(pos)));
+        sp.process(in.data() + pos, r.clatter.data() + pos, r.jolt.data() + pos, n);
+        r.maxHit = std::max(r.maxHit, sp.hit());
+        r.maxHfGain = std::max(r.maxHfGain, sp.highPathGain());
+        r.maxAllpass = std::max(r.maxAllpass, std::fabs(sp.allpassDelta()));
+    }
+    r.impacts = sp.impactCount();
+    r.strokes = sp.strokeCount();
+    return r;
+}
+
+double energy(const Buf& x)
+{
+    double s = 0;
+    for (float v : x) s += double(v) * v;
+    return s;
+}
+double db(double p) { return 10.0 * std::log10(p + 1e-30); }
+
+// Share of energy between lo and hi Hz (plain FFT, zero-padded).
+double bandShare(const Buf& x, float lo, float hi, float fs)
+{
+    size_t n = 1;
+    while (n < x.size()) n <<= 1;
+    std::vector<float> re(n, 0.0f), im(n, 0.0f);
+    std::copy(x.begin(), x.end(), re.begin());
+    rv::fft::transform(re, im, false);
+    double in = 0, all = 0;
+    for (size_t k = 1; k < n / 2; ++k) {
+        const double p = double(re[k]) * re[k] + double(im[k]) * im[k];
+        const double f = double(k) * fs / double(n);
+        all += p;
+        if (f >= lo && f <= hi) in += p;
+    }
+    return all > 0 ? in / all : 0.0;
+}
+
+// Pitch (cents per pass) of a Loop delay offset jolt × L.
+struct Lurch {
+    double down = 0, up = 0; // most negative, most positive cents
+    double slope = 0;        // max |ΔD| (samples per sample)
+};
+Lurch lurch(const Buf& jolt, float Lsamples, size_t from = 0, size_t to = ~size_t(0))
+{
+    Lurch l;
+    to = std::min(to, jolt.size());
+    for (size_t i = std::max<size_t>(from, 1); i < to; ++i) {
+        const double d = double(jolt[i] - jolt[i - 1]) * Lsamples;
+        const double c = 1200.0 * std::log2(1.0 - d);
+        l.down = std::min(l.down, c);
+        l.up = std::max(l.up, c);
+        l.slope = std::max(l.slope, std::fabs(d));
+    }
+    return l;
+}
+
+size_t firstNonZero(const Buf& x)
+{
+    for (size_t i = 0; i < x.size(); ++i)
+        if (x[i] != 0.0f) return i;
+    return x.size();
+}
+
+} // namespace
+
+int main()
+{
+    using namespace rv;
+    const float levels[3] = {-6.0f, -12.0f, -18.0f};
+
+    // ---- Hit monotonic with level ------------------------------------------------
+    {
+        bool mono = true;
+        for (bool rim : {false, true})
+            for (float s : {0.0f, 0.5f, 1.0f}) {
+                float h[3];
+                for (int l = 0; l < 3; ++l) h[l] = run(hit(levels[l], rim, 1.0f, kFs), 1, s).maxHit;
+                std::printf("      %s SPLASH %.1f: Hit %.3f / %.3f / %.3f at -6 / -12 / -18 dBFS\n", rim ? "rim  " : "snare",
+                            s, h[0], h[1], h[2]);
+                mono &= h[0] > h[1] && h[1] > h[2];
+            }
+        check(mono, "Hit rises with input level (snare and rim, SPLASH 0 / 0.5 / 1)");
+        // Sensitivity: SPLASH raises Hit for the same hit.
+        const float h0 = run(hit(-12, false, 1.0f, kFs), 1, 0.0f).maxHit, h1 = run(hit(-12, false, 1.0f, kFs), 1, 1.0f).maxHit;
+        std::snprintf(msg, sizeof msg, "SPLASH sets sensitivity: -12 dBFS snare Hit %.2f at SPLASH 0 -> %.2f at SPLASH 1", h0, h1);
+        check(h1 > 2.0f * h0, msg);
+        // Sustained sound is not a Hit: held tones at -6 dBFS, SPLASH 1, after the onset.
+        float late[2] = {0, 0};
+        int strokes[2] = {0, 0};
+        const float freqs[2] = {1000.0f, 110.0f};
+        for (int f = 0; f < 2; ++f) {
+            Buf tone(size_t(2.0f * kFs));
+            for (size_t i = 0; i < tone.size(); ++i)
+                tone[i] = 0.5f * std::sin(2.0f * map::kPi * freqs[f] * float(i) / kFs) * std::min(1.0f, float(i) / 2400.0f);
+            rv::dsp::Splash sp;
+            sp.prepare(kFs, 7u);
+            sp.set(att(2), 1.0f);
+            Buf c(tone.size()), j(tone.size());
+            int atSettle = 0;
+            for (size_t pos = 0; pos < tone.size(); pos += 48) {
+                sp.process(tone.data() + pos, c.data() + pos, j.data() + pos, 48);
+                if (pos > size_t(0.5f * kFs)) late[f] = std::max(late[f], sp.hit());
+                if (pos == size_t(0.3f * kFs)) atSettle = sp.strokeCount();
+            }
+            strokes[f] = sp.strokeCount() - atSettle; // strokes once sustained (from 0.3 s)
+        }
+        std::snprintf(msg, sizeof msg, "held tones (-6 dBFS, 50 ms fade-in) are not Hits once sustained: max Hit %.3f (1 kHz), %.3f (110 Hz) after 0.5 s; strokes after 0.3 s: %d / %d",
+                      late[0], late[1], strokes[0], strokes[1]);
+        check(late[0] < 0.02f && late[1] < 0.02f && strokes[0] == 0 && strokes[1] == 0, msg);
+    }
+
+    // ---- Ghost notes barely trigger: Clatter energy ratio -------------------------
+    {
+        bool ok = true;
+        for (int a : {1, 2})
+            for (bool rim : {false, true})
+                for (float s : {0.0f, 0.5f, 1.0f}) {
+                    const double e6 = energy(run(hit(-6, rim, 1.0f, kFs), a, s).clatter);
+                    const double e12 = energy(run(hit(-12, rim, 1.0f, kFs), a, s).clatter);
+                    const double e18 = energy(run(hit(-18, rim, 1.0f, kFs), a, s).clatter);
+                    const double r = e18 / e6;
+                    std::printf("      %-6s %s SPLASH %.1f: Clatter -12 dBFS %6.1f dB, -18 dBFS %6.1f dB re -6 dBFS (ghost %.1f %%)\n",
+                                kAttName[a], rim ? "rim  " : "snare", s, db(e12 / e6), db(r), 100.0 * r);
+                    ok &= e6 > 0 && r < 0.25 && e12 < e6;
+                }
+        check(ok, "-18 dBFS ghost gives < 25 % of the -6 dBFS hit's Clatter energy (DRIVEN, KICKED, SPLASH 0/0.5/1, snare+rim)");
+    }
+
+    // ---- Per-ATTITUDE behaviour ------------------------------------------------------
+    {
+        const Buf hard = hit(-6, false, 1.5f, kFs);
+        const Run d0 = run(hard, 1, 0.0f), d1 = run(hard, 1, 1.0f), k1 = run(hard, 2, 1.0f), k0 = run(hard, 2, 0.0f);
+        const double ed0 = energy(d0.clatter), ed1 = energy(d1.clatter), ek1 = energy(k1.clatter), ek0 = energy(k0.clatter);
+        std::snprintf(msg, sizeof msg, "DRIVEN SPLASH 0: faint natural splash on a hard hit, %.1f dB re SPLASH 1 (between -30 and -6 dB)",
+                      db(ed0 / ed1));
+        check(ed0 > 0 && db(ed0 / ed1) > -30.0 && db(ed0 / ed1) < -6.0, msg);
+        std::snprintf(msg, sizeof msg, "KICKED > DRIVEN at SPLASH 1: Clatter %+.1f dB, Jolt peak %.4f vs %.4f of L; KICKED SPLASH 0 > DRIVEN SPLASH 0 (%+.1f dB)",
+                      db(ek1 / ed1), *std::max_element(k1.jolt.begin(), k1.jolt.end()),
+                      *std::max_element(d1.jolt.begin(), d1.jolt.end()), db(ek0 / ed0));
+        check(ek1 > ed1 && ek0 > ed0 &&
+                  *std::max_element(k1.jolt.begin(), k1.jolt.end()) > 1.5f * *std::max_element(d1.jolt.begin(), d1.jolt.end()),
+              msg);
+        std::snprintf(msg, sizeof msg, "KICKED rattle: %d impacts from one hard hit (DRIVEN %d), one stroke each", k1.impacts, d1.impacts);
+        check(k1.impacts > d1.impacts && k1.strokes == 1 && d1.strokes == 1, msg);
+
+        const Run c1 = run(hard, 0, 1.0f), c0 = run(hard, 0, 0.0f);
+        const bool silent = energy(c1.clatter) == 0.0 && std::all_of(c1.jolt.begin(), c1.jolt.end(), [](float v) { return v == 0.0f; })
+                         && c1.maxAllpass == 0.0f;
+        check(silent, "CLEAN: no Clatter, no Jolt (SPEC §4.5 table)");
+        std::snprintf(msg, sizeof msg, "CLEAN: SPLASH = mild HF emphasis only: high-path gain peaks at %+.2f dB (SPLASH 1), %+.2f dB (SPLASH 0)",
+                      20.0 * std::log10(c1.maxHfGain), 20.0 * std::log10(c0.maxHfGain));
+        check(c1.maxHfGain > 1.2f && c1.maxHfGain <= 1.42f && c0.maxHfGain == 1.0f && d1.maxHfGain == 1.0f, msg);
+    }
+
+    // ---- Clatter: band, decay, jitter ----------------------------------------------------
+    {
+        const Run k1 = run(hit(-6, false, 1.5f, kFs), 2, 1.0f);
+        const double share = bandShare(k1.clatter, 800.0f, 8000.0f, kFs), core = bandShare(k1.clatter, 1000.0f, 6000.0f, kFs);
+        std::snprintf(msg, sizeof msg, "Clatter is band-passed noise: %.0f %% of energy in 0.8-8 kHz, %.0f %% in 1-6 kHz", 100 * share, 100 * core);
+        check(share > 0.8 && core > 0.55, msg);
+
+        bool decays = true;
+        for (float ms : {5.0f, 30.0f}) {
+            rv::dsp::Clatter c;
+            c.prepare(kFs, 3u);
+            c.impact(1.0f, ms);
+            int n = 0;
+            while (c.envelope() > std::exp(-1.0f) && n < 48000) {
+                c.process();
+                ++n;
+            }
+            std::printf("      Clatter burst set to %.0f ms: envelope 1/e after %.2f ms\n", ms, 1000.0f * float(n) / kFs);
+            decays &= std::fabs(1000.0f * float(n) / kFs - ms) < 0.1f;
+        }
+        const float dMin = splash::kVoice[1].clatterDecayMinMs, dMax = splash::kVoice[2].clatterDecayMaxMs;
+        std::snprintf(msg, sizeof msg, "Clatter bursts decay in 5-30 ms (DRIVEN weak %.0f ms ... KICKED Hit-1 %.0f ms)", dMin, dMax);
+        check(decays && dMin >= 5.0f && dMax <= 30.0f, msg);
+
+        // Timing jitter: onset of Clatter after the hit, across seeds.
+        const Buf hard = hit(-6, false, 0.5f, kFs);
+        double lo = 1e9, hi = 0;
+        for (uint32_t seed = 1; seed <= 16; ++seed) {
+            const Run r = run(hard, 2, 1.0f, 48, kFs, -1, seed);
+            const double ms = 1000.0 * (double(firstNonZero(r.clatter)) - 0.2 * kFs) / kFs;
+            lo = std::min(lo, ms);
+            hi = std::max(hi, ms);
+        }
+        std::snprintf(msg, sizeof msg, "few-ms timing jitter: Clatter onset %.2f..%.2f ms after the hit over 16 seeds", lo, hi);
+        check(lo >= 0.5 && hi <= 6.0 && hi - lo >= 1.5, msg);
+    }
+
+    // ---- Jolt: pitch lurch that settles within ~1 s -----------------------------------------
+    {
+        const float L = map::decayLoopDelaySeconds(0.5f) * kFs;
+        const Buf hard = hit(-6, false, 2.0f, kFs);
+        for (int a : {1, 2}) {
+            const Run r = run(hard, a, 1.0f);
+            const Lurch all = lurch(r.jolt, L), late = lurch(r.jolt, L, size_t(1.2f * kFs));
+            float peak = 0, after = 0;
+            for (size_t i = 0; i < r.jolt.size(); ++i) {
+                peak = std::max(peak, std::fabs(r.jolt[i]));
+                if (i > size_t(1.2f * kFs)) after = std::max(after, std::fabs(r.jolt[i]));
+            }
+            std::printf("      %-6s SPLASH 1 hard snare: Jolt peak %.4f of L (%.1f samples at L = 55 ms), lurch %.0f / %+.0f cents per pass, |Δa| %.3f\n",
+                        kAttName[a], peak, peak * L, all.down, all.up, r.maxAllpass);
+            std::snprintf(msg, sizeof msg, "%s: Jolt settles within 1 s of the hit: %.2f %% of peak, %.2f cents after 1 s",
+                          kAttName[a], 100.0 * after / peak, std::max(-late.down, late.up));
+            check(after < 0.02f * peak && std::max(-late.down, late.up) < 1.0, msg);
+            if (a == 2) {
+                std::snprintf(msg, sizeof msg, "KICKED: clear pitch lurch (%.0f cents per pass >= 20), |Δa| %.3f",
+                              std::max(-all.down, all.up), r.maxAllpass);
+                check(std::max(-all.down, all.up) >= 20.0 && r.maxAllpass > 0.05f, msg);
+            }
+        }
+        // Worst case slope stays within Spring::kLoopSlewPerSample (0.08) at the longest L (100 ms × max detune 1.08).
+        const Run k = run(hard, 2, 1.0f, 48, kFs, long(0.2f * kFs));
+        const Lurch w = lurch(k.jolt, 0.100f * 1.08f * kFs);
+        std::snprintf(msg, sizeof msg, "Jolt slope %.3f samples/sample at L = 108 ms (hit + Kick strike) stays under the Loop slew limit 0.08", w.slope);
+        check(w.slope < 0.08, msg);
+    }
+
+    // ---- Kick strike, rolls, determinism, block size ------------------------------------------
+    {
+        const Buf quiet(size_t(1.0f * kFs), 0.0f);
+        bool exact = true;
+        for (int b : {1, 7, 32, 48, 333, 1024}) exact &= firstNonZero(run(quiet, 2, 0.0f, b, kFs, 12345).clatter) == 12345;
+        check(exact, "Kick strike: Clatter starts on the exact sample, for blocks 1, 7, 32, 48, 333, 1024");
+        const Run s0 = run(quiet, 2, 0.0f, 48, kFs, 12345), s1 = run(quiet, 2, 1.0f, 48, kFs, 12345);
+        check(s0.clatter == s1.clatter && s0.strokes == 1, "Kick strike is maximal whatever SPLASH is (forced Hit 1, SPLASH 1)");
+
+        // Snare roll: 8 strokes 100 ms apart -> 8 strokes.
+        Buf roll(size_t(1.5f * kFs), 0.0f);
+        for (int h = 0; h < 8; ++h) {
+            const Buf one = hit(-6, false, 1.5f, kFs, 0.1f + 0.1f * float(h), uint32_t(h + 1));
+            for (size_t i = 0; i < roll.size(); ++i) roll[i] += one[i];
+        }
+        const Run r = run(roll, 2, 1.0f);
+        std::snprintf(msg, sizeof msg, "snare roll, 8 strokes 100 ms apart: %d strokes detected", r.strokes);
+        check(r.strokes == 8, msg);
+
+        const Buf hard = hit(-6, false, 1.0f, kFs);
+        const Run ref = run(hard, 2, 1.0f, 48);
+        check(run(hard, 2, 1.0f, 48).clatter == ref.clatter, "deterministic: same seed, same Clatter");
+        bool blocks = true;
+        for (int b : {1, 7, 32, 333, 1024}) {
+            const Run x = run(hard, 2, 1.0f, b);
+            blocks &= x.clatter == ref.clatter && x.jolt == ref.jolt;
+        }
+        check(blocks, "block-size independent: Clatter and Jolt bit-identical for blocks 1, 7, 32, 333, 1024");
+        rv::dsp::Splash sp;
+        sp.prepare(kFs, 7u);
+        sp.set(att(2), 1.0f);
+        Buf c1(hard.size()), c2(hard.size()), j(hard.size());
+        sp.process(hard.data(), c1.data(), j.data(), int(hard.size()));
+        sp.reset();
+        sp.process(hard.data(), c2.data(), j.data(), int(hard.size()));
+        check(c1 == c2 && c1 == ref.clatter, "reset() replays identically");
+    }
+
+    // ---- Sample-rate aware ---------------------------------------------------------------
+    {
+        // Rate-independent stimulus: a 2 kHz tone burst, 30 ms decay.
+        auto burst = [](float peak, float fs) {
+            Buf x(size_t(fs), 0.0f);
+            for (size_t i = 0; i < size_t(0.2f * fs); ++i) {
+                const float t = float(i) / fs;
+                x[size_t(0.2f * fs) + i] = peak * std::sin(2.0f * map::kPi * 2000.0f * t) * std::exp(-t / 0.03f);
+            }
+            return x;
+        };
+        const float h48 = run(burst(0.5f, 48000.0f), 2, 0.5f, 48, 48000.0f).maxHit;
+        const float h96 = run(burst(0.5f, 96000.0f), 2, 0.5f, 48, 96000.0f).maxHit;
+        const float g48 = run(burst(0.125f, 48000.0f), 2, 0.5f, 48, 48000.0f).maxHit;
+        const float g96 = run(burst(0.125f, 96000.0f), 2, 0.5f, 48, 96000.0f).maxHit;
+        std::snprintf(msg, sizeof msg, "same Hit at 48 and 96 kHz (2 kHz tone burst): -6 dBFS %.3f / %.3f, -18 dBFS %.3f / %.3f", h48, h96, g48, g96);
+        check(std::fabs(h48 - h96) < 0.05f && std::fabs(g48 - g96) < 0.05f, msg);
+    }
+
+    // ---- Through the real DriveIn (DRIVEN, DRIVE default) -----------------------------------
+    // The detector's input in the Tank is post-DriveIn: the band-limit and
+    // flux cut change the snare's peaks. Ghost criterion must still hold.
+    {
+        bool ok = true;
+        for (int a : {1, 2}) {
+            double e[3];
+            for (int l = 0; l < 3; ++l) {
+                rv::dsp::DriveIn din;
+                din.prepare(kFs);
+                const drive::Voice vc = dsp::blendVoice(att(a));
+                din.set(dsp::driveInSettings(vc, rv::spec(rv::ParamId::Drive).defaultValue), true, 32);
+                Buf x = hit(levels[l], false, 1.0f, kFs);
+                for (auto& v : x) v = din.process(v);
+                e[l] = energy(run(x, a, 1.0f).clatter);
+            }
+            std::printf("      post-DriveIn %-6s SPLASH 1: Clatter %.1f / %.1f dB (-12 / -18 re -6 dBFS)\n", kAttName[a], db(e[1] / e[0]),
+                        db(e[2] / e[0]));
+            ok &= e[2] < 0.25 * e[0] && e[1] < e[0];
+        }
+        check(ok, "post-DriveIn (DRIVEN, KICKED, SPLASH 1): ghost < 25 % of the hard hit's Clatter energy");
+    }
+
+    // ---- The real stimulus: test_audio/stimulus/02_hits.wav --------------------------------
+    // Snare at -6 / -12 / -18 dBFS from 1 s, then rim, 6 s apart
+    // (tools/make_stimulus.py). Skipped if the stimulus is not generated.
+    {
+        wav::Audio a;
+        std::string err;
+        bool loaded = false;
+        for (const char* prefix : {"../test_audio/stimulus/", "test_audio/stimulus/"})
+            if (!loaded) loaded = wav::read(std::string(prefix) + "02_hits.wav", a, err);
+        if (!loaded) {
+            std::printf("SKIP  02_hits.wav not found (run python3 tools/make_stimulus.py)\n");
+        } else {
+            const Buf& x = a.channels[0];
+            bool ok = true;
+            for (int at : {1, 2})
+                for (float sv : {0.5f, 1.0f}) {
+                    const Run r = run(x, at, sv);
+                    double e[6];
+                    for (int h = 0; h < 6; ++h) {
+                        const size_t from = size_t((1.0f + 6.0f * float(h)) * kFs), to = from + size_t(6.0f * kFs);
+                        e[h] = 0;
+                        for (size_t i = from; i < std::min(to, r.clatter.size()); ++i) e[h] += double(r.clatter[i]) * r.clatter[i];
+                    }
+                    std::printf("      02_hits %-6s SPLASH %.1f: snare -12/-18 %.1f / %.1f dB, rim -12/-18 %.1f / %.1f dB re -6 dBFS; %d strokes\n",
+                                kAttName[at], sv, db(e[1] / e[0]), db(e[2] / e[0]), db(e[4] / e[3]), db(e[5] / e[3]), r.strokes);
+                    ok &= e[0] > e[1] && e[1] >= e[2] && e[2] < 0.25 * e[0] && e[3] > e[4] && e[4] >= e[5] && e[5] < 0.25 * e[3] &&
+                          r.strokes <= 6;
+                }
+            check(ok, "02_hits.wav: Clatter falls with level, ghost < 25 % of the hard hit, at most one stroke per hit (DRIVEN, KICKED)");
+        }
+    }
+
+    std::printf("%d failure(s)\n", failures);
+    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+}
