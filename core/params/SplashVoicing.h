@@ -40,21 +40,44 @@ constexpr float kFastReleaseMs = 20.0f;
 constexpr float kSlowAttackMs  = 50.0f;
 constexpr float kSlowReleaseMs = 80.0f;
 
-// Threshold T (linear amplitude of d) where Hit = 0.5. SPLASH 0: 0.30 (only
-// hard hits register), SPLASH 1: 0.10. The −6 dBFS snare of 02_hits gives
-// d ≈ 0.22 (high-passed fast peak minus the slow follower already rising),
-// the −12 dBFS one d ≈ 0.11, the −18 dBFS ghost d ≈ 0.055.
+// Level-adaptive detection (M8, backlog item 2). A Hit is judged against a
+// reference R, not a fixed threshold, so it measures how much a hit stands
+// out from what is playing, not how loud it is:
+//   R = max(T, q · P),   Hit = curve(d / R)
+// P = a slow program-level tracker: a follower of the fast envelope with a
+// kProgAttackMs attack and kProgReleaseMs release (control rate). One
+// isolated hit lifts it to ~0.1-0.2 of its envelope peak, a groove or a pad
+// holds it up, silence lets it fall back within a few seconds.
+//   T = absolute floor (SPLASH's threshold; isolated hits after silence,
+//       P ≈ 0). SPLASH 0: 0.30 (only hard hits register); SPLASH 1: 0.015,
+//       so an isolated rimshot or snare at −18 dBFS (d ≈ 0.035-0.06) gives
+//       Hit ≈ 0.9-1. (0.10 at SPLASH 1 in M7's absolute detector.)
+//   q = relative threshold: a hit needs d ≥ q · P for Hit ≥ 0.5. SPLASH 1:
+//       1.5, SPLASH 0: 4.0. In a groove of −6 dBFS backbeats 1 s apart P
+//       sits near a quarter of a backbeat's d, so backbeats get Hit ≈ 0.9
+//       at any level, while a −18 dBFS ghost note half way between gets
+//       Hit ≈ 0.1: it barely triggers (test_m7_tank ghostGroove: its
+//       Clatter −22..−28 dB under its own bright part, −41 dB under a
+//       backbeat's). A snare over a loud pad is judged against the pad.
+// Reference d values (DRIVEN, DRIVE 0.25, post-DriveIn): the −6 dBFS snare
+// of 02_hits d ≈ 0.15-0.22, −12 dBFS 0.07-0.11, −18 dBFS 0.04-0.055.
 constexpr float kHitThresholdSplash0 = 0.30f;
-constexpr float kHitThresholdSplash1 = 0.10f;
+constexpr float kHitThresholdSplash1 = 0.015f;
 inline float hitThreshold(float splash) { return map::expLerp(kHitThresholdSplash0, kHitThresholdSplash1, splash); }
+constexpr float kRelThresholdSplash0 = 4.0f;
+constexpr float kRelThresholdSplash1 = 1.5f;
+inline float relThreshold(float splash) { return map::expLerp(kRelThresholdSplash0, kRelThresholdSplash1, splash); }
+constexpr float kProgAttackMs  = 100.0f;
+constexpr float kProgReleaseMs = 1500.0f;
+// CLEAN's HF emphasis keeps the M7 absolute detector (SPLASH in CLEAN is
+// unchanged pending the owner's decision, backlog item 6): Hit_abs =
+// curve(d / T_abs), T_abs = 0.30 (SPLASH 0) .. 0.10 (SPLASH 1).
+constexpr float kAbsThresholdSplash0 = 0.30f;
+constexpr float kAbsThresholdSplash1 = 0.10f;
+inline float absThreshold(float splash) { return map::expLerp(kAbsThresholdSplash0, kAbsThresholdSplash1, splash); }
 
-// Hit = r³ / (1 + r³), r = d / T. A level-dependent knee: a hit at half the
-// threshold gives 0.11, at the threshold 0.5, at twice 0.89. A hit 12 dB
-// below a hard one (the ghost) lands far down the curve, and Clatter energy
-// goes with Hit², so ghosts barely register and hard hits clearly do (SPEC
-// §7 M7). Snare Hit at −6 / −12 / −18 dBFS (test_splash): SPLASH 0:
-// 0.27 / 0.05 / 0.006; SPLASH 0.5: 0.66 / 0.20 / 0.03; SPLASH 1: 0.91 / 0.56 /
-// 0.14 (Clatter −11 and −25 dB re the hard hit). Multiplies only.
+// Hit = r³ / (1 + r³), r = d / R. A knee: a hit at half the reference gives
+// 0.11, at the reference 0.5, at twice 0.89. Multiplies only.
 inline float hitCurve(float d, float threshold)
 {
     const float r = d / threshold, r3 = r * r * r;
@@ -79,16 +102,47 @@ constexpr float kMinStrokeMs    = 20.0f;
 // kJitterMin..MaxMs after the Hit peaked, with the peak Hit as its strength.
 constexpr float kClatterHpHz  = 1000.0f;
 constexpr float kClatterLpHz  = 6000.0f;
-// Burst peak at Hit 1, amount 1 (before the band-pass). 0.6 in the
-// stand-alone build; ×5 (+14 dB) at integration: through the Tank the
-// Clatter goes into the high path, whose HPF (0.8 fC) and level (TONE,
-// 0.225 at noon) leave little of it, so at 0.6 KICKED SPLASH 1 on a hard
-// snare added only +0.2 dB of 1-6 kHz (Clatter −16 dB under the snare's own
-// bright part). At 3.0 it is −2 dB (KICKED) / −8 dB (DRIVEN), a clear crash
-// (test_m7_tank). Ratios (ghost vs hard hit) do not depend on it.
-constexpr float kClatterGain  = 3.0f;
-constexpr float kJitterMinMs  = 0.5f;
-constexpr float kJitterMaxMs  = 4.0f;
+// Burst peak at Hit 1, amount 1 (before the band-pass), for a hit of the
+// reference level. 0.6 in the stand-alone build; 3.0 at M7 integration.
+// M8: the crash follows the hit's size. A burst's peak is scaled by the
+// stroke's level λ = d / kClatterLevelRef (d of the −6 dBFS snare, so λ = 1
+// there), capped at kClatterLevelMax: with the level-adaptive Hit, a hit
+// that stands out gets the same crash *relative to itself* at −18 or −3
+// dBFS (the owner's DAW levels vs the module's), and a quiet hit can never
+// get a crash louder than a hard one. A Kick's forced strike: kKickClatterLevel.
+// M7's 3.0 left the crash inaudible to the owner: Clatter −8 dB (DRIVEN) /
+// −2 dB (KICKED) under the hit's own 1–6 kHz, and 0.0 dB of brightening on
+// a rimshot in DRIVEN. M8 (test_m7_tank splashAudible):
+//  - kClatterGain 3 → 3.5 into the Springs' high path (more than that and
+//    the common burst through the detuned Springs combs the mono sum:
+//    test_tank's mono-notch margin);
+//  - kClatterWet: a share of the Clatter also goes straight to the wet,
+//    after the pickups (Tank.cpp): the pickup hearing the springs clatter,
+//    on top of the tail rather than only through the quiet high path.
+// Crash (1–6 kHz, SPLASH 1 vs 0, first 150 ms) on a rimshot at −18 / −9 /
+// −3 dBFS: DRIVEN +4.5 / +5.7 / +5.8 dB (M7: 0.0), KICKED +8 / +10 / +10.
+constexpr float kClatterGain     = 3.5f;
+constexpr float kClatterWet      = 0.45f;
+// The direct share's side copy: delayed kClatterSideMs, at kClatterSide of
+// the mid's level (L/R correlation of the direct crash (1 − 0.8²)/(1 + 0.8²)
+// ≈ 0.22; the mono sum is the plain burst; test_tank's L/R correlation
+// margin on hits).
+constexpr float kClatterSideMs   = 1.3f;
+constexpr float kClatterSide     = 0.8f;
+constexpr float kClatterLevelRef = 0.22f;
+constexpr float kClatterLevelMax = 2.5f;
+// A Kick's forced strike: its crash level λ. With the direct share the M7
+// value (1) put the Kick's crash so far over its thud that the limiter
+// ducked the thud (KICKED Kick low end, test_kick); 0.5 keeps the Kick's
+// crash about where M7 had it (high path −3 dB, plus the direct share).
+constexpr float kKickClatterLevel = 0.5f;
+// The jitter counts from the Hit's peak (the countdown restarts while the
+// stroke is still growing, for at most kMaxRiseMs), so the burst takes the
+// stroke's full strength and level (M8; before, a short jitter could fire
+// on a hit's first millisecond with a fraction of its strength).
+constexpr float kMaxRiseMs    = 2.0f;
+constexpr float kJitterMinMs  = 0.3f;
+constexpr float kJitterMaxMs  = 3.0f;
 // Secondary impacts ("rattle": springs bouncing against each other/the
 // housing) follow the first at seeded intervals, each weaker.
 constexpr float kRattleIntervalMinMs = 7.0f;
@@ -109,6 +163,10 @@ constexpr float kJoltAttackMs = 18.0f;
 // Each Spring lurches its own way (a tank knock does not stretch every
 // spring the same): Spring A, B, C scale the Loop-delay Jolt by these.
 // B moves the other way, so a big hit also spreads the stereo image.
+// The allpass Jolt (Δa) is scaled the same way per Spring (M8): a common Δa
+// pulled the Springs' responses together, and with the more sensitive M8
+// detector at the default SPLASH it cost test_tank's mono-notch margin on
+// chord stabs (−5.3 dB at 2 Springs, margin −4.5; per Spring: −2.9).
 inline constexpr std::array<float, 3> kJoltSpringScale{{1.0f, -0.75f, 0.9f}};
 // KICKED rattle: a seeded random jitter (~kRattleHz, smoothed) riding on the
 // Jolt, depth ∝ (j + kRattleEnergyGain × tank level): energy-dependent.
@@ -150,8 +208,8 @@ struct Voice {
 inline constexpr std::array<Voice, 3> kVoice{{
     //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle   hf
     {  0.00f, 0.00f,  5.0f, 10.0f, 0.0f, 0.00f, 0.00f,  60.0f, 0.000f, 0.00f, 0.0000f, 0.41f}, // CLEAN
-    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.025f, 0.0000f, 0.00f}, // DRIVEN
-    {  0.25f, 1.00f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f, 0.00f}, // KICKED
+    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f, 0.00f}, // DRIVEN
+    {  0.25f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f, 0.00f}, // KICKED
 }};
 
 // DRIVEN's |Δa| was 0.05 in the stand-alone build; halved at integration.
@@ -160,6 +218,10 @@ inline constexpr std::array<Voice, 3> kVoice{{
 // (test_tank: mono notch −6.4 dB on chord stabs, 2 Springs, DECAY 0 BOING 1;
 // L/R correlation 0.47 → 0.49 on hits). At 0.025 all M4 checks keep their
 // margin. KICKED keeps 0.12: a big smear is part of "full chaos".
+// M8: Δa is now scaled per Spring by kJoltSpringScale (see above), and
+// DRIVEN's is 0.015: the M8 detector gives stabs at the default SPLASH a
+// full-strength Jolt, which at 0.025 left test_tank's mono-notch margin at
+// −5.0 dB (3 Springs, chord stabs; margin −4.5). At 0.015: −3.9 dB.
 
 inline Voice blendVoice(const std::array<float, 3>& w)
 {

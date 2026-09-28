@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
@@ -565,6 +566,167 @@ void driveAudibility()
                       "(level-matched .5 / 1: %.1f / %.1f; %s); loudness across DRIVE %.2f dB (limit 2)",
                       kAttName[att], n25, n50, n100, m50, m100, want, hi - lo);
         check(ok, msg);
+    }
+}
+
+// ---- 2c. DRIVE sweet spot: no dead patch (M8, docs/m8-sweetspot.md) ----------------------
+// The M8 sweet-spot report's test: DRIVE in 0.1 steps on 02_hits' first
+// 10 s (MIX 0.5, SPRINGS 2, DECAY / TONE / BOING noon, WOBBLE 0.2), mono
+// sum; a step is audible if the null between neighbours is >= -40 dB or
+// the RMS moves >= 0.5 dB. Dead patch = 3 or more silent steps in a row.
+// SPLASH 0 here, so only DRIVE's own sound counts (at SPLASH 0.3 the
+// Clatter moving with the driven level makes every step "audible").
+// M7 build: CLEAN dead 0-0.4 and 0.5-1, DRIVEN 0-0.3 (clean-ish below
+// ~9 o'clock is ADR 0014's intent: 2 silent steps are allowed).
+void driveSweetSpot()
+{
+    rv::wav::Audio a;
+    std::string error;
+    bool loaded = false;
+    for (const std::string& prefix : {"../test_audio/stimulus/", "test_audio/stimulus/"})
+        if (!loaded) loaded = rv::wav::read(prefix + "02_hits.wav", a, error);
+    if (!loaded) {
+        std::printf("SKIP  DRIVE sweet spot: 02_hits.wav not found\n");
+        return;
+    }
+    Buf in = a.channels[0];
+    in.resize(size_t(10.0f * kFs));
+    for (int att = 0; att < 3; ++att) {
+        Buf m[11];
+        for (int d = 0; d <= 10; ++d) {
+            Settings s;
+            s.att    = att;
+            s.drive  = 0.1f * float(d);
+            s.decay  = 0.5f;
+            s.mix    = 0.5f;
+            s.splash = 0.0f;
+            s.wobble = 0.2f;
+            const Stereo o = renderWith(s, in);
+            m[d].resize(o.l.size());
+            for (size_t i = 0; i < o.l.size(); ++i) m[d][i] = o.l[i] + o.r[i];
+        }
+        int run = 0, worst = 0;
+        char steps[256] = {};
+        for (int d = 1; d <= 10; ++d) {
+            double e = 0, r = 0, pa = 0, pb = 0;
+            for (size_t i = 0; i < m[d].size(); ++i) {
+                const double x = double(m[d][i]) - m[d - 1][i];
+                e += x * x;
+                r += double(m[d - 1][i]) * m[d - 1][i];
+                pb += double(m[d][i]) * m[d][i];
+            }
+            pa = r;
+            const double nul = db(e / r), dl = std::fabs(db(pb / pa));
+            const bool heard = nul >= -40.0 || dl >= 0.5;
+            run = heard ? 0 : run + 1;
+            worst = std::max(worst, run);
+            std::snprintf(steps + std::strlen(steps), sizeof steps - std::strlen(steps), " %.0f", nul);
+        }
+        std::snprintf(msg, sizeof msg, "DRIVE sweet spot %s, 02_hits: step nulls (dB, 0.1 steps)%s; longest silent run %d (< 3)",
+                      kAttName[att], steps, worst);
+        check(worst < 3, msg);
+    }
+}
+
+// ---- 2d. Wet level vs material: the excitation trim (M8, DriveVoicing.h) ---------------------
+// Wet (MIX 1) minus dry RMS, whole stimulus, on 02_hits, 04_skank,
+// 08_held_tones and steady pink-ish noise at -26 dBFS RMS: the Tank came
+// back 5-6 dB louder on in-band material (skank, held tones) than on
+// broadband (noise) or bright (hits). Spread across the four, per ATTITUDE,
+// at DECAY 0.25 and 0.5: <= 3.5 dB (M7 build: 4.8-5.9 dB). Longer DECAYs
+// are reported: a held sine sits between the long Loop's narrow modes and
+// comes back quieter (a property of the Loop, not of the excitation).
+// Also: the trim holds while the input is silent (a tail is never trimmed).
+void wetLevelVsMaterial()
+{
+    std::vector<std::pair<const char*, Buf>> st;
+    for (const char* f : {"02_hits.wav", "04_skank.wav", "08_held_tones.wav"}) {
+        rv::wav::Audio a;
+        std::string error;
+        bool loaded = false;
+        for (const std::string& prefix : {"../test_audio/stimulus/", "test_audio/stimulus/"})
+            if (!loaded) loaded = rv::wav::read(prefix + f, a, error);
+        if (!loaded) {
+            std::printf("SKIP  wet level vs material: %s not found\n", f);
+            return;
+        }
+        st.push_back({f, a.channels[0]});
+    }
+    {
+        // Pink-ish noise: white through a -3 dB/oct approximation (Kellet), -26 dBFS RMS.
+        Buf p(size_t(6.0f * kFs));
+        rv::dsp::Rng rng;
+        rng.seed(8u);
+        double b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, e = 0;
+        for (auto& v : p) {
+            const double w = rng.bipolar();
+            b0 = 0.99886 * b0 + w * 0.0555179;
+            b1 = 0.99332 * b1 + w * 0.0750759;
+            b2 = 0.96900 * b2 + w * 0.1538520;
+            b3 = 0.86650 * b3 + w * 0.3104856;
+            b4 = 0.55000 * b4 + w * 0.5329522;
+            b5 = -0.7616 * b5 - w * 0.0168980;
+            v  = float(b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362);
+            b6 = w * 0.115926;
+            e += double(v) * v;
+        }
+        const float g = float(std::pow(10.0, -26.0 / 20.0) / std::sqrt(e / double(p.size())));
+        for (auto& v : p) v *= g;
+        st.push_back({"pink -26 dBFS", p});
+    }
+    for (float decay : {0.25f, 0.5f, 0.75f, 1.0f}) {
+        char line[256] = {};
+        bool ok = true;
+        for (int att = 0; att < 3; ++att) {
+            double lo = 1e9, hi = -1e9;
+            for (const auto& [name, x] : st) {
+                Settings s;
+                s.att   = att;
+                s.decay = decay;
+                s.drive = rv::spec(rv::ParamId::Drive).defaultValue;
+                const Stereo o = renderWith(s, x);
+                const double wet = db(0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size()))),
+                             dry = db(power(x, 0, x.size()));
+                lo = std::min(lo, wet - dry);
+                hi = std::max(hi, wet - dry);
+            }
+            std::snprintf(line + std::strlen(line), sizeof line - std::strlen(line), " %s %.1f", kAttName[att], hi - lo);
+            ok &= hi - lo <= 3.5;
+        }
+        if (decay <= 0.5f) {
+            std::snprintf(msg, sizeof msg,
+                          "Wet - dry spread across hits / skank / held tones / pink noise, DECAY %.2f (dB):%s (<= 3.5)",
+                          decay, line);
+            check(ok, msg);
+        } else {
+            std::printf("INFO  Wet - dry spread across hits / skank / held tones / pink noise, DECAY %.2f (dB):%s\n", decay, line);
+        }
+    }
+    // The trim holds in silence: a hit, then 3 s of tail with no input.
+    {
+        rv::Tank t;
+        t.prepare(kFs, 48);
+        Settings s;
+        s.decay = 1.0f;
+        apply(t, s);
+        Buf x = noise(size_t(4.0f * kFs), 0.0f, 1u);
+        const Buf burst = noise(size_t(0.1f * kFs), 0.3f, 5u);
+        std::copy(burst.begin(), burst.end(), x.begin());
+        Buf l(48), r(48);
+        float atEnd = 0.0f, lo = 1e9f, hi = -1e9f;
+        for (size_t pos = 0; pos + 48 <= x.size(); pos += 48) {
+            t.process(x.data() + pos, x.data() + pos, l.data(), r.data(), 48);
+            if (pos == size_t(0.1f * kFs) / 48 * 48) atEnd = t.excitationTrim();
+            if (pos > size_t(0.2f * kFs)) {
+                lo = std::min(lo, t.excitationTrim());
+                hi = std::max(hi, t.excitationTrim());
+            }
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Excitation trim holds while the input is silent: %.2f dB at the end of a burst, %.2f .. %.2f dB over the "
+                      "3.8 s tail (DECAY max; within 0.05 dB)",
+                      20.0 * std::log10(atEnd), 20.0 * std::log10(lo), 20.0 * std::log10(hi));
+        check(20.0 * std::log10(hi / lo) < 0.05 && std::fabs(20.0 * std::log10(hi / atEnd)) < 0.05, msg);
     }
 }
 
@@ -1269,6 +1431,7 @@ int main(int argc, char** argv)
     };
     const T tests[] = {{"blocks", buildingBlocks}, {"loop", loopMagnitude},       {"attitude", attitudeLevels},
                        {"drive", driveSweep},      {"drive-audibility", driveAudibility},
+                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial},
                        {"drive-held", driveLevelHeld}, {"audible", audibleAtDriveZero}, {"alias", aliasing},
                        {"tone", tone},             {"morph", morphClickFree},     {"determinism", determinism},
                        {"howl", howl},             {"stability", stabilityGrid},  {"performance", performance}};

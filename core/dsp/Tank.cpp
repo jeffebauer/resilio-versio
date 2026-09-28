@@ -34,6 +34,8 @@ constexpr uint32_t kTransportSeed = 0x0B0B1E04u;
 // at 0, so the join at the knee has no corner in slope or curvature (a
 // curvature step is a tick on held tones too), and it holds exactly at the
 // threshold from 3x the room above the knee.
+constexpr float kClatterWetGain = Tank::kWetGain * splash::kClatterWet;
+
 inline float softLimit(float x)
 {
     constexpr float kRoom = Tank::kLimitThreshold - Tank::kLimitKnee;
@@ -105,6 +107,11 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
     transport_.prepare(sampleRate, 0, kTransportSeed, dsp::Wobble::Role::Transport);
     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
+    for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
+    for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
+    excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
+    excGate_  = drive::dbToGain(2.0f * drive::kExcGateDb); // a power
+    clatDelay_ = std::clamp(int(splash::kClatterSideMs * 0.001f * sampleRate + 0.5f), 1, int(kClatterSideMax));
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
     pool_       = ok_ ? pool : nullptr;
@@ -146,6 +153,12 @@ void Tank::reset()
     transport_.reset();
     hfGainFrom_ = hfGainTo_ = 1.0f;
     levelAcc_ = levelMs_ = 0.0f;
+    for (auto& f : excHp_) f.reset();
+    for (auto& f : excLp_) f.reset();
+    excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
+    excTrimFrom_ = excTrimTo_ = 1.0f;
+    clatBuf_.fill(0.0f);
+    clatPos_ = 0;
     compDrive_ = -1.0f;
     limitEnv_  = 0.0f;
     limitGain_ = 1.0f;
@@ -221,11 +234,29 @@ void Tank::controlTick(bool snap)
     levelMs_ += levelCoeff_ * (levelAcc_ * (1.0f / float(kControlInterval)) - levelMs_);
     levelAcc_ = 0.0f;
     splash_.setTankLevel(std::sqrt(levelMs_) * splashAmt);
+    // Excitation trim (M8, DriveVoicing.h): slow band / full power of the
+    // driven input -> input trim, held below the gate, ramped over the tick.
+    {
+        constexpr float kInv = 1.0f / float(kControlInterval);
+        excBroad_ += excCoeff_ * (excAccBroad_ * kInv - excBroad_);
+        excBand_ += excCoeff_ * (excAccBand_ * kInv - excBand_);
+        excAccBroad_ = excAccBand_ = 0.0f;
+        constexpr float kMaxLog = drive::kExcMaxDb * (2.302585093f / 20.0f);
+        float trim = excTrimTo_;
+        if (excBroad_ > excGate_) {
+            const float l = 0.5f * drive::kExcStrength
+                          * std::log(drive::kExcRefShare * excBroad_ / std::max(excBand_, 1.0e-12f));
+            trim = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
+        }
+        excTrimFrom_ = snap ? trim : excTrimTo_;
+        excTrimTo_   = trim;
+    }
     // CLEAN HF emphasis: ramp from the last tick's gain to the new one.
     const float hfGain = splashOn_ ? splash_.highPathGain() : 1.0f;
     hfGainFrom_ = snap ? hfGain : hfGainTo_;
     hfGainTo_   = hfGain;
-    // Jolt on a (control rate, <= 0): after the detune, clamped below.
+    // Jolt on a (control rate): after the detune, scaled per Spring like the
+    // Loop-delay Jolt (splash::kJoltSpringScale, M8), clamped below.
     const float joltA = joltOn_ ? splash_.allpassDelta() : 0.0f;
 
     // DriveIn settings and the DRIVE push on the later stages (ADR 0022):
@@ -238,7 +269,7 @@ void Tank::controlTick(bool snap)
     }
     driveIn_.set(driveInSettings_, snap, kControlInterval);
     tilt_.set(tone, snap, kControlInterval);
-    for (auto& d : driveOut_) d.set(voice, push_.out);
+    for (auto& d : driveOut_) d.set(voice, push_.out, push_.outFluxDb, push_.outAmount);
     {
         // DriveOut automatic makeup, linked across L/R so the image never
         // shifts: sqrt(level in / level out) of both channels together
@@ -279,7 +310,7 @@ void Tank::controlTick(bool snap)
         SpringSettings s = base;
         s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
         s.transitionHz     *= modes::kDetune[i].transition;
-        s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA,
+        s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
                                          -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         s.tapRatio          = modes::kPickupTap[i];
         s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i];
@@ -316,7 +347,17 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
         // DriveIn (transducer -> tape) first: the Splash listens here.
-        for (int i = 0; i < n; ++i) driven[i] = driveIn_.process(0.5f * (inL[pos + i] + inR[pos + i]));
+        for (int i = 0; i < n; ++i) {
+            const float x = 0.5f * (inL[pos + i] + inR[pos + i]);
+            driven[i] = driveIn_.process(x);
+            // Excitation trim followers on the raw input (what the dry path
+            // carries), full band and weighted like the whole chain's response.
+            float w = x - excHp_[0].process(x);
+            w -= excHp_[1].process(w);
+            w = excLp_[1].process(excLp_[0].process(w));
+            excAccBroad_ += x * x;
+            excAccBand_ += w * w;
+        }
 
         // Kick: onsets on their exact sample (offsets clamp to the block).
         for (int k = 0; k < numPendingKicks_; ++k) {
@@ -335,8 +376,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // Spring: their detuned high paths decorrelate it), and in CLEAN a
         // little transient lift (ramped across the tick: no zipper).
         const float hfStep = (hfGainTo_ - hfGainFrom_) * (1.0f / float(kControlInterval));
+        const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
         for (int i = 0; i < n; ++i) {
-            mono[i] = tilt_.process(driven[i]) + kickLoop[i];
+            mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
             high[i] = (mono[i] + clatter[i]) * (hfGainFrom_ + hfStep * float(tick_ + i));
         }
         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
@@ -392,6 +434,20 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float body = mid + kWetGain * kickDirect[i];
             float wl = driveOut_[0].process(body + side + d);
             float wr = driveOut_[1].process(body - side - d);
+            // Clatter share straight to the wet (M8): the crash on top of
+            // the tail, after the pickups (an asymmetric pickup would turn
+            // the burst's envelope into lows: KICKED Kick's low end, ADR
+            // 0016). Mid, plus a copy delayed by kClatterSideMs in the side
+            // (band noise a millisecond apart is uncorrelated): a wide crash
+            // that sums to the plain burst in mono.
+            {
+                const float cw = kClatterWetGain * clatter[i];
+                const float cs = splash::kClatterSide * clatBuf_[size_t(clatPos_)];
+                clatBuf_[size_t(clatPos_)] = cw;
+                if (++clatPos_ >= clatDelay_) clatPos_ = 0;
+                wl += cw + cs;
+                wr += cw - cs;
+            }
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

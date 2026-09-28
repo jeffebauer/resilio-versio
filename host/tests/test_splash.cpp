@@ -208,6 +208,41 @@ int main()
         check(late[0] < 0.02f && late[1] < 0.02f && strokes[0] == 0 && strokes[1] == 0, msg);
     }
 
+    // ---- Level-adaptive Hit (M8, SplashVoicing.h) ------------------------------------
+    // An isolated quiet hit still registers at SPLASH 1; the same hit half a
+    // second after a loud one (a ghost note) barely does; and the crash
+    // follows the hit's size (λ), so a quiet hit's crash is quiet too.
+    {
+        const float iso = run(hit(-18, true, 1.0f, kFs), 1, 1.0f).maxHit;
+        Buf pair = hit(-6, false, 1.2f, kFs, 0.2f);
+        const Buf g = hit(-18, true, 1.2f, kFs, 0.7f);
+        for (size_t i = 0; i < pair.size(); ++i) pair[i] += g[i];
+        rv::dsp::Splash sp;
+        sp.prepare(kFs, 7u);
+        sp.set(att(1), 1.0f);
+        Buf c(pair.size()), j(pair.size());
+        float ghostHit = 0.0f, prog = 0.0f;
+        for (size_t pos = 0; pos < pair.size(); pos += 32) {
+            sp.process(pair.data() + pos, c.data() + pos, j.data() + pos, 32);
+            if (pos >= size_t(0.69f * kFs) && pos < size_t(0.8f * kFs)) {
+                ghostHit = std::max(ghostHit, sp.hit());
+                prog = std::max(prog, sp.detector().programLevel());
+            }
+        }
+        std::snprintf(msg, sizeof msg,
+                      "level-adaptive Hit (DRIVEN, SPLASH 1): isolated -18 dBFS rim %.2f (>= 0.8); the same rim 0.5 s after "
+                      "a -6 dBFS snare %.2f (< 0.25; program level %.3f)",
+                      iso, ghostHit, prog);
+        check(iso >= 0.8f && ghostHit < 0.25f, msg);
+        const double e6 = energy(run(hit(-6, false, 1.0f, kFs), 2, 1.0f).clatter);
+        const double e12 = energy(run(hit(-12, false, 1.0f, kFs), 2, 1.0f).clatter);
+        std::snprintf(msg, sizeof msg,
+                      "crash follows the hit's size: isolated -12 vs -6 dBFS snare Clatter %.1f dB (KICKED SPLASH 1; "
+                      "-6 dB level step, -3 .. -12)",
+                      db(e12 / e6));
+        check(db(e12 / e6) <= -3.0 && db(e12 / e6) >= -12.0, msg);
+    }
+
     // ---- Ghost notes barely trigger: Clatter energy ratio -------------------------
     {
         bool ok = true;

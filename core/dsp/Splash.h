@@ -31,7 +31,6 @@ class HitDetector {
 public:
     void prepare(float sampleRate);
     void reset();
-    void setThreshold(float t) { threshold_ = t; }
     void push(float x)
     {
         x -= hpLp_.process(x); // high-pass: x − LP(x)
@@ -44,20 +43,36 @@ public:
         const float d = fast_ - slow_;
         if (d > dMax_) dMax_ = d;
     }
+    // Control tick: Hit (level-adaptive, SplashVoicing.h) from the largest d
+    // since the last take(), judged against R = max(T, q · P); then P (the
+    // program level) steps toward the fast envelope.
     float take()
     {
-        const float h = splash::hitCurve(dMax_, threshold_);
+        const float ref = threshold_ > rel_ * prog_ ? threshold_ : rel_ * prog_;
+        const float h   = splash::hitCurve(dMax_, ref);
+        hitAbs_ = splash::hitCurve(dMax_, absThreshold_);
+        prog_ += (fast_ > prog_ ? progAtt_ : progRel_) * (fast_ - prog_);
         lastD_ = dMax_;
         dMax_  = 0.0f;
         return h;
     }
-    float lastDifference() const { return lastD_; } // d behind the last take(), for tests
+    // Absolute Hit of the last take() (M7 detector, CLEAN's HF emphasis).
+    float lastAbsoluteHit() const { return hitAbs_; }
+    float lastDifference() const { return lastD_; } // d behind the last take()
+    float programLevel() const { return prog_; }    // P, for tests
+    void setThresholds(float t, float rel, float absT)
+    {
+        threshold_    = t;
+        rel_          = rel;
+        absThreshold_ = absT;
+    }
 
 private:
     OnePoleLowpass hpLp_;
     float fastAtt_ = 1.0f, fastRel_ = 1.0f, slowAtt_ = 1.0f, slowRel_ = 1.0f;
-    float fast_ = 0.0f, slow_ = 0.0f, dMax_ = 0.0f, lastD_ = 0.0f;
-    float threshold_ = 0.2f;
+    float progAtt_ = 1.0f, progRel_ = 1.0f; // per control tick
+    float fast_ = 0.0f, slow_ = 0.0f, dMax_ = 0.0f, lastD_ = 0.0f, prog_ = 0.0f, hitAbs_ = 0.0f;
+    float threshold_ = 0.2f, rel_ = 1.0f, absThreshold_ = 0.2f;
 };
 
 // Band-passed (1–6 kHz) seeded noise with an exponential burst envelope
@@ -146,7 +161,8 @@ public:
     void strike(float strength, int sampleOffset);
 
     // n samples. driven = post-DriveIn mono (the detector input).
-    // clatterOut = Clatter (feed the Springs' high path). joltLoopOut =
+    // clatterOut = Clatter (feed the Springs' high path; the Tank also sends
+    // splash::kClatterWet of it straight to the wet mid). joltLoopOut =
     // Loop delay offset as a fraction of L (Spring A scale; may be null).
     void process(const float* driven, float* clatterOut, float* joltLoopOut, int n);
 
@@ -158,6 +174,7 @@ public:
     int   impactCount() const { return impacts_; } // impacts fired since reset, rattle included (tests)
     int   strokeCount() const { return strokes_; } // primary impacts (one per stroke / strike)
     const splash::Voice& voice() const { return voice_; }
+    const HitDetector&   detector() const { return detector_; } // tests, meters
 
 private:
     void controlTick();
@@ -185,7 +202,9 @@ private:
     float strokePeak_ = 0.0f; // largest Hit since the stroke began
     float valley_ = 0.0f;     // lowest Hit since re-arming
     int   countdown_ = 0, secondaries_ = 0;
+    int   jitter_ = 0, riseTicks_ = 0, maxRiseTicks_ = 8; // primary jitter runs from the stroke's peak
     float strength_ = 0.0f;
+    float level_ = 1.0f;      // λ of the pending impact (stroke level re kClatterLevelRef)
     int   impacts_ = 0, strokes_ = 0;
     // Strikes queued for the next process() call.
     static constexpr int kMaxStrikes = 4;

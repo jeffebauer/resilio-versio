@@ -286,8 +286,10 @@ class DriveOut {
 public:
     void prepare(float sampleRate);
     void reset();
-    // Control rate: voicing blended by the Morph; push = drive::Push::out.
-    void set(const drive::Voice& v, float push);
+    // Control rate: voicing blended by the Morph; push = drive::Push::out,
+    // fluxCutDb = drive::Push::outFluxDb (the pickup's flux cut, M8).
+    // amount = drive::Push::outAmount (parallel blend of the saturation).
+    void set(const drive::Voice& v, float push, float fluxCutDb = drive::kOutFluxDb, float amount = 1.0f);
     // Makeup gain (linear), set at control rate by the Tank from both
     // channels' levels (levelIn / levelOut), ramped per sample.
     void setMakeup(float g, bool snap, int interval) { snap ? makeup_.snap(g) : makeup_.aim(g, interval); }
@@ -297,10 +299,14 @@ public:
     float levelOut() const { return envOut_.y; }
     float process(float x)
     {
-        const float kP = kPos_, kN = kNeg_;
+        const float kP = kPos_, kN = kNeg_, a = amount_;
         x = lp_.process(x);
         envIn_.process(x * x + kEnvFloor);
-        float y = fluxPost_.process(os_.process(fluxPre_.process(x), [kP, kN](float u) { return asymClip(u, kP, kN); }));
+        // Full saturation (DRIVEN, KICKED, CLEAN at DRIVE 1) skips the blend:
+        // the plain curve is ~13 ns/sample cheaper on the desktop (M8 CPU).
+        const float u0 = fluxPre_.process(x);
+        float y = fluxPost_.process(a >= 1.0f ? os_.process(u0, [kP, kN](float u) { return asymClip(u, kP, kN); })
+                                              : os_.process(u0, [kP, kN, a](float u) { return u + a * (asymClip(u, kP, kN) - u); }));
         envOut_.process(y * y + kEnvFloor);
         return makeup_.next() * hp_.process(y);
     }
@@ -315,7 +321,8 @@ private:
     OnePoleLowpass envIn_, envOut_;
     // Keeps the level followers away from denormals in silence (-120 dBFS).
     static constexpr float kEnvFloor = 1.0e-12f;
-    float kPos_ = 0.5f, kNeg_ = 0.5f, lpHz_ = -1.0f;
+    float kPos_ = 0.5f, kNeg_ = 0.5f, amount_ = 1.0f, lpHz_ = -1.0f, fluxDb_ = -1.0f;
+    void setFlux(float cutDb);
 };
 
 } // namespace rv::dsp

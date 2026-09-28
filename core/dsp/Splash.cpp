@@ -28,13 +28,16 @@ void HitDetector::prepare(float sampleRate)
     fastRel_ = onePole(splash::kFastReleaseMs, sampleRate);
     slowAtt_ = onePole(splash::kSlowAttackMs, sampleRate);
     slowRel_ = onePole(splash::kSlowReleaseMs, sampleRate);
+    const float every = float(splash::kControlInterval);
+    progAtt_ = onePole(splash::kProgAttackMs, sampleRate, every);
+    progRel_ = onePole(splash::kProgReleaseMs, sampleRate, every);
     reset();
 }
 
 void HitDetector::reset()
 {
     hpLp_.reset();
-    fast_ = slow_ = dMax_ = lastD_ = 0.0f;
+    fast_ = slow_ = dMax_ = lastD_ = prog_ = hitAbs_ = 0.0f;
 }
 
 // ---- Clatter -----------------------------------------------------------------------
@@ -123,6 +126,7 @@ void Splash::prepare(float sampleRate, uint32_t seed)
     const float every = float(splash::kControlInterval);
     hfCoeff_       = decayPerStep(splash::kHfEmphasisReleaseMs, sampleRate, every);
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
+    maxRiseTicks_  = int(splash::kMaxRiseMs * 0.001f * sampleRate / every + 0.5f);
     attW_   = {{-1.0f, -1.0f, -1.0f}};
     splash_ = -1.0f;
     set({{0.0f, 1.0f, 0.0f}}, 0.3f);
@@ -141,6 +145,7 @@ void Splash::reset()
     armed_   = true;
     countdown_ = secondaries_ = 0;
     strength_  = 0.0f;
+    level_     = 1.0f;
     impacts_   = 0;
     strokes_   = 0;
     sinceStroke_ = 1 << 30;
@@ -153,7 +158,7 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash)
     attW_   = attitudeWeights;
     splash_ = splash;
     voice_  = splash::blendVoice(attitudeWeights);
-    detector_.setThreshold(splash::hitThreshold(splash));
+    detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash), splash::absThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
 
@@ -171,7 +176,9 @@ void Splash::fire()
     const float clat = forced_ ? voice_.clatterMax : splash::clatterAmount(voice_, splash_);
     const float jolt = forced_ ? voice_.joltMax : splash::joltAmount(voice_, splash_);
     const float decayMs = voice_.clatterDecayMinMs + (voice_.clatterDecayMaxMs - voice_.clatterDecayMinMs) * s;
-    if (clat > 0.0f) clatter_.impact(splash::kClatterGain * s * clat, decayMs);
+    // The crash follows the stroke's size (λ, SplashVoicing.h); a Kick has its own.
+    const float lvl = forced_ ? splash::kKickClatterLevel : level_;
+    if (clat > 0.0f) clatter_.impact(splash::kClatterGain * s * clat * lvl, decayMs);
     jolt_.impact(s * jolt);
     ++impacts_;
 
@@ -214,7 +221,10 @@ void Splash::controlTick()
             forced_         = false;
             secondaries_    = 0;
             countdown_      = int(ms * 0.001f * sampleRate_);
+            jitter_         = countdown_;
+            riseTicks_      = 0;
             strength_       = h;
+            level_          = 0.0f;
         }
     } else if (!armed_) {
         if (h > strokePeak_) strokePeak_ = h;
@@ -223,9 +233,21 @@ void Splash::controlTick()
             valley_ = h;
         }
     }
-    // While the primary waits out its jitter it takes the stroke's peak Hit.
-    if (pending_ && pendingPrimary_ && !forced_ && h > strength_) strength_ = h;
-    hfEnv_ = h > hfEnv_ * hfCoeff_ ? h : hfEnv_ * hfCoeff_;
+    // While the primary waits out its jitter it takes the stroke's peak Hit
+    // and level λ (largest d so far, for the crash size). The jitter runs
+    // from the peak (M8): while the stroke is still growing (for at most
+    // splash::kMaxRiseMs) the countdown restarts, so a short jitter can no
+    // longer fire a weak burst on a hit's first millisecond.
+    if (pending_ && pendingPrimary_ && !forced_) {
+        const float lv = std::fmin(detector_.lastDifference() * (1.0f / splash::kClatterLevelRef), splash::kClatterLevelMax);
+        const bool rising = h > strength_ || lv > level_;
+        if (h > strength_) strength_ = h;
+        if (lv > level_) level_ = lv;
+        if (rising && ++riseTicks_ <= maxRiseTicks_) countdown_ = jitter_ + splash::kControlInterval; // re-checked next tick
+    }
+    // CLEAN's HF emphasis rides on the M7 absolute Hit (unchanged, SplashVoicing.h).
+    const float ha = detector_.lastAbsoluteHit();
+    hfEnv_ = ha > hfEnv_ * hfCoeff_ ? ha : hfEnv_ * hfCoeff_;
     jolt_.tick(tankLevel_);
 }
 

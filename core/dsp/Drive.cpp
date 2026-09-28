@@ -11,7 +11,7 @@ drive::Voice blendVoice(const std::array<float, 3>& w)
     static constexpr float V::*kFields[] = {
         &V::bandHpHz, &V::bandLpHz, &V::transKPos, &V::transKNeg, &V::fluxCutDb, &V::driveDbMin, &V::driveDbMax,
         &V::tapeAmount, &V::tapeK, &V::preEmphDb, &V::smearHzMax, &V::loopAmount, &V::loopKPos,
-        &V::loopKNeg, &V::loopDriveDb, &V::outDriveDb, &V::outK, &V::outAsym, &V::outLpHz, &V::wetMakeupDb,
+        &V::loopKNeg, &V::loopDriveDb, &V::outDriveDb, &V::outFluxOpenDb, &V::outAmount0, &V::outK, &V::outAsym, &V::outLpHz, &V::wetMakeupDb,
         &V::trimDb};
     static_assert(sizeof(kFields) / sizeof(kFields[0]) * sizeof(float) == sizeof(V), "blendVoice misses a Voice field");
     V out{};
@@ -146,9 +146,8 @@ void DriveOut::prepare(float sampleRate)
 {
     sampleRate_ = sampleRate;
     hp_.setCutoff(drive::kOutHpHz, sampleRate);
-    fluxPre_.setHighShelf(drive::kOutFluxHz, -drive::kOutFluxDb, sampleRate);
-    fluxPost_ = fluxPre_;
-    fluxPost_.invert();
+    fluxDb_ = -1.0f;
+    setFlux(drive::kOutFluxDb);
     envIn_.setCutoff(1.0f / (2.0f * map::kPi * drive::kAutoMakeupSeconds), sampleRate);
     envOut_ = envIn_;
     lpHz_ = -1.0f;
@@ -166,8 +165,24 @@ void DriveOut::reset()
     makeup_.snap(1.0f);
 }
 
-void DriveOut::set(const drive::Voice& v, float push)
+void DriveOut::setFlux(float cutDb)
 {
+    if (cutDb == fluxDb_) return; // redesign only when DRIVE / the Morph moved it
+    // Exact inverse pair, running state kept (as DriveIn's shelves), so a
+    // DRIVE move stays continuous; linear signal passes unchanged.
+    const float sPre = fluxPre_.s, sPost = fluxPost_.s;
+    fluxPre_.setHighShelf(drive::kOutFluxHz, -cutDb, sampleRate_);
+    fluxPost_ = fluxPre_;
+    fluxPost_.invert();
+    fluxPre_.s  = sPre;
+    fluxPost_.s = sPost;
+    fluxDb_     = cutDb;
+}
+
+void DriveOut::set(const drive::Voice& v, float push, float fluxCutDb, float amount)
+{
+    setFlux(fluxCutDb);
+    amount_ = amount;
     // Hardness steps a little per control tick while DRIVE moves: sat(k·x)/k
     // changes smoothly with k, so the steps are far below audibility.
     kPos_ = v.outK * push;

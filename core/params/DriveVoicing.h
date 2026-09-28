@@ -41,7 +41,7 @@ static_assert(kOversampleFactor == 1 || kOversampleFactor == 2 || kOversampleFac
 // ---- ATTITUDE Morph (ADR 0003) ------------------------------------------------
 // A switch flip glides every attitude-dependent number from the old voicing
 // to the new one over this time, on the live tail. Never stepped.
-constexpr float kMorphSeconds = 0.030f;
+constexpr float kMorphSeconds = 0.040f; // M8: 30 -> 40 ms, so a flip into KICKED eases its pushed pickup in without a click
 
 // ---- Per-ATTITUDE voicing (SPEC §4.9 table) ---------------------------------
 // Blended linearly between attitudes during a Morph (weights sum to 1).
@@ -84,6 +84,23 @@ struct Voice {
     //     after the springs: its grit is heard directly, not smeared.
     float loopDriveDb;
     float outDriveDb;
+    //   outFluxOpenDb (M8): the pickup's flux cut (kOutFluxDb: highs cut
+    //     going into its saturator, restored after) shrinks by this many dB
+    //     at DRIVE 1 (along pushCurve), so a pushed pickup grits the mids
+    //     and highs of the finished tail too, not only its lows. That is
+    //     what makes a bright one-shot (a rimshot's tail has little below
+    //     800 Hz) sound driven. Aliasing stays <= -60 dB (test_drive).
+    float outFluxOpenDb;
+    //   outAmount0 (M8): the pickup's saturation is blended in parallel,
+    //     y = x + a·(sat(x) − x), a rising *linearly* from outAmount0 at
+    //     DRIVE 0 to 1 at DRIVE 1. A saturator alone changes the sound mostly
+    //     at the top of its range (its distortion grows ~2 dB per dB of
+    //     drive), so CLEAN, whose only post-tank stage this is, had dead
+    //     patches (0–0.4 and 0.5–1, docs/m8-sweetspot.md). A linear blend
+    //     adds the same amount of tint per step: CLEAN 0 = hi-fi pickup,
+    //     CLEAN 1 = a gentle, audible transducer tint. DRIVEN/KICKED: 1
+    //     (always full, as before).
+    float outAmount0;
     // Output pickup (DriveOut)
     float outK;        // soft-clip hardness at DRIVE 0 (light: only bends near full scale)
     float outAsym;     // negative-half hardness = outK * (1 + outAsym)
@@ -115,10 +132,10 @@ struct Voice {
 // shifted down 2 dB (-11 dB, 9 o'clock stays clean-ish with the earlier
 // curve) and its top kept at +20 dB (aliasing at 10 Vpp, see above).
 inline constexpr std::array<Voice, 3> kVoice{{
-    //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    lDrv   oDrv   oK     oAs    oLp      wMk   trim
-    {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f, 14.0f, 0.35f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN
-    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 5.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN
-    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f, 0.60f, 0.50f,  8500.f,  1.3f, 0.0f}, // KICKED
+    //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    lDrv   oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
+    {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
+    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 5.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN
+    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  1.3f, 0.0f}, // KICKED
 }};
 
 // Magnetic transducer (DriveIn): a driver coil saturates on magnetic flux,
@@ -145,6 +162,35 @@ constexpr float kOutFluxDb = 18.0f;
 // very hot tail gets no more, so the Howl stays clear of the limiter).
 constexpr float kAutoMakeupSeconds = 0.3f;
 constexpr float kAutoMakeupMax     = 2.0f; // linear, +6 dB
+// ---- Excitation trim (M8 gain staging, docs/m8-sweetspot.md) ----------------
+// The Tank resonates in a band (wet/dry energy per half octave, DECAY noon:
+// ~+7 dB from 140 Hz to 1.6 kHz, −1.5 dB at 2.2 kHz re that, −11 dB at
+// 4.5 kHz, −6 dB at 70 Hz), so material with its energy in that band came
+// back 5–6 dB louder than broadband or bright material (04_skank +8.2 dB
+// wet − dry vs pink noise +2.8 dB). The Tank follows the input's power in
+// that band (weighting: two one-pole high-passes at kExcHpHz and two
+// one-pole low-passes at kExcLpHz, i.e. -3 dB at ~90 Hz and ~2.4 kHz,
+// 12 dB/oct each side: cheap, and close to the Tank's own response) and
+// its full power, both over kExcSeconds (the auto-makeup time), and trims
+// the tank input by
+//   trim = (kExcRefShare · broad / band)^(kExcStrength / 2), within ±kExcMaxDb
+// so the share of the input the springs can "hear" no longer sets how loud
+// they come back. kExcRefShare = the band share of 02_hits (trim ≈ 0 dB on
+// it), so the drum calibration (M5, M7) stays where it was.
+// It trims the *input* to the springs (after Tilt, before the Loops), never
+// the wet: a trim change only reaches new sound, so it cannot pump a tail
+// that is already ringing, and it does not touch DECAY's tail length or the
+// Howl (which the Loop sets on its own). Below kExcGateDb (broad level,
+// silence, a tail ringing out) the trim holds, so it never drifts in a gap.
+// The Splash listens before it (Hit does not depend on the trim).
+constexpr float kExcHpHz      = 58.0f;   // each of two: composite -3 dB at ~90 Hz
+constexpr float kExcLpHz      = 3700.0f; // each of two: composite -3 dB at ~2.4 kHz
+constexpr float kExcSeconds   = 0.3f;
+constexpr float kExcStrength  = 1.0f;
+constexpr float kExcRefShare  = 0.4f;
+constexpr float kExcMaxDb     = 6.0f;
+constexpr float kExcGateDb    = -60.0f;
+
 // Output pickup high-pass (also removes DC made by the asymmetric clip).
 constexpr float kOutHpHz = 35.0f;
 // DC blocker at the end of DriveIn (asymmetric saturators make DC).
@@ -183,7 +229,7 @@ inline float smearHz(const Voice& vc, float drive)
 //    sounds much more than twice as driven), so the push has to arrive
 //    early and level off, or noon would be subtle and the top a cliff.
 constexpr float kPushSlope  = 8.0f;
-constexpr float kPushCentre = 0.40f;
+constexpr float kPushCentre = 0.36f;
 inline float pushCurve(float v)
 {
     auto l = [](float x) { return 1.0f / (1.0f + std::exp(-kPushSlope * (x - kPushCentre))); };
@@ -193,6 +239,8 @@ inline float pushCurve(float v)
 struct Push {
     float loopDb = 0.0f; // LoopSat hardness raise, dB (the Tank scales it down in the Howl zone)
     float out    = 1.0f; // output pickup hardness factor, linear
+    float outFluxDb = kOutFluxDb; // output pickup flux cut, dB (kOutFluxDb - outFluxOpenDb · c)
+    float outAmount = 1.0f;       // output pickup blend (outAmount0 -> 1, linear in DRIVE)
     float wet    = 1.0f; // static wet makeup, linear
 };
 // Computed only when DRIVE or the ATTITUDE Morph moved (a few exp calls).
@@ -202,6 +250,8 @@ inline Push push(const Voice& vc, float drive)
     Push p;
     p.loopDb = vc.loopDriveDb * c;
     p.out    = dbToGain(vc.outDriveDb * c);
+    p.outFluxDb = kOutFluxDb - vc.outFluxOpenDb * c;
+    p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * (drive < 0.0f ? 0.0f : (drive > 1.0f ? 1.0f : drive));
     // The LoopSat's squash of the tail (the part the automatic makeups
     // cannot see, it happens inside the Loop) lags the push: c².
     p.wet    = dbToGain(vc.wetMakeupDb * c * c);
