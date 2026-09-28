@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
+**Last updated:** 28 Sep 2026 (M8 prep started) (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
 
 **Plugin installed in Ableton:** M7 + limiter fix (commit `81f8124`): SPLASH, the real Kick and WOBBLE work; the held-note ticks around DECAY noon are fixed. Installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan).
 
@@ -92,7 +92,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- Firmware flash: the profile build is at 98% after M7; trim before M8 (see the flash plan)
+- M8 prep (running, 4 agents): sweet-spot sweeps (dead zones and cliffs per knob) + wet-level report; reference ingest (one command turns your recordings into aligned A/B pages) + pitch tracker for WOBBLE; chirp direction behind one switch with a tuned highs-later version and a new A/B page; firmware flash trim (profile build at 98%)
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
