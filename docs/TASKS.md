@@ -59,7 +59,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### 8. Listen: M5 drive + TONE (≈15 min)
 - Open from Finder: `renders/m5_attitude_drive/index.html` (ATTITUDE × DRIVE on hits), `renders/m5_tone/index.html` (TONE sweep), and `renders/m5_howl/m5_kicked_howl_decay1_drive0.8_pull6s.wav` (KICKED Howl, DECAY pulled back at 6 s)
 - [ ] CLEAN / DRIVEN / KICKED: clearly **hi-fi / warm tape dub / trashed**?
-- [ ] **DRIVE at noon:** does it already add colour? (Measured: barely. Colour mostly appears near the top. ADR 0014 wants it building from ~9 o'clock)
+- [x] **DRIVE at noon:** too subtle, even at max. Decided: obvious from noon, cranked tape/tank at max, level constant ([ADR 0022](adr/0022-drive-retune.md)). Retune queued after M6
 - [ ] TONE: full left warm and dark with the boing still there? Full right splashy but not harsh?
 - [ ] Howl: a rideable rough roar that dies away when DECAY comes down?
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
@@ -73,6 +73,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M6 anti-ringing (running): first recalibrating the Ringing metric (it currently "fails" 24 of 45 real tanks), then the Micro-mod floor
+- DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): after M6 (same core files)
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
