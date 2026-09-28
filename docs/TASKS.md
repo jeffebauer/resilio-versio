@@ -24,6 +24,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Save as `test_audio/reference/magneto_<take>_<desc>.wav`, with notes in the same `NOTES.md`
 
 ### 3. M0 hardware check on the Versio (≈30 min) · unblocks M3
+- After M0, the M3 profile build will need one extra check: its serial output was rewritten to save flash, so confirm the `CORNER …` lines are readable in `screen` (details come with the M3 instructions)
 - **Doc:** [m0-hardware-check.md](m0-hardware-check.md)
 - [ ] Flash **`dist/resilio_versio_m0_test.bin`** (NE Firmware Swap → Select Custom File). Not `firmware/build/…`, which changes with every build
 - [ ] Session 1, **USB only**: boot pattern, serial values for knobs, switches and button. Note which switch direction reads 0
@@ -93,7 +94,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- M8 prep (running, 4 agents): sweet-spot sweeps (dead zones and cliffs per knob) + wet-level report; reference ingest (one command turns your recordings into aligned A/B pages) + pitch tracker for WOBBLE; chirp direction behind one switch with a tuned highs-later version and a new A/B page; firmware flash trim (profile build at 98%)
+- M8 prep (running, 4 agents): sweet-spot sweeps (dead zones and cliffs per knob) + wet-level report; reference ingest (one command turns your recordings into aligned A/B pages) + pitch tracker for WOBBLE; chirp direction behind one switch with a tuned highs-later version and a new A/B page; 
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
@@ -102,6 +103,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: firmware flash trimmed (release 75%, profile 83%, was 98.5%)
 
 - 28 Sep 2026: held-note ticks fixed: the output limiter was hard-clipping peaks; now a smooth limiter + soft clip, with a regression test
 
