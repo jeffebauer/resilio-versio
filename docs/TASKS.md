@@ -2,9 +2,9 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (M8 prep started) (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp direction decided (highs later), being switched on
+**Last updated:** 29 Sep 2026 (session 1 wrap) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp direction decided (highs later), being switched on
 
-**Plugin installed in Ableton:** M8 tuning round 1 (commit `a4fb02e`), installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New: no 3-Spring flam, wider 1 Spring, WOBBLE on the first echoes, audible SPLASH (DRIVEN/KICKED), DRIVE colour from ~9 o'clock and in the tail, steadier wet level. Unchanged until you decide: chirp direction, SPLASH in CLEAN.
+**Plugin installed in Ableton:** highs-later chirp + M8 round 1 (commit `8f0a09c`), installed 29 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New since the last build: each echo now sweeps **up** like a real tank, and tail length no longer changes with BOING. Listening pages for this build: `renders/m8_hl/` (BOING, SPLASH and DRIVE sweeps per ATTITUDE, plus `chirp_boing` with real tanks). Still to come: CLEAN's gentle splash, then TENSION replacing BOING.
 
 ## To do (suggested order)
 
@@ -81,6 +81,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
   - `renders/m8_round1/space_motion/wobble/`: WOBBLE 0/0.5/0.75/1 on hits and held tones. **Do snare echoes waver at 0.75+?** **Is WOBBLE 1 too much** on held notes (~45–65 cents)?
   - `renders/m8_round1/dynamics_colour/before|after/`: rimshot and hits at −9 and −4 dBFS, SPLASH 0/0.5/1 and DRIVE 0/0.5/1 per ATTITUDE. **A bright crash on top at SPLASH 1, ghost notes quiet?** **KICKED DRIVE 1 gritting the tail?** **CLEAN DRIVE a gentle tint?**
 - [ ] Held chords: notes can now lean slightly left or right (side effect of the new width). OK or distracting?
+- [ ] With highs-later: does **max DRIVE still grit the top of the tail**? Held notes may also vary a little more in level from note to note
 - [ ] Or just play the plugin (use a Utility before it to reach about −4 dBFS peaks, see [ableton-setup.md](ableton-setup.md))
 
 ### 9. Listen + M7 questions (≈20 min) · the build is installed
@@ -121,7 +122,6 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- Switching the chirp to highs-later and re-tuning the four round-1 checks it affects (wet level, aliasing, KICKED DRIVE level, Micro-mod floor check); then a new plugin build
 - Then: CLEAN's gentle splash ([ADR 0025](adr/0025-clean-gentle-splash.md)), right after the highs-later switch-on (same files)
 - Round 2 after your round-1 listen (8c) and the TENSION question. Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
@@ -132,6 +132,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 29 Sep 2026: highs-later chirp switched on and installed (`8f0a09c`); round 1 re-checked in the new direction
 
 - 29 Sep 2026: TENSION adopted to replace BOING ([ADR 0026](adr/0026-tension-replaces-boing.md))
 - 29 Sep 2026: session wrap/start skills added (`/resilio-wrap`, `/resilio-start`), plus a project `CLAUDE.md`

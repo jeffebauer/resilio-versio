@@ -1,6 +1,6 @@
 # Handoff
 
-**Written:** 29 Sep 2026, end of the first (very long) session. Start the next one with `/resilio-start`.
+**Written:** 29 Sep 2026, end of the first (very long) session; finalised after the highs-later switch-on. Start the next one with `/resilio-start`.
 
 ## State
 
@@ -14,20 +14,20 @@
 | M5 drive + TONE | Built; DRIVE retuned (ADR 0022) and again in round 1 |
 | M6 anti-ringing | Built. Calibrated `ringing_db` metric (ADR 0023); adaptive suppressor not needed |
 | M7 SPLASH/KICK/WOBBLE | Built; SPLASH and WOBBLE reworked in round 1 |
-| M8 tuning | Round 1 merged + installed (`a4fb02e`). Round 2 = the three decisions below |
+| M8 tuning | Round 1 merged; chirp switched to highs-later (`8f0a09c`, installed). Next: CLEAN splash, then TENSION |
 | M9 polish | Not started (panel template ready: `docs/panel/`) |
 
-- `main` HEAD: see `git log`. Installed plugin: `cat dist/installed_plugin.txt` (was `a4fb02e`, round 1, LowsLater chirp).
-- Gates at `a4fb02e`: **15/15 suites pass** (incl. plugin_host_test). Firmware release 102,856 B (78 %), m0test 85,976 B (65 %), profile 113,236 B (86 %).
+- `main` HEAD and installed plugin: **`8f0a09c`** (highs-later chirp + round 1). `cat dist/installed_plugin.txt` to confirm.
+- Gates at `8f0a09c`: **15/15 suites pass** (incl. plugin_host_test). Firmware release 103,208 B (78 %), m0test 85,976 B (65 %), profile 113,596 B (86 %). M6 grid (HighsLater): 270 cells, worst `ringing_db` 9.1.
 
 ## In flight
 
-- **Highs-later switch-on + retune (agent started 29 Sep, may still be running).** Brief: set `kChirpDirection = HighsLater` (`core/params/Mappings.h`), fix the four checks a straight flip failed (test_drive wet-level spread, aliasing at max DRIVE, KICKED DRIVE level spread; test_antires Micro-mod whole-Tank reading, possibly a measurement artefact), re-verify round 1 in HighsLater, render `renders/m8_hl/`. **If the working tree has uncommitted changes in `core/`, `host/tests/`, `tools/ir_dispersion.py` or `docs/m8-tuning-backlog.md` / ADR 0024, that's this agent's unreviewed work.** Review the diff, run the full suite + M6 grid, then commit (explicit paths) and install.
-- **Branch `proto/tension`** (pushed): the TENSION prototype. Kept on purpose for stage 1 of ADR 0026. Not merged.
+- **Nothing running.** The highs-later switch-on finished and is committed (`8f0a09c`) and installed.
+- **Branch `proto/tension`** (pushed): the TENSION prototype, kept on purpose for stage 1 of ADR 0026. Not merged.
 
 ## Next steps (in order)
 
-1. **Finish the highs-later switch-on** (above), commit, `tools/install_plugin.sh <commit>`, update TASKS "Plugin installed" + a rescan note.
+1. ~~Highs-later switch-on~~: done (`8f0a09c`, installed).
 2. **CLEAN gets a gentler splash** (ADR 0025): light Clatter + tiny Jolt, CLEAN < DRIVEN < KICKED; criteria in the ADR. Files: `core/params/SplashVoicing.h`, `core/dsp/Splash.*`, test_splash / test_m7_tank.
 3. **TENSION implementation**, stages 1–5 in ADR 0026 (port `proto/tension`, rename `boing` → `tension`, fix the 5 failing suites incl. two real tuning jobs, re-verify, docs).
 4. Then an owner listening pass and M8 round 2 from their notes (`docs/m8-tuning-backlog.md`).
@@ -41,7 +41,8 @@ Wellspring + Magneto recordings (→ `tools/ingest_references.py`), M0 hardware 
 - **Combining agents' work breaks margins:** always re-run the full suite on the merge, not only in each branch.
 - **Environment:** GitHub's main IPs sometimes time out on this network (push fails; retry later or use a VPN). The safety classifier has had outages (commands blocked; retry). Ableton scanning: a signature-broken bundle gets cached as failed; `touch` the binary so Ableton rescans it. Never write into signed bundles.
 - **Test inputs:** `ringing_db` and `steady_tone` don't apply to tonal inputs (held tones); `max_step_db_100ms` doesn't apply to rhythmic ones; the click detector false-fires on impulse inputs. Sweeps use `ignore_flags`.
-- **Chirp direction:** anything measured or tuned before the switch-on (round 1 numbers, sweet-spot report) was in LowsLater.
+- **Chirp direction:** `docs/m8-sweetspot.md` and round-1 numbers in the backlog were measured in LowsLater; the backlog's "HighsLater re-tune" section has the current numbers. DRIVEN aliasing margin is only 1 dB (−61 vs −60).
+- **LowsLater** still compiles and its core tests pass, but it's no longer tuned. Don't flip back without re-tuning.
 
 ## Where to look
 `CLAUDE.md` · `docs/TASKS.md` · `docs/m8-tuning-backlog.md` · `docs/adr/0024`–`0026` · `core/params/Mappings.h` · `core/dsp/Tank.cpp`
