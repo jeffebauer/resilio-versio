@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.8 — §10: stereo-in recorded as an open question for after M3 (incl. plugin-only as a Core mode). Recipe: optional single-tank takes A-L / A-R.
 - v1.0.7 — M6: ADR 0023 (Ringing judged by calibrated `ringing_db` < 15 dB, replacing the 12 dB peak test); ADR 0019 floor band 200 Hz–2 kHz; Micro-mod floor set to ±0.05 % of L at ~0.2 Hz.
 - v1.0.6 — ADR 0022: DRIVE retune targets after owner listening (obvious from noon, cranked tape/tank at max, level constant); M5 criteria extended.
 - v1.0.5 — ADR 0021: Ableton spring IRs as an IR library for range calibration; `tools/ir_analysis.py`.
@@ -490,7 +491,8 @@ Research 27 Sep 2026 (sources in §11). Status per item.
 - ~~Exact TONE tilt curve and pivot frequency?~~ Character decided (ADR 0017); numbers tuned at M5/M8.
 - ~~AntiRes detector type?~~ Only needed if layer 4 is built (ADR 0010); decide then.
 - ~~Hold-for-rattle?~~ Not v1 (ADR 0013).
-- No open design questions remain. Tuning numbers marked "starting guess" are confirmed by measurement or ear at their milestone.
+- **Stereo in (open, explore after M3).** Should the Tank keep left/right placement from a stereo input instead of summing to mono (§4.3)? Options: per-Spring L/R blend (cheap, one drive stage); full dual input (two DriveIn/Tilt stages, ~+300–700 Daisy cycles/sample); or plugin-only if the Versio lacks CPU headroom. If plugin-only, implement it as a **Core mode** that the firmware doesn't enable, so both hosts still share one Core and mono settings stay identical across hosts (the ParamSpec parity principle, §6.1). A new ADR is needed before building. Data: Wellspring takes A-L / A-R (recipe).
+- No other open design questions remain. Tuning numbers marked "starting guess" are confirmed by measurement or ear at their milestone.
 
 ---
 

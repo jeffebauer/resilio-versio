@@ -46,6 +46,8 @@ Wellspring rear OUT R ─► Interface IN 2
 
 Leave the Wellspring's LINE R input unplugged. Both outputs are always recorded (the manual: "Always use both outputs").
 
+Why L only: the Wellspring is **true stereo** (L input → left tank, R input → right tank). With R unplugged, its jack normals the L signal into R, so both tanks get an identical copy. Sending the same mono signal to both inputs from Ableton would do the same, but it needs two outputs at exactly matched levels. Our stimulus is mono, and Resilio Versio sums its input to mono before its Springs, so this compares like with like.
+
 Plus once per session, a **loopback take** (take 0) to measure your interface's latency and level: a cable from Interface OUT 1 straight to Interface IN 1.
 
 ## 3. Ableton setup
@@ -86,7 +88,10 @@ Don't change the interface input gain during the session. If the wet signal clip
 | F | `05_silence_for_kicks` | none. Knock the top of the case ~6 times, ~6 s apart: 2 soft, 2 medium, 2 firm, not violent. Let each ring out. | Kick reference. The tanks are shock-mounted to block outside vibration, so this may come out quiet or dull. **If it does, skip it**: we'll tune Kick against dub records (ADR 0016). |
 | G | `06_noise_bursts` | Optional, and the **only take with delay + MAGIC on**: delay DRY/WET up, FEEDBACK high, MAGIC up, delay mod **zero**, until the ringing tone appears. Keep any take where it shows up. | "Known bad" Ringing case to prove the AntiRes metric catches it (ADR 0010). Not a spring reference. |
 
-A–E is the core spring set. C is the drive reference. F and G are optional.
+| A-L | `01_clicks` | **Dummy plug** (an unconnected cable) in the R input, so the normal breaks and **only the left tank** gets signal | One tank's own response |
+| A-R | `01_clicks` | Stimulus into **R only**, L input empty (the right tank only) | The other tank's own response. With A-L, shows how different the two physical tanks are: real-world data for Spring detuning and stereo width, and for a possible stereo-in mode |
+
+A–E is the core spring set. C is the drive reference. F, G, A-L and A-R are optional.
 
 ## 6. Naming and notes
 
