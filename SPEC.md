@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.4 — M4 mono-safe criterion made precise: fold-down energy vs stereo energy (the old wording conflicted with the width criterion).
 - v1.0.3 — ADR 0020: Strymon Magneto recorded as a benchmark (not a target) + WOBBLE/DRIVEN calibration source. `08_held_tones` stimulus.
 - v1.0.2 — Fact update: Wellspring manual read. It has no spring decay control (fixed T60, one reference point), stereo springs, INPUT = drive. ADR 0009 amended, recipe rewritten, M1/M5 reference checks clarified.
 - v1.0.1 — Fact update only: toolchain verified (§8.1), firmware size watch item.
@@ -389,7 +390,7 @@ Shared definitions:
 - [A] SPRINGS switch changes are click-free (click detector) in every combination, mid-tail.
 - [A] SPRINGS levels matched: loudness of 1/2/3 within ±1.5 dB for the same input.
 - [L] 1 → 2 → 3 sounds sparse/drippy → classic → dense/lush, clearly different in a blind test.
-- [A] Stereo: clearly wide (inter-channel correlation of the wet tail < 0.5 *(start)*). Mono-safe: mono sum within 1.5 dB of stereo loudness, no comb-filter notches > 6 dB in the 200 Hz–5 kHz band.
+- [A] Stereo: clearly wide (inter-channel correlation of the wet tail < 0.5 *(start)*). Mono-safe: mono fold-down (L+R) energy no more than 1.5 dB below the stereo (L²+R²) energy, i.e. no phase cancellation (definition: `docs/m4-contracts.md`), no comb-filter notches > 6 dB in the 200 Hz–5 kHz band.
 - [A] DECAY sweep min→max over 4 s on a held tail: no click-detector hits, smooth pitch bend (ADR 0012), no loudness jump > 3 dB in any 100 ms step.
 - [L] DECAY sweep audibly goes short/pingy → long/dense.
 
