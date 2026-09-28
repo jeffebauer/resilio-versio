@@ -1,19 +1,19 @@
 {
-  "name": "m1_hits_grid",
+  "name": "m4_springs_hits",
   "input": "test_audio/stimulus/02_hits.wav",
   "base": {
     "mix": 1.0,
-    "springs": "1",
     "attitude": "CLEAN",
-    "boing": 0.5
+    "boing": 0.5,
+    "tone": 0.5
   },
   "grid": {
-    "decay": [
+    "springs": [
       0,
       0.5,
       1
     ],
-    "tone": [
+    "decay": [
       0,
       0.5,
       1
