@@ -24,7 +24,7 @@ ctest --test-dir build
 ```
 
 - Renderer: `build/rv_render in.wav out.wav [--set decay=0.8 ...]`
-- Plugin: development builds do **not** install into `~/Library/Audio/Plug-Ins/` (`RV_INSTALL_PLUGIN` is off), so the plugin in Ableton only changes on purpose. To install a specific version: `tools/install_plugin.sh [commit]` (default: HEAD). It builds that commit in a throwaway worktree, installs AU + VST3, and runs `auval`. The installed version is recorded in `Resilio Versio.vst3/Contents/Resources/rv_version.txt`. In Ableton: rescan plug-ins, then find **Resilio → Resilio Versio**.
+- Plugin: development builds do **not** install into `~/Library/Audio/Plug-Ins/` (`RV_INSTALL_PLUGIN` is off), so the plugin in Ableton only changes on purpose. To install a specific version: `tools/install_plugin.sh [commit]` (default: HEAD). It builds that commit in a throwaway worktree, installs AU + VST3, and runs `auval`. The installed version is recorded in `dist/installed_plugin.txt` (never inside the bundles: that breaks their code signature). In Ableton: rescan plug-ins, then find **Resilio → Resilio Versio**.
 
 ## Firmware
 

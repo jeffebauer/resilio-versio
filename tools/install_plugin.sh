@@ -21,7 +21,13 @@ DEST="$HOME/Library/Audio/Plug-Ins"
 rm -rf "$DEST/Components/Resilio Versio.component" "$DEST/VST3/Resilio Versio.vst3"
 cp -R "$ART/AU/Resilio Versio.component" "$DEST/Components/"
 cp -R "$ART/VST3/Resilio Versio.vst3" "$DEST/VST3/"
-echo "$SHA $(git -C "$REPO" log -1 --format=%s "$SHA")" > "$DEST/VST3/Resilio Versio.vst3/Contents/Resources/rv_version.txt" 2>/dev/null || true
+# Record the version OUTSIDE the bundles: writing into a signed bundle breaks
+# its code signature and macOS/Ableton then refuse to load it.
+mkdir -p "$REPO/dist"
+echo "$SHA $(git -C "$REPO" log -1 --format=%s "$SHA") (installed $(date '+%d %b %H:%M'))" > "$REPO/dist/installed_plugin.txt"
+for b in "$DEST/Components/Resilio Versio.component" "$DEST/VST3/Resilio Versio.vst3"; do
+    codesign --verify --deep --strict "$b" || { echo "ERROR: bad signature on $b"; exit 1; }
+done
 killall -9 AudioComponentRegistrar 2>/dev/null || true  # make macOS re-read AUs
 
 echo "Installed Resilio Versio plugin from $SHA: $(git -C "$REPO" log -1 --format=%s "$SHA")"
