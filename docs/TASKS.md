@@ -105,7 +105,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### TENSION instead of BOING? Explore before tuning BOING
 - **Idea (yours, 28 Sep):** real tanks have no BOING and usually no decay knob; their character comes from which tank is fitted. Replace BOING with **TENSION** (which tank: echo spacing + chirp + brightness together, tight/pingy ↔ loose/boingy) and make **DECAY feedback only** (how long it rings, no pitch bend).
 - **Trade-offs:** clearer knob jobs and closer to real springs (it also absorbs "BOING shortens decay"); less direct control of the cartoon boing; supersedes ADRs 0006/0007/0012 with a new one. Middle option: rename and widen BOING into TENSION, keep DECAY's size link.
-- **Next step when you want it:** prototype renders (same rimshot and chord, TENSION tight → loose at fixed DECAY, next to today's BOING), alongside the chirp-direction A/B (task 7)
+- **Prototype being built (29 Sep):** listening pages will land in `renders/tension_proto/` (TENSION sweep with real tanks, DECAY-only sweep, today's BOING for comparison, and knob-turning demos), with a guide in `docs/tension-prototype.md`. Nothing changes in the plugin unless you adopt it
 
 ## What to send Claude
 
