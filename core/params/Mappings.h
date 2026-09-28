@@ -34,8 +34,10 @@ inline float decayT60Seconds(float v) { return expLerp(kT60MinSeconds, kT60MaxSe
 // long tank ~100 ms. The full round trip is L plus the allpass chain's group
 // delay, which depends on frequency (that is what makes the Chirp); see
 // Spring::roundTripSamples().
-constexpr float kLoopDelayMinSeconds = 0.030f;
-constexpr float kLoopDelayMaxSeconds = 0.100f;
+// TENSION PROTOTYPE: these now bound TENSION's L range (see "TENSION" below);
+// kLoopDelayMaxSeconds also sizes the delay memory (Spring.cpp), +10 %.
+constexpr float kLoopDelayMinSeconds = 0.033f;
+constexpr float kLoopDelayMaxSeconds = 0.110f;
 inline float decayLoopDelaySeconds(float v) { return expLerp(kLoopDelayMinSeconds, kLoopDelayMaxSeconds, v); }
 
 // Transition frequency fC: the Chirp lives below it. The stretched allpass
@@ -43,8 +45,10 @@ inline float decayLoopDelaySeconds(float v) { return expLerp(kLoopDelayMinSecond
 // "descending chirp" band is 0 .. fs/(2K). We pick fC and derive K = fs/(2 fC),
 // so the Chirp band is the same in Hz at every sample rate. Larger tank
 // (DECAY CW) = lower fC = larger K (SPEC §4.4 "stretch K larger at CW").
-constexpr float kTransitionMaxHz = 4200.0f; // DECAY 0: K ≈ 5.7 at 48 kHz
-constexpr float kTransitionMinHz = 2700.0f; // DECAY 1: K ≈ 8.9 at 48 kHz
+// TENSION PROTOTYPE: TENSION's fC range (tight 4.6 kHz, loose 2.7 kHz); the
+// minimum also sizes the allpass rings (Spring.cpp).
+constexpr float kTransitionMaxHz = 4600.0f; // TENSION 0: K ≈ 5.2 at 48 kHz
+constexpr float kTransitionMinHz = 2700.0f; // TENSION 1: K ≈ 8.9 at 48 kHz
 inline float decayTransitionHz(float v) { return expLerp(kTransitionMaxHz, kTransitionMinHz, v); }
 inline float stretchK(float transitionHz, float sampleRate) { return sampleRate / (2.0f * transitionHz); }
 
@@ -73,7 +77,7 @@ inline float stretchK(float transitionHz, float sampleRate) { return sampleRate 
 // fC instead of growing (at DECAY 0 it even shrinks), so the extra size comes
 // from the stages. Real tanks use a ≈ 0.2-0.4 with 45-300 stages.
 enum class ChirpDirection { LowsLater, HighsLater };
-constexpr ChirpDirection kChirpDirection = ChirpDirection::LowsLater;
+constexpr ChirpDirection kChirpDirection = ChirpDirection::HighsLater;
 constexpr bool           kHighsLater     = kChirpDirection == ChirpDirection::HighsLater;
 // Sign of a (and of the Splash Jolt's Δa, which pushes |a| up: more smear).
 constexpr float kChirpSign = kHighsLater ? 1.0f : -1.0f;
@@ -94,6 +98,50 @@ inline int boingStages(float v)
 {
     return kMinStages + static_cast<int>(static_cast<float>(kMaxStages - kMinStages) * v + 0.5f);
 }
+
+// ---- TENSION (PROTOTYPE, docs/tension-prototype.md) ------------------------
+// TENSION replaces BOING (same slot, ParamSpec key "boing"): "which tank is
+// fitted". Tight (0) = short tank, small Chirp, quick repeats, bright;
+// loose (1) = long tank, big Chirp, slow repeats, darker. L, fC (-> K), a and
+// the stage count M all move together, so every position is one plausible
+// tank. DECAY no longer touches any of them: it only sets T60.
+//
+// Three anchors, each a region of the IR library (docs/ir-dispersion-study.md),
+// Spring A, measured with tools/ir_dispersion.py (see the prototype doc):
+//   tight  0   : L 33 ms, fC 4.6 kHz, a 0.40, M 24  -> short tanks
+//                (Space Echo 42 ms); keeps BOING 0's "always a spring" floor
+//   noon   0.5 : L 69 ms, fC 3.3 kHz, a 0.47, M 40  -> the median tank
+//                (69 ms repeat, ~15 ms Chirp: Amazing Stereo, Amp Spring High)
+//   loose  1   : L 110 ms, fC 2.7 kHz, a 0.55, M 64 -> the long tanks
+//                (Swissecho 116 ms, big-Chirp Farfi / SNRA500 30-35 ms)
+// Between anchors: log-linear for L and fC (equal turns = equal ratios),
+// linear for a and M. The anchor at noon is not the geometric middle of the
+// ends (60 ms), so each half has its own curve; the kink at noon is a change
+// of slope only (no step).
+constexpr float kTensionMidLoopDelaySeconds = 0.069f;
+constexpr float kTensionMidTransitionHz     = 3300.0f;
+constexpr float kTensionCoeffMin = 0.40f, kTensionCoeffMid = 0.47f, kTensionCoeffMax = 0.55f;
+constexpr float kTensionStageFracMid = 0.40f; // of (cap - floor): 24 + 0.4*40 = 40 at cap 64
+
+inline float anchorExp(float lo, float mid, float hi, float v)
+{
+    return v < 0.5f ? expLerp(lo, mid, 2.0f * v) : expLerp(mid, hi, 2.0f * v - 1.0f);
+}
+inline float anchorLin(float lo, float mid, float hi, float v)
+{
+    return v < 0.5f ? lo + (mid - lo) * 2.0f * v : mid + (hi - mid) * (2.0f * v - 1.0f);
+}
+inline float tensionLoopDelaySeconds(float v)
+{
+    return anchorExp(kLoopDelayMinSeconds, kTensionMidLoopDelaySeconds, kLoopDelayMaxSeconds, v);
+}
+inline float tensionTransitionHz(float v) { return anchorExp(kTransitionMaxHz, kTensionMidTransitionHz, kTransitionMinHz, v); }
+inline float tensionCoefficient(float v)
+{
+    return kChirpSign * anchorLin(kTensionCoeffMin, kTensionCoeffMid, kTensionCoeffMax, v);
+}
+// 0..1 share of the stage range (floor .. mode cap), see modes::tensionStages.
+inline float tensionStageFraction(float v) { return anchorLin(0.0f, kTensionStageFracMid, 1.0f, v); }
 
 // ---- TONE (ADR 0017) -------------------------------------------------------
 // TONE = pre-tank Tilt (M5, params/DriveVoicing.h) + Loop damping + high

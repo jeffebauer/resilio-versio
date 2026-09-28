@@ -82,6 +82,12 @@ inline int boingStages(float v, int cap)
     return map::kMinStages + static_cast<int>(static_cast<float>(cap - map::kMinStages) * v + 0.5f);
 }
 
+// TENSION PROTOTYPE: stage count for TENSION v under a cap (floor at tight).
+inline int tensionStages(float v, int cap)
+{
+    return map::kMinStages + static_cast<int>(static_cast<float>(cap - map::kMinStages) * map::tensionStageFraction(v) + 0.5f);
+}
+
 // Is Spring s heard in this mode? A in all, B in 2 and 3, C in 3 only.
 constexpr bool springActive(int mode, int s) { return s <= mode; }
 
