@@ -14,7 +14,7 @@ The reverb is still M1: one Spring, CLEAN. **Kick is a placeholder**: a single c
 
 Do 1–5 with the **AU**, then repeat 1–2 with the **VST3**.
 
-1. **Loads:** drop it on an audio track playing `test_audio/stimulus/02_hits.wav`. The generic panel shows 9 controls: DECAY, TONE, BOING, SPLASH, DRIVE, WOBBLE, MIX (sliders) and SPRINGS (1/2/3), ATTITUDE (CLEAN/DRIVEN/KICKED). You hear a spring on the hits.
+1. **Loads:** drop it on an audio track playing `test_audio/stimulus/02_hits.wav`. The generic panel shows 9 controls: DECAY, TONE, BOING, SPLASH, DRIVE, WOBBLE, MIX (sliders) and SPRINGS (1/2/3), ATTITUDE (CLEAN/DRIVEN/KICKED). (Ableton may also show a standard **Bypass** control, which the plugin framework adds.) You hear a spring on the hits.
 2. **Automatable:** in the track's automation chooser, all 9 parameters are listed. Draw a DECAY ramp over 4 bars: the tail grows smoothly, with no zips or clicks, and the pitch bends a little as it goes (ADR 0012).
 3. **MIDI Kicks:** create a MIDI track and drag in `test_audio/midi/kicks_16ths.mid` (4 bars of 1/16 notes, varied notes and velocities; regenerate with `python3 tools/make_kick_midi.py`). Set its **MIDI To** to the audio track, then choose **Resilio Versio** in the second dropdown. Every note gives one click-into-the-tank at the same loudness (velocity ignored, ADR 0005), locked to the grid. Zoom into a recording to check it doesn't flam against a snare on the same beat.
 4. **Dry alignment (null test):** duplicate the hits track. On one copy: Resilio Versio with **MIX fully down**, then a Utility with **Invert (Ø)** on. Solo both: you should hear **silence**.

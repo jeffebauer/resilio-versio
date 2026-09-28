@@ -6,3 +6,6 @@ tools/review/sample/out/
 tools/review/sample/reference/
 renders/
 dist/
+*.asd
+Ableton Project Info/
+Backup/
