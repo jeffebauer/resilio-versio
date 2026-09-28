@@ -6,8 +6,10 @@
 // presets/sweeps/m6_*.json and docs/m6-metric-calibration.md):
 //   micromod   Layer 2 shape: peak depth, slow, smooth, independent per
 //              Spring, deterministic (reset() restarts it), on at WOBBLE 0.
-//   pitch      Layer 2 inaudible on held tones (08_held_tones.wav): pitch
-//              deviation of the Tank's wet output at WOBBLE 0, in cents.
+//   pitch      Layer 2 inaudible on held tones (08_held_tones.wav notes):
+//              pitch deviation at WOBBLE 0, in cents: one Spring with vs
+//              without the floor, and the whole Tank's wet output once each
+//              note has built up.
 //   evenness   Layer 1: per-trip Loop gain and T60 across frequency at every
 //              ATTITUDE x TONE x BOING x DECAY corner: below target everywhere,
 //              and no band standing above its neighbours.
@@ -286,36 +288,69 @@ void heldTonePitch()
     // the tail's neighbouring modes and reads as cents of "pitch" that nobody
     // hears (M8 measured 23 cents p95 on a partial 33 dB down in R). Those
     // channel readings are skipped and counted.
+    //
+    // Same notes and levels as 08_held_tones (1 kHz; A minor chord), each
+    // rendered on its own and held long enough to measure once the onset
+    // has rung down: from max(2 s, 2/3 T60) after the note starts (the
+    // onset's free modes then 40 dB down) for 5.5 s. Why not 2 s into the
+    // file's 8 s notes: at DECAY 1 (T60 9 s) the onset's own modes are only
+    // ~13 dB down 2 s in, and they beat against the held note, which the
+    // phase-based estimate reads as cents. With the chirp flipped to
+    // HighsLater (M8) that read p95 4.9 cents at 3 Springs DECAY 1 CLEAN
+    // (limit 3), and it was the same with the Micro-mod floor switched off
+    // (3.9: identical Tank, floor depth 0) and with SPLASH off, so it is the
+    // tail's own beating, not modulation. On a long-held chord it dies away
+    // with the tail (floor on / off, 262 Hz partial in R: 9.0 / 8.8 cents
+    // at 1-6.5 s, 3.9 / 3.8 at 2-7.5 s, 0.8 / 1.1 at 4-9.5 s, 0.25 / 0.16 at
+    // 6-11.5 s), while the floor's own movement stays well under a cent.
+    using Partials = std::vector<std::pair<double, double>>; // {Hz, amplitude}
+    auto heldNote = [](const Partials& partials, double seconds) {
+        Buf b(size_t(seconds * kFs), 0.0f);
+        const size_t fade = size_t(0.01 * kFs); // raised-cosine onset: no click
+        for (size_t i = 0; i < b.size(); ++i) {
+            double v = 0;
+            for (const auto& [hz, amp] : partials) v += amp * std::sin(2 * kPi * hz * double(i) / double(kFs));
+            b[i] = float((i < fade ? 0.5 - 0.5 * std::cos(kPi * double(i) / double(fade)) : 1.0) * v);
+        }
+        return b;
+    };
+    const Partials notes[2] = {{{1000.0, 0.2512}}, {{220.0, 0.0838}, {261.63, 0.0838}, {329.63, 0.0838}}};
     double worstMax = 0, worstP95 = 0;
     char worstAt[96] = {};
     for (int m = 0; m < 3; ++m)
         for (float d : {0.5f, 1.0f})
             for (int att : {0, 1}) {
-                Settings st;
-                st.springs = m;
-                st.decay = d;
-                st.att = att;
-                rv::Tank t;
-                t.prepare(kFs, 48);
-                apply(t, st);
-                const Stereo o = render(t, in);
+                const double from = std::max(2.0, (2.0 / 3.0) * double(rv::map::decayT60Seconds(d))) + 0.01;
+                const double len  = from + 5.5;
                 double cellMax = 0, cellP95 = 0;
                 int skipped = 0;
-                Buf mid(o.l.size());
-                for (size_t i = 0; i < mid.size(); ++i) mid[i] = 0.5f * (o.l[i] + o.r[i]);
-                for (const Part& p : parts) {
-                    double mx[3], p95[3], lv[3];
-                    const Buf* chans[3] = {&o.l, &o.r, &mid};
-                    for (int k = 0; k < 3; ++k) pitchCents(*chans[k], p.f, p.from, p.to, mx[k], p95[k], &lv[k]);
-                    for (int k = 0; k < 3; ++k) {
-                        if (k < 2 && lv[k] < 0.01 * lv[1 - k]) { ++skipped; continue; } // > 20 dB down: not heard here
-                        cellMax = std::max(cellMax, mx[k]);
-                        cellP95 = std::max(cellP95, p95[k]);
+                for (const Partials& note : notes) {
+                    const Buf in = heldNote(note, len);
+                    Settings st;
+                    st.springs = m;
+                    st.decay = d;
+                    st.att = att;
+                    rv::Tank t;
+                    t.prepare(kFs, 48);
+                    apply(t, st);
+                    const Stereo o = render(t, in);
+                    Buf mid(o.l.size());
+                    for (size_t i = 0; i < mid.size(); ++i) mid[i] = 0.5f * (o.l[i] + o.r[i]);
+                    const size_t a = size_t(from * kFs), b = in.size();
+                    for (const auto& [f, amp] : note) {
+                        double mx[3], p95[3], lv[3];
+                        const Buf* chans[3] = {&o.l, &o.r, &mid};
+                        for (int k = 0; k < 3; ++k) pitchCents(*chans[k], f, a, b, mx[k], p95[k], &lv[k]);
+                        for (int k = 0; k < 3; ++k) {
+                            if (k < 2 && lv[k] < 0.01 * lv[1 - k]) { ++skipped; continue; } // > 20 dB down: not heard here
+                            cellMax = std::max(cellMax, mx[k]);
+                            cellP95 = std::max(cellP95, p95[k]);
+                        }
                     }
                 }
-                std::printf("INFO    Tank %d Spring%s DECAY %.1f %-6s: max %.2f, p95 %.2f cents (%d channel reading%s "
-                            "skipped: partial > 20 dB down)\n",
-                            m + 1, m ? "s" : " ", d, kAttName[att], cellMax, cellP95, skipped, skipped == 1 ? "" : "s");
+                std::printf("INFO    Tank %d Spring%s DECAY %.1f %-6s (from %.1f s into each note): max %.2f, p95 %.2f cents "
+                            "(%d channel reading%s skipped: partial > 20 dB down)\n",
+                            m + 1, m ? "s" : " ", d, kAttName[att], from, cellMax, cellP95, skipped, skipped == 1 ? "" : "s");
                 if (cellP95 > worstP95) {
                     worstP95 = cellP95;
                     std::snprintf(worstAt, sizeof worstAt, "%d Spring(s) DECAY %.1f %s", m + 1, d, kAttName[att]);
@@ -325,7 +360,7 @@ void heldTonePitch()
     std::snprintf(msg, sizeof msg,
                   "Micro-mod floor inaudible on held tones at WOBBLE 0 (1 kHz + A minor chord): it adds at most %.2f "
                   "cents p95 to one Spring (%.2f with vs %.2f without; limit +1 cent); the whole Tank reads p95 %.2f "
-                  "cents (worst %s, max %.2f; limit 3, most of it the tail's own beating, see above)",
+                  "cents once each note has built up (worst %s, max %.2f; limit 3)",
                   worstAdd, worstWith, worstWithout, worstP95, worstAt, worstMax);
     check(worstAdd <= 1.0 && worstP95 <= 3.0, msg);
 }

@@ -81,6 +81,7 @@ void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
     dc_.setCutoff(kDcBlockHz, sampleRate);
     highCeiling_.setCutoff(std::min(kHighCeilingHz, 0.45f * sampleRate), sampleRate);
     mRate_ = 1.0f / (kStageRampSeconds * sampleRate);
+    loopSat_.prepare(sampleRate);
     modHold_ = std::max(1, int(antires::kMicroModHoldSeconds * sampleRate));
     modC_    = 1.0f - std::exp(-1.0f / (antires::kMicroModHoldSeconds * sampleRate));
 

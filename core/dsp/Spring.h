@@ -48,6 +48,9 @@
 // (2.5 samples at x2) is part of the Loop, so roundTripSamples() counts it and g
 // is designed with it in. The oversampler runs in every ATTITUDE, so the
 // Loop's delay never changes when the Morph fades the saturation in or out.
+// It saturates "on flux" (M8): a high shelf cuts highs going in and its
+// exact inverse restores them coming out (Drive.h), so small signals see
+// no change at all and a loud Loop squashes on its body, not its top.
 //
 // Howl (ADR 0002, 0019): SpringSettings::howl (0..1, the Tank sets it only in
 // KICKED's top DECAY zone) raises the Loop's small-signal peak gain above 1

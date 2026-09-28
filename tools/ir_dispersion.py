@@ -585,7 +585,7 @@ def analyse_file(path):
 
 # Mirrors core/params/Mappings.h + SpringModes.h (Spring A detune) + Spring.cpp.
 # Kept in sync by hand; the renders check (--renders) catches drift.
-MAP = dict(t60=(0.4, 9.0), L=(0.030, 0.100), fc=(4200.0, 2700.0), a=(-0.45, -0.72), M=(24, 64),
+MAP = dict(t60=(0.4, 9.0), L=(0.030, 0.100), fc=(4200.0, 2700.0), a=(0.40, 0.55), M=(24, 64),  # HighsLater (ADR 0024)
            damp=(1600.0, 9000.0))
 DETUNE_A = dict(L=0.965, fc=1.040, a=1.030)
 

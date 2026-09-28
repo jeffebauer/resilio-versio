@@ -233,12 +233,42 @@ private:
 };
 
 // ---- LoopSat: inside a Spring's feedback path -------------------------------
-// y = x + amount · (asymClip(x) - x), oversampled. amount 0 (CLEAN) is
-// exactly linear; the oversampler still runs so the Loop's latency never
-// changes with ATTITUDE (a changing delay would bend pitch / click).
+//
+//   x ─ HF cut ─ ×2 up ─ y = u + amount · (asymClip(u) - u) ─ ×2 down ─ HF restore ─► out
+//
+// amount 0 (CLEAN) is exactly linear; the oversampler still runs so the
+// Loop's latency never changes with ATTITUDE (a changing delay would bend
+// pitch / click).
+//
+// Flux shelves (M8, HighsLater re-tune): like the two transducers, the
+// LoopSat saturates on flux: highs are cut by drive::kLoopFluxDb above
+// drive::kLoopFluxHz going in and restored by the exact inverse coming out.
+// Small signals pass unchanged (the pair cancels, so the Loop's gain, T60
+// and round trip are exactly as designed, and CLEAN is untouched); a loud
+// Loop squashes on its body (lows, low mids) while the top of the Chirp
+// band and anything above fC saturate less. Why: at DRIVE 1 the pushed
+// curve (Voice::loopDriveDb) is hard enough that a loud high tone in the
+// Loop (a 0 dBFS 5 kHz sine leaks through the fC low-pass at ~-11 dB)
+// was squared off, and its 19th harmonic (95 kHz at the doubled rate)
+// folded back to 1 kHz, where the Loop rings: -69 dBFS, -53 dB re the
+// tone in KICKED (test_drive, limit -60). With the shelves it is under
+// -88 dBFS. The shelves run at the base rate (cheap: they are linear).
 class LoopSat {
 public:
-    void reset() { os_.reset(); }
+    // Designs the flux shelves. Without it (standalone tests) they pass
+    // everything unchanged.
+    void prepare(float sampleRate)
+    {
+        fluxPre_.setHighShelf(drive::kLoopFluxHz, -drive::kLoopFluxDb, sampleRate);
+        fluxPost_ = fluxPre_;
+        fluxPost_.invert();
+    }
+    void reset()
+    {
+        os_.reset();
+        fluxPre_.reset();
+        fluxPost_.reset();
+    }
     void set(float amount, float kPos, float kNeg)
     {
         amount_ = amount;
@@ -248,13 +278,16 @@ public:
     float process(float x)
     {
         const float a = amount_, kP = kPos_, kN = kNeg_;
-        return os_.process(x, [a, kP, kN](float u) { return u + a * (asymClip(u, kP, kN) - u); });
+        const float y = os_.process(fluxPre_.process(x), [a, kP, kN](float u) { return u + a * (asymClip(u, kP, kN) - u); });
+        return fluxPost_.process(y);
     }
-    // Latency (samples) at freqHz, counted in the Loop round trip.
+    // Latency (samples) at freqHz, counted in the Loop round trip (the
+    // shelves add none: they cancel).
     static float latencySamples(float freqHz, float sampleRate) { return Oversampler::latencySamples(freqHz, sampleRate); }
 
 private:
     Oversampler os_;
+    FirstOrder fluxPre_, fluxPost_;
     float amount_ = 0.0f, kPos_ = 1.0f, kNeg_ = 1.0f;
 };
 

@@ -135,7 +135,7 @@ inline constexpr std::array<Voice, 3> kVoice{{
     //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    lDrv   oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
     {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
     {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 5.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN
-    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  1.3f, 0.0f}, // KICKED
+    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  1.6f, 0.0f}, // KICKED (wMk 1.3 -> 1.6 at the HighsLater re-tune: steady-noise level across DRIVE)
 }};
 
 // Magnetic transducer (DriveIn): a driver coil saturates on magnetic flux,
@@ -156,6 +156,15 @@ constexpr float kSmearOpenHz = 16000.0f;
 // kOutFluxHz into its saturator and restored after (same idea as kFluxHz).
 constexpr float kOutFluxHz = 800.0f;
 constexpr float kOutFluxDb = 18.0f;
+// LoopSat flux shelf (M8, HighsLater re-tune; Drive.h LoopSat): highs cut
+// by kLoopFluxDb above kLoopFluxHz into each Loop's saturator and restored
+// after. The corner sits in the upper part of the Loop's band (fC is
+// 2.9-4.4 kHz), so the body of a tail squashes as before (DRIVE nulls on
+// 02_hits unchanged to 0.1 dB) while the top saturates less: no folded-back
+// harmonics from loud highs at DRIVE 1, and a pushed Loop full of
+// broadband noise loses less level (test_drive "steady noise").
+constexpr float kLoopFluxHz = 2000.0f;
+constexpr float kLoopFluxDb = 12.0f;
 // Automatic makeup (DriveIn and DriveOut, see "Automatic gain compensation"
 // below): averaging time of the level followers (slow enough not to pump
 // on single hits), and the most DriveOut may add (a squashed Howl or a

@@ -31,6 +31,8 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
+#include <future>
 #include <string>
 #include <vector>
 
@@ -629,18 +631,52 @@ void driveSweetSpot()
 }
 
 // ---- 2d. Wet level vs material: the excitation trim (M8, DriveVoicing.h) ---------------------
-// Wet (MIX 1) minus dry RMS, whole stimulus, on 02_hits, 04_skank,
-// 08_held_tones and steady pink-ish noise at -26 dBFS RMS: the Tank came
-// back 5-6 dB louder on in-band material (skank, held tones) than on
-// broadband (noise) or bright (hits). Spread across the four, per ATTITUDE,
-// at DECAY 0.25 and 0.5: <= 3.5 dB (M7 build: 4.8-5.9 dB). Longer DECAYs
-// are reported: a held sine sits between the long Loop's narrow modes and
-// comes back quieter (a property of the Loop, not of the excitation).
+// Wet (MIX 1) minus dry RMS, whole stimulus, on 02_hits, 04_skank, held
+// tones and steady pink-ish noise at -26 dBFS RMS: the Tank came back 5-6 dB
+// louder on in-band material (skank, held tones) than on broadband (noise)
+// or bright (hits). Spread across the four, per ATTITUDE, at DECAY 0.25 and
+// 0.5: <= 3.5 dB (M7 build: 4.8-5.9 dB). Longer DECAYs are reported.
 // Also: the trim holds while the input is silent (a tail is never trimmed).
+//
+// Held tones = 08_held_tones' notes (1 kHz, then an A minor chord; same
+// levels) played at 12 pitches across a whole tone (-92..+92 cents), and
+// the Tank's level is their power average: "held notes", not four exact
+// frequencies. Why: a steady sine's level through a feedback Loop depends
+// on where it lands between the Loop's narrow modes (peaks and dips
+// ~16 Hz apart at 1 kHz, DECAY noon), so one fixed set of four sines is a
+// lottery. Measured when the chirp direction flipped (HighsLater, M8): the
+// file's exact pitches read -1.7 dB wet - dry at DECAY 0.5, the same notes
+// 12 cents sharp +1.3 and 12 cents flat +8.5; the LowsLater tank swung as
+// much (-2.6..+7.0 dB over +-50 cents), it just happened to land on peaks at
+// DECAY <= 0.5 (and on dips at 0.75 / 1, which is why those were INFO).
+// Averaged over pitch, held notes sit within ~1.5 dB of the other material
+// in both directions. 4 s notes (not the file's 8 s) keep the cost down; the
+// 12 renders run in parallel.
+Buf heldTones(double cents)
+{
+    const double r = std::pow(2.0, cents / 1200.0);
+    const double tone = 4.0, t1 = 0.5, t2 = t1 + tone + 1.0, end = t2 + tone + 2.0;
+    Buf b(size_t(end * kFs), 0.0f);
+    const size_t fade = size_t(0.01f * kFs);
+    auto add = [&](double from, std::initializer_list<std::pair<double, double>> partials) {
+        const size_t a = size_t(from * kFs), n = size_t(tone * kFs);
+        for (size_t i = 0; i < n; ++i) {
+            double v = 0;
+            for (const auto& [hz, amp] : partials) v += amp * std::sin(2.0 * 3.14159265358979 * hz * r * double(i) / kFs);
+            const size_t k = std::min(i, n - 1 - i);
+            const double g = k < fade ? 0.5 - 0.5 * std::cos(3.14159265358979 * double(k) / double(fade)) : 1.0;
+            b[a + i] = float(g * v);
+        }
+    };
+    add(t1, {{1000.0, 0.2512}});                                 // 08_held_tones: 1 kHz at -12 dBFS peak
+    add(t2, {{220.0, 0.0838}, {261.63, 0.0838}, {329.63, 0.0838}}); // then A minor, -21.5 dBFS each
+    return b;
+}
+
 void wetLevelVsMaterial()
 {
     std::vector<std::pair<const char*, Buf>> st;
-    for (const char* f : {"02_hits.wav", "04_skank.wav", "08_held_tones.wav"}) {
+    for (const char* f : {"02_hits.wav", "04_skank.wav"}) {
         rv::wav::Audio a;
         std::string error;
         bool loaded = false;
@@ -674,21 +710,38 @@ void wetLevelVsMaterial()
         for (auto& v : p) v *= g;
         st.push_back({"pink -26 dBFS", p});
     }
+    constexpr int kPitches = 12;
+    std::vector<Buf> held;
+    for (int k = 0; k < kPitches; ++k) held.push_back(heldTones(-100.0 + 200.0 * (double(k) + 0.5) / double(kPitches)));
     for (float decay : {0.25f, 0.5f, 0.75f, 1.0f}) {
         char line[256] = {};
         bool ok = true;
         for (int att = 0; att < 3; ++att) {
             double lo = 1e9, hi = -1e9;
-            for (const auto& [name, x] : st) {
-                Settings s;
-                s.att   = att;
-                s.decay = decay;
-                s.drive = rv::spec(rv::ParamId::Drive).defaultValue;
+            Settings s;
+            s.att   = att;
+            s.decay = decay;
+            s.drive = rv::spec(rv::ParamId::Drive).defaultValue;
+            auto wetPower = [&s](const Buf& x) {
                 const Stereo o = renderWith(s, x);
-                const double wet = db(0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size()))),
-                             dry = db(power(x, 0, x.size()));
-                lo = std::min(lo, wet - dry);
-                hi = std::max(hi, wet - dry);
+                return 0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size()));
+            };
+            for (const auto& [name, x] : st) {
+                const double wd = db(wetPower(x)) - db(power(x, 0, x.size()));
+                lo = std::min(lo, wd);
+                hi = std::max(hi, wd);
+            }
+            {
+                std::vector<std::future<double>> jobs;
+                for (const Buf& x : held) jobs.push_back(std::async(std::launch::async, wetPower, std::cref(x)));
+                double wet = 0, dry = 0;
+                for (int k = 0; k < kPitches; ++k) {
+                    wet += jobs[size_t(k)].get();
+                    dry += power(held[size_t(k)], 0, held[size_t(k)].size());
+                }
+                const double wd = db(wet) - db(dry);
+                lo = std::min(lo, wd);
+                hi = std::max(hi, wd);
             }
             std::snprintf(line + std::strlen(line), sizeof line - std::strlen(line), " %s %.1f", kAttName[att], hi - lo);
             ok &= hi - lo <= 3.5;

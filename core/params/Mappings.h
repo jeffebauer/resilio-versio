@@ -58,7 +58,7 @@ inline float stretchK(float transitionHz, float sampleRate) { return sampleRate 
 //              a rising Chirp, as every real tank in the IR library does
 //              (docs/ir-dispersion-study.md; DAFx-11 fits a = +0.62).
 // Both keep the stage range (M 24..64). What follows the switch is constants
-// only, no code: a's sign and range here, the Jolt's sign (kChirpSign), a -1 dB
+// only, no code: a's sign and range here, the Jolt's sign (kChirpSign), a -1.1 dB
 // wet trim (SpringModes.h kModeTrim) and a faster limiter attack (Tank.h),
 // both for HighsLater's denser, unsmeared lows. |a| larger = steeper, longer
 // Chirp. The floor keeps a clear Chirp at BOING 0 (ADR 0007: never "no
@@ -73,7 +73,7 @@ inline float stretchK(float transitionHz, float sampleRate) { return sampleRate 
 // fC instead of growing (at DECAY 0 it even shrinks), so the extra size comes
 // from the stages. Real tanks use a ≈ 0.2-0.4 with 45-300 stages.
 enum class ChirpDirection { LowsLater, HighsLater };
-constexpr ChirpDirection kChirpDirection = ChirpDirection::LowsLater;
+constexpr ChirpDirection kChirpDirection = ChirpDirection::HighsLater; // ADR 0024 (owner, by ear)
 constexpr bool           kHighsLater     = kChirpDirection == ChirpDirection::HighsLater;
 // Sign of a (and of the Splash Jolt's Δa, which pushes |a| up: more smear).
 constexpr float kChirpSign = kHighsLater ? 1.0f : -1.0f;

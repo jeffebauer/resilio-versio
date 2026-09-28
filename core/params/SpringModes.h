@@ -183,8 +183,11 @@ constexpr float kSide3   = 0.45f; // k, 3 Springs
 // trips per second and build up ~1 dB louder on low, tonal material (held
 // chords, snare bodies); the highs near fC get quieter. This trim puts the
 // Tank's level, and the limiter's headroom, back where M5-M7 tuned them.
+// 0.89 -> 0.88 at the HighsLater re-tune (the LoopSat flux shelf, Drive.h,
+// squashes a little less, so DRIVEN hits came back 0.1 dB hotter and the
+// MIX sweep sat exactly on its +-1.5 dB limit; now +2.9 dB wet vs dry).
 // LowsLater: exactly 1 (unchanged).
-constexpr float kChirpDirectionTrim = map::kHighsLater ? 0.89f : 1.0f; // -1 dB
+constexpr float kChirpDirectionTrim = map::kHighsLater ? 0.88f : 1.0f; // -1.1 dB
 inline constexpr std::array<float, kNumModes> kModeTrim{{kChirpDirectionTrim, kChirpDirectionTrim, kChirpDirectionTrim}};
 
 // Loudness power of a mix: average of stereo and mono power (see "Level
