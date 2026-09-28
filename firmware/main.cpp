@@ -3,9 +3,10 @@
 // firmware/README.md):
 //
 //   RV_MODE_M0TEST  - SPEC §7 M0 test build. Dry passthrough, controls -> LEDs
-//                      + serial. Left EXACTLY as it was before this change:
-//                      the owner is mid-way through the M0 hardware check
-//                      against this behaviour, so it must not move.
+//                      + serial. Same behaviour as the saved
+//                      dist/resilio_versio_m0_test.bin; since M7 it copies
+//                      input to output directly instead of running the Tank
+//                      at MIX 0 (identical output, ~20 KB less flash).
 //   RV_MODE_PROFILE - SPEC §7 M3 hardware profiling. Ignores knobs/switches
 //                      (no rack power expected), cycles a fixed corner table,
 //                      feeds the Tank a synthetic test signal, reports
@@ -34,8 +35,10 @@
 // else in this file needs to change.
 
 #include "daisy_versio.h"
+#if !defined(RV_MODE_M0TEST)
 #include "dsp/Tank.h"
 #include "params/ParamSpec.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -54,7 +57,9 @@ using namespace daisy;
 namespace {
 
 DaisyVersio hw;
+#if !defined(RV_MODE_M0TEST)
 rv::Tank    tank;
+#endif
 
 // Boot pattern shared by all three variants (NE convention: a unique colour
 // sequence on power-up confirms this firmware loaded, distinct from stock).
@@ -79,8 +84,9 @@ void BootPattern()
 // Firmware Host, M0 test build (SPEC §7 M0). Unchanged from the firmware the
 // owner is currently running through the M0 hardware check
 // (docs/m0-hardware-check.md): same behaviour, same LED/serial mapping.
-// - Audio: Core Tank at MIX 0 = bit-identical dry passthrough (proves Core
-//   runs on the Versio without judging the reverb yet).
+// - Audio: dry passthrough, input copied straight to output. (Until M7 this
+//   ran the Tank at MIX 0, which is bit-identical; dropping it saves ~20 KB
+//   of flash for the diagnostic builds.)
 // - Controls -> LEDs, so every control can be checked without a computer:
 //     LED_0 R/G/B = K0 DECAY, K1 TONE, K2 BOING
 //     LED_1 R/G/B = K3 SPLASH, K4 DRIVE, K5 WOBBLE
@@ -109,15 +115,16 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     if (gate && !lastGate) {
         ++gateEdges;
         gateFlashUntil = System::GetNow() + 60;
-        tank.kick(0);
     }
     lastGate = gate;
     if (hw.tap.RisingEdge()) {
         ++buttonPresses;
-        tank.kick(0);
     }
 
-    tank.process(in[0], in[1], out[0], out[1], int(size));
+    for (size_t i = 0; i < size; ++i) {
+        out[0][i] = in[0][i];
+        out[1][i] = in[1][i];
+    }
 }
 
 int SwitchPosition(int sw)
@@ -138,9 +145,6 @@ int main()
 {
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
-    tank.prepare(hw.AudioSampleRate(), kBlockSize);
-    tank.setParam(rv::ParamId::Mix, 0.0f); // M0 test build: dry passthrough only
-
     BootPattern();
 
     hw.seed.StartLog(false); // don't block waiting for a serial monitor

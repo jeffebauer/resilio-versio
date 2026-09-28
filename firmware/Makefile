@@ -28,7 +28,12 @@ else
   $(error Unknown MODE '$(MODE)': use m0test, profile, or release)
 endif
 
-CPP_SOURCES = main.cpp $(wildcard ../core/dsp/*.cpp)
+# m0test is a plain passthrough and doesn't link the Core (saves ~20 KB).
+ifeq ($(MODE),m0test)
+  CPP_SOURCES = main.cpp
+else
+  CPP_SOURCES = main.cpp $(wildcard ../core/dsp/*.cpp)
+endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)
 CPP_STANDARD = -std=gnu++17

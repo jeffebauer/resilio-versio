@@ -40,12 +40,12 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over. Right now (approximate, will shift slightly as DSP work continues):
 
 - release ≈ 95 KB (72%)
-- m0test ≈ 107 KB (82%)
+- m0test ≈ 94 KB (71%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
 - profile ≈ 107 KB (82%)
 
 ## Which `.bin` to flash, and when
 
-- **Still doing the M0 hardware check?** Flash `build/resilio_versio_m0test.bin`
+- **Still doing the M0 hardware check?** Flash `dist/resilio_versio_m0_test.bin` (the saved copy; a fresh `build/resilio_versio_m0test.bin` behaves the same)
   via NE Firmware Swap, same as before. Follow `docs/m0-hardware-check.md`.
 - **Doing hardware CPU profiling (M3)?** Flash `build/resilio_versio_profile.bin`.
   Run it on USB power alone (no Eurorack cable — see the safety note below);
