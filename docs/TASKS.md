@@ -64,6 +64,15 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Howl: a rideable rough roar that dies away when DECAY comes down? (M6 makes it wander more, about ±7 cents like a siren, so it's never a steady tone. You'll hear that in the next plugin build)
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
 
+### 9. M7 questions (after the next plugin build, which will have Splash, Kick and WOBBLE)
+- No need to answer now. They'll make sense once you can play it. Background: [m7-integration.md](m7-integration.md)
+- [ ] **SPLASH at 0 in DRIVEN:** hard hits keep a faint natural splash (about 27 dB below max). Faint enough, or too faint?
+- [ ] **Big hits in KICKED:** the pitch lurch goes one way on the left spring and the other way on the right, so hard hits briefly spread in stereo. Keep it, or lurch together?
+- [ ] **WOBBLE at max:** about 50 cents of wobble in the tail (clearly seasick). Right ceiling, more, or less? (The Magneto WOW & FLUTTER takes will help set this)
+- [ ] **Kick with SPLASH at 0:** should a Kick still give the full crash, or should SPLASH scale the Kick's crash too?
+- [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 (dry only) it's silent. OK?
+- [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material than on bright, hissy material. OK, or should it even out?
+
 ## What to send Claude
 
 - **Recordings:** just say they're done. Claude commits and analyses them.
@@ -74,7 +83,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): running
-- Next: wire the M7 components into the Tank, then a new plugin build for you
+- M7 components built and merged (Splash, Kick, WOBBLE, all tested stand-alone). Next: wire them into the Tank after the DRIVE retune, then a new plugin build for you
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
