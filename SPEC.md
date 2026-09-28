@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.7 — M6: ADR 0023 (Ringing judged by calibrated `ringing_db` < 15 dB, replacing the 12 dB peak test); ADR 0019 floor band 200 Hz–2 kHz; Micro-mod floor set to ±0.05 % of L at ~0.2 Hz.
 - v1.0.6 — ADR 0022: DRIVE retune targets after owner listening (obvious from noon, cranked tape/tank at max, level constant); M5 criteria extended.
 - v1.0.5 — ADR 0021: Ableton spring IRs as an IR library for range calibration; `tools/ir_analysis.py`.
 - v1.0.4 — M4 mono-safe criterion made precise: fold-down energy vs stereo energy (the old wording conflicted with the width criterion).
@@ -233,7 +234,7 @@ Requirements:
 Layered defence, in priority order:
 
 1. **Even loop gain by design.** Loop gain per spring kept below target at *all* frequencies, not just on average. Tone/damping filters designed so no band peaks above others. Unit test measures loop magnitude response across the band.
-2. **Always-on micro-modulation.** Tank delay L modulated continuously by slow smoothed random at a small floor depth (starting ~0.05–0.1% of L), even with WOBBLE at 0. Resonant frequencies keep moving → no mode can lock in. Depth below audible pitch wobble (confirm by ear).
+2. **Always-on micro-modulation.** Tank delay L modulated continuously by slow smoothed random at a small floor depth (set at M6: ±0.05 % of L at ~0.2 Hz, ≤ 0.11 cents on held tones), even with WOBBLE at 0. Resonant frequencies keep moving → no mode can lock in. Depth below audible pitch wobble (confirm by ear).
 3. **Spring detuning** (§4.3): springs don't share exact modes → no common reinforcement.
 4. **Adaptive resonance suppressor (AntiRes block).** *Conditional (ADR 0010).* Safety net if a mode still pokes out:
    - Detector at control rate (not per sample): e.g. small FFT on wet tail in main loop, or bank of bandpass energy trackers. Flags narrowband peak exceeding broadband level by threshold.
@@ -243,7 +244,7 @@ Layered defence, in priority order:
 
 Measurable criterion (starting thresholds — tune/confirm in interview):
 - Impulse + noise-burst input, DECAY max, all SPRINGS × ATTITUDE combos, WOBBLE 0. KICKED Howl zone excluded from peak test but must still show no sustained pure sinusoid (ADR 0002).
-- In tail from 1 s onward: no narrowband peak > **12 dB** above median of 1/3-octave-smoothed spectrum.
+- In tail from 1 s onward: ~~no narrowband peak > 12 dB above median of 1/3-octave-smoothed spectrum~~ **`ringing_db` < 15 dB** (ADR 0023; the old test failed real tanks).
 - No sustained sinusoid (> 2 s) above −30 dBFS.
 - Renderer (§6) reports this metric automatically.
 
@@ -407,7 +408,7 @@ Shared definitions:
 - [A/L] TONE: chirp still visible and audible at full CCW (ADR 0017). Full CW is splashy, not harsh (owner check on hats/cymbals; energy above 10 kHz capped *(start: ≤ +6 dB vs noon)*). TONE sweep loudness within ±3 dB.
 
 ### M6 — Anti-resonance
-- [A] §4.10 criterion across the full sweep grid (DECAY max, all SPRINGS × ATTITUDE, WOBBLE 0): no narrowband peak > 12 dB above the 1/3-octave-smoothed median from 1 s on, and no steady tone > 2 s above −30 dBFS.
+- [A] §4.10 criterion across the full sweep grid (DECAY max, all SPRINGS × ATTITUDE, WOBBLE 0): `ringing_db` < 15 dB (ADR 0023) and no steady tone > 2 s above −30 dBFS.
 - [A] The metric **catches** the owner's Wellspring delay-Ringing recording (take G) if available, or a synthetic ringing loop. Proves the test isn't toothless.
 - [A] Howl zone (KICKED, top ~10% DECAY): ADR 0019 criteria (rough, moving, may lean to a pitch, never a steady sine). Exiting the zone drops ≥ 30 dB within ~3 s (ADR 0018).
 - [L] Micro-mod floor inaudible: with WOBBLE 0 the owner hears no pitch movement on a held chord stab.

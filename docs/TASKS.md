@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 + M5 built, need your listen · chirp-direction decision needed
+**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M6 built; M4/M5 need your listen · chirp-direction decision needed
 
 **Plugin installed in Ableton:** M5 build (commit `d73d818`), installed 28 Sep 14:00. It only changes when Claude installs a milestone and notes it here. **Rescan plug-ins** after any change.
 
@@ -61,7 +61,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] CLEAN / DRIVEN / KICKED: clearly **hi-fi / warm tape dub / trashed**?
 - [x] **DRIVE at noon:** too subtle, even at max. Decided: obvious from noon, cranked tape/tank at max, level constant ([ADR 0022](adr/0022-drive-retune.md)). Retune queued after M6
 - [ ] TONE: full left warm and dark with the boing still there? Full right splashy but not harsh?
-- [ ] Howl: a rideable rough roar that dies away when DECAY comes down?
+- [ ] Howl: a rideable rough roar that dies away when DECAY comes down? (M6 makes it wander more, about ±7 cents like a siren, so it's never a steady tone. You'll hear that in the next plugin build)
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
 
 ## What to send Claude
@@ -72,7 +72,6 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M6 anti-ringing (running): first recalibrating the Ringing metric (it currently "fails" 24 of 45 real tanks), then the Micro-mod floor
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - After M6 lands: DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)) + wiring the M7 components into the Tank, then a new plugin build for you
 - BOING retune: after your chirp-direction decision (task 7)
@@ -82,6 +81,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: M6 anti-ringing ([write-up](m6-metric-calibration.md)): a Ringing test that passes real tanks, the Micro-mod floor (inaudible, ≤ 0.11 cents), 0 of 270 grid cells ring
 
 - 28 Sep 2026: plugin in Ableton pinned to the M5 build; dev builds no longer auto-install
 

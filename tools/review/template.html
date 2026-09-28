@@ -466,8 +466,8 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     if ((metrics.clip_count || 0) > 0) reasons.push("clipping ×" + metrics.clip_count);
     if ((metrics.click_count || 0) > 0) reasons.push("clicks ×" + metrics.click_count);
     if (metrics.steady_tone === true) reasons.push("steady tone");
-    if (typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12) {
-      reasons.push("resonance +" + metrics.resonance_peak_db.toFixed(1) + "dB");
+    if (typeof metrics.ringing_db === "number" && metrics.ringing_db >= 15) {
+      reasons.push("ringing " + metrics.ringing_db.toFixed(1) + " dB" + (metrics.ringing_hz ? " @ " + Math.round(metrics.ringing_hz) + " Hz" : ""));
     }
     if (typeof metrics.stereo_correlation === "number" && metrics.stereo_correlation > 0.5) {
       reasons.push("correlation " + metrics.stereo_correlation.toFixed(2));
@@ -510,7 +510,8 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
       "clip_count": (metrics.clip_count || 0) > 0,
       "click_count": (metrics.click_count || 0) > 0,
       "steady_tone": metrics.steady_tone === true,
-      "resonance_peak_db": typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12,
+      "resonance_peak_db": false,
+      "ringing_db": typeof metrics.ringing_db === "number" && metrics.ringing_db >= 15,
       "stereo_correlation": typeof metrics.stereo_correlation === "number" && metrics.stereo_correlation > 0.5,
       "mono_loss_db": typeof metrics.mono_loss_db === "number" && metrics.mono_loss_db < -1.5,
       "mono_notch_db": typeof metrics.mono_notch_db === "number" && metrics.mono_notch_db < -6,
@@ -530,7 +531,8 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     ul.appendChild(item("peak " + fmt(metrics.peak_dbfs, 1, " dBFS")));
     ul.appendChild(item("rms " + fmt(metrics.rms_dbfs, 1, " dBFS")));
     ul.appendChild(item("T60 " + (metrics.t60_s === null || metrics.t60_s === undefined ? "—" : fmt(metrics.t60_s, 2, " s"))));
-    ul.appendChild(item("resonance " + fmt(metrics.resonance_peak_db, 1, " dB"), isFlag.resonance_peak_db));
+    ul.appendChild(item("ringing " + (typeof metrics.ringing_db === "number" ? fmt(metrics.ringing_db, 1, " dB") + (metrics.ringing_hz ? " @ " + Math.round(metrics.ringing_hz) + " Hz" : "") : "—"), isFlag.ringing_db));
+    ul.appendChild(item("resonance peak " + fmt(metrics.resonance_peak_db, 1, " dB") + " (info)", false));
     ul.appendChild(item("steady tone: " + (metrics.steady_tone ? "yes" : "no"), isFlag.steady_tone));
     ul.appendChild(item("NaN/Inf " + fmt(metrics.nan_inf_count, 0), isFlag.nan_inf_count));
     ul.appendChild(item("clip " + fmt(metrics.clip_count, 0), isFlag.clip_count));

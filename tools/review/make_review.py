@@ -101,8 +101,10 @@ def is_flagged(metrics, ignore=frozenset()):
         return True
     if metrics.get("steady_tone") is True:
         return True
-    rp = metrics.get("resonance_peak_db")
-    if isinstance(rp, (int, float)) and rp > 12:
+    # Ringing: the calibrated M6 metric (docs/m6-metric-calibration.md).
+    # resonance_peak_db is informational only: it "fails" real tanks.
+    rd = metrics.get("ringing_db")
+    if isinstance(rd, (int, float)) and rd >= 15:
         return True
     if is_stereo_flagged(metrics, ignore):
         return True
