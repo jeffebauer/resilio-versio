@@ -2,9 +2,9 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M6 built; M4/M5 need your listen · chirp-direction decision needed
+**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
 
-**Plugin installed in Ableton:** M5 + M6 + DRIVE retune (commit `21a10c1`), installed 28 Sep 15:57. **Rescan plug-ins** (hold ⌥ and click Rescan) to pick it up. DRIVE is now clearly audible from noon; KICKED Howl wanders like a siren. SPLASH and WOBBLE still do nothing until the M7 build.
+**Plugin installed in Ableton:** M7 build (commit `9e689b9`): SPLASH, the real Kick and WOBBLE now work, on top of the DRIVE retune and M6. Installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). **Known issue:** held notes can produce faint ticks around DECAY at noon (0.5); the fix is in progress. If you hear ticks, nudge DECAY slightly off noon.
 
 ## To do (suggested order)
 
@@ -64,8 +64,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Howl: a rideable rough roar that dies away when DECAY comes down? (M6 makes it wander more, about ±7 cents like a siren, so it's never a steady tone. You'll hear that in the next plugin build)
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
 
-### 9. M7 questions (after the next plugin build, which will have Splash, Kick and WOBBLE)
-- No need to answer now. They'll make sense once you can play it. Background: [m7-integration.md](m7-integration.md)
+### 9. Listen + M7 questions (≈20 min) · the build is installed
+- Open from Finder: `renders/m7_splash/index.html` (ATTITUDE × SPLASH on hits), `renders/m7_wobble/index.html` (WOBBLE on held tones), and the Kick files in `renders/m7_kick/` (each ATTITUDE: singles, a pair, a 12-per-second train). Or play the plugin. Background: [m7-integration.md](m7-integration.md)
+- [ ] KICKED crash big enough? DRIVEN moderate? Kick a tight thud + crash, clean on the fast train?
+- [ ] WOBBLE 0.75 already clearly out of tune? Max (about 40 cents in the tail) the right ceiling?
 - [ ] **SPLASH at 0 in DRIVEN:** hard hits keep a faint natural splash (about 27 dB below max). Faint enough, or too faint?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on the left spring and the other way on the right, so hard hits briefly spread in stereo. Keep it, or lurch together?
 - [ ] **WOBBLE at max:** about 50 cents of wobble in the tail (clearly seasick). Right ceiling, more, or less? (The Magneto WOW & FLUTTER takes will help set this)
@@ -82,7 +84,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- M7 components built and merged (Splash, Kick, WOBBLE, all tested stand-alone). Next: wire them into the Tank after the DRIVE retune, then a new plugin build for you
+- Fixing held-tone ticks at DECAY 0.5 (a pre-M7 spring-model bug found in M7 checks; running). Then a fresh plugin build
+- Firmware flash: the profile build is at 98% after M7; trim before M8 (see the flash plan)
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
@@ -90,6 +93,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: M7 built (SPLASH, real Kick, WOBBLE wired in; all 14 test suites pass). Installed in Ableton
 
 - 28 Sep 2026: DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): DRIVE clearly audible from noon, level constant. Installed in Ableton
 
