@@ -73,7 +73,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- After M6 lands: DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)) + wiring the M7 components into the Tank, then a new plugin build for you
+- DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): running
+- Next: wire the M7 components into the Tank, then a new plugin build for you
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
