@@ -106,11 +106,6 @@ struct Ramp {
 // Voice (DriveVoicing.h) blended by the ATTITUDE Morph weights.
 drive::Voice blendVoice(const std::array<float, 3>& w);
 
-// Static level model of DriveIn's saturators for the automatic gain
-// compensation: RMS of a sine of peak `amplitude` through
-// tape(transducer(preGain · x)) divided by the sine's own RMS.
-float driveInLevelGain(const drive::Voice& v, float preGain, float amplitude);
-
 // ---- DriveIn: input transducer -> tape ---------------------------------------
 //
 //   x ─ LPF ─ LPF ─ HPF ─ × preGain ─┬ ×2 up ─────────────────────────────────────────────────┐
@@ -119,6 +114,17 @@ float driveInLevelGain(const drive::Voice& v, float preGain, float amplitude);
 //                                    │  ─ flux restore                                            │
 //                                    └ ×2 down ◄───────────────────────────────────────────────┘
 //     ─ HF smear LPF ─ × makeup ─ DC block ─► out
+//
+// Automatic gain compensation (SPEC §4.9, ADR 0022): makeup = ATTITUDE
+// trim / preGain (so small signals come out at unity) × the measured
+// squash: DriveIn follows the slow mean-square level just after the
+// pre-gain and just after the saturators (kAutoMakeupSeconds), and the
+// square root of their ratio is how much the saturators took away. The
+// Tank updates it every control tick. So a hot hit is flattened (peaks
+// rounded, body brought up: compression) but the average level stays
+// where it was at DRIVE 0, for quiet and loud material alike. The two
+// followers fall together between hits, so their ratio remembers the last
+// hit's squash: the next hit gets the right makeup straight away.
 //
 // Band-limit first (a spring driver coil loses lows and highs), then the
 // saturators. The transducer saturates on flux (DriveVoicing.h kFluxHz):
@@ -134,13 +140,13 @@ float driveInLevelGain(const drive::Voice& v, float preGain, float amplitude);
 struct DriveInSettings {
     drive::Voice voice{};
     float preGain = 1.0f; // linear
-    float makeup  = 1.0f; // linear, includes the ATTITUDE trim
+    float makeup  = 1.0f; // linear: ATTITUDE trim / preGain (the measured squash is added by DriveIn)
     float smearHz = drive::kSmearOpenHz;
 };
 
-// DriveIn settings for Morph weights w and (smoothed) DRIVE, including the
-// automatic gain compensation: preGain from the ADR 0014 curve, makeup =
-// ATTITUDE trim / modelled level gain. Used by the Tank; public for tests.
+// DriveIn settings for Morph weights w and (smoothed) DRIVE: preGain from
+// the ADR 0014 curve, makeup = ATTITUDE trim / preGain. Used by the Tank;
+// public for tests.
 DriveInSettings driveInSettings(const drive::Voice& v, float drive);
 
 class DriveIn {
@@ -158,6 +164,7 @@ public:
         x = lp2_.process(x);
         x = hp_.process(x);
         x *= preGain_.next();
+        envIn_.process(x * x + kEnvFloor);
         const float kP = kPos_, kN = kNeg_, tk = tapeK_, amt = tapeAmt_.next();
         float y = os_.process(x, [&](float u) {
             const float t = asymClip(fluxPre_.process(u), kP, kN);     // transducer (flux domain)
@@ -165,10 +172,13 @@ public:
             const float s = p + amt * (softClip(tk * p) / tk - p);
             return fluxPost_.process(deEmph_.process(s));               // restore highs
         });
+        envOut_.process(y * y + kEnvFloor);
         y = smear_.process(y);
         y *= makeup_.next();
         return dc_.process(y);
     }
+    // Keeps the level followers away from denormals in silence (-120 dBFS).
+    static constexpr float kEnvFloor = 1.0e-12f;
 
 private:
     float sampleRate_ = 48000.0f;
@@ -179,6 +189,7 @@ private:
     OnePoleLowpass smear_;
     DcBlocker dc_;
     Ramp preGain_, makeup_, tapeAmt_;
+    OnePoleLowpass envIn_, envOut_; // automatic gain compensation
     float kPos_ = 1.0f, kNeg_ = 1.0f, tapeK_ = 1.0f;
     // Last designed values (skip redesigns at rest).
     float emphDb_ = -1.0f, fluxDb_ = -1.0f, hpHz_ = -1.0f, lpHz_ = -1.0f, smearHz_ = -1.0f;
@@ -248,26 +259,62 @@ private:
 };
 
 // ---- DriveOut: output pickup, one per output channel -------------------------------
-// Light soft clip (only bends near full scale) -> band-limit (HPF, which
-// also removes the clip's DC, and a 2nd-order LPF). Unity small-signal gain.
+//
+//   x ─ LPF ─ HF cut ─ ×2 up ─ asymClip ─ ×2 down ─ HF restore ─ HPF ─ × makeup ─► out
+//
+// A second magnetic transducer, after the springs. It is the one stage
+// that hears the *finished* tail, so what it does is heard as is, not
+// smeared by the springs: that makes it where DRIVE's grit and "pushed"
+// density become obvious (ADR 0022). Its hardness rises with DRIVE
+// (Voice::outDriveDb); at DRIVE 0 it only bends near full scale.
+// Like the input transducer it saturates on flux (lows first): highs are
+// cut by kOutFluxDb above kOutFluxHz going in and restored after, so it
+// thickens and grits the body of the tail without fizz (and without
+// squaring off highs that would alias). The pickup's band-limit (LPF) comes
+// first for the same reason. The HPF also removes the
+// asymmetric clip's DC.
+//
+// Automatic makeup (the level stays put, ADR 0022): the pickup measures
+// its own input and output level (slow mean square, kAutoMakeupSeconds)
+// and the Tank turns the ratio into a makeup gain, linked across both
+// channels. Squashed peaks stay squashed (that is the compressed, pushed
+// sound), but the average level comes back, whatever the material: quiet
+// pads and loud hits alike, so DRIVE never works as a volume knob. Slow
+// enough not to pump on single hits; it just "breathes" a little, like a
+// tape machine's level after a loud passage.
 class DriveOut {
 public:
     void prepare(float sampleRate);
     void reset();
-    void set(const drive::Voice& v, bool snap);
+    // Control rate: voicing blended by the Morph; push = drive::Push::out.
+    void set(const drive::Voice& v, float push);
+    // Makeup gain (linear), set at control rate by the Tank from both
+    // channels' levels (levelIn / levelOut), ramped per sample.
+    void setMakeup(float g, bool snap, int interval) { snap ? makeup_.snap(g) : makeup_.aim(g, interval); }
+    // Slow (kAutoMakeupSeconds) mean-square level going into and coming out
+    // of the saturator: their ratio is how much the pickup squashed.
+    float levelIn() const { return envIn_.y; }
+    float levelOut() const { return envOut_.y; }
     float process(float x)
     {
         const float kP = kPos_, kN = kNeg_;
-        float y = os_.process(x, [kP, kN](float u) { return asymClip(u, kP, kN); });
-        y = hp_.process(y);
-        return lp_.process(y);
+        x = lp_.process(x);
+        envIn_.process(x * x + kEnvFloor);
+        float y = fluxPost_.process(os_.process(fluxPre_.process(x), [kP, kN](float u) { return asymClip(u, kP, kN); }));
+        envOut_.process(y * y + kEnvFloor);
+        return makeup_.next() * hp_.process(y);
     }
 
 private:
     float sampleRate_ = 48000.0f;
     Oversampler os_;
+    FirstOrder fluxPre_, fluxPost_;
     DcBlocker hp_;
     Biquad lp_;
+    Ramp makeup_;
+    OnePoleLowpass envIn_, envOut_;
+    // Keeps the level followers away from denormals in silence (-120 dBFS).
+    static constexpr float kEnvFloor = 1.0e-12f;
     float kPos_ = 0.5f, kNeg_ = 0.5f, lpHz_ = -1.0f;
 };
 

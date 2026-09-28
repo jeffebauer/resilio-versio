@@ -171,16 +171,26 @@ void Tank::controlTick(bool snap)
     const drive::Voice voice = dsp::blendVoice(attW_);
     const float drive = smoothed_[size_t(ParamId::Drive)];
 
-    // DriveIn + automatic gain compensation (only re-modelled when DRIVE or
-    // the Morph moved; the model costs 32 saturator evaluations).
+    // DriveIn settings and the DRIVE push on the later stages (ADR 0022):
+    // only recomputed when DRIVE or the Morph moved (they cost a few exp).
     if (snap || drive != compDrive_ || attW_ != compW_) {
         driveInSettings_ = dsp::driveInSettings(voice, drive);
+        push_      = drive::push(voice, drive);
         compDrive_ = drive;
         compW_     = attW_;
     }
     driveIn_.set(driveInSettings_, snap, kControlInterval);
     tilt_.set(tone, snap, kControlInterval);
-    for (auto& d : driveOut_) d.set(voice, snap);
+    for (auto& d : driveOut_) d.set(voice, push_.out);
+    {
+        // DriveOut automatic makeup, linked across L/R so the image never
+        // shifts: sqrt(level in / level out) of both channels together
+        // (at least 1, at most kAutoMakeupMax), times the static wet makeup.
+        const float in  = driveOut_[0].levelIn() + driveOut_[1].levelIn();
+        const float out = driveOut_[0].levelOut() + driveOut_[1].levelOut();
+        const float autoGain = std::clamp(std::sqrt(in / out), 1.0f, drive::kAutoMakeupMax);
+        for (auto& d : driveOut_) d.setMakeup(autoGain * push_.wet, snap, kControlInterval);
+    }
 
     SpringSettings base;
     base.loopDelaySeconds = map::decayLoopDelaySeconds(decay);
@@ -190,9 +200,17 @@ void Tank::controlTick(bool snap)
     base.dampingHz        = map::toneDampingHz(tone);
     base.highPathLevel    = map::toneHighPathLevel(tone);
     base.loopSatAmount    = voice.loopAmount;
-    base.loopSatKPos      = voice.loopKPos;
-    base.loopSatKNeg      = voice.loopKNeg;
-    base.howl             = drive::howlZone(decay) * attW_[2];
+    // DRIVE pushes the LoopSat too (ADR 0022): the same curve, harder as
+    // DRIVE rises (Voice::loopDriveDb). Its slope stays <= 1: Loop gain
+    // can only go down, never up. Not inside the Howl zone, though: there
+    // the LoopSat's hardness sets how loud the Howl settles (a harder curve
+    // holds it lower), so the push fades out across the zone and the Howl
+    // keeps its ADR 0019 voicing whatever DRIVE does. No jump at the edge.
+    const float howlAmt   = drive::howlZone(decay) * attW_[2];
+    const float loopPush  = drive::dbToGain(push_.loopDb * (1.0f - howlAmt));
+    base.loopSatKPos      = voice.loopKPos * loopPush;
+    base.loopSatKNeg      = voice.loopKNeg * loopPush;
+    base.howl             = howlAmt;
     // AntiRes Micro-mod floor, always on (WOBBLE adds on top at M7), plus
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
     base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;

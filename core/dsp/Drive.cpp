@@ -11,7 +11,8 @@ drive::Voice blendVoice(const std::array<float, 3>& w)
     static constexpr float V::*kFields[] = {
         &V::bandHpHz, &V::bandLpHz, &V::transKPos, &V::transKNeg, &V::fluxCutDb, &V::driveDbMin, &V::driveDbMax,
         &V::tapeAmount, &V::tapeK, &V::preEmphDb, &V::smearHzMax, &V::loopAmount, &V::loopKPos,
-        &V::loopKNeg, &V::outK, &V::outAsym, &V::outLpHz, &V::compRef, &V::trimDb};
+        &V::loopKNeg, &V::loopDriveDb, &V::outDriveDb, &V::outK, &V::outAsym, &V::outLpHz, &V::wetMakeupDb,
+        &V::trimDb};
     static_assert(sizeof(kFields) / sizeof(kFields[0]) * sizeof(float) == sizeof(V), "blendVoice misses a Voice field");
     V out{};
     for (size_t a = 0; a < 3; ++a)
@@ -19,35 +20,12 @@ drive::Voice blendVoice(const std::array<float, 3>& w)
     return out;
 }
 
-float driveInLevelGain(const drive::Voice& v, float preGain, float amplitude)
-{
-    // 16 points over one period (both halves: the transducer is asymmetric),
-    // at phases (i + ½)/16: sin of those is ± these four values. A table, so
-    // a DRIVE CV sweep (re-modelled every control tick) costs no sinf calls.
-    // The flux and emphasis shelves are left out (unity at the low
-    // frequencies that saturate); Voice::compRef is calibrated with them in.
-    static constexpr float kSin[4] = {0.19509032f, 0.55557023f, 0.83146961f, 0.98078528f};
-    constexpr int kPoints = 16;
-    double in = 0.0, out = 0.0;
-    for (int i = 0; i < kPoints; ++i) {
-        const int q = i % 8; // 0..7 over a half period: rises then falls
-        const float s = kSin[q < 4 ? q : 7 - q] * (i < 8 ? 1.0f : -1.0f);
-        const float x = amplitude * s;
-        const float t = asymClip(preGain * x, v.transKPos, v.transKNeg);
-        const float y = t + v.tapeAmount * (softClip(v.tapeK * t) / v.tapeK - t);
-        in += double(x) * x;
-        out += double(y) * y;
-    }
-    return in > 0.0 ? float(std::sqrt(out / in)) : 1.0f;
-}
-
 DriveInSettings driveInSettings(const drive::Voice& v, float drive)
 {
     DriveInSettings s;
     s.voice   = v;
     s.preGain = drive::dbToGain(drive::drivePreGainDb(v, drive));
-    const float level = driveInLevelGain(v, s.preGain, v.compRef);
-    s.makeup  = drive::dbToGain(v.trimDb) / std::max(level, 1.0e-3f);
+    s.makeup  = drive::dbToGain(v.trimDb) / s.preGain;
     s.smearHz = drive::smearHz(v, drive);
     return s;
 }
@@ -58,6 +36,8 @@ void DriveIn::prepare(float sampleRate)
 {
     sampleRate_ = sampleRate;
     dc_.setCutoff(drive::kDriveDcHz, sampleRate);
+    envIn_.setCutoff(1.0f / (2.0f * map::kPi * drive::kAutoMakeupSeconds), sampleRate);
+    envOut_ = envIn_;
     emphDb_ = fluxDb_ = hpHz_ = lpHz_ = smearHz_ = -1.0f;
     reset();
 }
@@ -74,6 +54,7 @@ void DriveIn::reset()
     fluxPost_.reset();
     smear_.reset();
     dc_.reset();
+    envIn_.y = envOut_.y = kEnvFloor;
 }
 
 void DriveIn::set(const DriveInSettings& s, bool snap, int interval)
@@ -121,13 +102,18 @@ void DriveIn::set(const DriveInSettings& s, bool snap, int interval)
     kPos_  = v.transKPos;
     kNeg_  = v.transKNeg;
     tapeK_ = v.tapeK;
+    // Measured squash (see "Automatic gain compensation"), at least 1 (never
+    // turns a clean signal down) and at most preGain (never louder than the
+    // signal would be with no pre-gain at all).
+    const float squash = std::clamp(std::sqrt(envIn_.y / envOut_.y), 1.0f, std::max(1.0f, s.preGain));
+    const float makeup = s.makeup * squash;
     if (snap) {
         preGain_.snap(s.preGain);
-        makeup_.snap(s.makeup);
+        makeup_.snap(makeup);
         tapeAmt_.snap(v.tapeAmount);
     } else {
         preGain_.aim(s.preGain, interval);
-        makeup_.aim(s.makeup, interval);
+        makeup_.aim(makeup, interval);
         tapeAmt_.aim(v.tapeAmount, interval);
     }
 }
@@ -160,6 +146,11 @@ void DriveOut::prepare(float sampleRate)
 {
     sampleRate_ = sampleRate;
     hp_.setCutoff(drive::kOutHpHz, sampleRate);
+    fluxPre_.setHighShelf(drive::kOutFluxHz, -drive::kOutFluxDb, sampleRate);
+    fluxPost_ = fluxPre_;
+    fluxPost_.invert();
+    envIn_.setCutoff(1.0f / (2.0f * map::kPi * drive::kAutoMakeupSeconds), sampleRate);
+    envOut_ = envIn_;
     lpHz_ = -1.0f;
     reset();
 }
@@ -167,14 +158,20 @@ void DriveOut::prepare(float sampleRate)
 void DriveOut::reset()
 {
     os_.reset();
+    fluxPre_.reset();
+    fluxPost_.reset();
     hp_.reset();
     lp_.reset();
+    envIn_.y = envOut_.y = kEnvFloor;
+    makeup_.snap(1.0f);
 }
 
-void DriveOut::set(const drive::Voice& v, bool)
+void DriveOut::set(const drive::Voice& v, float push)
 {
-    kPos_ = v.outK;
-    kNeg_ = v.outK * (1.0f + v.outAsym);
+    // Hardness steps a little per control tick while DRIVE moves: sat(k·x)/k
+    // changes smoothly with k, so the steps are far below audibility.
+    kPos_ = v.outK * push;
+    kNeg_ = v.outK * (1.0f + v.outAsym) * push;
     if (v.outLpHz != lpHz_) {
         lp_.setLowpass(std::min(v.outLpHz, 0.45f * sampleRate_), 0.7071f, sampleRate_);
         lpHz_ = v.outLpHz;

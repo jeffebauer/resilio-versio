@@ -22,12 +22,14 @@
 // blend of the three voicings (dsp::blendVoice). So a flip mid-tail
 // re-voices the live tail smoothly; nothing is ever stepped or restarted.
 //
-// DRIVE gain compensation (SPEC §4.9): at each control tick the pre-gain's
-// effect on level is modelled by passing a reference sine through the
-// static saturator curves (dsp::driveInLevelGain), and DriveIn's output is
-// scaled by the inverse (plus the ATTITUDE trim). DRIVE then changes colour
-// (how hard the saturators work), not loudness. Only redone when DRIVE or the
-// Morph moved.
+// DRIVE (ADR 0014, 0022; curves in DriveVoicing.h): pre-gain into DriveIn,
+// plus a "push" that makes each LoopSat and the DriveOut pickups bite
+// harder, so the drive is heard in the finished tail, not only smeared in
+// from the input. Gain compensation is measured, not modelled (SPEC §4.9):
+// DriveIn and DriveOut follow the slow level into and out of their
+// saturators and make up the difference (DriveOut's makeup is linked
+// across L/R here, on the control grid). DRIVE then changes colour, grit
+// and squash, not loudness, whatever the material.
 //
 // Latency: the wet path picks up ~5 samples (0.1 ms at 48 kHz) of group
 // delay from the DriveIn and DriveOut oversamplers (2.5 each at x2): like a
@@ -205,6 +207,7 @@ private:
     float                compDrive_ = -1.0f;
     std::array<float, 3> compW_{{-1.0f, -1.0f, -1.0f}};
     dsp::DriveInSettings driveInSettings_{};
+    drive::Push          push_{};
 
     // Tank-level stages.
     dsp::DriveIn                        driveIn_;
