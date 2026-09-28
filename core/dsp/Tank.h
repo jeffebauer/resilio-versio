@@ -9,7 +9,9 @@
 //
 // Used at M1: DECAY, BOING, TONE, MIX. Stored but ignored until their
 // milestone: SPRINGS (M4; always one Spring), ATTITUDE (M5/M7; always CLEAN),
-// SPLASH, WOBBLE (M7), DRIVE (M5). kick() is a no-op until M7.
+// SPLASH, WOBBLE (M7), DRIVE (M5). Until M7, kick() injects a placeholder
+// impulse into the Tank input at the exact sample, so Kick timing is testable
+// (M2); the real thud + crash (ADR 0016) replaces it at M7.
 //
 // Real-time rules: process() never allocates, locks or does I/O. All memory
 // is taken once in prepare(). Output is identical for any block size:
@@ -41,6 +43,8 @@ public:
     static constexpr float kShelfGain       = 0.7f;    // -3 dB above the corner
     static constexpr float kLimitThreshold  = 0.89f;   // ≈ -1 dBFS: wet peaks never reach 1.0
     static constexpr float kLimitReleaseS   = 0.15f;
+    static constexpr int   kMaxPendingKicks = 16;
+    static constexpr float kKickPlaceholder = 0.5f;    // impulse height (M2 placeholder)
 
     Tank() = default;
     ~Tank();
@@ -63,8 +67,9 @@ public:
 
     float param(ParamId id) const { return values_[static_cast<size_t>(id)]; }
 
-    // Kick event at sample offset within the next process() block. No-op until M7.
-    void kick(int /*sampleOffset*/) {}
+    // Kick at a sample offset within the next process() block (clamped to it).
+    // Up to kMaxPendingKicks per block; extras are dropped.
+    void kick(int sampleOffset);
 
     void process(const float* inL, const float* inR, float* outL, float* outR, int numSamples);
 
@@ -118,6 +123,9 @@ private:
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
     float limitEnv_ = 0.0f, limitRelease_ = 0.0f;
+
+    std::array<int, kMaxPendingKicks> pendingKicks_{};
+    int numPendingKicks_ = 0;
 };
 
 } // namespace rv

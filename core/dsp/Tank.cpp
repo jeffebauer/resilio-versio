@@ -98,8 +98,15 @@ void Tank::reset()
     }
     for (auto& s : shelfSplit_) s.reset();
     limitEnv_ = 0.0f;
+    numPendingKicks_ = 0;
     tick_     = 0;
     primed_   = false;
+}
+
+void Tank::kick(int sampleOffset)
+{
+    if (numPendingKicks_ < kMaxPendingKicks)
+        pendingKicks_[size_t(numPendingKicks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
 }
 
 void Tank::controlTick(bool snap)
@@ -131,6 +138,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             outL[i] = inL[i];
             outR[i] = inR[i];
         }
+        numPendingKicks_ = 0;
         return;
     }
     if (!primed_) {
@@ -148,6 +156,10 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
         for (int i = 0; i < n; ++i) mono[i] = 0.5f * (inL[pos + i] + inR[pos + i]);
+        for (int k = 0; k < numPendingKicks_; ++k) {
+            const int at = std::min(pendingKicks_[size_t(k)], numSamples - 1) - pos;
+            if (at >= 0 && at < n) mono[at] += kKickPlaceholder;
+        }
         springs_[0].process(mono, wet, n);
 
         for (int i = 0; i < n; ++i) {
@@ -175,6 +187,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         pos += n;
         tick_ = (tick_ + n) % kControlInterval;
     }
+    numPendingKicks_ = 0;
 }
 
 } // namespace rv
