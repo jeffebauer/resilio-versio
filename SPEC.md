@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.11 — ADR 0026: TENSION replaces BOING ("which tank"), DECAY becomes tail length only; supersedes ADR 0012; implementation staged.
 - v1.0.10 — ADR 0025: CLEAN gets a real, gentler splash (light Clatter + tiny Jolt); §4.5 table updated.
 - v1.0.9 — ADR 0024: chirp direction is highs-later (owner by ear + IR library); §2.1, §7 and CONTEXT wording corrected.
 - v1.0.8 — §10: stereo-in recorded as an open question for after M3 (incl. plugin-only as a Core mode). Recipe: optional single-tank takes A-L / A-R.

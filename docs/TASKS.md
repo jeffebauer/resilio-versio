@@ -109,7 +109,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
   - [ ] Does each TENSION position sound like **one real tank**? Is the tight end still clearly a spring, and the loose end a proper dub tank rather than cartoonish?
   - [ ] DECAY page: does **only the length** change?
   - [ ] Turning page: TENSION bends pitch, DECAY doesn't. Do you miss DECAY's bend?
-  - [ ] Overall: **adopt TENSION**, keep BOING + DECAY as now, or the middle option?
+  - [x] Overall: **adopt TENSION** (29 Sep, [ADR 0026](adr/0026-tension-replaces-boing.md)). Staged after the highs-later switch-on and CLEAN's splash
 
 ## What to send Claude
 
@@ -132,6 +132,9 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 29 Sep 2026: TENSION adopted to replace BOING ([ADR 0026](adr/0026-tension-replaces-boing.md))
+- 29 Sep 2026: session wrap/start skills added (`/resilio-wrap`, `/resilio-start`), plus a project `CLAUDE.md`
 
 - 29 Sep 2026: SPLASH in CLEAN decided: real, gentler splash ([ADR 0025](adr/0025-clean-gentle-splash.md))
 
