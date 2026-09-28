@@ -1,0 +1,38 @@
+{
+  "name": "m6_bursts_howl",
+  "input": "test_audio/stimulus/06_noise_bursts.wav",
+  "base": {
+    "mix": 1.0,
+    "drive": 0.5,
+    "wobble": 0.0,
+    "attitude": "KICKED"
+  },
+  "grid": {
+    "decay": [
+      1.0
+    ],
+    "springs": [
+      0,
+      0.5,
+      1
+    ],
+    "boing": [
+      0,
+      0.5,
+      1
+    ],
+    "tone": [
+      0,
+      0.5,
+      1
+    ]
+  },
+  "tail_seconds": 2,
+  "ignore_flags": [
+    "click_count",
+    "max_step_db_100ms",
+    "resonance_peak_db",
+    "ringing",
+    "steady_tone"
+  ]
+}

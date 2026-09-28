@@ -302,19 +302,189 @@ void stereoMetricsOnSyntheticSignals()
     }
 }
 
+// ---- M6 Ringing metric + Howl criterion (docs/m6-metric-calibration.md) ----
+// Small synthetic cases: things that must pass (noise, dense decaying tails,
+// a plain feedback loop's comb) and things that must be flagged (a feedback
+// loop with a narrow resonance inside it, a sine buried under a tail, a
+// self-oscillating loop). Deterministic seeds.
+namespace syn {
+
+using Buf = std::vector<float>;
+constexpr double kFs = 48000.0;
+
+Buf noiseBurst(double totalS, double dur, double peak, unsigned seed)
+{
+    Buf x(size_t(totalS * kFs), 0.0f);
+    std::mt19937 r(seed);
+    std::uniform_real_distribution<float> u(-1, 1);
+    const size_t a = size_t(kFs), n = size_t(dur * kFs);
+    float y = 0;
+    const float c = 1.0f - std::exp(-2.0f * float(M_PI) * 3000.0f / float(kFs));
+    for (size_t i = 0; i < n; ++i) { y += c * (u(r) - y); x[a + i] = float(peak) * 2.0f * y; }
+    return x;
+}
+
+// Feedback delay loop: delay L, one-pole damping at 6 kHz, broadband gain for
+// T60, an RBJ peaking resonance (+peakDb at f0, Q) inside the loop, tanh
+// (slope 1 at rest) so a loop gain above 1 settles into a steady tone.
+Buf loop(const Buf& in, double L, double t60, double f0, double q, double peakDb)
+{
+    const size_t D = size_t(L * kFs);
+    std::vector<double> buf(D, 0.0);
+    size_t w = 0;
+    const double g = std::pow(10.0, -3.0 * L / t60), c = 1.0 - std::exp(-2 * M_PI * 6000.0 / kFs);
+    const double A = std::pow(10.0, peakDb / 40.0), wv = 2 * M_PI * f0 / kFs, al = std::sin(wv) / (2 * q), a0 = 1 + al / A;
+    const double b0 = (1 + al * A) / a0, b1 = -2 * std::cos(wv) / a0, b2 = (1 - al * A) / a0, a2 = (1 - al / A) / a0;
+    double lp = 0, s1 = 0, s2 = 0;
+    Buf out(in.size());
+    for (size_t i = 0; i < in.size(); ++i) {
+        const double fb = buf[w];
+        lp += c * (double(in[i]) + g * fb - lp);
+        const double y = b0 * lp + s1;
+        s1 = b1 * lp - b1 * y + s2;
+        s2 = b2 * lp - a2 * y;
+        buf[w] = std::tanh(y);
+        w = (w + 1) % D;
+        out[i] = float(fb);
+    }
+    return out;
+}
+
+Buf decayingNoise(double totalS, double t60, double rmsDb, unsigned seed)
+{
+    Buf x(size_t(totalS * kFs), 0.0f);
+    std::mt19937 r(seed);
+    std::normal_distribution<double> n(0, 1);
+    const double amp = std::pow(10.0, rmsDb / 20.0);
+    for (size_t i = size_t(kFs); i < x.size(); ++i)
+        x[i] = float(amp * n(r) * std::pow(10.0, -3.0 * (double(i) / kFs - 1.0) / t60));
+    return x;
+}
+
+// Dense modal tail: many decaying modes, T60 smooth in frequency (longer at
+// lows) with +-15 % random spread per mode, like a real resonator.
+Buf modalTail(double totalS, double t60mid, unsigned seed, int modes)
+{
+    Buf x(size_t(totalS * kFs), 0.0f);
+    std::mt19937 r(seed);
+    std::uniform_real_distribution<double> u(0, 1);
+    const size_t a = size_t(kFs);
+    for (int m = 0; m < modes; ++m) {
+        const double f = 80.0 * std::pow(12000.0 / 80.0, u(r));
+        const double t60 = t60mid * std::pow(1000.0 / f, 0.3) * (0.85 + 0.3 * u(r));
+        const double dec = std::exp(-6.9078 / (t60 * kFs)), ph = 2 * M_PI * u(r), amp = (u(r) - 0.5) / std::sqrt(double(modes));
+        const double wv = 2 * M_PI * f / kFs, cr = std::cos(wv) * dec, ci = std::sin(wv) * dec;
+        double re = std::cos(ph), im = std::sin(ph), e = 1.0;
+        for (size_t i = a; i < x.size() && e > 1e-6; ++i) {
+            x[i] += float(amp * re);
+            const double nr = re * cr - im * ci;
+            im = re * ci + im * cr;
+            re = nr;
+            e *= dec;
+        }
+    }
+    return x;
+}
+
+void addSine(Buf& x, double f, double rmsDb, double from)
+{
+    const double a = std::pow(10.0, rmsDb / 20.0) * std::sqrt(2.0);
+    for (size_t i = size_t(from * kFs); i < x.size(); ++i) x[i] += float(a * std::sin(2 * M_PI * f * double(i) / kFs));
+}
+
+} // namespace syn
+
+void ringingMetricCalibration()
+{
+    const float sr = float(syn::kFs);
+    struct Case {
+        const char* what;
+        syn::Buf x;
+        bool expect;
+    };
+    std::vector<Case> cases;
+    {
+        std::mt19937 r(1);
+        std::normal_distribution<double> n(0, 0.1);
+        syn::Buf w(size_t(8 * syn::kFs)), p(w.size());
+        float y = 0;
+        for (size_t i = 0; i < w.size(); ++i) { w[i] = float(n(r)); y += 0.05f * (w[i] - y); p[i] = 4.0f * y; }
+        cases.push_back({"white noise", w, false});
+        cases.push_back({"low-passed (pinkish) noise", p, false});
+    }
+    cases.push_back({"decaying white noise, T60 3 s", syn::decayingNoise(12, 3.0, -10, 3), false});
+    cases.push_back({"dense modal tail (800 modes, +-15 % T60 spread)", syn::modalTail(10, 2.0, 4, 800), false});
+    const syn::Buf burst = syn::noiseBurst(12, 0.05, 0.5, 7);
+    cases.push_back({"plain feedback loop L 50 ms, T60 2 s (a comb, no resonance)", syn::loop(burst, 0.05, 2.0, 1100, 8, 0.0), false});
+    cases.push_back({"feedback loop L 50 ms, T60 2 s, +2 dB Q 8 resonance at 1.1 kHz", syn::loop(burst, 0.05, 2.0, 1100, 8, 2.0), true});
+    cases.push_back({"feedback loop L 80 ms, T60 2 s, +2 dB Q 8 resonance at 1.1 kHz", syn::loop(burst, 0.08, 2.0, 1100, 8, 2.0), true});
+    cases.push_back({"feedback loop L 100 ms, T60 2 s, +2 dB Q 20 resonance at 300 Hz", syn::loop(burst, 0.1, 2.0, 300, 20, 2.0), true});
+    cases.push_back({"self-oscillating loop L 30 ms, +3 dB Q 20 at 3 kHz (steady tone)", syn::loop(burst, 0.03, 2.0, 3000, 20, 3.0), true});
+    {
+        syn::Buf x = syn::decayingNoise(12, 3.0, -10, 8);
+        syn::addSine(x, 440.0, -30.0, 1.0);
+        cases.push_back({"sine at -20 dB re a decaying noise tail's start", x, true});
+    }
+    for (const Case& c : cases) {
+        const auto m = rv::metrics::compute({c.x}, sr);
+        char what[256];
+        std::snprintf(what, sizeof what, "ringing: %s -> %s (ringing_db %.1f at %.0f Hz, limit %.0f)", c.what,
+                      c.expect ? "flagged" : "passes", m.ringingDb, m.ringingHz, rv::metrics::kRingingGrowthDb);
+        check(m.ringing == c.expect && (c.expect || !std::isnan(m.ringingDb)), what);
+    }
+    // steady_tone (SPEC) must now also see a saturated self-oscillating loop,
+    // whose harmonics are about as prominent as its fundamental.
+    const auto so = rv::metrics::compute({syn::loop(burst, 0.03, 2.0, 3000, 20, 3.0)}, sr);
+    check(so.steadyTone, "steady_tone: true for a saturated self-oscillating loop (tone + harmonics)");
+}
+
+void howlCriterion()
+{
+    const float sr = float(syn::kFs);
+    // A bare steady sine: no floor, no movement -> not a Howl.
+    syn::Buf sine(size_t(8 * syn::kFs), 0.0f);
+    syn::addSine(sine, 300.0, -12.0, 0.0);
+    const auto a = rv::metrics::compute({sine}, sr);
+    // A rough, moving roar: a gliding tone (+-2 % at 0.4 Hz) with harmonics
+    // (tanh) over loud broadband noise (a roar, not a whistle).
+    syn::Buf roar(sine.size());
+    std::mt19937 r(5);
+    std::normal_distribution<double> n(0, 1);
+    double ph = 0;
+    for (size_t i = 0; i < roar.size(); ++i) {
+        const double t = double(i) / syn::kFs;
+        ph += 2 * M_PI * 300.0 * (1.0 + 0.02 * std::sin(2 * M_PI * 0.4 * t)) / syn::kFs;
+        roar[i] = float(0.3 * std::tanh(2.0 * std::sin(ph)) + 0.2 * n(r));
+    }
+    const auto b = rv::metrics::compute({roar}, sr);
+    char what[256];
+    std::snprintf(what, sizeof what, "howl: bare steady sine fails ADR 0019 (floor %.0f dB, moves %.2f %% / %.1f dB)",
+                  a.howlFloorDb, a.howlMovePct, a.howlMoveDb);
+    check(!a.howlOk, what);
+    std::snprintf(what, sizeof what, "howl: rough gliding roar passes ADR 0019 (floor %.0f dB, moves %.2f %% / %.1f dB)",
+                  b.howlFloorDb, b.howlMovePct, b.howlMoveDb);
+    check(b.howlOk, what);
+}
+
 void sidecarMetricsRoundTrip()
 {
     rv::metrics::Metrics m;
     m.peakDbfs = -3.1; m.rmsDbfs = -24.0; m.t60S = 8.7; m.resonancePeakDb = 7.5;
     m.steadyTone = false; m.nanInfCount = 0; m.clipCount = 0; m.clickCount = 2;
     m.stereoCorrelation = 0.2; m.monoLossDb = -0.3; m.monoNotchDb = -2.5; m.maxStepDb100ms = 1.1;
+    m.ringingDb = 4.5; m.ringingHz = 1234.0; m.ringingRatio = 1.2; m.ringingEndDb = 8.0; m.ringingSpanS = 3.5;
+    m.ringing = false; m.howlFloorDb = -12.0; m.howlMovePct = 0.8; m.howlMoveDb = 2.0; m.howlOk = true;
     rv::json::Value v = rv::sidecar::metricsToJson(m);
     rv::metrics::Metrics back = rv::sidecar::jsonToMetrics(v);
     bool ok = back.peakDbfs == m.peakDbfs && back.rmsDbfs == m.rmsDbfs && back.t60S == m.t60S
            && back.resonancePeakDb == m.resonancePeakDb && back.steadyTone == m.steadyTone
            && back.nanInfCount == m.nanInfCount && back.clipCount == m.clipCount && back.clickCount == m.clickCount
            && back.stereoCorrelation == m.stereoCorrelation && back.monoLossDb == m.monoLossDb
-           && back.monoNotchDb == m.monoNotchDb && back.maxStepDb100ms == m.maxStepDb100ms;
+           && back.monoNotchDb == m.monoNotchDb && back.maxStepDb100ms == m.maxStepDb100ms
+           && back.ringingDb == m.ringingDb && back.ringingHz == m.ringingHz && back.ringingRatio == m.ringingRatio
+           && back.ringingEndDb == m.ringingEndDb && back.ringingSpanS == m.ringingSpanS && back.ringing == m.ringing
+           && back.howlFloorDb == m.howlFloorDb && back.howlMovePct == m.howlMovePct && back.howlMoveDb == m.howlMoveDb
+           && back.howlOk == m.howlOk;
     check(ok, "sidecar: metrics -> JSON -> metrics round-trips");
 
     rv::metrics::Metrics withNulls;
@@ -339,6 +509,8 @@ void sidecarMetricsRoundTrip()
     check(std::isnan(legacyBack.stereoCorrelation) && std::isnan(legacyBack.monoLossDb)
               && std::isnan(legacyBack.monoNotchDb) && std::isnan(legacyBack.maxStepDb100ms),
           "sidecar: pre-M4 JSON missing the new keys entirely -> reported as not measured");
+    check(std::isnan(legacyBack.ringingDb) && !legacyBack.ringing && std::isnan(legacyBack.howlFloorDb) && !legacyBack.howlOk,
+          "sidecar: pre-M6 JSON without ringing_* / howl_* keys -> not measured");
 }
 
 void sidecarSpectrogramRoundTrip()
@@ -365,6 +537,8 @@ int main()
     clickCountOnStimulusFiles();
     clickCountFlagsInjectedStep();
     stereoMetricsOnSyntheticSignals();
+    ringingMetricCalibration();
+    howlCriterion();
     sidecarMetricsRoundTrip();
     sidecarSpectrogramRoundTrip();
     std::printf("%d failure(s)\n", failures);

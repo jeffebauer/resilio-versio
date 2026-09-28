@@ -10,3 +10,4 @@ dist/
 Ableton Project Info/
 Backup/
 tools/__pycache__/
+.claude/worktrees/

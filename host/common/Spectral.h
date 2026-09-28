@@ -23,7 +23,14 @@ inline float fromDb(float db) { return std::pow(10.0f, db / 20.0f); }
 // O(n) rather than the O(n^2) all-pairs scan an inner loop would need --
 // this runs once per 0.5 s frame in the steady_tone check, so it matters
 // for a full-length render (SPEC §6.2 performance budget).
-inline std::vector<float> thirdOctaveSmoothedMedian(const std::vector<float>& magDb, const std::vector<float>& freqHz)
+//
+// minHalfBins (default 0 = pure 1/3 octave, the SPEC resonance metric):
+// widen each band to at least +-minHalfBins bins. At low frequencies a
+// 1/3-octave band holds only a handful of FFT bins, so a single strong
+// peak would be half of its own "median"; the M6 Ringing metric uses a
+// floor of a few bins so the reference really is the neighbourhood.
+inline std::vector<float> thirdOctaveSmoothedMedian(const std::vector<float>& magDb, const std::vector<float>& freqHz,
+                                                    size_t minHalfBins = 0)
 {
     const size_t n = magDb.size();
     std::vector<float> smoothed(n, 0.0f);
@@ -39,6 +46,10 @@ inline std::vector<float> thirdOctaveSmoothedMedian(const std::vector<float>& ma
         while (hi < n && double(freqHz[hi]) <= bandHi) ++hi;
         loIdx[i] = lo;
         hiIdx[i] = hi > lo ? hi - 1 : lo;
+        if (minHalfBins) {
+            loIdx[i] = std::min(loIdx[i], i >= minHalfBins ? i - minHalfBins : 0);
+            hiIdx[i] = std::max(hiIdx[i], std::min(n - 1, i + minHalfBins));
+        }
     }
 
     std::vector<float> scratch;

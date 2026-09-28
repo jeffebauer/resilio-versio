@@ -20,6 +20,18 @@ json::Value metricsToJson(const metrics::Metrics& m)
     v.set("mono_loss_db", std::isnan(m.monoLossDb) ? json::Value::makeNull() : json::Value::makeNumber(m.monoLossDb));
     v.set("mono_notch_db", std::isnan(m.monoNotchDb) ? json::Value::makeNull() : json::Value::makeNumber(m.monoNotchDb));
     v.set("max_step_db_100ms", std::isnan(m.maxStepDb100ms) ? json::Value::makeNull() : json::Value::makeNumber(m.maxStepDb100ms));
+    // M6 (docs/m6-metric-calibration.md): added keys only, NaN -> null.
+    auto num = [](double x) { return std::isnan(x) ? json::Value::makeNull() : json::Value::makeNumber(x); };
+    v.set("ringing_db", num(m.ringingDb));
+    v.set("ringing_hz", num(m.ringingHz));
+    v.set("ringing_ratio", num(m.ringingRatio));
+    v.set("ringing_end_db", num(m.ringingEndDb));
+    v.set("ringing_span_s", num(m.ringingSpanS));
+    v.set("ringing", json::Value::makeBool(m.ringing));
+    v.set("howl_floor_db", num(m.howlFloorDb));
+    v.set("howl_move_pct", num(m.howlMovePct));
+    v.set("howl_move_db", num(m.howlMoveDb));
+    v.set("howl_ok", json::Value::makeBool(m.howlOk));
     return v;
 }
 
@@ -46,6 +58,20 @@ metrics::Metrics jsonToMetrics(const json::Value& v)
     m.monoNotchDb = (notch && !notch->isNull()) ? notch->numberValue() : std::nan("");
     const json::Value* step = v.find("max_step_db_100ms");
     m.maxStepDb100ms = (step && !step->isNull()) ? step->numberValue() : std::nan("");
+    auto num = [&v](const char* key) {
+        const json::Value* x = v.find(key);
+        return (x && !x->isNull()) ? x->numberValue() : std::nan("");
+    };
+    m.ringingDb    = num("ringing_db");
+    m.ringingHz    = num("ringing_hz");
+    m.ringingRatio = num("ringing_ratio");
+    m.ringingEndDb = num("ringing_end_db");
+    m.ringingSpanS = num("ringing_span_s");
+    m.ringing      = v.get("ringing", false);
+    m.howlFloorDb  = num("howl_floor_db");
+    m.howlMovePct  = num("howl_move_pct");
+    m.howlMoveDb   = num("howl_move_db");
+    m.howlOk       = v.get("howl_ok", false);
     return m;
 }
 

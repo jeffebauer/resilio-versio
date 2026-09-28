@@ -130,7 +130,13 @@ bool steadyTone(const std::vector<float>& mono, float sr)
     const size_t windowLen = std::min(frameSamples, fftSize);
 
     const size_t numFrames = mono.size() / frameSamples;
-    long bestRun = 0, curRun = 0, refBin = -100;
+    // Every bin keeps its own run (M6 fix): the old version followed only
+    // the single most prominent bin per frame, so a steady tone whose
+    // harmonics are about as prominent (a saturated, self-oscillating loop)
+    // flipped between them and never built a run.
+    const size_t bins = fftSize / 2 + 1;
+    std::vector<long> run(bins, 0), prev(bins, 0);
+    long bestRun = 0;
     for (size_t f = 0; f < numFrames; ++f) {
         const size_t start = f * frameSamples;
         const auto mag = fft::magnitudeSpectrum(mono.data() + start, windowLen, fftSize);
@@ -140,24 +146,19 @@ bool steadyTone(const std::vector<float>& mono, float sr)
             freqHz[k] = float(k) * sr / float(fftSize);
         }
         const auto smoothed = spectral::thirdOctaveSmoothedMean(magDb, freqHz);
-
-        long bestK = -1;
-        float bestDiff = -1e9f;
-        for (size_t k = 1; k < mag.size(); ++k) { // skip DC
-            const float diff = magDb[k] - smoothed[k];
-            if (diff > bestDiff) { bestDiff = diff; bestK = long(k); }
-        }
-        long candidate = -1;
-        if (bestK >= 0 && bestDiff > 12.0f) {
+        prev.swap(run);
+        for (size_t k = 0; k < bins; ++k) {
+            run[k] = 0;
+            if (k == 0 || magDb[k] - smoothed[k] <= 12.0f) continue; // skip DC
             // Amplitude of an isolated Hann-windowed tone: |X[k]| ~= A*n/4.
-            const double amp = 4.0 * double(mag[size_t(bestK)]) / double(windowLen);
-            const double levelDbfs = spectral::toDb(float(amp));
-            if (levelDbfs > -30.0) candidate = bestK;
+            const double amp = 4.0 * double(mag[k]) / double(windowLen);
+            if (spectral::toDb(float(amp)) <= -30.0) continue;
+            long p = prev[k];
+            if (k > 0) p = std::max(p, prev[k - 1]);
+            if (k + 1 < bins) p = std::max(p, prev[k + 1]);
+            run[k] = p + 1;
+            bestRun = std::max(bestRun, run[k]);
         }
-        if (candidate < 0) { curRun = 0; refBin = -100; continue; }
-        if (refBin < 0 || std::labs(candidate - refBin) <= 1) ++curRun; else curRun = 1;
-        refBin = candidate;
-        bestRun = std::max(bestRun, curRun);
     }
     const double runSeconds = double(bestRun) * (double(frameSamples) / double(sr));
     return runSeconds > 2.0;
@@ -367,6 +368,372 @@ double maxStepDb100ms(const std::vector<float>& mono, float sr, const std::vecto
     return any ? maxStep : std::nan("");
 }
 
+// ---- M6 Ringing metric (docs/m6-metric-calibration.md) ----------------------
+//
+// Plain version: a Ringing tone is one narrow frequency that outlives the
+// frequencies around it. So instead of asking "is there a peak?" (a spring's
+// own mode comb is full of peaks, which is why resonance_peak_db reads
+// 10-40 dB on real tanks), ask "does a peak keep *pulling away from* its
+// neighbourhood as the tail dies away?".
+//
+// 1. STFT of the segment (4-term Blackman-Harris, ~170 ms frames = 8192 at
+//    48 kHz, hop 1/4). Power pooled over 3 bins and averaged over
+//    kRingingSmoothS in time (evens out beating), in dB.
+// 2. Tail start: after the frame where the median bin level (100 Hz-10 kHz;
+//    a median ignores any single tone) peaks, plus one frame length and the
+//    smoothing half-width, so the input has stopped and only the tail is
+//    measured. The input's own tonal content (a snare's 185 Hz body) starts
+//    loud but then decays at the tank's rate like everything else, so it
+//    does not "grow".
+// 3. At up to 96 frames over the rest of the segment: each bin's
+//    neighbourhood level = median of the bins within 1/3 octave (at least
+//    +-10 bins), leaving out the bin's own +-4; prominence = bin - that.
+// 4. Growth, per bin: over the frames where the neighbourhood is still a
+//    real reference (within kRingingSpanDb of its own start and of the
+//    tail's typical start level, 15 dB above its own floor, peak not yet
+//    kRingingLeakDb clear), take the late half, and
+//    fit a robust (Theil-Sen) line to prominence vs time. Growth = dB gained
+//    over that late half. Counted only for narrow peaks (louder than +-3
+//    bins) that end >= kRingingEndProminenceDb clear, climb steadily (the
+//    late half's thirds rise in order: a bump is not growth) and last (decay
+//    no faster than a T60 of kRingingMinT60Ratio x the tail's own T60). The late half only:
+//    real tanks have an early phase where their mode peaks emerge from the
+//    initial burst (the valleys drain first), then every mode decays
+//    together; a Ringing mode keeps pulling away.
+// 5. Steady tone, per bin: Ringing's end state (a self-oscillating loop, or
+//    a mode so slow it left its neighbourhood behind and stopped "growing"):
+//    >= kRingingSteadyProminenceDb clear, within kRingingSteadyRangeDb of
+//    the tail's start level, decaying slower than kRingingSteadyDbPerS for
+//    >= kRingingSteadyS. Score = its median prominence (capped at
+//    kRingingLeakDb, "a bare tone").
+// ringingDb = the largest score over 100 Hz-10 kHz; Ringing if >= kRingingGrowthDb.
+struct RingingResult {
+    double db = std::nan(""), ratio = std::nan(""), hz = std::nan(""), endDb = std::nan(""), spanS = std::nan("");
+};
+
+RingingResult ringingGrowth(const std::vector<float>& mono, size_t segStart, size_t segEnd, float sr, double tailT60)
+{
+    RingingResult r;
+    size_t N = 256;
+    while (double(N) * 1.5 < 0.171 * double(sr)) N <<= 1; // 8192 at 44.1/48 kHz, 16384 at 96 kHz
+    const size_t hop = N / 4;
+    const double hopS = double(hop) / double(sr);
+    const size_t halfW = std::max<size_t>(1, size_t(std::lround(kRingingSmoothS / 2.0 / hopS)));
+    if (segEnd > mono.size() || segEnd <= segStart || segEnd - segStart < N + (4 * halfW + 12) * hop) return r;
+    const size_t F = (segEnd - segStart - N) / hop + 1;
+
+    const double binHz = double(sr) / double(N);
+    constexpr size_t kMinHalf = 10, kGuard = 4;
+    const double kThirdHalf = std::pow(2.0, 1.0 / 6.0);
+    const size_t kLo = std::max<size_t>(2, size_t(std::ceil(100.0 / binHz)));
+    const size_t kHi = std::min(N / 2 - 2, size_t(std::floor(std::min(10000.0, 0.45 * double(sr)) / binHz)));
+    if (kHi <= kLo + 2 * kMinHalf) return r;
+    const size_t bLo = std::max<size_t>(2, std::min(kLo - std::min(kLo - 2, kMinHalf), size_t(double(kLo) / 1.13)));
+    const size_t bHi = std::min(N / 2 - 2, std::max(kHi + kMinHalf, size_t(double(kHi) * 1.13) + 1));
+    const size_t nb = bHi - bLo + 1;
+
+    // Power per frame, pooled over 3 bins (a tone's Hann main lobe), then
+    // averaged over ~kRingingSmoothS in time (evens out beating between
+    // close modes and the echo pattern), in dB.
+    // 4-term Blackman-Harris window (sidelobes -92 dB, main lobe +-4 bins):
+    // a strong tone's own leakage stays far below the neighbourhood it is
+    // compared with, so its growth can be followed to kRingingLeakDb.
+    std::vector<float> win(N), re(N), im(N);
+    for (size_t i = 0; i < N; ++i) {
+        const double x = 2.0 * M_PI * double(i) / double(N);
+        win[i] = float(0.35875 - 0.48829 * std::cos(x) + 0.14128 * std::cos(2 * x) - 0.01168 * std::cos(3 * x));
+    }
+    std::vector<float> pw(F * nb);
+    for (size_t f = 0; f < F; ++f) {
+        const float* x = mono.data() + segStart + f * hop;
+        for (size_t i = 0; i < N; ++i) { re[i] = x[i] * win[i]; im[i] = 0.0f; }
+        fft::transform(re, im, false);
+        for (size_t j = 0; j < nb; ++j) {
+            double p = 0.0;
+            for (size_t k = bLo + j - 1; k <= bLo + j + 1; ++k) p += double(re[k]) * re[k] + double(im[k]) * im[k];
+            pw[f * nb + j] = float(p);
+        }
+    }
+    std::vector<float> lv(F * nb);
+    std::vector<double> acc(nb, 0.0);
+    for (size_t f = 0; f < F; ++f) {
+        const size_t f0 = f > halfW ? f - halfW : 0, f1 = std::min(F - 1, f + halfW);
+        for (size_t j = 0; j < nb; ++j) {
+            double p = 0.0;
+            for (size_t g = f0; g <= f1; ++g) p += double(pw[g * nb + j]);
+            lv[f * nb + j] = float(10.0 * std::log10(std::max(p / double(f1 - f0 + 1), 1e-30)));
+        }
+    }
+    std::vector<float> med(F), scratch;
+    for (size_t f = 0; f < F; ++f) {
+        scratch.assign(lv.begin() + long(f * nb + (kLo - bLo)), lv.begin() + long(f * nb + (kHi - bLo)) + 1);
+        std::nth_element(scratch.begin(), scratch.begin() + long(scratch.size() / 2), scratch.end());
+        med[f] = scratch[scratch.size() / 2];
+    }
+    // Tail start: after the loudest moment, plus one frame length and the
+    // smoothing half-width, so no smoothed frame still contains the input.
+    const size_t fp = size_t(std::max_element(med.begin(), med.end()) - med.begin());
+    const size_t t0 = fp + 4 + halfW;
+    if (t0 + 8 >= F) return r;
+
+    // Analysis frames: up to kFrames spread over [t0, F).
+    constexpr size_t kFrames = 96;
+    const size_t t1 = F - 1;
+    const size_t J = std::min<size_t>(kFrames, t1 - t0 + 1);
+    const size_t nk = kHi - kLo + 1;
+    std::vector<float> freq(nb), row(nb);
+    for (size_t j = 0; j < nb; ++j) freq[j] = float(double(bLo + j) * binHz);
+    std::vector<float> lev(J * nb), nbh(J * nk);
+    std::vector<double> tj(J);
+    for (size_t j = 0; j < J; ++j) {
+        const size_t f = t0 + (J > 1 ? (j * (t1 - t0) + (J - 1) / 2) / (J - 1) : 0);
+        tj[j] = double(f - t0) * hopS;
+        std::copy(lv.begin() + long(f * nb), lv.begin() + long((f + 1) * nb), row.begin());
+        std::copy(row.begin(), row.end(), lev.begin() + long(j * nb));
+        // Neighbourhood = median of the bins within 1/3 octave (at least
+        // +-kMinHalf bins), leaving out the peak's own +-kGuard bins (a tone's
+        // pooled main lobe), so a strong tone never props up its own reference.
+        for (size_t k = 0; k < nk; ++k) {
+            const size_t c = k + kLo - bLo;
+            const double fc = double(freq[c]);
+            size_t lo = c, hi = c;
+            while (lo > 0 && (double(freq[lo - 1]) >= fc / kThirdHalf || c - (lo - 1) <= kMinHalf)) --lo;
+            while (hi + 1 < nb && (double(freq[hi + 1]) <= fc * kThirdHalf || (hi + 1) - c <= kMinHalf)) ++hi;
+            scratch.clear();
+            for (size_t i = lo; i <= hi; ++i)
+                if (i + kGuard < c || i > c + kGuard) scratch.push_back(row[i]);
+            std::nth_element(scratch.begin(), scratch.begin() + long(scratch.size() / 2), scratch.end());
+            nbh[j * nk + k] = scratch[scratch.size() / 2];
+        }
+    }
+
+    // Per bin: the frames where its neighbourhood is still within
+    // kRingingSpanDb of where it started and well above its own floor (the
+    // quietest it gets in the segment), so hum or spurs in a recording's
+    // noise floor can't "grow" out of it. If the neighbourhood never drops
+    // much (stationary signal, truncated IR), every frame counts. Then the
+    // late half of those frames only: real tanks have an early phase where
+    // the valleys between their modes drain fast (the initial broadband
+    // burst), so every mode "grows" at first and then stops; a Ringing mode
+    // keeps outliving its neighbours.
+    // Theil-Sen slope (median of all pairwise slopes): a single bump (a
+    // late echo tap, an edit at the end of an IR) can't tilt it the way it
+    // tilts a least-squares line. Intercept: median of y - slope * t.
+    std::vector<double> pairs;
+    auto slopeOf = [&pairs](const std::vector<double>& t, const std::vector<double>& y, double& icpt) {
+        pairs.clear();
+        for (size_t i = 0; i < t.size(); ++i)
+            for (size_t j = i + 1; j < t.size(); ++j)
+                if (t[j] > t[i]) pairs.push_back((y[j] - y[i]) / (t[j] - t[i]));
+        if (pairs.empty()) { icpt = y.empty() ? 0.0 : y[0]; return 0.0; }
+        std::nth_element(pairs.begin(), pairs.begin() + long(pairs.size() / 2), pairs.end());
+        const double sl = pairs[pairs.size() / 2];
+        pairs.clear();
+        for (size_t i = 0; i < t.size(); ++i) pairs.push_back(y[i] - sl * t[i]);
+        std::nth_element(pairs.begin(), pairs.begin() + long(pairs.size() / 2), pairs.end());
+        icpt = pairs[pairs.size() / 2];
+        return sl;
+    };
+    double best = -1e9, bestLoud = -1e30, maxSpan = 0.0;
+    std::vector<double> tt, yb, yn;
+    const float audibleFloor = med[t0] - float(kRingingSteadyRangeDb);
+    // No band is followed further than kRingingSpanDb below the tail's
+    // typical level at its start (the median bin): a fast-dying high band
+    // would otherwise be followed down to the float/dither floor, 100+ dB
+    // down, where its prominence just wanders.
+    const float spanFloor = med[t0] - float(kRingingSpanDb);
+    for (size_t k = 0; k < nk; ++k) {
+        const size_t jb = k + kLo - bLo; // index into lev rows
+        auto promAt = [&](size_t j) { return double(lev[j * nb + jb]) - double(nbh[j * nk + k]); };
+        float lo = 1e30f;
+        for (size_t j = 0; j < J; ++j) lo = std::min(lo, nbh[j * nk + k]);
+        const bool decays = nbh[k] - lo >= 25.0f;
+        double score = -1e9, endP = 0.0, ratio = 1.0;
+
+        // (1) Growth. Valid frames: the neighbourhood is still a real
+        // reference, i.e. within kRingingSpanDb of where it started, well
+        // above its own floor, and not yet down in this peak's own window
+        // leakage (prominence < kRingingLeakDb).
+        size_t last = 0;
+        for (size_t j = 0; j < J; ++j) {
+            const float v = nbh[j * nk + k];
+            if (decays && (v < lo + 15.0f || v < nbh[k] - float(kRingingSpanDb))) break;
+            if (v < spanFloor) break; // below the tail's audible range (see spanFloor)
+            if (promAt(j) >= kRingingLeakDb) break;
+            last = j;
+        }
+        const size_t first = last / 2;
+        const double span = last >= first + 4 ? tj[last] - tj[first] : 0.0;
+        maxSpan = std::max(maxSpan, span);
+        bool peak = false;
+        if (span >= kRingingMinSpanS) {
+            // Narrowband peak: at least as loud as the bins around it (+-3)
+            // on average over the late half.
+            double own = 0.0, side = -1e30;
+            for (int d = -3; d <= 3; ++d) {
+                double m = 0.0;
+                for (size_t j = first; j <= last; ++j) m += double(lev[j * nb + size_t(long(jb) + d)]);
+                if (d == 0) own = m; else side = std::max(side, m);
+            }
+            peak = own >= side;
+        }
+        if (peak) {
+            tt.clear(); yb.clear(); yn.clear();
+            for (size_t j = first; j <= last; ++j) {
+                tt.push_back(tj[j]);
+                yb.push_back(promAt(j));
+                yn.push_back(double(nbh[j * nk + k]));
+            }
+            double ip = 0.0, in = 0.0;
+            const double sp = slopeOf(tt, yb, ip);
+            const double e = ip + sp * tt.back();
+            // Steady climb, not a bump: the median prominence of the late
+            // half's first, middle and last thirds must rise in order (1 dB
+            // slack). A Ringing mode keeps pulling away; a tail that merely
+            // wobbles (two decay stages handing over, beating) goes up and
+            // back down, which a straight line alone could read as growth.
+            auto thirdMedian = [&yb](size_t part) {
+                const size_t n = yb.size(), a = part * n / 3, b = (part + 1) * n / 3;
+                std::vector<double> v(yb.begin() + long(a), yb.begin() + long(std::max(b, a + 1)));
+                std::nth_element(v.begin(), v.begin() + long(v.size() / 2), v.end());
+                return v[v.size() / 2];
+            };
+            const double m1 = thirdMedian(0), m2 = thirdMedian(1), m3 = thirdMedian(2);
+            const bool climbs = m2 >= m1 - 1.0 && m3 >= m2 - 1.0;
+            // ...and lasts: a narrow component that dies faster than half
+            // the tail's own T60 can't be heard as Ringing (it is gone while
+            // the body of the tail is still sounding). This drops the fast,
+            // dark top bands, where decay stages handing over read as growth.
+            const double sn = slopeOf(tt, yn, in), sb = sn + sp;
+            const bool lasts = std::isnan(tailT60) || tailT60 <= 0.0 || sb >= -60.0 / (kRingingMinT60Ratio * tailT60);
+            if (e >= kRingingEndProminenceDb && climbs && lasts) {
+                score = sp * span;
+                endP = e;
+                ratio = sn < -0.5 ? (sb < -1e-3 ? std::min(99.0, sn / sb) : 99.0) : 1.0;
+            }
+        }
+
+        // (2) Steady tone: Ringing's end state (a self-oscillating loop, a
+        // mode so slow it has left its neighbourhood behind): the peak
+        // stands >= kRingingSteadyProminenceDb clear of its neighbourhood,
+        // within kRingingSteadyRangeDb of the tail's start level, and itself
+        // decays slower than kRingingSteadyDbPerS, over >= kRingingSteadyS.
+        // Checked on the last such stretch of frames.
+        size_t runEnd = J, runStart = J;
+        for (size_t j = J; j-- > 0;) {
+            const bool on = promAt(j) >= kRingingSteadyProminenceDb && lev[j * nb + jb] >= audibleFloor;
+            if (on && runEnd == J) runEnd = j + 1;
+            if (on) runStart = j;
+            else if (runEnd != J) break;
+        }
+        if (runEnd != J && tj[runEnd - 1] - tj[runStart] >= kRingingSteadyS) {
+            tt.clear(); yb.clear();
+            for (size_t j = runStart; j < runEnd; ++j) { tt.push_back(tj[j]); yb.push_back(double(lev[j * nb + jb])); }
+            double ib = 0.0;
+            if (slopeOf(tt, yb, ib) >= -kRingingSteadyDbPerS) {
+                std::vector<double> ps;
+                for (size_t j = runStart; j < runEnd; ++j) ps.push_back(promAt(j));
+                std::nth_element(ps.begin(), ps.begin() + long(ps.size() / 2), ps.end());
+                const double steady = std::min(ps[ps.size() / 2], kRingingLeakDb); // >= 70 dB reads "a bare tone"
+                if (steady > score) {
+                    score = steady;
+                    endP = promAt(runEnd - 1);
+                    ratio = 99.0;
+                }
+            }
+        }
+        // Ties (several bins of one bare tone all at the kRingingLeakDb cap):
+        // report the loudest, i.e. the tone's own bin.
+        const double loud = double(lev[(J - 1) * nb + jb]);
+        score = std::min(score, kRingingLeakDb); // >= 70 dB reads "a bare tone"
+        if (score > -1e8 && (score > best || (score == best && loud > bestLoud))) {
+            best = score;
+            bestLoud = loud;
+            r.db = score;
+            r.endDb = endP;
+            r.hz = double(kLo + k) * binHz;
+            r.ratio = ratio;
+        }
+    }
+    r.spanS = maxSpan;
+    if (best < -1e8) {
+        if (maxSpan >= kRingingMinSpanS) r.db = 0.0; // measurable, nothing stands out
+    }
+    return r;
+}
+
+// ---- M6 Howl criterion (ADR 0019) ---------------------------------------------
+// Only meaningful inside the KICKED Howl zone, where it replaces the Ringing
+// test. Region = [start, end) (the sustained part). See Metrics.h.
+struct HowlResult {
+    double floorDb = std::nan(""), movePct = std::nan(""), moveDb = std::nan("");
+    bool   ok = false;
+};
+
+HowlResult howlStats(const std::vector<float>& mono, size_t start, size_t end, float sr)
+{
+    HowlResult h;
+    size_t N = 256;
+    while (double(N) * 1.5 < 0.341 * double(sr)) N <<= 1; // 16384 at 48 kHz: ~2.9 Hz bins
+    if (end > mono.size() || end <= start || end - start < N + size_t(2.0 * double(sr))) return h;
+    const double binHz = double(sr) / double(N);
+
+    // Broadband floor: 1/3-octave band energies 200 Hz-5 kHz of the average
+    // power spectrum; median band re the strongest band.
+    std::vector<double> p(N / 2 + 1, 0.0);
+    for (size_t w = start; w + N <= end; w += N / 2) {
+        const auto m = fft::magnitudeSpectrum(mono.data() + w, N, N);
+        for (size_t k = 0; k < p.size(); ++k) p[k] += double(m[k]) * double(m[k]);
+    }
+    std::vector<double> bands;
+    const double half = std::pow(2.0, 1.0 / 6.0);
+    for (double f = 200.0; f <= 5000.0 * 1.001; f *= std::pow(2.0, 1.0 / 3.0)) {
+        double e = 0.0;
+        for (size_t k = size_t(f / half / binHz); k <= size_t(f * half / binHz) && k < p.size(); ++k) e += p[k];
+        bands.push_back(e);
+    }
+    const double strongest = *std::max_element(bands.begin(), bands.end());
+    std::nth_element(bands.begin(), bands.begin() + long(bands.size() / 2), bands.end());
+    if (strongest <= 0.0) return h;
+    h.floorDb = 10.0 * std::log10(std::max(bands[bands.size() / 2], 1e-300) / strongest);
+
+    // Movement: strongest peak (100 Hz-8 kHz) every 0.25 s, parabolic
+    // interpolation for frequency; each 2 s window (9 snapshots) must move
+    // >= 0.5 % in frequency or >= 3 dB in level while the peak is audible.
+    const size_t step = size_t(0.25 * double(sr));
+    std::vector<double> hz, lvl;
+    for (size_t w = start; w + N <= end; w += step) {
+        const auto q = fft::magnitudeSpectrum(mono.data() + w, N, N);
+        size_t b = size_t(100.0 / binHz);
+        for (size_t k = b; k < size_t(8000.0 / binHz) && k + 1 < q.size(); ++k)
+            if (q[k] > q[b]) b = k;
+        const double ym = spectral::toDb(q[b - 1]), y0 = spectral::toDb(q[b]), yp = spectral::toDb(q[b + 1]);
+        const double den = ym - 2.0 * y0 + yp;
+        const double off = std::fabs(den) > 1e-9 ? 0.5 * (ym - yp) / den : 0.0;
+        hz.push_back((double(b) + off) * binHz);
+        lvl.push_back(y0 + double(spectral::toDb(4.0f / float(N)))); // ~ tone amplitude, dBFS (Hann)
+    }
+    const size_t W = 9;
+    if (hz.size() < W) return h;
+    double worst = 1e9;
+    bool moving = true;
+    for (size_t i = 0; i + W <= hz.size(); ++i) {
+        double fMin = 1e18, fMax = 0, lMin = 1e18, lMax = -1e18;
+        for (size_t j = i; j < i + W; ++j) {
+            fMin = std::min(fMin, hz[j]); fMax = std::max(fMax, hz[j]);
+            lMin = std::min(lMin, lvl[j]); lMax = std::max(lMax, lvl[j]);
+        }
+        const double fDev = (fMax - fMin) / std::max(fMin, 1.0) * 100.0, lDev = lMax - lMin;
+        if (lMax < -30.0) continue; // no audible tone in this window
+        const double score = std::max(fDev / kHowlMovePct, lDev / kHowlMoveDb);
+        if (score < worst) { worst = score; h.movePct = fDev; h.moveDb = lDev; }
+        if (score < 1.0) moving = false;
+    }
+    if (worst > 1e8) { h.movePct = h.moveDb = std::nan(""); } // never audible: nothing steady
+    h.ok = h.floorDb >= kHowlFloorMinDb && moving;
+    return h;
+}
+
 } // namespace
 
 Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRate,
@@ -420,6 +787,22 @@ Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRat
     m.resonancePeakDb = resonancePeakDb(mono, resStart, segEnd, sampleRate);
 
     m.steadyTone = steadyTone(mono, sampleRate);
+
+    const RingingResult ring = ringingGrowth(mono, segStart, segEnd, sampleRate, m.t60S);
+    m.ringingDb    = ring.db;
+    m.ringingHz    = ring.hz;
+    m.ringingRatio = ring.ratio;
+    m.ringingEndDb = ring.endDb;
+    m.ringingSpanS = ring.spanS;
+    m.ringing      = !std::isnan(ring.db) && ring.db >= kRingingGrowthDb;
+
+    // The Howl never really stops, so its region runs to the end of the file
+    // (a dip under -40 dBFS mid-Howl would otherwise end the segment).
+    const HowlResult howl = howlStats(mono, resStart, frames, sampleRate);
+    m.howlFloorDb = howl.floorDb;
+    m.howlMovePct = howl.movePct;
+    m.howlMoveDb  = howl.moveDb;
+    m.howlOk      = howl.ok;
     m.clickCount = clickCount(mono, sampleRate);
     m.maxStepDb100ms = maxStepDb100ms(mono, sampleRate, events);
 
@@ -438,7 +821,11 @@ Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRat
 
 std::string summaryLine(const Metrics& m)
 {
-    char t60Buf[32], resBuf[32], corrBuf[32], lossBuf[32], notchBuf[32], stepBuf[32], buf[768];
+    char t60Buf[32], resBuf[32], corrBuf[32], lossBuf[32], notchBuf[32], stepBuf[32], ringBuf[64], howlBuf[64], buf[1024];
+    if (std::isnan(m.ringingDb)) std::snprintf(ringBuf, sizeof ringBuf, "null");
+    else std::snprintf(ringBuf, sizeof ringBuf, "%.1fdB@%.0fHz,x%.2f", m.ringingDb, m.ringingHz, m.ringingRatio);
+    if (std::isnan(m.howlFloorDb)) std::snprintf(howlBuf, sizeof howlBuf, "null");
+    else std::snprintf(howlBuf, sizeof howlBuf, "floor%.0fdB/move%.2f%%,%.1fdB", m.howlFloorDb, m.howlMovePct, m.howlMoveDb);
     if (std::isnan(m.t60S)) std::snprintf(t60Buf, sizeof t60Buf, "null");
     else std::snprintf(t60Buf, sizeof t60Buf, "%.2fs", m.t60S);
     if (std::isnan(m.resonancePeakDb)) std::snprintf(resBuf, sizeof resBuf, "null");
@@ -453,10 +840,10 @@ std::string summaryLine(const Metrics& m)
     else std::snprintf(stepBuf, sizeof stepBuf, "%.1fdB", m.maxStepDb100ms);
     std::snprintf(buf, sizeof buf,
         "peak=%.1fdBFS rms=%.1fdBFS t60=%s res=%s steady=%s nan/inf=%ld clip=%ld click=%ld "
-        "corr=%s monoloss=%s notch=%s maxstep=%s",
+        "corr=%s monoloss=%s notch=%s maxstep=%s ringing=%s%s howl=%s",
         m.peakDbfs, m.rmsDbfs, t60Buf, resBuf,
         m.steadyTone ? "true" : "false", m.nanInfCount, m.clipCount, m.clickCount,
-        corrBuf, lossBuf, notchBuf, stepBuf);
+        corrBuf, lossBuf, notchBuf, stepBuf, ringBuf, m.ringing ? "(RINGING)" : "", howlBuf);
     return std::string(buf);
 }
 

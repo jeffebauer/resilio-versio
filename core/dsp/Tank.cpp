@@ -1,5 +1,6 @@
 #include "dsp/Tank.h"
 
+#include "params/AntiRes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
 
@@ -192,6 +193,10 @@ void Tank::controlTick(bool snap)
     base.loopSatKPos      = voice.loopKPos;
     base.loopSatKNeg      = voice.loopKNeg;
     base.howl             = drive::howlZone(decay) * attW_[2];
+    // AntiRes Micro-mod floor, always on (WOBBLE adds on top at M7), plus
+    // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
+    base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;
+    base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
     const int activeStages = modes::boingStages(boing, modes::kStageCap[size_t(mode_)]);
     for (size_t i = 0; i < springs_.size(); ++i) {
         // Same T60 for every Spring (g is designed from each Spring's own
@@ -201,6 +206,7 @@ void Tank::controlTick(bool snap)
         s.transitionHz     *= modes::kDetune[i].transition;
         s.allpassCoeff     *= modes::kDetune[i].allpassCoeff;
         s.tapRatio          = modes::kPickupTap[i];
+        s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
         s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
         springs_[i].setSettings(s, snap);
     }

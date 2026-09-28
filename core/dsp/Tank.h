@@ -69,6 +69,14 @@
 // impulse into the Tank input at the exact sample, so Kick timing is
 // testable (M2); the real thud + crash (ADR 0016) replaces it at M7.
 //
+// AntiRes (M6, SPEC §4.10, ADR 0010; numbers in params/AntiRes.h): layer 1
+// (even Loop gain) is the Spring's g design, layer 3 the detuning above,
+// layer 5 the LoopSat. Layer 2, the Micro-mod floor, is set here on every
+// control tick: each Spring gets SpringSettings::modDepth = the floor, always
+// on, WOBBLE 0 included, plus (KICKED Howl zone only) a slow sine and extra
+// drift so the Howl moves (ADR 0019). Layer 4 (adaptive suppressor) is not
+// built: the M6 grid passes without it (docs/m6-metric-calibration.md).
+//
 // Real-time rules: process() never allocates, locks or does I/O. All memory
 // is taken once in prepare(). Output is identical for any block size:
 // parameters are smoothed and applied on a fixed 32-sample control grid

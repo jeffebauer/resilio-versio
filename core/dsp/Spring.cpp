@@ -1,5 +1,6 @@
 #include "dsp/Spring.h"
 
+#include "params/AntiRes.h"
 #include "params/SpringModes.h"
 
 #include <algorithm>
@@ -16,6 +17,15 @@ constexpr float kLn10 = 2.302585093f;
 // sits in the low mids: below ~100 Hz the DC blocker drains energy, above
 // ~1 kHz the damping LPF does and the round trip is shorter.
 constexpr std::array<float, 8> kDesignHz{{70.0f, 110.0f, 170.0f, 250.0f, 370.0f, 550.0f, 800.0f, 1200.0f}};
+
+// AntiRes layer 1 (M6): the same check just under the Chirp's top edge, as
+// fractions of fC. The allpass chain's round trip peaks at one end of the
+// Chirp band: at the lows when a < 0 (highs first, inside kDesignHz already)
+// and at fC when a > 0 (highs later, as real tanks do: docs/ir-dispersion-study.md).
+// Without these points a > 0 would let the band under fC ring up to ~1.2x
+// longer than DECAY asks. With a < 0 they never set g (the round trip is
+// shortest there), so the tail is unchanged.
+constexpr std::array<float, 5> kDesignFcRatios{{0.6f, 0.75f, 0.85f, 0.92f, 1.0f}};
 
 int nextPow2(int v)
 {
@@ -62,6 +72,8 @@ void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
     dc_.setCutoff(kDcBlockHz, sampleRate);
     highCeiling_.setCutoff(std::min(kHighCeilingHz, 0.45f * sampleRate), sampleRate);
     mRate_ = 1.0f / (kStageRampSeconds * sampleRate);
+    modHold_ = std::max(1, int(antires::kMicroModHoldSeconds * sampleRate));
+    modC_    = 1.0f - std::exp(-1.0f / (antires::kMicroModHoldSeconds * sampleRate));
 
     reset();
     setSettings(settings_, true);
@@ -83,6 +95,13 @@ void Spring::reset()
     highCeiling_.reset();
     loopSat_.reset();
     rng_.seed(seed_);
+    // The modulation starts from rest at a seeded point: deterministic.
+    modRng_.seed(seed_ ^ 0x5DEECE66u);
+    modTarget_ = modY1_ = modY2_ = 0.0f;
+    modCount_  = 0;
+    lfoS_ = 0.0f;
+    lfoC_ = 1.0f;
+    modNow_ = 1.0f;
 }
 
 void Spring::setSettings(const SpringSettings& s, bool snap)
@@ -94,7 +113,8 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.stages == settings_.stages && s.dampingHz == settings_.dampingHz
                    && s.highPathLevel == settings_.highPathLevel && s.tapRatio == settings_.tapRatio
                    && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
-                   && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl;
+                   && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl
+                   && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return;
 
     settings_ = s;
@@ -142,6 +162,10 @@ void Spring::updateCoefficients()
         g = std::min(g, gf);
         maxMag = std::max(maxMag, m);
     }
+    for (float r : kDesignFcRatios) {
+        const float hz = r * s.transitionHz;
+        g = std::min(g, std::exp(-3.0f * kLn10 * roundTripSamples(hz) / (t60 * sampleRate_)) / loopMagnitude(hz));
+    }
     g = std::max(0.0f, g);
 
     // Howl zone: lift the small-signal peak gain P = g·max|H| toward
@@ -154,6 +178,10 @@ void Spring::updateCoefficients()
     }
     g_ = g;
     loopSat_.set(s.loopSatAmount, s.loopSatKPos, s.loopSatKNeg);
+
+    modDepth_ = std::max(0.0f, s.modDepth) * antires::kMicroModNorm;
+    lfoDepth_ = std::max(0.0f, s.lfoDepth);
+    lfoE_     = 2.0f * std::sin(map::kPi * std::max(0.0f, s.lfoHz) / sampleRate_); // magic-circle step
 
     // High path: no dispersion to speak of, simple T60 from its own trip.
     lhCur_ = kHighDelayRatio * lCur_;
@@ -230,10 +258,26 @@ inline void Spring::advanceGlides()
     }
 }
 
-inline float Spring::processLow(float in)
+inline float Spring::advanceModulation()
 {
-    const float fb  = readLow(lCur_);
-    const float tap = readLow(tapRatio_ * lCur_); // pickup ~half way: first echo after ~half a round trip
+    // Smoothed random: a new target every modHold_ samples, two one-poles.
+    if (--modCount_ <= 0) {
+        modCount_  = modHold_;
+        modTarget_ = modRng_.bipolar();
+    }
+    modY1_ += modC_ * (modTarget_ - modY1_);
+    modY2_ += modC_ * (modY1_ - modY2_);
+    // Slow sine, "magic circle" oscillator: constant amplitude, 2 multiplies.
+    lfoS_ += lfoE_ * lfoC_;
+    lfoC_ -= lfoE_ * lfoS_;
+    modNow_ = 1.0f + modDepth_ * modY2_ + lfoDepth_ * lfoS_;
+    return modNow_;
+}
+
+inline float Spring::processLow(float in, float lMod)
+{
+    const float fb  = readLow(lMod);
+    const float tap = readLow(tapRatio_ * lMod); // pickup ~half way: first echo after ~half a round trip
 
     float x = dc_.process(in + g_ * loopSat_.process(fb));
 
@@ -273,10 +317,10 @@ inline float Spring::processLow(float in)
     return tap;
 }
 
-inline float Spring::processHigh(float in)
+inline float Spring::processHigh(float in, float lhMod)
 {
-    const int   di = int(lhCur_);
-    const float fr = lhCur_ - float(di);
+    const int   di = int(lhMod);
+    const float fr = lhMod - float(di);
     int i0 = highW_ - di;
     if (i0 < 0) i0 += highSize_;
     int i1 = i0 - 1;
@@ -305,8 +349,9 @@ void Spring::process(const float* in, float* out, int n)
         // Tiny seeded noise (-200 dB) keeps every filter state far above the
         // denormal range once a tail has died away. Inaudible, deterministic.
         const float x    = in[i] + kDenormalNoise * rng_.bipolar();
-        const float low  = processLow(x);
-        const float high = processHigh(x);
+        const float mod  = advanceModulation();
+        const float low  = processLow(x, lCur_ * mod);
+        const float high = processHigh(x, lhCur_); // high path unmodulated, see "Micro-mod floor"
         out[i] = low + highPathLevel_ * high;
     }
 }

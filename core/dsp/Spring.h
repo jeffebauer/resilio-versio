@@ -21,8 +21,22 @@
 //
 // Detuning (M4) is not done here: the Tank gives each Spring its own detuned
 // SpringSettings (core/params/SpringModes.h); the delay memory is sized for
-// the most-detuned Spring. Not yet here (later milestones): AntiRes
-// Micro-mod floor (M6), Clatter/Jolt (M7), WOBBLE (M7).
+// the most-detuned Spring. Not yet here (later milestones): Clatter/Jolt
+// (M7), WOBBLE (M7; it rides on the modulation hook below).
+//
+// Micro-mod floor (M6, AntiRes layer 2, params/AntiRes.h): the Loop's delay
+// reads (feedback and pickup tap) use L·(1 + m(t)), where m is a slow
+// seeded smoothed random of depth SpringSettings::modDepth plus a slow sine
+// of depth lfoDepth (Howl zone only at M6). lCur_ itself (the glided DECAY
+// length, and what the Loop gain design sees) is untouched: at 0.05 % the
+// modulation is far below anything the design or the T60 would notice. The
+// high path is left unmodulated: its read is at 8-9 kHz territory, where the
+// linear interpolator's loss depends on the fractional delay (0 to -1.2 dB
+// per trip at 8 kHz), so a drifting fraction would make the HF decay rate
+// wobble; the Loop (the path that could Ring, and the one the Howl lives in)
+// is dark above fC, where that loss is under 0.3 dB. Cost:
+// two one-poles, a two-multiply sine oscillator and one multiply per sample;
+// the reads were already fractional (linear interpolation).
 //
 // LoopSat (M5, SPEC §4.9): a saturator on the feedback, before g. Off in
 // CLEAN, gentle symmetric in DRIVEN, hard asymmetric in KICKED (amounts and
@@ -80,6 +94,12 @@ struct SpringSettings {
     float loopSatKNeg      = 1.0f;
     // Howl zone position × KICKED weight, 0..1 (0 everywhere else).
     float howl             = 0.0f;
+    // L modulation (AntiRes Micro-mod floor, params/AntiRes.h), as fractions
+    // of L (peak): modDepth = smoothed random (floor, + WOBBLE at M7),
+    // lfoDepth / lfoHz = slow sine (Howl movement now, WOBBLE at M7).
+    float modDepth         = 0.0f;
+    float lfoDepth         = 0.0f;
+    float lfoHz            = 0.35f;
 };
 
 class Spring {
@@ -133,14 +153,18 @@ public:
     float loopMagnitude(float freqHz) const;
     // T60 (s) the Loop gives at freqHz with the current g.
     float t60AtSeconds(float freqHz) const;
+    // L modulation factor 1 + m(t) applied to the last sample's delay reads
+    // (Micro-mod floor + Howl movement; test_antires).
+    float lengthModulation() const { return modNow_; }
 
 private:
     void  advanceGlides();
-    float processLow(float in);
-    float processHigh(float in);
+    float processLow(float in, float lMod);
+    float processHigh(float in, float lhMod);
     void  updateCoefficients();
     void  clearStage(int j);
     float readLow(float delay) const;
+    float advanceModulation();
 
     float sampleRate_ = 48000.0f;
 
@@ -170,6 +194,13 @@ private:
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
     float tapRatio_ = 0.5f;
+
+    // L modulation state (see "Micro-mod floor").
+    dsp::Rng modRng_;
+    float    modTarget_ = 0.0f, modY1_ = 0.0f, modY2_ = 0.0f, modC_ = 0.0f;
+    int      modHold_ = 1, modCount_ = 0;
+    float    lfoS_ = 0.0f, lfoC_ = 1.0f, lfoE_ = 0.0f;
+    float    modDepth_ = 0.0f, lfoDepth_ = 0.0f, modNow_ = 1.0f;
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
