@@ -72,8 +72,8 @@ inline int boingStages(float v)
 }
 
 // ---- TONE (ADR 0017) -------------------------------------------------------
-// M1: TONE is Loop damping + high path level only. The pre-tank Tilt stage
-// arrives with the drive chain at M5.
+// TONE = pre-tank Tilt (M5, params/DriveVoicing.h) + Loop damping + high
+// path level (below).
 
 // Loop damping low-pass cutoff. Floor 1.6 kHz keeps Chirps audible fully CCW
 // (ADR 0017 "not through a wall"); noon ≈ 3.8 kHz (neutral, dub spring tails
@@ -83,8 +83,10 @@ constexpr float kDampingMaxHz = 9000.0f;
 inline float toneDampingHz(float v) { return expLerp(kDampingMinHz, kDampingMaxHz, v); }
 
 // Level of the high path (faster wideband echoes) mixed into the Spring out.
-// Modest at M1: 0.10 CCW, ~0.23 noon, 0.60 CW (capped, ADR 0017).
-inline float toneHighPathLevel(float v) { return 0.10f + 0.50f * v * v; }
+// 0.10 CCW, 0.225 noon (as M1), 0.36 CW. M5: the CW end came down from M1's
+// 0.60 because the Tilt now brightens CW too; together they keep the energy
+// above 10 kHz within +6 dB of noon (ADR 0017 "never harsh", test_drive).
+inline float toneHighPathLevel(float v) { return 0.10f + 0.24f * v + 0.02f * v * v; }
 
 // ---- MIX -------------------------------------------------------------------
 

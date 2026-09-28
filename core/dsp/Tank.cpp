@@ -1,5 +1,6 @@
 #include "dsp/Tank.h"
 
+#include "params/DriveVoicing.h"
 #include "params/Mappings.h"
 
 #include <algorithm>
@@ -69,6 +70,10 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& s : shelfSplit_) s.setCutoff(kShelfHz, sampleRate);
     limitRelease_ = std::exp(-1.0f / (kLimitReleaseS * sampleRate));
     fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
+    morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
+    driveIn_.prepare(sampleRate);
+    tilt_.prepare(sampleRate);
+    for (auto& d : driveOut_) d.prepare(sampleRate);
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
     pool_       = ok_ ? pool : nullptr;
@@ -100,6 +105,10 @@ void Tank::reset()
         d.w = 0;
     }
     for (auto& s : shelfSplit_) s.reset();
+    driveIn_.reset();
+    tilt_.reset();
+    for (auto& d : driveOut_) d.reset();
+    compDrive_ = -1.0f;
     limitEnv_ = 0.0f;
     numPendingKicks_ = 0;
     tick_     = 0;
@@ -142,6 +151,36 @@ void Tank::controlTick(bool snap)
         fadePos_  = 0.0f;
     }
 
+    // ATTITUDE Morph: glide the weights linearly toward the switch position
+    // (ADR 0003). Moving the whole vector along a straight line keeps the sum
+    // at 1, and a flip mid-Morph just turns toward the new corner from here.
+    const int att = normalisedToSwitch(values_[size_t(ParamId::Attitude)]);
+    std::array<float, 3> target{{0.0f, 0.0f, 0.0f}};
+    target[size_t(att)] = 1.0f;
+    if (snap) {
+        attW_ = target;
+    } else {
+        float dist = 0.0f;
+        for (size_t a = 0; a < 3; ++a) dist = std::max(dist, std::fabs(target[a] - attW_[a]));
+        if (dist > 0.0f) {
+            const float f = std::min(1.0f, morphStep_ / dist);
+            for (size_t a = 0; a < 3; ++a) attW_[a] = f >= 1.0f ? target[a] : attW_[a] + f * (target[a] - attW_[a]);
+        }
+    }
+    const drive::Voice voice = dsp::blendVoice(attW_);
+    const float drive = smoothed_[size_t(ParamId::Drive)];
+
+    // DriveIn + automatic gain compensation (only re-modelled when DRIVE or
+    // the Morph moved; the model costs 32 saturator evaluations).
+    if (snap || drive != compDrive_ || attW_ != compW_) {
+        driveInSettings_ = dsp::driveInSettings(voice, drive);
+        compDrive_ = drive;
+        compW_     = attW_;
+    }
+    driveIn_.set(driveInSettings_, snap, kControlInterval);
+    tilt_.set(tone, snap, kControlInterval);
+    for (auto& d : driveOut_) d.set(voice, snap);
+
     SpringSettings base;
     base.loopDelaySeconds = map::decayLoopDelaySeconds(decay);
     base.t60Seconds       = map::decayT60Seconds(decay);
@@ -149,6 +188,10 @@ void Tank::controlTick(bool snap)
     base.allpassCoeff     = map::boingCoefficient(boing);
     base.dampingHz        = map::toneDampingHz(tone);
     base.highPathLevel    = map::toneHighPathLevel(tone);
+    base.loopSatAmount    = voice.loopAmount;
+    base.loopSatKPos      = voice.loopKPos;
+    base.loopSatKNeg      = voice.loopKNeg;
+    base.howl             = drive::howlZone(decay) * attW_[2];
     const int activeStages = modes::boingStages(boing, modes::kStageCap[size_t(mode_)]);
     for (size_t i = 0; i < springs_.size(); ++i) {
         // Same T60 for every Spring (g is designed from each Spring's own
@@ -192,6 +235,8 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const int at = std::min(pendingKicks_[size_t(k)], numSamples - 1) - pos;
             if (at >= 0 && at < n) mono[at] += kKickPlaceholder;
         }
+        // Tank-level input stages: DriveIn (transducer -> tape), then TONE's tilt.
+        for (int i = 0; i < n; ++i) mono[i] = tilt_.process(driveIn_.process(mono[i]));
         for (size_t s = 0; s < springs_.size(); ++s) springs_[s].process(mono, wet[s], n);
 
         for (int i = 0; i < n; ++i) {
@@ -228,8 +273,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // is live whatever the mode). It goes into L and R with opposite
             // signs, so it widens the image and cancels exactly in mono.
             const float d = mixCur_.decorr * decorrelator_[1].process(decorrelator_[0].process(mid));
-            float wl = mid + side + d;
-            float wr = mid - side - d;
+            // Output pickup (DriveOut), one per channel.
+            float wl = driveOut_[0].process(mid + side + d);
+            float wr = driveOut_[1].process(mid - side - d);
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

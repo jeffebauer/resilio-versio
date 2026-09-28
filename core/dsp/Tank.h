@@ -1,14 +1,44 @@
 #pragma once
 // The Tank: 1–3 Springs plus Tank-level stages (CONTEXT.md).
 //
-// M4 signal flow:
+// M5 signal flow:
 //
-//   in L,R ─ mono sum (+ Kick) ─┬─ Spring A ─┐
-//                               ├─ Spring B ─┼─ SPRINGS mid/side mix ─ mid ─┬──────────────┐
-//                               └─ Spring C ─┘  (per mode, 20 ms fade)      └ decorrelator ─ D
-//                                               side ─────────────────────────────────────┤
-//     L = mid + side + w·D,  R = mid - side - w·D ─ high-shelf cut ─ limiter ─ wet
+//   in L,R ─ mono sum (+ Kick) ─ DriveIn ─ Tilt ─┬─ Spring A ─┐   (each Spring has a LoopSat in its Loop)
+//                                               ├─ Spring B ─┼─ SPRINGS mid/side mix ─ mid ─┬──────────────┐
+//                                               └─ Spring C ─┘  (per mode, 20 ms fade)      └ decorrelator ─ D
+//                                                               side ─────────────────────────────────────┤
+//     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
+//
+// Drive chain (M5, SPEC §4.9, dsp/Drive.h, numbers in params/DriveVoicing.h):
+// DriveIn (input transducer -> tape) and Tilt (TONE) are Tank-level: one
+// copy, on the mono tank input. Each Spring has its own LoopSat. DriveOut
+// (output pickup) runs on the stereo wet, one per channel. All nonlinear
+// stages are oversampled (DriveVoicing.h kOversampleFactor).
+//
+// ATTITUDE Morph (ADR 0003): the switch sets a target; three weights
+// (CLEAN, DRIVEN, KICKED) glide linearly to it over drive::kMorphSeconds on
+// the control grid, and every attitude-dependent number is the weighted
+// blend of the three voicings (dsp::blendVoice). So a flip mid-tail
+// re-voices the live tail smoothly; nothing is ever stepped or restarted.
+//
+// DRIVE gain compensation (SPEC §4.9): at each control tick the pre-gain's
+// effect on level is modelled by passing a reference sine through the
+// static saturator curves (dsp::driveInLevelGain), and DriveIn's output is
+// scaled by the inverse (plus the ATTITUDE trim). DRIVE then changes colour
+// (how hard the saturators work), not loudness. Only redone when DRIVE or the
+// Morph moved.
+//
+// Latency: the wet path picks up ~5 samples (0.1 ms at 48 kHz) of group
+// delay from the DriveIn and DriveOut oversamplers (2.5 each at x2): like a
+// tiny pre-delay, inaudible in a reverb. The dry path is untouched, so the Plugin still reports latency 0
+// (MIX 0 stays a bit-identical null). Inside each Loop the LoopSat's
+// oversampler delay is counted in the round trip (Spring.h).
+//
+// Kick (M2 placeholder until M7): the impulse is added to the mono input
+// *before* DriveIn, so "Kick at N == input impulse at N" stays exactly true
+// (test_kick, Plugin test). SPEC §4.6 puts the real Kick after the drive;
+// that move comes with the real thud + crash at M7.
 //
 // Every Spring hears the same mono input, including the Kick, like the
 // springs in one physical tank all hang off the same driver. Each Spring is
@@ -33,25 +63,27 @@
 // a BOING move), so an idle Spring's Chirp grows to full length over a few
 // hundred ms after it becomes audible.
 //
-// Used at M4: DECAY, BOING, TONE, MIX, SPRINGS. Stored but ignored until
-// their milestone: ATTITUDE (M5/M7; always CLEAN), SPLASH, WOBBLE (M7),
-// DRIVE (M5). Until M7, kick() injects a placeholder impulse into the Tank
-// input at the exact sample, so Kick timing is testable (M2); the real
-// thud + crash (ADR 0016) replaces it at M7.
+// Used at M5: DECAY, BOING, TONE, DRIVE, MIX, SPRINGS, ATTITUDE (drive
+// stages, LoopSat, Howl; its Clatter/Jolt part comes at M7). Stored but
+// ignored until M7: SPLASH, WOBBLE. Until M7, kick() injects a placeholder
+// impulse into the Tank input at the exact sample, so Kick timing is
+// testable (M2); the real thud + crash (ADR 0016) replaces it at M7.
 //
 // Real-time rules: process() never allocates, locks or does I/O. All memory
 // is taken once in prepare(). Output is identical for any block size:
 // parameters are smoothed and applied on a fixed 32-sample control grid
 // that runs across block boundaries, and the SPRINGS fade advances per sample.
 //
-// Memory: the object is small (fits in DTCM as a global; exact size printed
-// by test_tank); delay memory is one pool of Tank::requiredPoolFloats(fs)
-// floats for 3 Springs + decorrelator, sized for the most-detuned Spring.
-// Total (memoryBytes(), printed by test_spring and test_tank): about 104 kB
-// at 48 kHz and 206 kB at 96 kHz. It is malloc'd in prepare(); on the Daisy
+// Memory: the object is small (~3.3 kB with the M5 drive stages; fits in
+// DTCM as a global; exact size printed by test_tank); delay memory is one
+// pool of Tank::requiredPoolFloats(fs) floats for 3 Springs + decorrelator,
+// sized for the most-detuned Spring (M5 adds no pool memory). Total
+// (memoryBytes(), printed by test_spring and test_tank): about 105 kB at
+// 48 kHz and 207 kB at 96 kHz. It is malloc'd in prepare(); on the Daisy
 // the heap lives in AXI SRAM (512 KB). prepare(fs, block, pool, n) lets the
 // Firmware pass its own buffer (e.g. SDRAM via DSY_SDRAM_BSS) instead.
 
+#include "dsp/Drive.h"
 #include "dsp/Filters.h"
 #include "dsp/Spring.h"
 #include "params/ParamSpec.h"
@@ -111,6 +143,8 @@ public:
     const Spring& spring(int i) const { return springs_[static_cast<size_t>(i)]; }
     // SPRINGS mode now in effect: 0, 1, 2 = 1, 2, 3 Springs.
     int springsMode() const { return mode_; }
+    // ATTITUDE Morph weights now in effect (CLEAN, DRIVEN, KICKED), sum 1.
+    const std::array<float, 3>& attitudeWeights() const { return attW_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
 
 private:
@@ -156,7 +190,18 @@ private:
     bool   primed_     = false;
     int    tick_       = 0;
 
+    // ATTITUDE Morph (see "ATTITUDE Morph").
+    std::array<float, 3> attW_{{0.0f, 1.0f, 0.0f}};
+    float                morphStep_ = 0.0f; // weight change per control tick
+    // Last inputs of the gain-compensation model (recomputed only on change).
+    float                compDrive_ = -1.0f;
+    std::array<float, 3> compW_{{-1.0f, -1.0f, -1.0f}};
+    dsp::DriveInSettings driveInSettings_{};
+
     // Tank-level stages.
+    dsp::DriveIn                        driveIn_;
+    dsp::Tilt                           tilt_;
+    std::array<dsp::DriveOut, 2>        driveOut_{};
     std::array<Diffuser, 2>             decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;

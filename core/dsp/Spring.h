@@ -6,7 +6,7 @@
 //   LOW-CHIRP PATH (the Loop)
 //   in ─ + ─ DC block ─ M × stretched allpass ─ LPF(fC) ─ damping LPF ─ delay L ─┬─ tap ~L/2 ─► out
 //        ▲                                                                     │
-//        └──────────────────────────── g ◄──────────────────────────────────────┘
+//        └──────────────── g ◄── LoopSat (x2 oversampled) ◄──────────────────────┘
 //
 //   HIGH PATH (faster wideband echoes)
 //   in ─ + ─ 6 × allpass ─ HPF ─ ceiling LPF ─ delay L_hf ─┬─► × highPathLevel ─► out
@@ -19,11 +19,25 @@
 // than highs, so every echo is smeared into a falling "peeew" (the Chirp).
 // The loop repeats it every round trip, losing a little each time (g < 1).
 //
-// M1 scope: CLEAN only. Detuning (M4) is not done here: the Tank gives each
-// Spring its own detuned SpringSettings (core/params/SpringModes.h); the
-// delay memory is sized for the most-detuned Spring. Not yet here (later
-// milestones): AntiRes Micro-mod floor (M6), Loop saturation and drive (M5),
-// Clatter/Jolt (M7), WOBBLE (M7).
+// Detuning (M4) is not done here: the Tank gives each Spring its own detuned
+// SpringSettings (core/params/SpringModes.h); the delay memory is sized for
+// the most-detuned Spring. Not yet here (later milestones): AntiRes
+// Micro-mod floor (M6), Clatter/Jolt (M7), WOBBLE (M7).
+//
+// LoopSat (M5, SPEC §4.9): a saturator on the feedback, before g. Off in
+// CLEAN, gentle symmetric in DRIVEN, hard asymmetric in KICKED (amounts and
+// hardness come from the Tank's ATTITUDE Morph via SpringSettings). Its
+// curve never has a slope above 1, so it can only lower the Loop gain: it
+// bounds loud tails and thickens them, and can never cause a runaway. It
+// runs oversampled (dsp/Oversampler.h); the oversampler's small group delay
+// (2.5 samples at x2) is part of the Loop, so roundTripSamples() counts it and g
+// is designed with it in. The oversampler runs in every ATTITUDE, so the
+// Loop's delay never changes when the Morph fades the saturation in or out.
+//
+// Howl (ADR 0002, 0019): SpringSettings::howl (0..1, the Tank sets it only in
+// KICKED's top DECAY zone) raises the Loop's small-signal peak gain above 1
+// (DriveVoicing.h "Howl zone"). The LoopSat then limits the growth: a
+// saturated, self-sustaining roar. howl = 0 leaves g exactly as designed.
 //
 // Multirate (SPEC §5 mitigation 2, Parker 2011), not done at M1: the chain,
 // LPF(fC) and damping only carry content below fC (< 4.2 kHz), so they could
@@ -36,6 +50,7 @@
 // Memory: all delay memory comes from a caller-supplied pool (requiredFloats()),
 // so the Firmware can place it in SRAM/SDRAM. The object itself is small.
 
+#include "dsp/Drive.h"
 #include "dsp/Filters.h"
 #include "params/Mappings.h"
 
@@ -59,6 +74,12 @@ struct SpringSettings {
     // first echo arrives after about tapRatio·L (+ the chain's delay).
     // Fixed per Spring (not a knob), so it never needs to glide.
     float tapRatio         = 0.5f;
+    // LoopSat (ATTITUDE Morph): amount 0 = linear, hardness per half.
+    float loopSatAmount    = 0.0f;
+    float loopSatKPos      = 1.0f;
+    float loopSatKNeg      = 1.0f;
+    // Howl zone position × KICKED weight, 0..1 (0 everywhere else).
+    float howl             = 0.0f;
 };
 
 class Spring {
@@ -103,9 +124,12 @@ public:
     float highFeedbackGain() const { return gHigh_; }
     // Group delay of the allpass chain alone, samples.
     float chainGroupDelaySamples(float freqHz) const;
-    // Full Loop round trip at freqHz: L + chain + filters, samples.
+    // Full Loop round trip at freqHz: L + chain + filters + LoopSat
+    // oversampler latency, samples.
     float roundTripSamples(float freqHz) const;
-    // Loop magnitude per trip at freqHz, excluding g.
+    // Loop magnitude per trip at freqHz, excluding g (small signal: the
+    // LoopSat's slope is 1 at rest and never above 1; its oversampler is an
+    // allpass, magnitude 1).
     float loopMagnitude(float freqHz) const;
     // T60 (s) the Loop gives at freqHz with the current g.
     float t60AtSeconds(float freqHz) const;
@@ -138,6 +162,7 @@ private:
     float mPos_ = 0.0f, mRate_ = 0.0f;
     int   mTarget_ = 0, mActive_ = 0;
     float g_ = 0.0f;
+    dsp::LoopSat loopSat_;
 
     // High path state.
     std::array<float, kHighStages> hapX1_{}, hapY1_{};

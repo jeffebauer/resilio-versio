@@ -81,6 +81,7 @@ void Spring::reset()
     damping_.reset();
     highpass_.reset();
     highCeiling_.reset();
+    loopSat_.reset();
     rng_.seed(seed_);
 }
 
@@ -91,7 +92,9 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
     const bool same = s.loopDelaySeconds == settings_.loopDelaySeconds && s.t60Seconds == settings_.t60Seconds
                    && s.transitionHz == settings_.transitionHz && s.allpassCoeff == settings_.allpassCoeff
                    && s.stages == settings_.stages && s.dampingHz == settings_.dampingHz
-                   && s.highPathLevel == settings_.highPathLevel && s.tapRatio == settings_.tapRatio;
+                   && s.highPathLevel == settings_.highPathLevel && s.tapRatio == settings_.tapRatio
+                   && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
+                   && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return;
 
     settings_ = s;
@@ -131,14 +134,26 @@ void Spring::updateCoefficients()
     // g supplies the rest. Take the smallest g over the design band so the
     // slowest band hits T60 and no band rings longer.
     const float t60 = kT60DesignScale * s.t60Seconds;
-    float g = kMaxGain;
+    float g = kMaxGain, maxMag = 0.0f;
     for (float hz : kDesignHz) {
         const float rt = roundTripSamples(hz);
         const float m  = loopMagnitude(hz);
         const float gf = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / m;
         g = std::min(g, gf);
+        maxMag = std::max(maxMag, m);
     }
-    g_ = std::max(0.0f, g);
+    g = std::max(0.0f, g);
+
+    // Howl zone: lift the small-signal peak gain P = g·max|H| toward
+    // kHowlPeakGain (> 1). The LoopSat's compression then holds the level.
+    const float howl = std::clamp(s.howl, 0.0f, 1.0f);
+    if (howl > 0.0f && maxMag > 0.0f) {
+        const float p0 = g * maxMag;
+        const float p  = p0 + (drive::kHowlPeakGain - p0) * std::sqrt(howl);
+        g = p / maxMag;
+    }
+    g_ = g;
+    loopSat_.set(s.loopSatAmount, s.loopSatKPos, s.loopSatKNeg);
 
     // High path: no dispersion to speak of, simple T60 from its own trip.
     lhCur_ = kHighDelayRatio * lCur_;
@@ -155,7 +170,8 @@ float Spring::roundTripSamples(float freqHz) const
     const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
     // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
     const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
-    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay;
+    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay
+         + dsp::LoopSat::latencySamples(freqHz, sampleRate_);
 }
 
 float Spring::loopMagnitude(float freqHz) const
@@ -219,7 +235,7 @@ inline float Spring::processLow(float in)
     const float fb  = readLow(lCur_);
     const float tap = readLow(tapRatio_ * lCur_); // pickup ~half way: first echo after ~half a round trip
 
-    float x = dc_.process(in + g_ * fb);
+    float x = dc_.process(in + g_ * loopSat_.process(fb));
 
     // Spectral delay filter: M stretched allpass sections, each
     //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
