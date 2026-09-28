@@ -95,8 +95,9 @@ struct SpringSettings {
     // Howl zone position × KICKED weight, 0..1 (0 everywhere else).
     float howl             = 0.0f;
     // L modulation (AntiRes Micro-mod floor, params/AntiRes.h), as fractions
-    // of L (peak): modDepth = smoothed random (floor, + WOBBLE at M7),
-    // lfoDepth / lfoHz = slow sine (Howl movement now, WOBBLE at M7).
+    // of L (peak): modDepth = smoothed random (the floor, + Howl drift),
+    // lfoDepth / lfoHz = slow sine (Howl movement). WOBBLE and the Jolt are
+    // not settings: they arrive per sample through process().
     float modDepth         = 0.0f;
     float lfoDepth         = 0.0f;
     float lfoHz            = 0.35f;
@@ -132,7 +133,18 @@ public:
     void setSettings(const SpringSettings& s, bool snap);
 
     // n samples of mono in -> mono Spring out. Real-time safe.
-    void process(const float* in, float* out, int n);
+    void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, out, n); }
+
+    // Same, with the M7 per-sample inputs (each may be null = none):
+    //   highIn   replaces the high path's input (the Tank passes the same
+    //            input plus Clatter, times CLEAN's HF emphasis gain);
+    //   lFrac    Loop delay offset as a fraction of L (Jolt, this Spring's
+    //            share), added after the slew limiter;
+    //   lSamples Loop delay offset in samples (WOBBLE).
+    // Both offsets ride on the Micro-mod floor: the Loop reads (feedback and
+    // pickup tap) use lCur·(1 + floor + lFrac) + lSamples.
+    void process(const float* in, const float* highIn, const float* lFrac, const float* lSamples, float* out,
+                 int n);
 
     // ---- Analysis at the current coefficients (Loop gain design + tests) ----
     float sampleRate() const { return sampleRate_; }

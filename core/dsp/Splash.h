@@ -1,7 +1,6 @@
 #pragma once
 // SPLASH / ATTITUDE nonlinear model (SPEC §4.5; CONTEXT.md: Hit, Clatter,
-// Jolt, Splash). M7 stand-alone components: not yet wired into the Tank
-// (docs/m7-integration.md has the plan).
+// Jolt, Splash). One Splash per Tank (Tank.h; hooks in docs/m7-integration.md).
 //
 //   driven mono (post-DriveIn) ─ HitDetector ─ Hit (0..1, control rate)
 //                                                  │ onset → impact (seeded jitter, then KICKED rattle impacts)

@@ -1,5 +1,6 @@
 // MIX tests against the current Tank (SPEC §3 K6, §4.8, §7 M7; ADR 0015).
-// Uses the Tank API as-is (no M7 components inside yet).
+// Uses the Tank API as-is (since M7 with SPLASH, KICK and WOBBLE inside; MIX
+// itself was already in place and needed no integration).
 //
 // Trick used throughout: the Tank sums its input to mono (SPEC §4.3), so an
 // antiphase input (L = x, R = −x) gives a silent tank: the output is then

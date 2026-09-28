@@ -1,7 +1,6 @@
 #pragma once
 // KickVoice: the simulated strike on the Tank (SPEC §4.6; ADRs 0005, 0013,
-// 0016; CONTEXT.md "Kick"). M7 stand-alone component, not yet wired into the
-// Tank (docs/m7-integration.md).
+// 0016; CONTEXT.md "Kick"). One per Tank (Tank.h, docs/m7-integration.md).
 //
 //   trigger(offset) ─► thump: decaying sine, pitch glides f0 → f1 (40–80 Hz), 20–40 ms
 //                   ─► burst: ~10 ms broadband noise (high-passed at 150 Hz)
@@ -15,10 +14,10 @@
 // 45–80 Hz would recirculate; high-passed, only its upper part and the burst
 // excite the Springs, and the low thud is heard once, directly.
 //
-// Where it goes in the Tank: see docs/m7-integration.md. It moves the Kick
-// from the M2 placeholder's "added to the input before DriveIn" to after the
-// drive, so test_kick's "Kick at N == input impulse at N" becomes "Kick onset
-// sample-accurate at N for every block size".
+// Where it goes in the Tank: see Tank.h / docs/m7-integration.md. It moved the
+// Kick from the M2 placeholder's "added to the input before DriveIn" to after
+// the drive, so test_kick's "Kick at N == input impulse at N" became "Kick
+// onset at N (+ a fixed 0-sample offset) for every block size".
 //
 // Fixed strength (ADR 0005), scaled by ATTITUDE only (setAttitude()). Rising
 // edges only (ADR 0013); edges closer than kKickMergeMs merge into one Kick

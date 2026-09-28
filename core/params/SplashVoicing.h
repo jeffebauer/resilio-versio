@@ -79,7 +79,14 @@ constexpr float kMinStrokeMs    = 20.0f;
 // kJitterMin..MaxMs after the Hit peaked, with the peak Hit as its strength.
 constexpr float kClatterHpHz  = 1000.0f;
 constexpr float kClatterLpHz  = 6000.0f;
-constexpr float kClatterGain  = 0.6f;  // burst peak at Hit 1, amount 1 (before the band-pass)
+// Burst peak at Hit 1, amount 1 (before the band-pass). 0.6 in the
+// stand-alone build; ×5 (+14 dB) at integration: through the Tank the
+// Clatter goes into the high path, whose HPF (0.8 fC) and level (TONE,
+// 0.225 at noon) leave little of it, so at 0.6 KICKED SPLASH 1 on a hard
+// snare added only +0.2 dB of 1-6 kHz (Clatter −16 dB under the snare's own
+// bright part). At 3.0 it is −2 dB (KICKED) / −8 dB (DRIVEN), a clear crash
+// (test_m7_tank). Ratios (ghost vs hard hit) do not depend on it.
+constexpr float kClatterGain  = 3.0f;
 constexpr float kJitterMinMs  = 0.5f;
 constexpr float kJitterMaxMs  = 4.0f;
 // Secondary impacts ("rattle": springs bouncing against each other/the
@@ -106,6 +113,10 @@ inline constexpr std::array<float, 3> kJoltSpringScale{{1.0f, -0.75f, 0.9f}};
 // Jolt, depth ∝ (j + kRattleEnergyGain × tank level): energy-dependent.
 constexpr float kRattleHz         = 18.0f;
 constexpr float kRattleEnergyGain = 2.0f;
+// Tank level fed to the rattle (Tank integration): RMS of the wet mid,
+// smoothed with this time constant, times the smoothed SPLASH (so SPLASH 0
+// has no tail rattle; the Kick's forced Splash rattles through the Jolt).
+constexpr float kTankLevelSmoothMs = 50.0f;
 // Hard ceiling on |a| after the Jolt is added, so a Jolt can never push the
 // allpass toward |a| = 1. Only bites at BOING max on the most-detuned Spring
 // (−0.72 × 1.07 − 0.12 = −0.89 → −0.85).
@@ -137,9 +148,16 @@ struct Voice {
 inline constexpr std::array<Voice, 3> kVoice{{
     //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle   hf
     {  0.00f, 0.00f,  5.0f, 10.0f, 0.0f, 0.00f, 0.00f,  60.0f, 0.000f, 0.00f, 0.0000f, 0.41f}, // CLEAN
-    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.05f, 0.0000f, 0.00f}, // DRIVEN
+    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.025f, 0.0000f, 0.00f}, // DRIVEN
     {  0.25f, 1.00f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f, 0.00f}, // KICKED
 }};
+
+// DRIVEN's |Δa| was 0.05 in the stand-alone build; halved at integration.
+// The Δa is common to all Springs, and at 0.05 it pulled their responses
+// together enough to break the M4 stereo checks at the default SPLASH 0.3
+// (test_tank: mono notch −6.4 dB on chord stabs, 2 Springs, DECAY 0 BOING 1;
+// L/R correlation 0.47 → 0.49 on hits). At 0.025 all M4 checks keep their
+// margin. KICKED keeps 0.12: a big smear is part of "full chaos".
 
 inline Voice blendVoice(const std::array<float, 3>& w)
 {

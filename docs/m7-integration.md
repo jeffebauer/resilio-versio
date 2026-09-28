@@ -271,3 +271,87 @@ for one Spring measured in the same run): Splash about 115 cycles/sample
 6. **MIX sweep loudness** holds (±1.0 dB) on snare hits. The wet is +3.4 dB
    on pink noise and −4.4 dB on white noise, because the wet path is dark and
    builds up. Is that acceptable, or should the wet level adapt?
+
+## Integrated (28 Sep 2026)
+
+Wired into `core/dsp/Tank.*` and `core/dsp/Spring.*` as planned above, with
+these deviations and findings:
+
+- **Spring API.** `Spring::process(in, highIn, lFrac, lSamples, out, n)`
+  (each extra may be null; the old 3-argument form still works). `highIn` =
+  (Tilt out + Kick loop feed + Clatter) × CLEAN HF gain (ramped across each
+  tick); `lFrac` = Jolt × `kJoltSpringScale[i]` (fraction of L); `lSamples` =
+  WOBBLE (samples). Read = `lCur·(1 + floor + lFrac) + lSamples`, after the
+  slew limiter, clamped to the delay memory. `lowDelaySize` now holds
+  `L·(1.02 + 0.0125) + wobbleMaxDepthSamples + 8` (+~110 floats per Spring).
+- **WOBBLE does not use `SpringSettings::modDepth/lfoDepth`** (the M6 hook
+  comment). The Wobble generator specifies depth in cents per pass, so it is
+  a per-sample offset; modDepth/lfoDepth stay floor + Howl (AntiRes.h updated).
+- **Clatter gain ×5 (`kClatterGain` 0.6 → 3.0).** Through the Tank the Clatter
+  lands in the high path (HPF at 0.8 fC, level 0.225 at TONE noon), so at 0.6
+  KICKED SPLASH 1 added +0.2 dB of 1–6 kHz to a hard snare (Clatter 16 dB
+  under the hit's own bright part): no crash. Now −2 dB (KICKED) / −8 dB
+  (DRIVEN) re the hit. Ratios (ghosts) unchanged.
+- **DRIVEN `joltAllpass` 0.05 → 0.025.** The Δa is common to all Springs; at
+  0.05 (default SPLASH 0.3) it broke M4: mono notch −6.4 dB (limit −6) on
+  chord stabs, 2 Springs, DECAY 0 BOING 1, and correlation 0.49 on hits
+  (margin 0.47). Per-Spring Δa scales traded one failure for the other;
+  halving passes all. KICKED keeps 0.12.
+- **Tank level → rattle:** RMS of the wet mid (50 ms) × smoothed SPLASH
+  (`kTankLevelSmoothMs`), so SPLASH 0 has no energy rattle.
+- **Kick onset = N + 0** (the DriveOut oversampler's first tap answers at
+  once), every block size. `Tank::kKickPlaceholder` removed.
+- Test hooks: `Tank::setSplashEnabled / setSplashParts` (Clatter, Jolt) and
+  read-only `splash()`, `kickVoice()`, `wobble(i)`.
+- Same Clatter to all Springs kept: per-Spring Clatter was tried and changed
+  no metric (the M4 notch came from Δa).
+
+**Test expectation changes:** test_kick rewritten (onset N + 0 all blocks,
+bit-identical, clamp, low end, 12/s); test_tank `kickReachesAllSprings` (heard
+on L/R, onset ≤ N + 48 vs a no-Kick render instead of "== input impulse");
+test_drive Tank-wet aliasing renders pin SPLASH 0 / WOBBLE 0 (WOBBLE/rattle
+sidebands 10–20 Hz from the tone, −41 dB, are not aliasing); PluginHostTest
+adds "MIDI Kick onset at N + 0". New `test_m7_tank`.
+
+**Results** (test_m7_tank, test_kick; 02_hits, DECAY 0.5, DRIVE 0.5, 2 Springs):
+
+| | Clatter re hit (−6 / −12 / −18 dBFS snare) | Splash energy −18 re −6 (snare / rim) |
+|---|---|---|
+| DRIVEN SPLASH 0 / 1 | −38.5 / −139 / – ; −8.0 / −16.5 / −19.1 dB | −142 / −113 ; −29 / −17 dB |
+| KICKED SPLASH 1 | −2.0 / −9.2 / −17.1 dB | −17.7 / −15.3 dB |
+| CLEAN SPLASH 1 | HF lift +0.17 dB, no Jolt, 99.9 % of the change above 800 Hz | – |
+
+KICKED SPLASH 1: Jolt at +1 s 0.6 % of peak, 1–6 kHz within +0.3 dB of the
+no-Splash render (settled). DRIVEN SPLASH 0 sits 30.5 dB under SPLASH 1
+(plan: 27): open question 2 stands, it is very faint.
+Kick < 100 Hz down 28.4 / 30.1 / 30.5 dB in 300 ms (CLEAN / DRIVEN DECAY 1 /
+KICKED 0.88), 24.4 dB KICKED DECAY 1 (Howl zone). 12/s: 36/36 Kicks on their
+exact sample, 36 forced strokes, all ATTITUDEs.
+
+WOBBLE, 08_held_tones 1 kHz held, DRIVEN (default DRIVE), 1 Spring, p95 (peak) cents:
+
+| DECAY | 0 | 0.25 | 0.5 | 0.75 | 1 |
+|---|---|---|---|---|---|
+| 0 | 0.0 | 0.1 | 0.8 | 3.4 (3.8) | 12.1 (16.7) |
+| 0.5 | 0.0 | 0.0 | 0.2 | 8.3 (52) | 42.6 (96) |
+| 1 | 0.3 | 0.3 | 0.3 | 15.7 (88) | 33.6 (75) |
+
+At DRIVE 0.5 the Loop multiplies less (DECAY 0.5: 3.0 / 13.3 cents at 0.75 / 1).
+After the tone stops the tail is several Loop modes beating, so pitch is
+measured on the held wet. Magneto calibration (ADR 0020) still pending.
+
+**M6 re-check** (renders/m6_*_m7 = files as-is, SPLASH 0.3 WOBBLE 0; `_sw0`
+= 0 / 0; `_sw05` = 0.5 / 0.5): all 540 ringing cells pass, max `ringing_db`
+12.3 dB, no steady tone. Howl: 0 failures as-is and at 0.5; at SPLASH 0 /
+WOBBLE 0 one bursts cell (1 Spring, BOING 1, TONE 0) moves 0.47 % (limit
+0.5 %). test_antires (loop gain, evenness, Howl exit) passes.
+
+**CPU** (test_m7_tank, same ×15–25 estimate): 3 Springs KICKED BOING/TONE/DRIVE
+1 with M7 busy (hits + Kicks 12/s, SPLASH 1, WOBBLE 1) 3870–6450 cycles/sample,
+39–64 %; M7 share 180–300 cycles. **Flash:** release 117,420, m0test 94,304,
+profile 128,676 of 131,072 B (profile 2.4 kB left). .text: Splash.o 4,128,
+Kick.o 2,120, Wobble.o 1,368, Tank.o 11,227, Spring.o 5,952 B.
+
+**Listening:** renders/m7_splash (ATTITUDE × SPLASH), renders/m7_wobble,
+renders/m7_kick/*.wav (`presets/sweeps/m7_kick.json` is an --auto file:
+singles, a pair, a 12/s train; each ATTITUDE, DECAY 0.5 and 1).

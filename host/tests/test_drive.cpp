@@ -52,6 +52,8 @@ float attValue(int a) { return rv::switchToNormalised(a); }
 struct Settings {
     float decay = 0.6f, boing = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f;
     int   att = 1, springs = 1;
+    // M7: < 0 = leave the ParamSpec default (SPLASH 0.3, WOBBLE 0.2).
+    float splash = -1.0f, wobble = -1.0f;
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -63,6 +65,8 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Drive, s.drive);
     t.setParam(rv::ParamId::Attitude, attValue(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
+    if (s.splash >= 0.0f) t.setParam(rv::ParamId::Splash, s.splash);
+    if (s.wobble >= 0.0f) t.setParam(rv::ParamId::Wobble, s.wobble);
 }
 
 struct Stereo {
@@ -672,6 +676,10 @@ void aliasing()
     // The whole Tank (wet): what the listener hears. DECAY 0.3 so the tail
     // reaches steady state; analysed from 2.3 s. DRIVEN too at 0 dBFS
     // (since ADR 0022 its pre-gain reaches higher than KICKED's).
+    // SPLASH 0 and WOBBLE 0 (M7): WOBBLE's pitch movement and KICKED's
+    // energy-dependent rattle put modulation sidebands within ~10-20 Hz of
+    // the tone (-41 dB at WOBBLE 0.2 / SPLASH 0.3 in KICKED). Those are
+    // not aliasing; this measures the drive stages.
     {
         AliasResult r;
         for (float f0 = 5000.0f; f0 <= 15000.0f; f0 += 1000.0f) {
@@ -681,6 +689,8 @@ void aliasing()
             s.decay = 0.3f;
             s.boing = 1.0f;
             s.springs = 2;
+            s.splash  = 0.0f;
+            s.wobble  = 0.0f;
             accumulate(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l, f0);
         }
         report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS", r);
@@ -694,6 +704,8 @@ void aliasing()
             s.decay = 0.3f;
             s.boing = 1.0f;
             s.springs = 2;
+            s.splash  = 0.0f;
+            s.wobble  = 0.0f;
             const Stereo o = renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp));
             accumulate(r, o.l, f0);
         }

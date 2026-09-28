@@ -24,10 +24,11 @@
 // the depth (a fraction of L). Seeded per Spring and reset by Tank::reset(),
 // so renders stay deterministic.
 //
-// Hook for M7's WOBBLE (ADR 0008): SpringSettings::modDepth is the *total*
-// random depth (floor + WOBBLE) and lfoDepth / lfoHz the sine part. At M6 the
-// Tank sets modDepth = kMicroModDepth and the sine only in the Howl zone.
-// WOBBLE adds on top; the floor stays underneath at WOBBLE 0.
+// WOBBLE (ADR 0008, M7) rides on top of this: the Tank's dsp::Wobble per
+// Spring gives a per-sample offset in samples, added to the same Loop delay
+// read (Spring::process()); the floor stays underneath at WOBBLE 0. (M6
+// planned WOBBLE through modDepth/lfoDepth; M7 uses its own generator, which
+// specifies depth in cents per pass, so these fields stay floor + Howl.)
 
 namespace rv::antires {
 

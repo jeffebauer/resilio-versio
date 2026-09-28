@@ -1,0 +1,433 @@
+// M7 criteria through the whole Tank (SPEC §7 M7, docs/m7-integration.md):
+// SPLASH on 02_hits, WOBBLE on 08_held_tones, the ATTITUDE Morph of the M7
+// tables, and determinism with everything M7 turned up. The Kick criteria
+// are in test_kick, MIX in test_mix, the components alone in test_splash,
+// test_kick_voice and test_wobble.
+//
+// "Splash share": the Tank has test hooks (setSplashParts) that keep the
+// Splash listening but drop its Clatter (+ CLEAN HF emphasis) and/or its
+// Jolt. The Splash's contribution is then the difference of renders that
+// are otherwise identical (same seeds, same everything):
+//   splash energy  = energy of (on − off) in the 6 s after a hit (Clatter + Jolt)
+//   clatter dB     = 1–6 kHz energy of (Clatter only − off) re the off render's
+//                    own 1–6 kHz energy, first 150 ms after the hit: how loud the
+//                    crash is against the hit's own bright part
+//   crash dB       = 1–6 kHz energy on vs off, first 150 ms (total brightening)
+//   settled dB     = the same 1.0–1.5 s after the hit
+// Stimuli are read from test_audio/stimulus (tools/make_stimulus.py); a
+// missing file skips its section.
+
+#include "Wav.h"
+#include "dsp/Filters.h"
+#include "dsp/Tank.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+
+namespace {
+
+int  failures = 0;
+char msg[512];
+
+void check(bool ok, const char* what)
+{
+    std::printf("%s  %s\n", ok ? "PASS" : "FAIL", what);
+    if (!ok) ++failures;
+}
+
+using Buf = std::vector<float>;
+constexpr float kFs = 48000.0f;
+const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
+
+struct Settings {
+    float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.0f, tone = 0.5f, boing = 0.5f;
+    int   att = 1, springs = 1;
+    bool  clatterOn = true, joltOn = true; // Tank::setSplashParts
+};
+
+struct Out {
+    Buf l, r;
+    Buf jolt; // Splash Jolt envelope after each block
+};
+
+Out render(const Settings& s, const Buf& in, int block = 48)
+{
+    rv::Tank t;
+    t.prepare(kFs, block);
+    t.setParam(rv::ParamId::Mix, 1.0f);
+    t.setParam(rv::ParamId::Decay, s.decay);
+    t.setParam(rv::ParamId::Drive, s.drive);
+    t.setParam(rv::ParamId::Splash, s.splash);
+    t.setParam(rv::ParamId::Wobble, s.wobble);
+    t.setParam(rv::ParamId::Tone, s.tone);
+    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
+    t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
+    t.setSplashParts(s.clatterOn, s.joltOn);
+    Out o{Buf(in.size()), Buf(in.size()), Buf(in.size())};
+    for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
+        const int n = int(std::min(size_t(block), in.size() - pos));
+        t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, n);
+        for (int i = 0; i < n; ++i) o.jolt[pos + size_t(i)] = t.splash().joltEnvelope();
+    }
+    return o;
+}
+
+Buf mono(const Out& o)
+{
+    Buf m(o.l.size());
+    for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
+    return m;
+}
+Buf band(const Buf& x, float lo, float hi)
+{
+    rv::dsp::Biquad h1, h2, l1, l2;
+    h1.setHighpass(lo, 0.707f, kFs);
+    h2.setHighpass(lo, 0.707f, kFs);
+    l1.setLowpass(hi, 0.707f, kFs);
+    l2.setLowpass(hi, 0.707f, kFs);
+    Buf y(x.size());
+    for (size_t i = 0; i < x.size(); ++i) y[i] = l2.process(l1.process(h2.process(h1.process(x[i]))));
+    return y;
+}
+double energy(const Buf& x, size_t from, size_t to)
+{
+    double s = 0;
+    for (size_t i = from; i < std::min(to, x.size()); ++i) s += double(x[i]) * x[i];
+    return s;
+}
+double db(double p) { return 10.0 * std::log10(p + 1e-30); }
+
+bool load(const char* name, Buf& x)
+{
+    rv::wav::Audio a;
+    std::string err;
+    for (const char* prefix : {"../test_audio/stimulus/", "test_audio/stimulus/"})
+        if (rv::wav::read(std::string(prefix) + name, a, err) && a.sampleRate == 48000 && !a.channels.empty()) {
+            x = a.channels[0];
+            return true;
+        }
+    std::printf("SKIP  %s not found (run python3 tools/make_stimulus.py)\n", name);
+    return false;
+}
+
+// ---- 1. SPLASH on 02_hits -------------------------------------------------------------
+// 02_hits: snare at -6 / -12 / -18 dBFS from 1 s, then rim at the same
+// levels, 6 s apart. DECAY noon (tails gone long before the next hit),
+// DRIVE 0.5, 2 Springs.
+struct HitStats {
+    double splashE[6], clatterDb[6], crashDb[6], settledDb[6];
+    float  joltPeak = 0, joltAt1s = 0; // hard snare
+};
+
+HitStats hitStats(const Buf& x, int att, float splash)
+{
+    Settings s;
+    s.att    = att;
+    s.splash = splash;
+    const Out on = render(s, x);
+    s.joltOn = false;
+    const Out clat = render(s, x);
+    s.clatterOn = false;
+    const Out off = render(s, x);
+    const Buf mOn = mono(on), mOff = mono(off), mClat = mono(clat);
+    Buf d(mOn.size()), dc(mOn.size());
+    for (size_t i = 0; i < d.size(); ++i) {
+        d[i]  = mOn[i] - mOff[i];
+        dc[i] = mClat[i] - mOff[i];
+    }
+    const Buf hOn = band(mOn, 1000.0f, 6000.0f), hOff = band(mOff, 1000.0f, 6000.0f), hC = band(dc, 1000.0f, 6000.0f);
+    HitStats h{};
+    for (int k = 0; k < 6; ++k) {
+        const size_t at = size_t((1.0f + 6.0f * float(k)) * kFs);
+        h.splashE[k]   = energy(d, at, at + size_t(6.0f * kFs));
+        h.clatterDb[k] = db(energy(hC, at, at + size_t(0.15f * kFs)) / energy(hOff, at, at + size_t(0.15f * kFs)));
+        h.crashDb[k]   = db(energy(hOn, at, at + size_t(0.15f * kFs)) / energy(hOff, at, at + size_t(0.15f * kFs)));
+        h.settledDb[k] = db(energy(hOn, at + size_t(kFs), at + size_t(1.5f * kFs))
+                            / energy(hOff, at + size_t(kFs), at + size_t(1.5f * kFs)));
+    }
+    const size_t at = size_t(kFs);
+    for (size_t i = at; i < at + size_t(0.5f * kFs); ++i) h.joltPeak = std::max(h.joltPeak, on.jolt[i]);
+    h.joltAt1s = on.jolt[at + size_t(kFs)];
+    return h;
+}
+
+void splashOnHits()
+{
+    Buf x;
+    if (!load("02_hits.wav", x)) return;
+    std::printf("      02_hits through the Tank (DECAY 0.5, DRIVE 0.5, 2 Springs). Splash energy of the -12 / -18 dBFS hit\n"
+                "      re the -6 dBFS one (snare; rim); Clatter re the hit's own 1-6 kHz and crash = 1-6 kHz on/off, first\n"
+                "      150 ms (snare -6/-12/-18); settled = 1.0-1.5 s after the -6 dBFS snare:\n");
+    bool ghostOk = true;
+    HitStats k1{}, d0{}, d1{}, c1{};
+    for (int att : {1, 2})
+        for (float sv : {0.0f, 0.5f, 1.0f}) {
+            const HitStats h = hitStats(x, att, sv);
+            std::printf("      %-6s SPLASH %.1f: snare %6.1f / %6.1f dB, rim %6.1f / %6.1f dB; Clatter %6.1f / %6.1f / %6.1f dB, "
+                        "crash %+4.1f / %+4.1f / %+4.1f dB; settled %+4.1f dB; Jolt peak %.3f, at +1 s %.5f\n",
+                        kAttName[att], sv, db(h.splashE[1] / h.splashE[0]), db(h.splashE[2] / h.splashE[0]),
+                        db(h.splashE[4] / h.splashE[3]), db(h.splashE[5] / h.splashE[3]), h.clatterDb[0], h.clatterDb[1],
+                        h.clatterDb[2], h.crashDb[0], h.crashDb[1], h.crashDb[2], h.settledDb[0], h.joltPeak, h.joltAt1s);
+            ghostOk &= h.splashE[0] > h.splashE[1] && h.splashE[1] > h.splashE[2] && h.splashE[2] < 0.25 * h.splashE[0]
+                    && h.splashE[3] > h.splashE[4] && h.splashE[4] > h.splashE[5] && h.splashE[5] < 0.25 * h.splashE[3];
+            if (att == 2 && sv == 1.0f) k1 = h;
+            if (att == 1 && sv == 0.0f) d0 = h;
+            if (att == 1 && sv == 1.0f) d1 = h;
+        }
+    check(ghostOk, "Splash through the Tank falls with hit level; the -18 dBFS ghost gives < 25 % of the -6 dBFS hit's "
+                   "Splash energy (DRIVEN, KICKED; SPLASH 0 / 0.5 / 1; snare and rim)");
+
+    std::snprintf(msg, sizeof msg,
+                  "KICKED SPLASH 1, -6 dBFS snare: big bright crash (Clatter %+.1f dB re the hit's own 1-6 kHz, >= -6; crash "
+                  "%+.1f dB), ghost barely (Clatter %+.1f dB, <= -15); settled into the tail after 1 s (%+.1f dB, within 1.5 "
+                  "dB; Jolt %.2f %% of its peak, < 2 %%)",
+                  k1.clatterDb[0], k1.crashDb[0], k1.clatterDb[2], k1.settledDb[0],
+                  100.0 * k1.joltAt1s / std::max(1e-9f, k1.joltPeak));
+    check(k1.clatterDb[0] >= -6.0 && k1.clatterDb[2] <= -15.0 && std::fabs(k1.settledDb[0]) <= 1.5
+              && k1.joltAt1s < 0.02f * k1.joltPeak,
+          msg);
+    std::snprintf(msg, sizeof msg, "DRIVEN SPLASH 1 moderate: Clatter %+.1f dB re the hit (between KICKED's %+.1f and -20)",
+                  d1.clatterDb[0], k1.clatterDb[0]);
+    check(d1.clatterDb[0] < k1.clatterDb[0] && d1.clatterDb[0] > -20.0, msg);
+
+    std::snprintf(msg, sizeof msg,
+                  "DRIVEN SPLASH 0: faint natural splash on the hard hit, not zero (Clatter %+.1f dB re the hit, %.1f dB "
+                  "below SPLASH 1; plan: ~27 dB below)",
+                  d0.clatterDb[0], d1.clatterDb[0] - d0.clatterDb[0]);
+    check(d0.clatterDb[0] > -60.0 && d0.clatterDb[0] < d1.clatterDb[0] - 15.0 && d0.splashE[0] > 0.0, msg);
+
+    // CLEAN: SPLASH = mild HF emphasis only. No Jolt, no Clatter: the only
+    // change is a small lift of the high path on transients.
+    c1 = hitStats(x, 0, 1.0f);
+    Settings s;
+    s.att    = 0;
+    s.splash = 1.0f;
+    const Out on = render(s, x);
+    s.clatterOn = s.joltOn = false;
+    const Out off = render(s, x);
+    const Buf mOn = mono(on), mOff = mono(off);
+    Buf d(mOn.size());
+    for (size_t i = 0; i < d.size(); ++i) d[i] = mOn[i] - mOff[i];
+    const double lowShare = energy(band(d, 20.0f, 800.0f), 0, d.size()) / std::max(1e-30, energy(d, 0, d.size()));
+    const bool noJolt = std::all_of(on.jolt.begin(), on.jolt.end(), [](float v) { return v == 0.0f; });
+    std::snprintf(msg, sizeof msg,
+                  "CLEAN SPLASH 1: mild HF emphasis only (crash %+.2f dB at 1-6 kHz, 0 .. +3; below 800 Hz %.1f %% of the "
+                  "change; Jolt %s)",
+                  c1.crashDb[0], 100.0 * lowShare, noJolt ? "never moves" : "MOVES");
+    check(c1.crashDb[0] > 0.0 && c1.crashDb[0] <= 3.0 && lowShare < 0.05 && noJolt, msg);
+}
+
+// ---- 2. WOBBLE on 08_held_tones ---------------------------------------------------------
+// 1 kHz at -12 dBFS from 1 s to 9 s. DRIVEN at the default DRIVE, SPRINGS 1
+// (one Spring: a clean pitch to track), SPLASH 0, MIX 1. The wet is the
+// Tank's tail building on the held tone (as test_wobble's "tail": the Loop
+// multiplies the per-pass shift). Pitch = 10-cycle-averaged zero-crossing
+// frequency of the 700-1400 Hz band, 3-8.9 s, in cents re its median; p95
+// (peak) of |cents|. (After the tone stops the tail is several Loop modes
+// near 1 kHz beating, so a single pitch is not defined there.)
+struct Pitch {
+    double p95 = 0, peak = 0;
+};
+Pitch pitchCents(const Buf& y, size_t from, size_t to)
+{
+    std::vector<double> f;
+    double lastCross = -1;
+    int cycles = 0;
+    for (size_t n = from + 1; n < std::min(to, y.size()); ++n) {
+        if (y[n - 1] < 0 && y[n] >= 0) {
+            const double cross = double(n - 1) + double(y[n - 1]) / double(y[n - 1] - y[n]);
+            if (++cycles == 10) {
+                if (lastCross >= 0) f.push_back(10.0 * double(kFs) / (cross - lastCross));
+                lastCross = cross;
+                cycles = 0;
+            }
+        }
+    }
+    Pitch p;
+    if (f.size() < 10) return p;
+    std::vector<double> s = f;
+    std::nth_element(s.begin(), s.begin() + long(s.size() / 2), s.end());
+    const double med = s[s.size() / 2];
+    std::vector<double> c;
+    for (double v : f) c.push_back(std::fabs(1200.0 * std::log2(v / med)));
+    p.peak = *std::max_element(c.begin(), c.end());
+    std::nth_element(c.begin(), c.begin() + long(0.95 * double(c.size())), c.end());
+    p.p95 = c[size_t(0.95 * double(c.size()))];
+    return p;
+}
+
+void wobbleOnHeldTones()
+{
+    Buf x;
+    if (!load("08_held_tones.wav", x)) return;
+    x.resize(size_t(9.0f * kFs));
+    std::printf("      08_held_tones, 1 kHz held, DRIVEN (DRIVE default), 1 Spring: wet p95 (peak) |cents| re median\n");
+    const float ws[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+    const float ds[] = {0.0f, 0.5f, 1.0f};
+    double c[3][5];
+    for (int di = 0; di < 3; ++di) {
+        std::printf("      DECAY %.1f:", ds[di]);
+        for (int i = 0; i < 5; ++i) {
+            Settings s;
+            s.drive   = rv::spec(rv::ParamId::Drive).defaultValue;
+            s.decay   = ds[di];
+            s.springs = 0;
+            s.splash  = 0.0f;
+            s.wobble  = ws[i];
+            const Pitch p = pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs));
+            c[di][i] = p.p95;
+            std::printf("  W%.2f %5.1f (%5.1f)", ws[i], p.p95, p.peak);
+        }
+        std::printf("\n");
+    }
+    bool floorOk = true, driftOk = true, rising = true;
+    for (int di = 0; di < 3; ++di) {
+        floorOk &= c[di][0] < 3.0;
+        driftOk &= c[di][2] < 5.0;
+        rising &= c[di][4] > c[di][3] && c[di][3] > c[di][2];
+    }
+    std::snprintf(msg, sizeof msg, "WOBBLE 0 = Micro-mod floor only: p95 %.1f / %.1f / %.1f cents at DECAY 0 / 0.5 / 1 (< 3)",
+                  c[0][0], c[1][0], c[2][0]);
+    check(floorOk, msg);
+    std::snprintf(msg, sizeof msg, "Drift (WOBBLE 0.5): p95 %.1f / %.1f / %.1f cents (< 5: held chords in tune)", c[0][2],
+                  c[1][2], c[2][2]);
+    check(driftOk, msg);
+    std::snprintf(msg, sizeof msg,
+                  "Warble (WOBBLE 1): p95 %.1f / %.1f / %.1f cents (>= 10 at DECAY 0, >= 25 at noon and max: clearly out of "
+                  "tune), rising through 0.5 -> 0.75 -> 1",
+                  c[0][4], c[1][4], c[2][4]);
+    check(rising && c[0][4] >= 10.0 && c[1][4] >= 25.0 && c[2][4] >= 25.0, msg);
+}
+
+// ---- 3. ATTITUDE Morph blends the Splash and Kick tables ---------------------------------
+// A DRIVEN -> KICKED flip: the Splash voicing (clatterMax) must glide over
+// the Morph (drive::kMorphSeconds), never step.
+void morph()
+{
+    rv::Tank t;
+    t.prepare(kFs, 32);
+    t.setParam(rv::ParamId::Attitude, 0.5f);
+    Buf in(32, 0.0f), l(32), r(32);
+    for (int i = 0; i < 50; ++i) t.process(in.data(), in.data(), l.data(), r.data(), 32);
+    const float from = t.splash().voice().clatterMax;
+    t.setParam(rv::ParamId::Attitude, 1.0f);
+    float prev = from, maxStep = 0.0f;
+    int steps = 0;
+    for (int i = 0; i < 200; ++i) {
+        t.process(in.data(), in.data(), l.data(), r.data(), 32);
+        const float v = t.splash().voice().clatterMax;
+        maxStep = std::max(maxStep, std::fabs(v - prev));
+        steps += v != prev;
+        prev = v;
+    }
+    const float total = std::fabs(prev - from);
+    std::snprintf(msg, sizeof msg,
+                  "ATTITUDE DRIVEN -> KICKED: Splash voicing glides (Clatter max %.2f -> %.2f over %d ticks, largest step %.1f %% "
+                  "of the change)",
+                  from, prev, steps, 100.0 * maxStep / std::max(1e-9f, total));
+    check(steps >= 10 && maxStep <= 0.1f * total && std::fabs(prev - rv::splash::kVoice[2].clatterMax) < 1e-6f, msg);
+}
+
+// ---- 4. Determinism with everything M7 up ------------------------------------------------
+void determinism()
+{
+    Buf x;
+    if (!load("02_hits.wav", x)) return;
+    x.resize(size_t(8.0f * kFs));
+    auto run = [&](int block) {
+        rv::Tank t;
+        t.prepare(kFs, block);
+        t.setParam(rv::ParamId::Mix, 1.0f);
+        t.setParam(rv::ParamId::Attitude, 1.0f);
+        t.setParam(rv::ParamId::Splash, 1.0f);
+        t.setParam(rv::ParamId::Wobble, 1.0f);
+        t.setParam(rv::ParamId::Springs, 1.0f);
+        Out o{Buf(x.size()), Buf(x.size()), {}};
+        const long kickAt = long(3.3f * kFs);
+        for (size_t pos = 0; pos < x.size(); pos += size_t(block)) {
+            const int n = int(std::min(size_t(block), x.size() - pos));
+            if (kickAt >= long(pos) && kickAt < long(pos) + n) t.kick(int(kickAt - long(pos)));
+            t.process(x.data() + pos, x.data() + pos, o.l.data() + pos, o.r.data() + pos, n);
+        }
+        return o;
+    };
+    const Out ref = run(48);
+    bool same = true;
+    for (int b : {1, 7, 333, 1024}) {
+        const Out o = run(b);
+        same &= o.l == ref.l && o.r == ref.r;
+    }
+    const Out again = run(48);
+    same &= again.l == ref.l && again.r == ref.r;
+    check(same, "KICKED, SPLASH 1, WOBBLE 1, 3 Springs, hits + Kick: bit-identical for blocks 1, 7, 48, 333, 1024 and on a re-run");
+}
+
+// ---- 5. CPU (INFO) ---------------------------------------------------------------------------
+// SPEC §5 worst case (3 Springs, KICKED, BOING/TONE/DRIVE max) with every M7
+// part busy: a hard noise hit and a Kick 12 times a second each (Clatter,
+// Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE 1; against the
+// same with SPLASH 0 / WOBBLE 0, no hits, no Kicks (steady noise). Daisy
+// estimate as test_tank: 15-25x this desktop per sample, at 480 MHz.
+void performance()
+{
+    const size_t n = size_t(10.0f * kFs);
+    rv::dsp::Rng rng;
+    rng.seed(77u);
+    Buf hits(n, 0.0f), steady(n);
+    for (size_t i = 0; i < n; ++i) {
+        const size_t k = i % 4000;
+        if (k < 480) hits[i] = 0.5f * std::exp(-float(k) / 96.0f) * rng.bipolar();
+        steady[i] = 0.3f * rng.bipolar();
+    }
+    auto bench = [&](const Buf& in, bool m7) {
+        rv::Tank t;
+        t.prepare(kFs, 48);
+        t.setParam(rv::ParamId::Mix, 0.5f);
+        t.setParam(rv::ParamId::Decay, 0.85f);
+        t.setParam(rv::ParamId::Boing, 1.0f);
+        t.setParam(rv::ParamId::Tone, 1.0f);
+        t.setParam(rv::ParamId::Drive, 1.0f);
+        t.setParam(rv::ParamId::Attitude, 1.0f);
+        t.setParam(rv::ParamId::Springs, 1.0f);
+        t.setParam(rv::ParamId::Splash, m7 ? 1.0f : 0.0f);
+        t.setParam(rv::ParamId::Wobble, m7 ? 1.0f : 0.0f);
+        Buf l(n), r(n);
+        const auto t0 = std::chrono::steady_clock::now();
+        for (size_t pos = 0; pos < n; pos += 48) {
+            const size_t toGate = (4000 - (pos + 2000) % 4000) % 4000; // gates at 2000 + 4000 k
+            if (m7 && toGate < 48) t.kick(int(toGate));
+            t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+        }
+        const auto t1 = std::chrono::steady_clock::now();
+        return std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
+    };
+    double busy = 1e30, base = 1e30;
+    for (int rep = 0; rep < 3; ++rep) { // best of 3: least disturbed by the OS
+        busy = std::min(busy, bench(hits, true));
+        base = std::min(base, bench(steady, false));
+    }
+    std::printf("INFO  CPU worst case, 3 Springs KICKED BOING/TONE/DRIVE 1: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
+                "12/s) %.1f ns/sample, est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k); M7 quiet (SPLASH 0, "
+                "WOBBLE 0, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
+                busy, busy * 15 * 0.48, busy * 25 * 0.48, busy * 15 * 0.48 / 100, busy * 25 * 0.48 / 100, base,
+                base * 15 * 0.48 / 100, base * 25 * 0.48 / 100, (busy - base) * 15 * 0.48, (busy - base) * 25 * 0.48);
+}
+
+} // namespace
+
+int main()
+{
+    splashOnHits();
+    wobbleOnHeldTones();
+    morph();
+    determinism();
+    performance();
+    std::printf("%d failure(s)\n", failures);
+    return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+}

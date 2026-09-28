@@ -7,6 +7,8 @@
 // Bundle paths come from CMake (RV_VST3_PATH / RV_AU_PATH, generated from
 // $<TARGET_BUNDLE_DIR:...> so they always point at the just-built artefact).
 
+#include <cstring>
+
 #include "dsp/Tank.h"
 #include "params/ParamSpec.h"
 #include "Wav.h"
@@ -374,9 +376,24 @@ int main()
             const double dbL = maxAbsDiffDb(reference.outL, pluginOut.outL);
             const double dbR = maxAbsDiffDb(reference.outR, pluginOut.outR);
             char what[256];
-            std::snprintf(what, sizeof(what), "MIDI Kick == input-impulse Kick, %s (max diff L %.1f dBFS, R %.1f dBFS)",
+            std::snprintf(what, sizeof(what), "MIDI Kick == Tank::kick() Kick, %s (max diff L %.1f dBFS, R %.1f dBFS)",
                           c.label, dbL, dbR);
             check(dbL <= -120.0 && dbR <= -120.0, what);
+
+            // M7: the Kick is a thump + burst after the drive, not an input
+            // impulse. Its onset (first sample differing from the same render
+            // without it) is at N + a fixed offset, the same for every block
+            // schedule (0: the DriveOut oversampler's first tap responds at once).
+            auto quiet = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f);
+            long onset = -1;
+            for (size_t i = 0; i < quiet.outL.size() && onset < 0; ++i)
+                if (std::memcmp(&pluginOut.outL[i], &quiet.outL[i], sizeof(float)) != 0
+                    || std::memcmp(&pluginOut.outR[i], &quiet.outR[i], sizeof(float)) != 0) // bit-exact
+                    onset = long(i);
+            constexpr long kKickOnsetOffset = 0;
+            std::snprintf(what, sizeof(what), "MIDI Kick onset at N + %ld samples (fixed offset %ld), %s", onset - c.kickAt,
+                          kKickOnsetOffset, c.label);
+            check(onset - c.kickAt == kKickOnsetOffset, what);
         }
     }
 

@@ -1,6 +1,7 @@
 #include "dsp/Spring.h"
 
 #include "params/AntiRes.h"
+#include "params/SplashVoicing.h"
 #include "params/SpringModes.h"
 
 #include <algorithm>
@@ -35,9 +36,17 @@ int nextPow2(int v)
 }
 
 // Sized for the longest L any Spring can have: DECAY max times the largest
-// detune factor (core/params/SpringModes.h), plus a little margin.
+// detune factor (core/params/SpringModes.h), plus a little margin (2 %: the
+// Micro-mod floor and the Howl movement, ~1.1 % at most), plus the M7
+// modulation on top: the Jolt (Loop fraction + KICKED rattle, at most
+// kJoltMaxLoopFrac of L) and WOBBLE (at most wobbleMaxDepthSamples()).
 constexpr float kLongestLoopSeconds = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
-int lowDelaySize(float sampleRate) { return int(std::ceil(kLongestLoopSeconds * sampleRate * 1.02f)) + 8; }
+constexpr float kJoltMaxLoopFrac    = 0.0125f;
+int lowDelaySize(float sampleRate)
+{
+    return int(std::ceil(kLongestLoopSeconds * sampleRate * (1.02f + kJoltMaxLoopFrac)))
+         + int(std::ceil(splash::wobbleMaxDepthSamples(sampleRate))) + 8;
+}
 int highDelaySize(float sampleRate)
 {
     return int(std::ceil(Spring::kHighDelayRatio * kLongestLoopSeconds * sampleRate * 1.02f)) + 8;
@@ -342,16 +351,24 @@ inline float Spring::processHigh(float in, float lhMod)
     return fb;
 }
 
-void Spring::process(const float* in, float* out, int n)
+void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples, float* out,
+                     int n)
 {
+    // Read limits: the delay memory holds the longest L plus all modulation
+    // (lowDelaySize); the clamp only guards against a caller passing more.
+    const float lMax = float(lowSize_ - 2);
     for (int i = 0; i < n; ++i) {
         advanceGlides();
         // Tiny seeded noise (-200 dB) keeps every filter state far above the
         // denormal range once a tail has died away. Inaudible, deterministic.
-        const float x    = in[i] + kDenormalNoise * rng_.bipolar();
-        const float mod  = advanceModulation();
-        const float low  = processLow(x, lCur_ * mod);
-        const float high = processHigh(x, lhCur_); // high path unmodulated, see "Micro-mod floor"
+        const float nz   = kDenormalNoise * rng_.bipolar();
+        const float x    = in[i] + nz;
+        const float xh   = highIn ? highIn[i] + nz : x;
+        const float mod  = advanceModulation() + (lFrac ? lFrac[i] : 0.0f);
+        float       lMod = lCur_ * mod + (lSamples ? lSamples[i] : 0.0f);
+        lMod = lMod < 2.0f ? 2.0f : (lMod > lMax ? lMax : lMod);
+        const float low  = processLow(x, lMod);
+        const float high = processHigh(xh, lhCur_); // high path unmodulated, see "Micro-mod floor"
         out[i] = low + highPathLevel_ * high;
     }
 }

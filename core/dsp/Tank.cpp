@@ -3,6 +3,7 @@
 #include "params/AntiRes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
+#include "params/SplashVoicing.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,6 +22,11 @@ int diffuserSize(float sampleRate, size_t i) { return int(std::ceil(kDiffuserSec
 
 // Per-Spring noise seeds: fixed, so every run is reproducible.
 constexpr std::array<uint32_t, Tank::kMaxSprings> kSeeds{{0x9E3779B9u, 0x7F4A7C15u, 0x2545F491u}};
+// M7 seeds (distinct from the Spring noise seeds; the components scramble
+// them with dsp::mixSeed).
+constexpr uint32_t kSplashSeed = 0x51A5E001u;
+constexpr uint32_t kKickSeed   = 0x4B1C0002u;
+constexpr std::array<uint32_t, Tank::kMaxSprings> kWobbleSeeds{{0x0B0B1E01u, 0x0B0B1E02u, 0x0B0B1E03u}};
 
 } // namespace
 
@@ -28,6 +34,9 @@ constexpr std::array<uint32_t, Tank::kMaxSprings> kSeeds{{0x9E3779B9u, 0x7F4A7C1
 // in DTCM (128 KB). Big buffers live in the pool.
 static_assert(sizeof(Spring) < 2048, "Spring object grew: move state into the pool");
 static_assert(Tank::kMaxSprings == modes::kNumSprings, "SpringModes.h tables are for 3 Springs");
+// The M7 components keep their own control grid, counted from reset() like
+// the Tank's: same length, so the two stay aligned for any block size.
+static_assert(splash::kControlInterval == Tank::kControlInterval, "M7 control grid must match the Tank's");
 
 Tank::~Tank() { releaseOwnedPool(); }
 
@@ -75,6 +84,10 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     driveIn_.prepare(sampleRate);
     tilt_.prepare(sampleRate);
     for (auto& d : driveOut_) d.prepare(sampleRate);
+    splash_.prepare(sampleRate, kSplashSeed);
+    kick_.prepare(sampleRate, kKickSeed);
+    for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
+    levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
     pool_       = ok_ ? pool : nullptr;
@@ -109,6 +122,11 @@ void Tank::reset()
     driveIn_.reset();
     tilt_.reset();
     for (auto& d : driveOut_) d.reset();
+    splash_.reset();
+    kick_.reset();
+    for (auto& w : wobble_) w.reset();
+    hfGainFrom_ = hfGainTo_ = 1.0f;
+    levelAcc_ = levelMs_ = 0.0f;
     compDrive_ = -1.0f;
     limitEnv_ = 0.0f;
     numPendingKicks_ = 0;
@@ -170,6 +188,24 @@ void Tank::controlTick(bool snap)
     }
     const drive::Voice voice = dsp::blendVoice(attW_);
     const float drive = smoothed_[size_t(ParamId::Drive)];
+    const float splashAmt = smoothed_[size_t(ParamId::Splash)];
+
+    // M7: Splash and Kick follow the Morph weights (their tables blend like
+    // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
+    splash_.set(attW_, splashAmt);
+    kick_.setAttitude(attW_);
+    for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)]);
+    // Tank level for KICKED's energy-dependent rattle: smoothed RMS of the
+    // wet mid over the last tick, scaled by SPLASH.
+    levelMs_ += levelCoeff_ * (levelAcc_ * (1.0f / float(kControlInterval)) - levelMs_);
+    levelAcc_ = 0.0f;
+    splash_.setTankLevel(std::sqrt(levelMs_) * splashAmt);
+    // CLEAN HF emphasis: ramp from the last tick's gain to the new one.
+    const float hfGain = splashOn_ ? splash_.highPathGain() : 1.0f;
+    hfGainFrom_ = snap ? hfGain : hfGainTo_;
+    hfGainTo_   = hfGain;
+    // Jolt on a (control rate, <= 0): after the detune, clamped below.
+    const float joltA = joltOn_ ? splash_.allpassDelta() : 0.0f;
 
     // DriveIn settings and the DRIVE push on the later stages (ADR 0022):
     // only recomputed when DRIVE or the Morph moved (they cost a few exp).
@@ -211,7 +247,7 @@ void Tank::controlTick(bool snap)
     base.loopSatKPos      = voice.loopKPos * loopPush;
     base.loopSatKNeg      = voice.loopKNeg * loopPush;
     base.howl             = howlAmt;
-    // AntiRes Micro-mod floor, always on (WOBBLE adds on top at M7), plus
+    // AntiRes Micro-mod floor, always on (WOBBLE adds on top, per sample), plus
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
     base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
@@ -222,7 +258,8 @@ void Tank::controlTick(bool snap)
         SpringSettings s = base;
         s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
         s.transitionHz     *= modes::kDetune[i].transition;
-        s.allpassCoeff     *= modes::kDetune[i].allpassCoeff;
+        s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA,
+                                         -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         s.tapRatio          = modes::kPickupTap[i];
         s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
         s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
@@ -246,7 +283,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         primed_    = true;
     }
 
-    float mono[kControlInterval];
+    float mono[kControlInterval], driven[kControlInterval], high[kControlInterval];
+    float clatter[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
+    float lFrac[kControlInterval], lSamples[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -254,14 +293,38 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
-        for (int i = 0; i < n; ++i) mono[i] = 0.5f * (inL[pos + i] + inR[pos + i]);
+        // DriveIn (transducer -> tape) first: the Splash listens here.
+        for (int i = 0; i < n; ++i) driven[i] = driveIn_.process(0.5f * (inL[pos + i] + inR[pos + i]));
+
+        // Kick: onsets on their exact sample (offsets clamp to the block).
         for (int k = 0; k < numPendingKicks_; ++k) {
             const int at = std::min(pendingKicks_[size_t(k)], numSamples - 1) - pos;
-            if (at >= 0 && at < n) mono[at] += kKickPlaceholder;
+            if (at >= 0 && at < n) kick_.trigger(at);
         }
-        // Tank-level input stages: DriveIn (transducer -> tape), then TONE's tilt.
-        for (int i = 0; i < n; ++i) mono[i] = tilt_.process(driveIn_.process(mono[i]));
-        for (size_t s = 0; s < springs_.size(); ++s) springs_[s].process(mono, wet[s], n);
+        kick_.process(kickLoop, kickDirect, n);
+        // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
+        if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
+        splash_.process(driven, clatter, jolt, n);
+        if (!splashOn_) std::fill(clatter, clatter + n, 0.0f); // test hooks (Tank.h)
+        if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
+
+        // Spring inputs: TONE's tilt, plus the Kick's high-passed Loop feed
+        // (post-drive); the high path also gets the Clatter (the same for every
+        // Spring: their detuned high paths decorrelate it), and in CLEAN a
+        // little transient lift (ramped across the tick: no zipper).
+        const float hfStep = (hfGainTo_ - hfGainFrom_) * (1.0f / float(kControlInterval));
+        for (int i = 0; i < n; ++i) {
+            mono[i] = tilt_.process(driven[i]) + kickLoop[i];
+            high[i] = (mono[i] + clatter[i]) * (hfGainFrom_ + hfStep * float(tick_ + i));
+        }
+        for (size_t s = 0; s < springs_.size(); ++s) {
+            const float scale = splash::kJoltSpringScale[s];
+            for (int i = 0; i < n; ++i) {
+                lFrac[i]    = scale * jolt[i];
+                lSamples[i] = wobble_[s].next();
+            }
+            springs_[s].process(mono, high, lFrac, lSamples, wet[s], n);
+        }
 
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
@@ -293,13 +356,17 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             }
             mid *= mixScale_;
             side *= mixScale_;
+            levelAcc_ += mid * mid;
             // D: mid with its phase scrambled (always running, so its state
             // is live whatever the mode). It goes into L and R with opposite
             // signs, so it widens the image and cancels exactly in mono.
             const float d = mixCur_.decorr * decorrelator_[1].process(decorrelator_[0].process(mid));
             // Output pickup (DriveOut), one per channel.
-            float wl = driveOut_[0].process(mid + side + d);
-            float wr = driveOut_[1].process(mid - side - d);
+            // The Kick's direct thump joins the mid here: centred, mono-safe,
+            // coloured by the pickups like the tank body moving under them.
+            const float body = mid + kWetGain * kickDirect[i];
+            float wl = driveOut_[0].process(body + side + d);
+            float wr = driveOut_[1].process(body - side - d);
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

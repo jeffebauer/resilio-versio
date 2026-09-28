@@ -725,12 +725,15 @@ void determinism()
 }
 
 // ---- 8. Kick reaches every Spring -------------------------------------------------
+// Since M7 the Kick is a thump + burst injected after the drive (not an input
+// impulse): it must be heard on L and R in every SPRINGS mode, with its onset
+// (first sample differing from the same render without the Kick) at N + the
+// fixed wet latency (test_kick has the block-size sweep).
 void kickReachesAllSprings()
 {
     for (int m = 0; m < 3; ++m) {
         const size_t n = size_t(kFs);
-        Buf silence(n, 0.0f), imp(n, 0.0f);
-        imp[1000] = rv::Tank::kKickPlaceholder;
+        Buf silence(n, 0.0f);
         rv::Tank a, b;
         a.prepare(kFs, 64);
         b.prepare(kFs, 64);
@@ -741,10 +744,20 @@ void kickReachesAllSprings()
             if (pos <= 1000 && pos + 64 > 1000) a.kick(int(1000 - pos));
             a.process(silence.data() + pos, silence.data() + pos, ok.l.data() + pos, ok.r.data() + pos, 64);
         }
-        const Stereo ref = render(b, imp, 64);
-        const bool both = power(ok.l, 0, n) > 0 && power(ok.r, 0, n) > 0;
-        std::snprintf(msg, sizeof msg, "Kick, %s: == input impulse (bit-identical), heard on L and R", kModeName[m]);
-        check(ok.l == ref.l && ok.r == ref.r && both, msg);
+        const Stereo ref = render(b, silence, 64);
+        size_t onset = n;
+        for (size_t i = 0; i < n && onset == n; ++i)
+            if (ok.l[i] != ref.l[i] || ok.r[i] != ref.r[i]) onset = i;
+        Buf dl(n), dr(n);
+        for (size_t i = 0; i < n; ++i) {
+            dl[i] = ok.l[i] - ref.l[i];
+            dr[i] = ok.r[i] - ref.r[i];
+        }
+        const double pl = power(dl, 0, n), pr = power(dr, 0, n);
+        const bool both = pl > 1e-8 && pr > 1e-8;
+        std::snprintf(msg, sizeof msg, "Kick, %s: heard on L and R (%.1f / %.1f dB), onset at N + %d samples (<= 48)",
+                      kModeName[m], 10.0 * std::log10(pl + 1e-30), 10.0 * std::log10(pr + 1e-30), int(onset) - 1000);
+        check(both && onset >= 1000 && onset <= 1048, msg);
     }
 }
 

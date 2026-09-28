@@ -1,8 +1,8 @@
 #pragma once
 // WOBBLE generator for one Spring (SPEC §3 K5, §4.7; ADR 0008, 0020;
-// CONTEXT.md: Drift, Warble, Micro-mod floor). M7 stand-alone component, not
-// yet wired into the Spring (docs/m7-integration.md: it is added to M6's
-// Micro-mod floor offset on the Loop delay read).
+// CONTEXT.md: Drift, Warble, Micro-mod floor). One per Spring, owned by the
+// Tank; its output is added on top of M6's Micro-mod floor on the Loop delay
+// read (Spring::process()'s lSamples, docs/m7-integration.md).
 //
 //   m(t) = D · (wS · sin(2π f t + φ) + wR · r(t))      samples of Loop delay
 //

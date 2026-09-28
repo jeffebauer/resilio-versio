@@ -1,12 +1,17 @@
 #pragma once
 // The Tank: 1–3 Springs plus Tank-level stages (CONTEXT.md).
 //
-// M5 signal flow:
+// Signal flow (M7):
 //
-//   in L,R ─ mono sum (+ Kick) ─ DriveIn ─ Tilt ─┬─ Spring A ─┐   (each Spring has a LoopSat in its Loop)
-//                                               ├─ Spring B ─┼─ SPRINGS mid/side mix ─ mid ─┬──────────────┐
-//                                               └─ Spring C ─┘  (per mode, 20 ms fade)      └ decorrelator ─ D
-//                                                               side ─────────────────────────────────────┤
+//   in L,R ─ mono sum ─ DriveIn ─┬─ Tilt ─ + ─ x ──────────────────── low in  ─┐
+//                                │          ▲   └ (x + Clatter) × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
+//                                │          │                                        │
+//                                └─ Splash ─┼─ Clatter; Jolt ─► each Spring's L, a  ─┤  Wobble[i] ─► Spring i's L
+//   kick() ─ KickVoice ─ loop feed (HP 120 Hz⁴)                                       │
+//                      ├ direct thump ────────────────────────────────┐              │
+//                      └ forced Splash (Hit 1, SPLASH 1)              │              ▼
+//                                          SPRINGS mid/side mix ─ mid ┴ + ─┬─────────────┐   (per mode, 20 ms fade)
+//                                                                          └ decorrelator ─ D
 //     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
 //
@@ -37,10 +42,26 @@
 // (MIX 0 stays a bit-identical null). Inside each Loop the LoopSat's
 // oversampler delay is counted in the round trip (Spring.h).
 //
-// Kick (M2 placeholder until M7): the impulse is added to the mono input
-// *before* DriveIn, so "Kick at N == input impulse at N" stays exactly true
-// (test_kick, Plugin test). SPEC §4.6 puts the real Kick after the drive;
-// that move comes with the real thud + crash at M7.
+// SPLASH / KICK / WOBBLE (M7, SPEC §4.5-4.7, docs/m7-integration.md; all
+// numbers in params/SplashVoicing.h):
+// - Splash (one per Tank) listens to the mono signal after DriveIn, before
+//   Tilt (so TONE does not change SPLASH sensitivity). Its Clatter goes into
+//   every Spring's high path; in CLEAN the high-path input is also lifted a
+//   little on transients (SPLASH = mild HF emphasis only). Its Jolt moves
+//   each Spring's L per sample (Spring B the other way) and adds to each
+//   Spring's allpass a on the control grid (clamped |a| <= 0.85).
+// - Kick (ADR 0005, 0013, 0016): kick(offset) starts a KickVoice on its exact
+//   sample. The high-passed thump + burst is added after DriveIn and Tilt
+//   (post-drive: a knock on the tank bypasses the transducer and the EQ),
+//   the full thump goes straight to the wet mid (the pickup hears the tank
+//   body move), and the Kick forces a maximal Splash on the same sample.
+//   The Kick is heard from sample N itself (the DriveOut oversampler's first
+//   tap answers at once), for any block size (test_kick, plugin_host_test).
+// - WOBBLE: one generator per Spring, a Loop delay offset in samples added
+//   on top of the Micro-mod floor; exactly 0 at WOBBLE 0 (ADR 0008).
+// The M7 components run their control logic on their own 32-sample grid
+// counted from reset(), which lines up with the Tank's (static_assert).
+// ATTITUDE's Morph weights feed their tables too, so a flip Morphs them.
 //
 // Every Spring hears the same mono input, including the Kick, like the
 // springs in one physical tank all hang off the same driver. Each Spring is
@@ -65,11 +86,7 @@
 // a BOING move), so an idle Spring's Chirp grows to full length over a few
 // hundred ms after it becomes audible.
 //
-// Used at M5: DECAY, BOING, TONE, DRIVE, MIX, SPRINGS, ATTITUDE (drive
-// stages, LoopSat, Howl; its Clatter/Jolt part comes at M7). Stored but
-// ignored until M7: SPLASH, WOBBLE. Until M7, kick() injects a placeholder
-// impulse into the Tank input at the exact sample, so Kick timing is
-// testable (M2); the real thud + crash (ADR 0016) replaces it at M7.
+// Every parameter is used from M7 on.
 //
 // AntiRes (M6, SPEC §4.10, ADR 0010; numbers in params/AntiRes.h): layer 1
 // (even Loop gain) is the Spring's g design, layer 3 the detuning above,
@@ -84,7 +101,7 @@
 // parameters are smoothed and applied on a fixed 32-sample control grid
 // that runs across block boundaries, and the SPRINGS fade advances per sample.
 //
-// Memory: the object is small (~3.3 kB with the M5 drive stages; fits in
+// Memory: the object is small (~4 kB with the M5 drive stages and M7; fits in
 // DTCM as a global; exact size printed by test_tank); delay memory is one
 // pool of Tank::requiredPoolFloats(fs) floats for 3 Springs + decorrelator,
 // sized for the most-detuned Spring (M5 adds no pool memory). Total
@@ -95,7 +112,10 @@
 
 #include "dsp/Drive.h"
 #include "dsp/Filters.h"
+#include "dsp/Kick.h"
+#include "dsp/Splash.h"
 #include "dsp/Spring.h"
+#include "dsp/Wobble.h"
 #include "params/ParamSpec.h"
 #include "params/SpringModes.h"
 
@@ -114,7 +134,6 @@ public:
     static constexpr float kLimitThreshold  = 0.89f;   // ≈ -1 dBFS: wet peaks never reach 1.0
     static constexpr float kLimitReleaseS   = 0.15f;
     static constexpr int   kMaxPendingKicks = 16;
-    static constexpr float kKickPlaceholder = 0.5f;    // impulse height (M2 placeholder)
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
 
     Tank() = default;
@@ -156,6 +175,20 @@ public:
     // ATTITUDE Morph weights now in effect (CLEAN, DRIVEN, KICKED), sum 1.
     const std::array<float, 3>& attitudeWeights() const { return attW_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
+    // Test hook (not a panel control): false = the Splash still runs, but its
+    // Clatter, Jolt and CLEAN HF emphasis are not applied, so a test can
+    // measure the Splash's share of the output by difference. Default true.
+    void setSplashEnabled(bool on) { splashOn_ = joltOn_ = on; }
+    // Finer: Clatter + HF emphasis, and the Jolt (L and a), separately.
+    void setSplashParts(bool clatter, bool jolt)
+    {
+        splashOn_ = clatter;
+        joltOn_   = jolt;
+    }
+    // M7 components, read-only (tests, meters).
+    const dsp::Splash&    splash() const { return splash_; }
+    const dsp::KickVoice& kickVoice() const { return kick_; }
+    const dsp::Wobble&    wobble(int i) const { return wobble_[static_cast<size_t>(i)]; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
@@ -220,6 +253,14 @@ private:
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;
+
+    // M7: Splash (Hit, Clatter, Jolt), the Kick voice and one Wobble per Spring.
+    dsp::Splash                        splash_;
+    dsp::KickVoice                     kick_;
+    std::array<dsp::Wobble, kMaxSprings> wobble_{};
+    bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
+    float hfGainFrom_ = 1.0f, hfGainTo_ = 1.0f; // CLEAN HF emphasis, ramped across each control tick
+    float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level
 };
 
 } // namespace rv
