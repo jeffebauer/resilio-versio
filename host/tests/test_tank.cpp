@@ -1,19 +1,23 @@
 // Multi-spring Tank tests for M4 (SPEC §7 M4, docs/m4-contracts.md Stream D).
 // Dependency-free: prints PASS/FAIL lines, returns nonzero on any failure.
 //
-// Stereo measurements are implemented here (not taken from host/common),
-// following the Stream E definitions in docs/m4-contracts.md:
-//   correlation   Pearson correlation of wet L and R over the tail
+// Stereo measurements are implemented here (not taken from host/common, so
+// this file doesn't depend on Stream E code), following the Stream E
+// definitions in docs/m4-contracts.md / host/common/Metrics.cpp:
+//   segment       "T60 segment": first event to second event of the mono
+//                 downmix (event = above -40 dBFS after >= 0.5 s below it)
+//   correlation   Pearson correlation of wet L and R over the segment
 //   mono_loss_db  10·log10( power(L+R) / (power(L) + power(R)) ), whole file.
 //                 Independent L/R -> 0 dB, identical -> +3 dB, cancelling -> very negative
-//   mono notch    deepest dip, 200 Hz–5 kHz, of the mono-sum power spectrum
-//                 relative to the stereo power spectrum (P_L + P_R), both
-//                 1/3-octave smoothed, 8192-point Hann average over the tail.
-//                 0 dB = "as loud as independent channels"; a comb notch shows
-//                 up as a deep negative dip at its frequency.
+//   mono_notch_db deepest dip, 200 Hz–5 kHz, of the mono-sum spectrum
+//                 relative to the stereo-average spectrum (P_L + P_R)/2, both
+//                 in dB and 1/3-octave median-smoothed, 8192-point Hann
+//                 average over the segment. Independent L/R -> +3 dB,
+//                 identical -> +6 dB; a comb notch shows up as a deep dip.
 //   max step      largest change in RMS dB between consecutive 100 ms
 //                 windows, ignoring windows below -60 dBFS.
 
+#include "Wav.h"
 #include "dsp/Tank.h"
 #include "params/Mappings.h"
 #include "params/SpringModes.h"
@@ -24,6 +28,7 @@
 #include <complex>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <vector>
 
 namespace {
@@ -107,6 +112,72 @@ Buf hits(size_t n, size_t* tailFrom)
         if (tailFrom) *tailFrom = at + len;
     }
     return b;
+}
+
+// One-pole filters for the stimulus generators (as tools/make_stimulus.py).
+Buf onePoleLp(Buf x, float hz)
+{
+    const float c = 1.0f - std::exp(-2.0f * rv::map::kPi * hz / kFs);
+    float y = 0;
+    for (auto& v : x) v = (y += c * (v - y));
+    return x;
+}
+Buf onePoleHp(const Buf& x, float hz) { Buf lp = onePoleLp(x, hz), y(x.size()); for (size_t i = 0; i < x.size(); ++i) y[i] = x[i] - lp[i]; return y; }
+
+void normalisePeak(Buf& x, float peak)
+{
+    float p = 0;
+    for (float v : x) p = std::max(p, std::fabs(v));
+    if (p > 0) for (auto& v : x) v *= peak / p;
+}
+
+// Synthetic 02_hits: snare = 185 Hz body (30 ms decay) + 800 Hz–7 kHz
+// noise (60 ms decay), at -6 / -12 / -18 dBFS, 6 s apart from 1 s. The
+// Stream E segment (first to second event) is then the -6 dB hit and its tail.
+Buf snareHits(size_t n)
+{
+    Buf out(n, 0.0f);
+    rv::dsp::Rng rng;
+    rng.seed(1u);
+    const float levels[3] = {0.5f, 0.25f, 0.125f};
+    for (int h = 0; h < 3; ++h) {
+        const size_t len = size_t(0.25f * kFs), at = size_t(kFs) + size_t(h) * size_t(6.0f * kFs);
+        Buf nz(len);
+        for (auto& v : nz) v = rng.bipolar();
+        nz = onePoleHp(onePoleLp(nz, 7000.0f), 800.0f);
+        Buf hit(len);
+        for (size_t i = 0; i < len; ++i) {
+            const float t = float(i) / kFs;
+            hit[i] = 0.6f * std::sin(2.0f * rv::map::kPi * 185.0f * t) * std::exp(-t / 0.03f)
+                   + 1.2f * nz[i] * std::exp(-t / 0.06f);
+        }
+        normalisePeak(hit, levels[h]);
+        for (size_t i = 0; i < len && at + i < n; ++i) out[at + i] = hit[i];
+    }
+    return out;
+}
+
+// Synthetic 04_skank: off-beat Am / D saw-chord stabs (120 ms, 35 ms decay),
+// 75 bpm, low-passed twice at 2.5 kHz, peak -6 dBFS. Tonal input is the
+// hardest case for the mono sum: a single partial can cancel between Springs.
+Buf chordStabs(size_t n)
+{
+    Buf out(n, 0.0f);
+    const float chords[2][3] = {{220.0f, 261.63f, 329.63f}, {293.66f, 369.99f, 440.0f}};
+    const float beat = 60.0f / 75.0f;
+    for (int b = 0; b < 16; ++b) {
+        const size_t start = size_t(kFs) + size_t((float(b) * beat + beat / 2) * kFs);
+        const float* ch = chords[(b / 4) % 2];
+        for (size_t i = 0; i < size_t(0.12f * kFs) && start + i < n; ++i) {
+            const float t = float(i) / kFs;
+            float v = 0;
+            for (int k = 0; k < 3; ++k) v += 2.0f * (ch[k] * t - std::floor(ch[k] * t)) - 1.0f;
+            out[start + i] += v / 3.0f * std::exp(-t / 0.035f);
+        }
+    }
+    out = onePoleLp(onePoleLp(out, 2500.0f), 2500.0f);
+    normalisePeak(out, 0.5f);
+    return out;
 }
 
 double power(const Buf& x, size_t from, size_t to)
@@ -199,40 +270,66 @@ std::vector<double> powerSpectrum(const Buf& x, size_t from, size_t to)
     return acc;
 }
 
-// 1/3-octave smoothing: each bin becomes the mean power over f/2^(1/6) .. f·2^(1/6).
-std::vector<double> thirdOctave(const std::vector<double>& p)
+// 1/3-octave smoothing: each bin becomes the median of the dB values over
+// f/2^(1/6) .. f·2^(1/6) (as Stream E's thirdOctaveSmoothedMedian).
+std::vector<double> thirdOctaveMedianDb(const std::vector<double>& p)
 {
     const size_t n = p.size();
-    std::vector<double> pre(n + 1, 0.0), out(n, 0.0);
-    for (size_t i = 0; i < n; ++i) pre[i + 1] = pre[i] + p[i];
+    std::vector<double> d(n), out(n, 0.0), scratch;
+    for (size_t i = 0; i < n; ++i) d[i] = db(p[i]);
     const double r = std::pow(2.0, 1.0 / 6.0);
     for (size_t k = 1; k < n; ++k) {
-        const size_t lo = std::max<size_t>(1, size_t(double(k) / r));
-        const size_t hi = std::min(n - 1, size_t(std::ceil(double(k) * r)));
-        out[k] = (pre[hi + 1] - pre[lo]) / double(hi + 1 - lo);
+        const size_t lo = std::max<size_t>(1, size_t(std::ceil(double(k) / r)));
+        const size_t hi = std::min(n - 1, size_t(std::floor(double(k) * r)));
+        scratch.assign(d.begin() + long(lo), d.begin() + long(std::max(lo, hi)) + 1);
+        std::nth_element(scratch.begin(), scratch.begin() + long(scratch.size() / 2), scratch.end());
+        out[k] = scratch[scratch.size() / 2];
     }
     return out;
 }
 
-// Deepest dip (dB, negative = notch) of smoothed P(L+R) / (P(L) + P(R)) in
-// 200 Hz–5 kHz. atHz gets its frequency.
+// Deepest dip (dB) of smoothed mono-sum vs smoothed stereo-average spectrum
+// in 200 Hz–5 kHz. atHz gets its frequency.
 double monoNotchDb(const Buf& l, const Buf& r, size_t from, size_t to, double* atHz)
 {
     Buf m(l.size());
     for (size_t i = 0; i < l.size(); ++i) m[i] = l[i] + r[i];
-    const auto pm = thirdOctave(powerSpectrum(m, from, to));
-    const auto pl = thirdOctave(powerSpectrum(l, from, to));
-    const auto pr = thirdOctave(powerSpectrum(r, from, to));
+    const auto pm = powerSpectrum(m, from, to);
+    const auto pl = powerSpectrum(l, from, to);
+    const auto pr = powerSpectrum(r, from, to);
+    std::vector<double> avg(pl.size());
+    for (size_t k = 0; k < avg.size(); ++k) avg[k] = 0.5 * (pl[k] + pr[k]);
+    const auto sm = thirdOctaveMedianDb(pm), sa = thirdOctaveMedianDb(avg);
     double worst = 1e9;
     const double binHz = kFs / 8192.0;
-    for (size_t k = size_t(200.0 / binHz); k <= size_t(5000.0 / binHz); ++k) {
-        const double d = db(pm[k] / (pl[k] + pr[k]));
+    for (size_t k = size_t(std::ceil(200.0 / binHz)); k <= size_t(5000.0 / binHz); ++k) {
+        const double d = sm[k] - sa[k];
         if (d < worst) {
             worst = d;
             if (atHz) *atHz = double(k) * binHz;
         }
     }
     return worst;
+}
+
+// Stream E's "T60 segment" on the mono downmix: first event to the second
+// event (or the end). Event = |x| >= -40 dBFS after >= 0.5 s below it.
+void eventSegment(const Stereo& o, size_t* from, size_t* to)
+{
+    const float thresh = 0.01f;
+    const size_t arm = size_t(0.5f * kFs);
+    std::vector<size_t> events;
+    size_t under = arm;
+    for (size_t i = 0; i < o.l.size(); ++i) {
+        if (std::fabs(0.5f * (o.l[i] + o.r[i])) >= thresh) {
+            if (under >= arm) events.push_back(i);
+            under = 0;
+        } else {
+            ++under;
+        }
+    }
+    *from = events.empty() ? 0 : events[0];
+    *to   = events.size() > 1 ? events[1] : o.l.size();
 }
 
 // Largest |ΔRMS dB| between consecutive 100 ms windows (stereo power),
@@ -345,18 +442,22 @@ void levelMatch()
     bool ok = true;
     for (float decay : {0.1f, 0.6f, 1.0f})
         for (float boing : {0.0f, 1.0f}) {
-            double lev[3];
+            double lev[3], mono[3];
             for (int m = 0; m < 3; ++m) {
                 const Stereo o = renderWith(Settings{decay, boing, 0.5f, 1.0f, m}, in);
                 lev[m] = db(0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size())));
+                Buf sum(o.l.size());
+                for (size_t i = 0; i < sum.size(); ++i) sum[i] = 0.5f * (o.l[i] + o.r[i]);
+                mono[m] = db(power(sum, 0, sum.size()));
             }
             const double lo = std::min({lev[0], lev[1], lev[2]}), hi = std::max({lev[0], lev[1], lev[2]});
             std::snprintf(msg, sizeof msg,
-                          "Level DECAY %.1f BOING %.0f: 1/2/3 Springs %.2f / %.2f / %.2f dB (2 and 3 vs 1: %+.2f, %+.2f; "
-                          "spread %.2f dB, limit +-1.5)",
-                          decay, boing, lev[0], lev[1], lev[2], lev[1] - lev[0], lev[2] - lev[0], hi - lo);
-            const bool good = std::fabs(lev[1] - lev[0]) <= 1.5 && std::fabs(lev[2] - lev[0]) <= 1.5
-                           && std::fabs(lev[2] - lev[1]) <= 1.5;
+                          "Level DECAY %.1f BOING %.0f: stereo 1/2/3 Springs %.2f / %.2f / %.2f dB (spread %.2f), mono "
+                          "downmix 2 and 3 vs 1: %+.2f, %+.2f dB (limit +-1.5)",
+                          decay, boing, lev[0], lev[1], lev[2], hi - lo, mono[1] - mono[0], mono[2] - mono[0]);
+            bool good = true;
+            for (const double* v : {lev, mono})
+                good &= std::fabs(v[1] - v[0]) <= 1.5 && std::fabs(v[2] - v[0]) <= 1.5 && std::fabs(v[2] - v[1]) <= 1.5;
             check(good, msg);
             ok &= good;
         }
@@ -364,35 +465,74 @@ void levelMatch()
 }
 
 // ---- 3. Width and mono safety ---------------------------------------------------
+// Stimulus-like material (the integration renders that caught the M4 stereo
+// bugs used 02_hits and 04_skank): synthetic snare hits and chord stabs, plus
+// the real stimulus files when the source tree is next to the build dir.
+// DECAY 0 / 0.5 / 1 x BOING 0 / 0.5 / 1 x all three modes, Stream E segment.
+// Limits: mono_notch >= -6 dB (SPEC §7 M4) for every mode, correlation < 0.5
+// for 2 and 3 Springs, mono_loss >= -1.5 dB. Also reported: the worst case,
+// which should keep a margin (>= -4.5 dB notch, <= 0.47 correlation).
 void stereoWidthAndMono()
 {
-    size_t tailFrom = 0;
-    const Buf in = hits(size_t(6.0f * kFs), &tailFrom);
-    for (float decay : {0.2f, 0.6f, 1.0f})
-        for (int m = 0; m < 3; ++m) {
-            const Stereo o = renderWith(Settings{decay, 0.5f, 0.5f, 1.0f, m}, in);
-            // Tail segment: from the end of the last hit until the tail has
-            // dropped 40 dB (or the file ends), like the T60 segment.
-            const size_t w = size_t(0.05f * kFs);
-            const double ref = power(o.l, tailFrom, tailFrom + w) + power(o.r, tailFrom, tailFrom + w);
-            size_t tailTo = tailFrom + w;
-            while (tailTo + w <= o.l.size()
-                   && power(o.l, tailTo, tailTo + w) + power(o.r, tailTo, tailTo + w) > ref * 1e-4)
-                tailTo += w;
-            // Also include the earlier hits' tails: the whole file from the first hit.
-            const size_t from = size_t(0.1f * kFs);
-            const double corrTail = correlation(o.l, o.r, tailFrom, tailTo);
-            const double corrAll  = correlation(o.l, o.r, from, tailTo);
-            const double loss     = monoLossDb(o.l, o.r);
-            double notchHz        = 0;
-            const double notch    = monoNotchDb(o.l, o.r, from, tailTo, &notchHz);
-            std::snprintf(msg, sizeof msg,
-                          "Stereo %s DECAY %.1f: tail corr %.2f (from first hit %.2f), mono_loss %+.2f dB, deepest mono "
-                          "dip %+.1f dB at %.0f Hz",
-                          kModeName[m], decay, corrTail, corrAll, loss, notch, notchHz);
-            const bool wide = m == 0 || corrTail < 0.5; // width target is for 2 and 3 Springs
-            check(wide && loss >= -1.5 && notch >= -6.0, msg);
+    struct Stim {
+        const char* name;
+        Buf in;
+    };
+    std::vector<Stim> stims;
+    const size_t len = size_t(7.5f * kFs); // first event at 1 s, second at 7 s
+    stims.push_back({"synthetic hits", snareHits(len)});
+    stims.push_back({"synthetic stabs", chordStabs(size_t(8.0f * kFs))});
+    for (const char* f : {"02_hits", "04_skank"}) {
+        rv::wav::Audio a;
+        std::string err;
+        const std::string path = std::string("../test_audio/stimulus/") + f + ".wav";
+        if (rv::wav::read(path, a, err) && a.sampleRate == 48000 && !a.channels.empty()) {
+            Buf x = a.channels[0];
+            x.resize(std::min(x.size(), len));
+            stims.push_back({f, x});
+        } else {
+            std::printf("INFO  %s not found (%s), synthetic stimuli only\n", path.c_str(), err.c_str());
         }
+    }
+    for (const auto& st : stims) {
+        double worstCorr[3] = {-9, -9, -9}, worstNotch[3] = {99, 99, 99}, worstLoss[3] = {99, 99, 99};
+        char worstAt[3][48] = {};
+        bool ok[3] = {true, true, true};
+        for (float decay : {0.0f, 0.5f, 1.0f})
+            for (float boing : {0.0f, 0.5f, 1.0f})
+                for (int m = 0; m < 3; ++m) {
+                    const Stereo o = renderWith(Settings{decay, boing, 0.5f, 1.0f, m}, st.in);
+                    size_t from = 0, to = 0;
+                    eventSegment(o, &from, &to);
+                    const double corr  = correlation(o.l, o.r, from, to);
+                    const double loss  = monoLossDb(o.l, o.r);
+                    const double notch = monoNotchDb(o.l, o.r, from, to, nullptr);
+                    const bool good    = (m == 0 || corr < 0.5) && loss >= -1.5 && notch >= -6.0;
+                    if (!good)
+                        std::printf("      fail: %s %s DECAY %.1f BOING %.1f: corr %.2f, mono_loss %+.2f, notch %+.1f\n",
+                                    st.name, kModeName[m], decay, boing, corr, loss, notch);
+                    ok[m] &= good;
+                    worstCorr[m] = std::max(worstCorr[m], corr);
+                    worstLoss[m] = std::min(worstLoss[m], loss);
+                    if (notch < worstNotch[m]) {
+                        worstNotch[m] = notch;
+                        std::snprintf(worstAt[m], sizeof worstAt[m], "DECAY %.1f BOING %.1f", decay, boing);
+                    }
+                }
+        for (int m = 0; m < 3; ++m) {
+            std::snprintf(msg, sizeof msg,
+                          "Stereo %s, %s (DECAY x BOING {0,.5,1}²): max corr %.2f%s, min mono_loss %+.2f dB, deepest "
+                          "mono_notch %+.1f dB (%s)",
+                          st.name, kModeName[m], worstCorr[m], m == 0 ? " (no width target)" : "", worstLoss[m],
+                          worstNotch[m], worstAt[m]);
+            check(ok[m], msg);
+        }
+        std::snprintf(msg, sizeof msg, "Stereo margin, %s: notch >= -4.5 dB all modes, corr <= 0.47 for 2 and 3 Springs",
+                      st.name);
+        check(std::min({worstNotch[0], worstNotch[1], worstNotch[2]}) >= -4.5 && worstCorr[1] <= 0.47
+                  && worstCorr[2] <= 0.47,
+              msg);
+    }
 }
 
 // ---- 4. SPRINGS switching is click-free ------------------------------------------

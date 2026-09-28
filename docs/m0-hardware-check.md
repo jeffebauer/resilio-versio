@@ -6,7 +6,7 @@ Test firmware: **`dist/resilio_versio_m0_test.bin`** (a saved copy; rebuild with
 
 ## Session 1: USB only (rack power unplugged)
 
-1. Flash `resilio_versio.bin` with NE Firmware Swap → **Select Custom File**, as you normally would.
+1. Flash **`dist/resilio_versio_m0_test.bin`** with NE Firmware Swap → **Select Custom File**, as you normally would.
 2. **Boot pattern:** after reboot the four LEDs sweep red/green/blue/white for about half a second.
 3. Open the serial monitor in Terminal:
    ```bash

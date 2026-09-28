@@ -10,8 +10,9 @@ namespace rv {
 
 namespace {
 
-// Decorrelator for R when only one Spring plays (SPEC §4.3): two short
-// allpasses at unrelated lengths. Same level and tail as L, different phase.
+// Decorrelator D (SPEC §4.3): two short allpasses at unrelated lengths.
+// Same spectrum and tail as its input (the mid signal), different phase.
+// Used only in the side (+D on L, -D on R), so it never reaches the mono sum.
 constexpr std::array<float, 2> kDiffuserSeconds{{0.0023f, 0.0037f}};
 
 int diffuserSize(float sampleRate, size_t i) { return int(std::ceil(kDiffuserSeconds[i] * sampleRate)) + 1; }
@@ -123,18 +124,22 @@ void Tank::controlTick(bool snap)
     const float tone  = smoothed_[size_t(ParamId::Tone)];
 
     // SPRINGS: a switch, so never smoothed here. A change starts a fade of
-    // the output matrix from the gains playing right now (mixCur_), so a flip
+    // the output mix from the gains playing right now (mixCur_), so a flip
     // in the middle of a fade carries on smoothly from where it was.
     const int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
     if (snap) {
-        mode_    = mode;
-        mixCur_  = mixTo_ = mixFrom_ = modes::outMatrix(mode);
-        fadePos_ = 1.0f;
+        mode_     = mode;
+        mixCur_   = mixTo_ = mixFrom_ = modes::stereoMix(mode);
+        trimCur_  = trimTo_ = trimFrom_ = modes::kModeTrim[size_t(mode)];
+        mixScale_ = trimCur_ / std::sqrt(modes::mixPower(mixCur_));
+        fadePos_  = 1.0f;
     } else if (mode != mode_) {
-        mode_    = mode;
-        mixFrom_ = mixCur_;
-        mixTo_   = modes::outMatrix(mode);
-        fadePos_ = 0.0f;
+        mode_     = mode;
+        mixFrom_  = mixCur_;
+        trimFrom_ = trimCur_;
+        mixTo_    = modes::stereoMix(mode);
+        trimTo_   = modes::kModeTrim[size_t(mode)];
+        fadePos_  = 0.0f;
     }
 
     SpringSettings base;
@@ -152,6 +157,7 @@ void Tank::controlTick(bool snap)
         s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
         s.transitionHz     *= modes::kDetune[i].transition;
         s.allpassCoeff     *= modes::kDetune[i].allpassCoeff;
+        s.tapRatio          = modes::kPickupTap[i];
         s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
         springs_[i].setSettings(s, snap);
     }
@@ -190,38 +196,40 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
-            // Sources A, B, C, D (D = A decorrelated; always run so its state
-            // is live when 1-Spring mode fades in).
-            float src[modes::kNumSources];
-            src[0] = kWetGain * wet[0][i];
-            src[1] = kWetGain * wet[1][i];
-            src[2] = kWetGain * wet[2][i];
-            src[3] = decorrelator_[1].process(decorrelator_[0].process(src[0]));
+            const float src[modes::kNumSources] = {kWetGain * wet[0][i], kWetGain * wet[1][i],
+                                                   kWetGain * wet[2][i]};
 
             if (fadePos_ < 1.0f) {
                 // SPRINGS fade, smoothstep-shaped t (3t² - 2t³): every gain
                 // moves continuously and starts and ends with zero slope, so
-                // nothing jumps. Equal power: the *squared* gains are faded,
-                // g = sqrt(g_old² + t (g_new² - g_old²)). The sources are
-                // mostly independent, so power (loudness) is the sum of the
-                // squared gains, and that sum then stays constant through the
-                // fade. A plain linear fade would dip ~3 dB half way when
-                // one Spring hands over to another (e.g. R: D -> B at 1 -> 2).
-                // Costs 8 square roots per sample, only during the 20 ms fade.
+                // nothing jumps. The mid/side gains fade linearly in t, and
+                // the whole mix is rescaled to constant power on every sample
+                // (1/sqrt(mixPower)), so there is no level dip half way
+                // (a plain fade dips ~2 dB when one Spring hands over to
+                // another). One square root per sample, only during the fade.
                 fadePos_ = std::min(1.0f, fadePos_ + fadeStep_);
                 const float t = fadePos_ * fadePos_ * (3.0f - 2.0f * fadePos_);
                 for (int k = 0; k < modes::kNumSources; ++k) {
-                    const float fl = mixFrom_.l[k] * mixFrom_.l[k], tl = mixTo_.l[k] * mixTo_.l[k];
-                    const float fr = mixFrom_.r[k] * mixFrom_.r[k], tr = mixTo_.r[k] * mixTo_.r[k];
-                    mixCur_.l[k] = std::sqrt(std::max(0.0f, fl + t * (tl - fl)));
-                    mixCur_.r[k] = std::sqrt(std::max(0.0f, fr + t * (tr - fr)));
+                    mixCur_.mid[k]  = mixFrom_.mid[k] + t * (mixTo_.mid[k] - mixFrom_.mid[k]);
+                    mixCur_.side[k] = mixFrom_.side[k] + t * (mixTo_.side[k] - mixFrom_.side[k]);
                 }
+                mixCur_.decorr = mixFrom_.decorr + t * (mixTo_.decorr - mixFrom_.decorr);
+                trimCur_       = trimFrom_ + t * (trimTo_ - trimFrom_);
+                mixScale_      = trimCur_ / std::sqrt(modes::mixPower(mixCur_));
             }
-            float wl = 0.0f, wr = 0.0f;
+            float mid = 0.0f, side = 0.0f;
             for (int k = 0; k < modes::kNumSources; ++k) {
-                wl += mixCur_.l[k] * src[k];
-                wr += mixCur_.r[k] * src[k];
+                mid += mixCur_.mid[k] * src[k];
+                side += mixCur_.side[k] * src[k];
             }
+            mid *= mixScale_;
+            side *= mixScale_;
+            // D: mid with its phase scrambled (always running, so its state
+            // is live whatever the mode). It goes into L and R with opposite
+            // signs, so it widens the image and cancels exactly in mono.
+            const float d = mixCur_.decorr * decorrelator_[1].process(decorrelator_[0].process(mid));
+            float wl = mid + side + d;
+            float wr = mid - side - d;
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

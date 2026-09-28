@@ -3,12 +3,11 @@
 //
 // M4 signal flow:
 //
-//   in L,R ─ mono sum (+ Kick) ─┬─ Spring A ─┬──────────────── A ─┐
-//                               │            └─ decorrelator ─ D ─┤
-//                               ├─ Spring B ───────────────── B ─┤ SPRINGS output matrix
-//                               └─ Spring C ───────────────── C ─┘ (placement, cross-feed,
-//                                                                    level match, 20 ms fade)
-//                                     L, R ─ high-shelf cut ─ limiter ─ wet
+//   in L,R ─ mono sum (+ Kick) ─┬─ Spring A ─┐
+//                               ├─ Spring B ─┼─ SPRINGS mid/side mix ─ mid ─┬──────────────┐
+//                               └─ Spring C ─┘  (per mode, 20 ms fade)      └ decorrelator ─ D
+//                                               side ─────────────────────────────────────┤
+//     L = mid + side + w·D,  R = mid - side - w·D ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
 //
 // Every Spring hears the same mono input, including the Kick, like the
@@ -19,8 +18,8 @@
 // SPRINGS switching (ADR 0003): all three Springs run all the time. A Spring
 // that is not heard in the current mode ("idle") still gets the input and
 // keeps a live tail, at the minimum stage count (24, the BOING floor), and
-// simply has gain 0 in the output matrix. A SPRINGS change is then only a
-// change of output matrix, faded over kSpringsFadeSeconds (20 ms) from
+// simply has gain 0 in the output mix. A SPRINGS change is then only a
+// change of output mix, faded over kSpringsFadeSeconds (20 ms) from
 // wherever the gains are now, so it is click-free even when flipped mid-fade.
 // Why run them rather than start them on demand: a Spring started at the
 // switch would be empty, so switching 1 -> 2 on a ringing tail would leave
@@ -144,7 +143,9 @@ private:
 
     // SPRINGS mode and its output-matrix fade (see "SPRINGS switching").
     int              mode_     = 1;
-    modes::OutMatrix mixFrom_{}, mixTo_{}, mixCur_{};
+    modes::StereoMix mixFrom_{}, mixTo_{}, mixCur_{};
+    float            trimFrom_ = 1.0f, trimTo_ = 1.0f, trimCur_ = 1.0f;
+    float            mixScale_ = 1.0f; // trim / sqrt(mixPower(mixCur_))
     float            fadePos_  = 1.0f; // 0 -> 1 over kSpringsFadeSeconds; 1 = settled
     float            fadeStep_ = 0.0f;
 

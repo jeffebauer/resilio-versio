@@ -85,56 +85,100 @@ inline int boingStages(float v, int cap)
 // Is Spring s heard in this mode? A in all, B in 2 and 3, C in 3 only.
 constexpr bool springActive(int mode, int s) { return s <= mode; }
 
-// ---- Stereo output matrix per mode (SPEC §4.3) -----------------------------
-// Four wet sources: the three Springs and D = Spring A through the short
-// allpass decorrelator (the M1 1-Spring right channel). Each mode is a
-// 2 × 4 gain matrix: out = sum(gain × source).
-//
-//   1 Spring : L = A,             R = D                (M1 behaviour)
-//   2 Springs: L = s·A + x·B,     R = s·B + x·A        A left, B right
-//   3 Springs: L = s·A + x·B + c·C,  R = s·B + x·A + c·C, C in the centre
-//
-// Cross-feed x: a little of the other side, so neither side ever sounds
-// empty (headphones) while L and R stay mostly independent (width).
-// For two independent equal-level sources the L/R correlation is
-// 2x/(1+x²) (+ c² terms for the centre), so small gains keep us well under
-// the 0.5 width target. All gains are positive, so anything the Springs
-// share adds up in the mono sum instead of cancelling: mono-safe by design
-// (and the Tank's equal-power SPRINGS fade relies on gains >= 0).
-//
-// Level match: independent Springs add in power, so each side's gains are
-// divided by sqrt(s² + x² + c²) = sqrt(sum of squares) to keep the same
-// loudness as one Spring. The Springs share their input, so their outputs
-// are a little correlated; that would make 2 and 3 Springs slightly louder,
-// but the 1-Spring right channel (A and its decorrelated copy D) is
-// correlated by about as much, so it cancels out. Measured (test_tank "Level"):
-// 2 and 3 Springs sit within 0.3 dB of 1 Spring with no trim. kModeTrim is
-// there for M8 tuning by ear.
-constexpr int kNumSources = 4; // A, B, C, D
+// ---- Pickup position per Spring (mono safety + width, M4 follow-up) --------
+// Where each Spring's pickup taps its delay line, as a fraction of L (M1
+// used 0.5). Staggering them makes each Spring's *first* echo arrive at a
+// clearly different time (at DECAY 0: C ~7 ms, A ~19 ms, B ~30 ms; at
+// DECAY 1 three times that). Why it matters: with equal taps the three
+// first echoes land within ~1–2 ms of each other and look alike, so
+// (a) L and R were strongly correlated at short DECAY (narrow), and
+// (b) summing two near-copies a millisecond apart is a comb filter: deep
+// notches in the mono sum. Arrivals 10+ ms apart are different echoes, not
+// near-copies, so both problems go away. C (centre) speaks first, which
+// also anchors the image in the middle, then A (left), then B (right).
+inline constexpr std::array<float, kNumSprings> kPickupTap{{0.65f, 0.95f, 0.25f}};
 
-struct OutMatrix {
-    float l[kNumSources];
-    float r[kNumSources];
+// ---- Stereo output per mode (SPEC §4.3) ------------------------------------
+// Built as mid/side, which makes mono safety a matter of construction:
+//
+//   mid  = sum(mid gain  × Spring)        what a mono listener hears
+//   side = sum(side gain × Spring)        the L/R difference
+//   D    = decorrelator(mid)              two short allpasses: same spectrum
+//                                         as mid, scrambled phase
+//   L = mid + side + w·D,   R = mid - side - w·D
+//
+// Mono (L + R) = 2·mid exactly: side and D cancel completely, so whatever
+// makes the stereo wide can never comb-filter or thin out the mono sum.
+// The mono sum is simply the Springs added together.
+//
+//   1 Spring : mid = A,              side = 0,             w = 0.65
+//              (M1 put D alone on R; L + R = A + D then had allpass comb
+//              notches down to -10 dB. Now mono is exactly Spring A.)
+//   2 Springs: mid = (A + B)/2,      side = k·(A - B),     w = 0.40
+//              = A left, B right (L = 0.93 A + 0.07 B with k = 0.43), plus
+//              decorrelated cross-feed: D carries some of each Spring to
+//              both sides without adding correlation or combs, so neither
+//              side is ever empty.
+//   3 Springs: mid = (A + B)/2 + c·C, side = k·(A - B),    w = 0.50
+//              C in the centre; D keeps the centre from making L and R
+//              too alike (C alone in both sides would be correlation 1).
+//
+// Width: L·R = mid² - (side + w·D)², so the more side and D energy
+// relative to mid, the lower the L/R correlation. D is a scrambled copy of
+// mid with the same level, so with w = 0.65 even a single Spring gets
+// correlation ~ (1 - w²)/(1 + w²) ≈ 0.4.
+//
+// Level match: with the Springs treated as independent (they add in power),
+//   stereo power (L² + R²)/2 = mid²·(1 + w²) + side²
+//   mono power ((L + R)/2)²  = mid²
+// Modes spend different shares on side/D, so one scale can't make both
+// exactly equal across modes; each mode is scaled so the *average* of the
+// two is 1 (mixPower). Measured (test_tank "Level"): stereo and mono
+// loudness of 1/2/3 Springs both within ±1.5 dB. kModeTrim is left for M8
+// tuning by ear.
+constexpr int kNumSources = kNumSprings; // A, B, C
+
+struct StereoMix {
+    float mid[kNumSources];
+    float side[kNumSources];
+    float decorr; // w
 };
 
-constexpr float kCrossFeed2  = 0.18f; // x, 2 Springs  (-15 dB)
-constexpr float kCrossFeed3  = 0.10f; // x, 3 Springs  (-20 dB)
-constexpr float kCentre3     = 0.45f; // c, 3 Springs  (-7 dB each side, vs A/B)
+constexpr float kDecorr1 = 0.65f; // w, 1 Spring
+constexpr float kDecorr2 = 0.40f; // w, 2 Springs
+constexpr float kDecorr3 = 0.50f; // w, 3 Springs
+constexpr float kCentre3 = 0.40f; // c, 3 Springs
+constexpr float kSide2   = 0.43f; // k, 2 Springs (0.5 = hard pan)
+constexpr float kSide3   = 0.45f; // k, 3 Springs
 inline constexpr std::array<float, kNumModes> kModeTrim{{1.0f, 1.0f, 1.0f}};
 
-inline OutMatrix outMatrix(int mode)
+// Loudness power of a mix: average of stereo and mono power (see "Level
+// match"), treating the Springs (and D vs mid) as independent.
+inline float mixPower(const StereoMix& m)
 {
-    OutMatrix m{};
-    if (mode == 0) {
-        m.l[0] = 1.0f;
-        m.r[3] = 1.0f;
-        return m;
+    float mid = 0.0f, side = 0.0f;
+    for (int k = 0; k < kNumSources; ++k) {
+        mid += m.mid[k] * m.mid[k];
+        side += m.side[k] * m.side[k];
     }
-    const float x = mode == 1 ? kCrossFeed2 : kCrossFeed3;
-    const float c = mode == 1 ? 0.0f : kCentre3;
-    const float n = kModeTrim[size_t(mode)] / std::sqrt(1.0f + x * x + c * c);
-    m.l[0] = n;     m.l[1] = x * n; m.l[2] = c * n;
-    m.r[1] = n;     m.r[0] = x * n; m.r[2] = c * n;
+    return mid * (1.0f + 0.5f * m.decorr * m.decorr) + 0.5f * side;
+}
+
+// The mix for a mode, before normalisation and trim (see Tank: it scales by
+// 1/sqrt(mixPower) continuously, also through a SPRINGS fade).
+inline StereoMix stereoMix(int mode)
+{
+    StereoMix m{};
+    if (mode == 0) {
+        m.mid[0] = 1.0f;
+        m.decorr = kDecorr1;
+    } else {
+        m.mid[0] = m.mid[1] = 0.5f;
+        m.side[0] = mode == 2 ? kSide3 : kSide2;
+        m.side[1] = -m.side[0];
+        m.mid[2]  = mode == 2 ? kCentre3 : 0.0f;
+        m.decorr  = mode == 2 ? kDecorr3 : kDecorr2;
+    }
     return m;
 }
 
