@@ -1,0 +1,8 @@
+{
+  "name": "m5_tone",
+  "input": "test_audio/stimulus/02_hits.wav",
+  "base": { "mix": 1.0, "springs": "2", "decay": 0.6, "boing": 0.5, "attitude": "DRIVEN", "drive": 0.5 },
+  "grid": { "tone": [0, 0.25, 0.5, 0.75, 1] },
+  "tail_seconds": 8,
+  "ignore_flags": ["max_step_db_100ms", "resonance_peak_db"]
+}

@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 built, needs your listen · M5 in progress
+**Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4 + M5 built, need your listen · chirp-direction decision needed
 
 ## To do (suggested order)
 
@@ -49,6 +49,19 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Wide on headphones, and still full when summed to mono?
 - The stereo fix has landed and the pages are re-rendered: 0 flags
 
+### 7. Decide: which way should the boing chirp? (≈15 min) · blocks retuning BOING
+- **Why:** the IR study ([ir-dispersion-study.md](ir-dispersion-study.md)) found that **every real tank** has its **highs arriving later** than its lows. Ours does the opposite (lows later), because the spec said "highs before lows". The spec's wording came from planning, not measurement, so this is a genuine conflict. It's your call by ear.
+- Open from Finder: `renders/chirp_ab/current/index.html`. The renders are **ours now** (lows later). The references include **flipped** (highs later, *untuned*: treat BOING 1 as a direction test only) and six real tanks: *SNRA500 Plucky* (the clearest real chirp), *Amp Spring Bright/Dull*, *Classic Amp Spring*, *Space Echo Spring*, *Short Spring*
+- [ ] Which sounds more like a spring to you: **current** or **flipped**? Or does it depend on BOING?
+
+### 8. Listen: M5 drive + TONE (≈15 min)
+- Open from Finder: `renders/m5_attitude_drive/index.html` (ATTITUDE × DRIVE on hits), `renders/m5_tone/index.html` (TONE sweep), and `renders/m5_howl/m5_kicked_howl_decay1_drive0.8_pull6s.wav` (KICKED Howl, DECAY pulled back at 6 s)
+- [ ] CLEAN / DRIVEN / KICKED: clearly **hi-fi / warm tape dub / trashed**?
+- [ ] **DRIVE at noon:** does it already add colour? (Measured: barely. Colour mostly appears near the top. ADR 0014 wants it building from ~9 o'clock)
+- [ ] TONE: full left warm and dark with the boing still there? Full right splashy but not harsh?
+- [ ] Howl: a rideable rough roar that dies away when DECAY comes down?
+- [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
+
 ## What to send Claude
 
 - **Recordings:** just say they're done. Claude commits and analyses them.
@@ -57,14 +70,16 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M5 drive chain + TONE tilt (running, [brief](m5-contracts.md))
-- IR dispersion study (running): will add `docs/ir-dispersion-study.md`
+- M6 anti-ringing: next (Micro-mod floor, resonance metric validation)
+- BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
 - After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: M5 drive chain + TONE built; IR dispersion study done ([report](ir-dispersion-study.md))
 
 - 28 Sep 2026: M4 stereo fix (mono-safe, wide at every DECAY); M3 firmware variants ready; README added
 
