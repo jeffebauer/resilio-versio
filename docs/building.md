@@ -30,11 +30,18 @@ ctest --test-dir build
 
 ```bash
 make -C libs/libDaisy -j8     # once, or after updating libDaisy
-make -C firmware -j8
-make -C firmware size         # fails if over 128 KB (ADR 0011)
+make -C firmware all-variants # builds all three, fails if any is over 128 KB (ADR 0011)
 ```
 
-Output: `firmware/build/resilio_versio.bin`. Flash with NE Firmware Swap → Select Custom File (ADR 0011).
+Three variants (details: `firmware/README.md`):
+
+| Variant | Build | Output | For |
+|---|---|---|---|
+| release (default) | `make -C firmware` | `firmware/build/resilio_versio.bin` | The instrument |
+| m0test | `make -C firmware MODE=m0test` | `firmware/build/resilio_versio_m0test.bin` | M0 hardware check (saved copy: `dist/resilio_versio_m0_test.bin`) |
+| profile | `make -C firmware MODE=profile` | `firmware/build/resilio_versio_profile.bin` | M3 CPU profiling over USB serial |
+
+Flash with NE Firmware Swap → Select Custom File (ADR 0011).
 
 ## Test stimulus
 

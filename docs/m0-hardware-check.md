@@ -1,6 +1,6 @@
 # M0 hardware check
 
-Test firmware: `firmware/build/resilio_versio.bin`. It passes audio straight through and shows every control on the LEDs and over USB serial. Criteria: SPEC §7 M0.
+Test firmware: **`dist/resilio_versio_m0_test.bin`** (a saved copy; rebuild with `make -C firmware MODE=m0test` → `firmware/build/resilio_versio_m0test.bin`). It passes audio straight through and shows every control on the LEDs and over USB serial. Criteria: SPEC §7 M0.
 
 **Never connect rack power and USB at the same time** (NE manual). So there are two sessions: USB-only (flash + serial) and rack-only (audio + CV + gate).
 
