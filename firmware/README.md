@@ -37,11 +37,44 @@ make -C firmware all-variants
 
 `size` (or `all-variants`) prints how many of the 128 KB internal-flash
 budget each build uses (ADR 0011) and fails the build if any variant goes
-over. Right now (approximate, will shift slightly as DSP work continues):
+over, with a warning once a variant passes 95%. Right now (approximate, will
+shift slightly as DSP work continues):
 
-- release ≈ 95 KB (72%)
-- m0test ≈ 94 KB (71%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile ≈ 107 KB (82%)
+- release ≈ 96 KB (75%), ≈32 KB headroom
+- m0test ≈ 84 KB (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
+- profile ≈ 107 KB (83%), ≈22 KB headroom
+
+### Flash-budget techniques in use (ADR 0011)
+
+Two, both firmware/-only (no changes inside `libs/libDaisy`):
+
+- **`firmware/no_uart_spi.cpp`** stubs out libDaisy's UART and SPI DMA
+  bookkeeping (and their IRQ handlers) so the linker never pulls in
+  `uart.o`/`spi.o` and the HAL code behind them. Versio never uses raw
+  UART/SPI peripherals in any variant; the stubbed functions only reset
+  static bookkeeping with no hardware side effects (see the file's header
+  comment for the full reasoning, including why the UART half only applies
+  outside `m0test`). This is the biggest single win: roughly 15-20 KB off
+  every variant.
+- **`main.cpp`'s DSP/control-rate split**: `firmware/Makefile` compiles
+  `main.cpp` at `-Os` while `core/dsp/*.cpp` (Tank, Spring, Drive, Splash,
+  Kick, Wobble) stay at `-O3` in every variant, so release and profile always
+  measure the identical, maximally-optimised per-sample DSP code — profile's
+  CPU numbers stay valid for release. Only the knob/switch/LED/serial
+  "glue" code shrinks.
+- **profile's serial logging** talks to USB CDC directly
+  (`hw.seed.usb_handle`), formatting the CORNER line with small integer
+  helpers in `main.cpp` instead of `hw.seed.PrintLine()`/`snprintf`. Calling
+  libDaisy's `StartLog()` pulls in the whole `printf`/`vsnprintf` chain
+  unconditionally (it prints its own "Daisy is online" banner internally),
+  so profile calls `hw.seed.usb_handle.Init()` directly instead. `m0test`
+  still uses the original `PrintLine`-based logging unchanged, since it must
+  not change behaviour while the M0 hardware check is in progress.
+- Link-time optimisation (`-flto`) was evaluated and **not adopted**: on
+  this small a set of translation units it made both release and profile a
+  few hundred bytes *larger*, not smaller (LTO's own bookkeeping outweighed
+  any extra inlining), with no speed benefit to justify the added build-time
+  cost and risk. `firmware/Makefile` does not enable it.
 
 ## Which `.bin` to flash, and when
 

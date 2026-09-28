@@ -205,13 +205,96 @@ int main()
 
 #include "util/CpuLoadMeter.h"
 
-#include <cstdio>
+#include <cstdint>
+#include <cstring>
 
 namespace {
 
 using rv::ParamId;
 
 constexpr int kBlockSize = RV_PROFILE_BLOCK;
+
+// ---- Hand-rolled serial line formatting (flash-budget work, ADR 0011) -----
+// Avoids printf/vsnprintf/std::snprintf entirely for this build: the
+// nano-newlib printf family (iprintf/_vfiprintf_r/_printf_i/...) costs
+// ~2.1 KB of flash once pulled in, all for one line printed every ~3 s here
+// (not per-sample, no speed reason to keep it). As a bonus this also avoids
+// a pre-existing correctness gap: this firmware links --specs=nano.specs
+// without `-u _printf_float`, so the old "%5.1f"/"%.1f" format specifiers
+// used here were never actually backed by float-printf support (only the
+// integer path, iprintf, was linked) and would not have printed the decimal
+// values correctly on hardware. These helpers use plain integer math
+// instead, so what's printed is what's meant. Output goes straight to the
+// same USB CDC transport Logger uses (hw.seed.usb_handle), so the serial
+// monitor instructions in docs/building.md are unchanged.
+void AppendStr(char*& p, const char* end, const char* s)
+{
+    while (*s && p < end) *p++ = *s++;
+}
+
+void AppendPadRight(char*& p, const char* end, const char* s, int width)
+{
+    int n = 0;
+    while (*s && p < end) {
+        *p++ = *s++;
+        ++n;
+    }
+    while (n < width && p < end) {
+        *p++ = ' ';
+        ++n;
+    }
+}
+
+void AppendUInt(char*& p, const char* end, unsigned v)
+{
+    char digits[10];
+    int  n = 0;
+    do {
+        digits[n++] = char('0' + v % 10);
+        v /= 10;
+    } while (v && n < int(sizeof(digits)));
+    while (n > 0 && p < end) *p++ = digits[--n];
+}
+
+void AppendInt(char*& p, const char* end, int v)
+{
+    if (v < 0 && p < end) *p++ = '-';
+    AppendUInt(p, end, unsigned(v < 0 ? -v : v));
+}
+
+// Right-justifies "value.d" (one decimal digit) into `width` characters,
+// e.g. AppendFixed1(p, end, 583, 5) -> " 58.3" (value is the number x10).
+void AppendFixed1(char*& p, const char* end, int tenths, int width)
+{
+    if (tenths < 0) tenths = 0;
+    char   digits[8];
+    int    n     = 0;
+    int    whole = tenths / 10;
+    int    frac  = tenths % 10;
+    digits[n++]  = char('0' + frac);
+    digits[n++]  = '.';
+    do {
+        digits[n++] = char('0' + whole % 10);
+        whole /= 10;
+    } while (whole && n < int(sizeof(digits)));
+    int pad = width - n;
+    while (pad-- > 0 && p < end) *p++ = ' ';
+    while (n > 0 && p < end) *p++ = digits[--n];
+}
+
+// Fraction (0..1) -> tenths of a percent, e.g. 0.583f -> 583 ("58.3").
+int FracToPercentTenths(float frac)
+{
+    return int(frac * 1000.0f + 0.5f);
+}
+
+constexpr size_t kLineBufSize = 160;
+
+void TransmitLine(const char* buf, size_t len)
+{
+    hw.seed.usb_handle.TransmitInternal(
+        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(buf)), len);
+}
 
 // ---- Tank delay pool (see file header for placement reasoning) ------------
 // ~104 KB measured at 48 kHz (host/tests/test_tank, test_spring); sized with
@@ -244,6 +327,17 @@ struct Corner {
 constexpr int kNumCorners = 3 * 2 * 2 * 2;
 Corner        gCorners[kNumCorners];
 
+// decay/boing only ever take 0.0/1.0 and tone only 0.5/1.0 here (see the
+// grid below), so corner names can use a fixed string table instead of
+// float-formatting each one (keeps this build off printf/snprintf
+// entirely - see the formatting helpers above).
+const char* Decimal1Str(float v) // "0.0" / "0.5" / "1.0" only
+{
+    if (v <= 0.25f) return "0.0";
+    if (v <= 0.75f) return "0.5";
+    return "1.0";
+}
+
 void BuildCornerTable()
 {
     const float decays[2] = {0.0f, 1.0f};
@@ -260,8 +354,18 @@ void BuildCornerTable()
                     c.boing      = boing;
                     c.tone       = tone;
                     const bool worst = springsPos == 2 && decay >= 1.0f && boing >= 1.0f;
-                    std::snprintf(c.name, sizeof(c.name), "S%d D%.1f B%.1f T%.1f%s",
-                                  springsPos + 1, decay, boing, tone, worst ? " (SPEC worst case)" : "");
+                    char*      p     = c.name;
+                    const char* end  = c.name + sizeof(c.name);
+                    *p++ = 'S';
+                    AppendInt(p, end, springsPos + 1);
+                    AppendStr(p, end, " D");
+                    AppendStr(p, end, Decimal1Str(decay));
+                    AppendStr(p, end, " B");
+                    AppendStr(p, end, Decimal1Str(boing));
+                    AppendStr(p, end, " T");
+                    AppendStr(p, end, Decimal1Str(tone));
+                    if (worst) AppendStr(p, end, " (SPEC worst case)");
+                    *p = '\0';
                 }
             }
         }
@@ -362,7 +466,17 @@ int main()
 
     BootPattern();
 
-    hw.seed.StartLog(false); // don't block waiting for a serial monitor
+    // hw.seed.StartLog(false) is deliberately NOT used here: besides
+    // initialising the USB CDC port, libDaisy's StartLog() also prints a
+    // "Daisy is online" banner via PrintLine() internally (logger.cpp),
+    // which alone pulls the whole printf/vsnprintf chain back into this
+    // build regardless of anything in this file. UsbHandle carries no
+    // per-instance state (LoggerImpl<LOGGER_INTERNAL>::Init() static_asserts
+    // exactly that, see libs/libDaisy/src/hid/logger_impl.h), so calling
+    // Init() directly on hw.seed.usb_handle here is equivalent to what
+    // StartLog() would have done, minus the banner text and its printf
+    // dependency.
+    hw.seed.usb_handle.Init(daisy::UsbHandle::FS_INTERNAL);
     hw.StartAudio(AudioCallback);
 
     bool everExceeded = false;
@@ -371,11 +485,36 @@ int main()
             const Result r = gPendingResult;
             gResultReady    = false;
             const Corner& c = gCorners[r.index];
-            const float   cyclesPerSample = r.avg * 10000.0f; // SPEC §5: 480 MHz / 48 kHz ~= 10,000 cycles/sample
-            hw.seed.PrintLine(
-                "CORNER %-28s avg %5.1f%% max %5.1f%% min %5.1f%% | mem %6u B | prepared %s | block %d | fs %.0f Hz | ~%.0f cyc/sample",
-                c.name, r.avg * 100.0f, r.max * 100.0f, r.min * 100.0f, unsigned(r.memBytes),
-                r.prepared ? "yes" : "NO (pool too small -> passthrough)", kBlockSize, fs, cyclesPerSample);
+            const int cyclesPerSample = int(r.avg * 10000.0f + 0.5f); // SPEC §5: 480 MHz / 48 kHz ~= 10,000 cycles/sample
+
+            // Same fields/order as the old
+            // "CORNER %-28s avg %5.1f%% max %5.1f%% min %5.1f%% | mem %6u B |
+            //  prepared %s | block %d | fs %.0f Hz | ~%.0f cyc/sample" line,
+            // built without printf (see AppendStr/AppendFixed1 above).
+            char        buf[kLineBufSize];
+            char*       p   = buf;
+            const char* end = buf + sizeof(buf);
+            AppendStr(p, end, "CORNER ");
+            AppendPadRight(p, end, c.name, 28);
+            AppendStr(p, end, " avg ");
+            AppendFixed1(p, end, FracToPercentTenths(r.avg), 5);
+            AppendStr(p, end, "% max ");
+            AppendFixed1(p, end, FracToPercentTenths(r.max), 5);
+            AppendStr(p, end, "% min ");
+            AppendFixed1(p, end, FracToPercentTenths(r.min), 5);
+            AppendStr(p, end, "% | mem ");
+            AppendUInt(p, end, unsigned(r.memBytes));
+            AppendStr(p, end, " B | prepared ");
+            AppendStr(p, end, r.prepared ? "yes" : "NO (pool too small -> passthrough)");
+            AppendStr(p, end, " | block ");
+            AppendInt(p, end, kBlockSize);
+            AppendStr(p, end, " | fs ");
+            AppendInt(p, end, int(fs));
+            AppendStr(p, end, " Hz | ~");
+            AppendInt(p, end, cyclesPerSample);
+            AppendStr(p, end, " cyc/sample\r\n");
+            TransmitLine(buf, size_t(p - buf));
+
             if (r.max > 0.65f) everExceeded = true; // SPEC §5 target: <= 65% worst case
         }
 

@@ -33,6 +33,12 @@ make -C libs/libDaisy -j8     # once, or after updating libDaisy
 make -C firmware all-variants # builds all three, fails if any is over 128 KB (ADR 0011)
 ```
 
+`all-variants` prints each binary's size against the 128 KB limit, fails the
+build if any variant goes over, and warns (without failing) once a variant
+reaches 95%. See "Flash-budget techniques in use" in `firmware/README.md`
+for how the three variants stay well under the limit (currently release
+~75%, m0test ~65%, profile ~83%; ≥16 KB/≥12 KB headroom respectively).
+
 Three variants (details: `firmware/README.md`):
 
 | Variant | Build | Output | For |

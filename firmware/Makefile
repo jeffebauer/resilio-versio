@@ -29,10 +29,13 @@ else
 endif
 
 # m0test is a plain passthrough and doesn't link the Core (saves ~20 KB).
+# no_uart_spi.cpp stubs out libDaisy's UART/SPI DMA bookkeeping so the linker
+# never pulls in uart.o/spi.o and the HAL code behind them (~15 KB, none of
+# it used by this app in any variant; see that file for why it's safe).
 ifeq ($(MODE),m0test)
-  CPP_SOURCES = main.cpp
+  CPP_SOURCES = main.cpp no_uart_spi.cpp
 else
-  CPP_SOURCES = main.cpp $(wildcard ../core/dsp/*.cpp)
+  CPP_SOURCES = main.cpp no_uart_spi.cpp $(wildcard ../core/dsp/*.cpp)
 endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)
@@ -55,6 +58,14 @@ LIBDAISY_DIR = ../libs/libDaisy
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
 
+# Size-optimise only our non-DSP, control-rate code (main.cpp: knob/switch/LED
+# handling, boot pattern, serial logging in profile). DSP objects
+# (core/dsp/*.cpp: Tank, Spring, Drive, Splash, Kick, Wobble) keep the global
+# -O3 above so release and profile always measure the identical,
+# maximally-optimised per-sample code path (CPU numbers from profile stay
+# valid for release). Saves flash without touching per-sample DSP speed.
+$(BUILD_DIR)/main.o: OPT = -Os
+
 # Internal flash limit for NE Firmware Swap installs (ADR 0011).
 FLASH_LIMIT = 131072
 
@@ -75,10 +86,12 @@ size: build/$(TARGET).bin
 	@bytes=$$(wc -c < build/$(TARGET).bin | tr -d ' '); \
 	pct=$$((bytes * 100 / $(FLASH_LIMIT))); \
 	echo "$(TARGET).bin: $$bytes / $(FLASH_LIMIT) bytes ($$pct%)"; \
-	if [ $$bytes -gt $(FLASH_LIMIT) ]; then echo "ERROR: exceeds internal flash (ADR 0011)"; exit 1; fi
+	if [ $$bytes -gt $(FLASH_LIMIT) ]; then echo "ERROR: exceeds internal flash (ADR 0011)"; exit 1; fi; \
+	if [ $$pct -ge 95 ]; then echo "WARNING: $(TARGET).bin is at $$pct% of the internal-flash limit (ADR 0011) - getting close"; fi
 
 # Builds all three variants (release, m0test, profile) and reports each
-# size against the 128 KB limit. Fails (nonzero exit) if any variant is over.
+# size against the 128 KB limit. Fails (nonzero exit) if any variant is
+# over, and warns (without failing) once a variant is at 95% or more.
 .PHONY: all-variants
 all-variants:
 	@$(MAKE) --no-print-directory MODE=release
@@ -86,11 +99,16 @@ all-variants:
 	@$(MAKE) --no-print-directory MODE=profile
 	@echo ""; \
 	echo "=== Variant sizes vs $(FLASH_LIMIT)-byte internal-flash limit (ADR 0011) ==="; \
-	fail=0; \
+	fail=0; warn=0; \
 	for f in resilio_versio resilio_versio_m0test resilio_versio_profile; do \
 		bytes=$$(wc -c < build/$$f.bin | tr -d ' '); \
 		pct=$$((bytes * 100 / $(FLASH_LIMIT))); \
-		if [ $$bytes -gt $(FLASH_LIMIT) ]; then status="EXCEEDS LIMIT"; fail=1; else status="ok"; fi; \
+		if [ $$bytes -gt $(FLASH_LIMIT) ]; then status="EXCEEDS LIMIT"; fail=1; \
+		elif [ $$pct -ge 95 ]; then status="WARNING: >=95%"; warn=1; \
+		else status="ok"; fi; \
 		printf "  %-28s %7d / %d bytes (%3d%%)  %s\n" $$f.bin $$bytes $(FLASH_LIMIT) $$pct "$$status"; \
 	done; \
+	if [ $$warn -eq 1 ] && [ $$fail -eq 0 ]; then \
+		echo ""; echo "WARNING: at least one variant is at 95% or more of the internal-flash limit (ADR 0011)."; \
+	fi; \
 	exit $$fail
