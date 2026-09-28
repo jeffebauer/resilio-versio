@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 28 Sep 2026 (M8 prep started) (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
+**Last updated:** 28 Sep 2026 (M8 prep started) (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp direction decided (highs later), being switched on
 
 **Plugin installed in Ableton:** M8 tuning round 1 (commit `a4fb02e`), installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New: no 3-Spring flam, wider 1 Spring, WOBBLE on the first echoes, audible SPLASH (DRIVEN/KICKED), DRIVE colour from ~9 o'clock and in the tail, steadier wet level. Unchanged until you decide: chirp direction, SPLASH in CLEAN.
 
@@ -60,7 +60,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
   - Each page has BOING 0 → 1 on a click and on hits, with the other direction and six real tanks as references (*SNRA500 Plucky*, *Amp Spring Bright/Dull/High*, *Classic Amp Spring*, *Space Echo Spring*).
 - **Listen for:** highs-later makes each echo sweep **up**, with the sizzle arriving last, instead of today's falling "peeew". Lows stay tight and punchy, and repeats are a little quicker. Compare BOING 0–0.5 with the *Amp Spring* tanks and BOING 1 with *SNRA500*. Highs-later plays about 0.6 dB quieter; tick "Level-match".
 - **Worth knowing:** highs-later keeps the **tail length the same at every BOING** (your "BOING shortens decay" issue goes away); today's direction loses up to 12%.
-- [ ] Which sounds more like a spring to you: **lows later** (today) or **highs later**?
+- [x] Which sounds more like a spring to you? **Highs later** (29 Sep, [ADR 0024](adr/0024-chirp-highs-later.md)). Being switched on and re-tuned now; the next plugin build will have it
 - Related: the **TENSION** idea in "Later"; the chosen direction would carry into it.
 
 ### 8. Listen: M5 drive + TONE (≈15 min)
@@ -117,7 +117,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- Round 2 after your round-1 listen (8c) and decisions (7, 8b, TENSION). Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
+- Switching the chirp to highs-later and re-tuning the four round-1 checks it affects (wet level, aliasing, KICKED DRIVE level, Micro-mod floor check); then a new plugin build
+- Round 2 after your round-1 listen (8c) and decisions (8b, TENSION). Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
@@ -126,6 +127,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 29 Sep 2026: chirp direction decided: highs later ([ADR 0024](adr/0024-chirp-highs-later.md))
 
 - 28 Sep 2026: M8 tuning round 1 merged and installed (flam gone, 1 Spring wider, early WOBBLE, audible SPLASH, DRIVE without dead zones, wet level spread 5.7–7.8 → 2.5–4.4 dB)
 
