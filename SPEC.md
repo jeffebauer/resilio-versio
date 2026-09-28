@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.5 — ADR 0021: Ableton spring IRs as an IR library for range calibration; `tools/ir_analysis.py`.
 - v1.0.4 — M4 mono-safe criterion made precise: fold-down energy vs stereo energy (the old wording conflicted with the width criterion).
 - v1.0.3 — ADR 0020: Strymon Magneto recorded as a benchmark (not a target) + WOBBLE/DRIVEN calibration source. `08_held_tones` stimulus.
 - v1.0.2 — Fact update: Wellspring manual read. It has no spring decay control (fixed T60, one reference point), stereo springs, INPUT = drive. ADR 0009 amended, recipe rewritten, M1/M5 reference checks clarified.
@@ -427,6 +428,7 @@ All four must hold:
 - [L] Sweet-spot sweep: owner reviews a grid of renders stepping every knob. No dead zones, no cliffs, every position usable.
 - [L] Dub record A/B: on the owner's own material it sits alongside King Tubby / Basic Channel references without sounding like a "digital reverb".
 - [L] Wellspring A/B: same family as the spring Reference set, with less Ringing and more splash.
+- [A] IR library (ADR 0021): DECAY, BOING and TONE ranges cover the spread of real-tank T60, chirp spacing/dispersion (ridge method) and brightness.
 - [L] Magneto A/B (ADR 0020): holds up next to the Magneto's spring on the same stimulus; the owner would reach for Resilio Versio for dub.
 - [H/L] Live session on the module (patching, throws, Kicks): nothing surprises in a bad way.
 - Final ranges/curves written back into ParamSpec, and SPEC starting guesses replaced with the tuned values.

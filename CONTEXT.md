@@ -25,6 +25,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
 | **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |
 | **Benchmark recording** | Strymon Magneto (digital spring + tape) recorded through the Stimulus. Quality bar and WOBBLE/DRIVEN calibration, not a target for spring character (ADR 0020). |
+| **IR library** | Spring impulse responses from Ableton Live (45 real-tank files), used only to calibrate parameter ranges. Linear snapshots, no transient behaviour (ADR 0021). |
 | **Morph** | Switch change applied to live tail without restarting it (Attitude changes). |
 | **Core** | Platform-independent DSP + ParamSpec. No libDaisy/JUCE. |
 | **Host** | Wrapper feeding audio + params to Core: Renderer, Plugin, Firmware. |
