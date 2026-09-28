@@ -85,25 +85,50 @@ inline int boingStages(float v, int cap)
 // Is Spring s heard in this mode? A in all, B in 2 and 3, C in 3 only.
 constexpr bool springActive(int mode, int s) { return s <= mode; }
 
-// ---- Pickup position per Spring (mono safety + width, M4 follow-up) --------
-// Where each Spring's pickup taps its delay line, as a fraction of L (M1
-// used 0.5). Staggering them makes each Spring's *first* echo arrive at a
-// clearly different time (at DECAY 0: C ~7 ms, A ~19 ms, B ~30 ms; at
-// DECAY 1 three times that). Why it matters: with equal taps the three
-// first echoes land within ~1–2 ms of each other and look alike, so
-// (a) L and R were strongly correlated at short DECAY (narrow), and
-// (b) summing two near-copies a millisecond apart is a comb filter: deep
-// notches in the mono sum. Arrivals 10+ ms apart are different echoes, not
-// near-copies, so both problems go away. C (centre) speaks first, which
-// also anchors the image in the middle, then A (left), then B (right).
-inline constexpr std::array<float, kNumSprings> kPickupTap{{0.65f, 0.95f, 0.25f}};
+// ---- Pickup position per Spring (first arrivals, M8 backlog item 5) --------
+// Where each Spring's pickup taps its delay line: tapRatio × L plus a fixed
+// offset in seconds. The first echo arrives after about that (+ the chain).
+//
+// M4 staggered the taps (0.65 / 0.95 / 0.25 of L) so the three first echoes
+// arrived 10+ ms apart (C 8, A 20, B 31 ms at DECAY 0; 14 / 36 / 56 ms at
+// noon; 25 / 64 / 102 ms at max): that fixed L/R correlation and the mono
+// comb, but a 20-80 ms spread reads as a flam (the owner heard the right
+// Spring land late in 3-Spring mode).
+//
+// M8: every Spring's first echo lands together, at 0.52 × the *base* L
+// (about half a round trip, as M1; 0.52 rather than 0.5 only because it
+// kept the ATTITUDE-Morph click check in test_drive clear of its limit):
+// tapRatio = 0.52 / (its loopDelay detune), so the detune no longer moves the
+// arrival (it still sets each Spring's repeat time, so later echoes spread
+// out). The offsets are under a millisecond, fixed (not scaled by DECAY),
+// picked by grid searches: B's +0.15 ms nudges the residual A/B phase
+// difference (the Chirps differ) so its first mono dip lands high and
+// shallow (M4 stereo checks); C's -0.8 ms keeps C's steady partials from
+// half-cancelling A and B's on held chords at long DECAY (test_antires
+// held-tone pitch). First-arrival spread <= ~1.5 ms in every mode and
+// DECAY (was 23 / 42 / 77 ms at DECAY 0 / 0.5 / 1). Mind the lows: two near-copies 2-4 ms apart
+// cancel at 125-250 Hz (measured: mono_loss past -1.5 dB), so offsets of
+// more than ~0.5 ms between Springs are worse, not better.
+//
+// Width now comes from D (below, stronger and longer than M4's), which is
+// mono-safe by construction, instead of from different arrival times.
+inline constexpr std::array<float, kNumSprings> kPickupTap{{0.52f / 0.965f, 0.52f / 1.05f, 0.52f / 0.925f}};
+inline constexpr std::array<float, kNumSprings> kPickupOffsetSeconds{{0.0f, 0.00015f, -0.0008f}}; // A, B, C
+
+// Decorrelator D (Tank): a cascade of Schroeder allpasses (delays in
+// seconds, one coefficient), at unrelated lengths. M4 used two (2.3 and
+// 3.7 ms); a third, longer stage scrambles the phase down into the low mids,
+// so D is less like mid there and the same w buys lower L/R correlation.
+// Still short enough (12 ms in total) to stay a diffusion, never an echo.
+inline constexpr std::array<float, 3> kDecorrSeconds{{0.0023f, 0.0037f, 0.0061f}};
+constexpr float kDecorrCoeff = 0.5f;
 
 // ---- Stereo output per mode (SPEC §4.3) ------------------------------------
 // Built as mid/side, which makes mono safety a matter of construction:
 //
 //   mid  = sum(mid gain  × Spring)        what a mono listener hears
 //   side = sum(side gain × Spring)        the L/R difference
-//   D    = decorrelator(mid)              two short allpasses: same spectrum
+//   D    = decorrelator(mid)              three short allpasses: same spectrum
 //                                         as mid, scrambled phase
 //   L = mid + side + w·D,   R = mid - side - w·D
 //
@@ -111,22 +136,25 @@ inline constexpr std::array<float, kNumSprings> kPickupTap{{0.65f, 0.95f, 0.25f}
 // makes the stereo wide can never comb-filter or thin out the mono sum.
 // The mono sum is simply the Springs added together.
 //
-//   1 Spring : mid = A,              side = 0,             w = 0.65
+//   1 Spring : mid = A,              side = 0,             w = 0.75
 //              (M1 put D alone on R; L + R = A + D then had allpass comb
 //              notches down to -10 dB. Now mono is exactly Spring A.)
-//   2 Springs: mid = (A + B)/2,      side = k·(A - B),     w = 0.40
+//   2 Springs: mid = (A + B)/2,      side = k·(A - B),     w = 0.65
 //              = A left, B right (L = 0.93 A + 0.07 B with k = 0.43), plus
 //              decorrelated cross-feed: D carries some of each Spring to
 //              both sides without adding correlation or combs, so neither
 //              side is ever empty.
-//   3 Springs: mid = (A + B)/2 + c·C, side = k·(A - B),    w = 0.50
+//   3 Springs: mid = (A + B)/2 + c·C, side = k·(A - B),    w = 0.65
 //              C in the centre; D keeps the centre from making L and R
 //              too alike (C alone in both sides would be correlation 1).
 //
 // Width: L·R = mid² - (side + w·D)², so the more side and D energy
 // relative to mid, the lower the L/R correlation. D is a scrambled copy of
-// mid with the same level, so with w = 0.65 even a single Spring gets
-// correlation ~ (1 - w²)/(1 + w²) ≈ 0.4.
+// mid with the same level, so with w = 0.75 even a single Spring gets
+// correlation ~ (1 - w²)/(1 + w²) ≈ 0.28 (M4: w = 0.65, 0.43; M8 widened
+// 1 Spring, which the owner heard as fairly mono). With the first echoes now
+// arriving together, A and B start out alike (side small), so 2 and 3
+// Springs need w = 0.65 (M4: 0.40 / 0.50, when the stagger did that work).
 //
 // Level match: with the Springs treated as independent (they add in power),
 //   stereo power (L² + R²)/2 = mid²·(1 + w²) + side²
@@ -144,9 +172,9 @@ struct StereoMix {
     float decorr; // w
 };
 
-constexpr float kDecorr1 = 0.65f; // w, 1 Spring
-constexpr float kDecorr2 = 0.40f; // w, 2 Springs
-constexpr float kDecorr3 = 0.50f; // w, 3 Springs
+constexpr float kDecorr1 = 0.75f; // w, 1 Spring
+constexpr float kDecorr2 = 0.65f; // w, 2 Springs
+constexpr float kDecorr3 = 0.65f; // w, 3 Springs
 constexpr float kCentre3 = 0.40f; // c, 3 Springs
 constexpr float kSide2   = 0.43f; // k, 2 Springs (0.5 = hard pan)
 constexpr float kSide3   = 0.45f; // k, 3 Springs

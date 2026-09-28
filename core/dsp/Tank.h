@@ -58,7 +58,9 @@
 //   The Kick is heard from sample N itself (the DriveOut oversampler's first
 //   tap answers at once), for any block size (test_kick, plugin_host_test).
 // - WOBBLE: one generator per Spring, a Loop delay offset in samples added
-//   on top of the Micro-mod floor; exactly 0 at WOBBLE 0 (ADR 0008).
+//   on top of the Micro-mod floor; exactly 0 at WOBBLE 0 (ADR 0008). Plus
+//   the transport (M8): one more generator, shared by all Springs, that
+//   moves every pickup read, so the first echoes waver too (SplashVoicing.h).
 // The M7 components run their control logic on their own 32-sample grid
 // counted from reset(), which lines up with the Tank's (static_assert).
 // ATTITUDE's Morph weights feed their tables too, so a flip Morphs them.
@@ -195,6 +197,7 @@ public:
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }
     const dsp::Wobble&    wobble(int i) const { return wobble_[static_cast<size_t>(i)]; }
+    const dsp::Wobble&    transport() const { return transport_; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
@@ -252,7 +255,7 @@ private:
     dsp::DriveIn                        driveIn_;
     dsp::Tilt                           tilt_;
     std::array<dsp::DriveOut, 2>        driveOut_{};
-    std::array<Diffuser, 2>             decorrelator_{};
+    std::array<Diffuser, modes::kDecorrSeconds.size()> decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
@@ -264,6 +267,7 @@ private:
     dsp::Splash                        splash_;
     dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
+    dsp::Wobble                        transport_; // WOBBLE on the first echoes: every pickup, shared
     bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
     float hfGainFrom_ = 1.0f, hfGainTo_ = 1.0f; // CLEAN HF emphasis, ramped across each control tick
     float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level

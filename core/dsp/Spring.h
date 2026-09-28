@@ -89,6 +89,9 @@ struct SpringSettings {
     // first echo arrives after about tapRatio·L (+ the chain's delay).
     // Fixed per Spring (not a knob), so it never needs to glide.
     float tapRatio         = 0.5f;
+    // Plus a fixed offset (s, may be negative): a small stagger between
+    // Springs that does not grow with DECAY (SpringModes.h kPickupOffset).
+    float tapOffsetSeconds = 0.0f;
     // LoopSat (ATTITUDE Morph): amount 0 = linear, hardness per half.
     float loopSatAmount    = 0.0f;
     float loopSatKPos      = 1.0f;
@@ -134,7 +137,7 @@ public:
     void setSettings(const SpringSettings& s, bool snap);
 
     // n samples of mono in -> mono Spring out. Real-time safe.
-    void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, out, n); }
+    void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, nullptr, out, n); }
 
     // Same, with the M7 per-sample inputs (each may be null = none):
     //   highIn   replaces the high path's input (the Tank passes the same
@@ -144,8 +147,16 @@ public:
     //   lSamples Loop delay offset in samples (WOBBLE).
     // Both offsets ride on the Micro-mod floor: the Loop reads (feedback and
     // pickup tap) use lCur·(1 + floor + lFrac) + lSamples.
+    //   tapSamples  pickup read offset in samples (WOBBLE's transport, M8):
+    //            moves only the pickup, not the Loop, so the first echo
+    //            wavers at once and the shift does not build up.
+    void process(const float* in, const float* highIn, const float* lFrac, const float* lSamples,
+                 const float* tapSamples, float* out, int n);
     void process(const float* in, const float* highIn, const float* lFrac, const float* lSamples, float* out,
-                 int n);
+                 int n)
+    {
+        process(in, highIn, lFrac, lSamples, nullptr, out, n);
+    }
 
     // ---- Analysis at the current coefficients (Loop gain design + tests) ----
     float sampleRate() const { return sampleRate_; }
@@ -172,7 +183,7 @@ public:
 
 private:
     void  advanceGlides();
-    float processLow(float in, float lMod);
+    float processLow(float in, float lMod, float tapMod);
     float processHigh(float in, float lhMod);
     void  updateCoefficients();
     void  clearStage(int j);
@@ -206,7 +217,7 @@ private:
     dsp::Biquad         highpass_;
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
-    float tapRatio_ = 0.5f;
+    float tapRatio_ = 0.5f, tapOffset_ = 0.0f;
 
     // L modulation state (see "Micro-mod floor").
     dsp::Rng modRng_;

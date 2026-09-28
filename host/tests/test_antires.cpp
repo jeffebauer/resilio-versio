@@ -183,8 +183,8 @@ void microMod()
 // every 20 ms; the phase advance between windows gives the frequency
 // offset. Returns the largest |deviation| in cents and the 95th percentile
 // (the largest can come from a momentary amplitude dip, where phase is
-// ill-defined), over [from, to).
-void pitchCents(const Buf& x, double f0, size_t from, size_t to, double& maxC, double& p95C)
+// ill-defined), over [from, to). level (optional) = the partial's mean power.
+void pitchCents(const Buf& x, double f0, size_t from, size_t to, double& maxC, double& p95C, double* level = nullptr)
 {
     const size_t W = size_t(0.2 * kFs), step = size_t(0.02 * kFs);
     std::vector<double> win(W);
@@ -199,6 +199,10 @@ void pitchCents(const Buf& x, double f0, size_t from, size_t to, double& maxC, d
         z.push_back(acc);
     }
     std::vector<double> c;
+    if (level) {
+        *level = 0;
+        for (const auto& v : z) *level += std::norm(v) / double(z.size());
+    }
     for (size_t i = 1; i < z.size(); ++i) {
         const double dph = std::arg(z[i] * std::conj(z[i - 1]));
         const double df = dph / (2 * kPi * double(step) / double(kFs));
@@ -274,7 +278,14 @@ void heldTonePitch()
         }
 
     // (b) The Tank as the owner hears it (WOBBLE 0, wet only), every SPRINGS
-    // mode, DECAY 0.5 and 1, CLEAN and DRIVEN, both channels.
+    // mode, DECAY 0.5 and 1, CLEAN and DRIVEN: the mono sum, and each
+    // channel where it carries the partial. A partial more than 20 dB weaker
+    // in one channel than in the other (the width stage, L = mid + side + wD,
+    // R = mid - side - wD, can all but cancel one steady partial on one side,
+    // M8) is heard from the other channel; there its phase is dominated by
+    // the tail's neighbouring modes and reads as cents of "pitch" that nobody
+    // hears (M8 measured 23 cents p95 on a partial 33 dB down in R). Those
+    // channel readings are skipped and counted.
     double worstMax = 0, worstP95 = 0;
     char worstAt[96] = {};
     for (int m = 0; m < 3; ++m)
@@ -289,15 +300,22 @@ void heldTonePitch()
                 apply(t, st);
                 const Stereo o = render(t, in);
                 double cellMax = 0, cellP95 = 0;
-                for (const Buf* ch : {&o.l, &o.r})
-                    for (const Part& p : parts) {
-                        double mx, p95;
-                        pitchCents(*ch, p.f, p.from, p.to, mx, p95);
-                        cellMax = std::max(cellMax, mx);
-                        cellP95 = std::max(cellP95, p95);
+                int skipped = 0;
+                Buf mid(o.l.size());
+                for (size_t i = 0; i < mid.size(); ++i) mid[i] = 0.5f * (o.l[i] + o.r[i]);
+                for (const Part& p : parts) {
+                    double mx[3], p95[3], lv[3];
+                    const Buf* chans[3] = {&o.l, &o.r, &mid};
+                    for (int k = 0; k < 3; ++k) pitchCents(*chans[k], p.f, p.from, p.to, mx[k], p95[k], &lv[k]);
+                    for (int k = 0; k < 3; ++k) {
+                        if (k < 2 && lv[k] < 0.01 * lv[1 - k]) { ++skipped; continue; } // > 20 dB down: not heard here
+                        cellMax = std::max(cellMax, mx[k]);
+                        cellP95 = std::max(cellP95, p95[k]);
                     }
-                std::printf("INFO    Tank %d Spring%s DECAY %.1f %-6s: max %.2f, p95 %.2f cents\n", m + 1, m ? "s" : " ", d,
-                            kAttName[att], cellMax, cellP95);
+                }
+                std::printf("INFO    Tank %d Spring%s DECAY %.1f %-6s: max %.2f, p95 %.2f cents (%d channel reading%s "
+                            "skipped: partial > 20 dB down)\n",
+                            m + 1, m ? "s" : " ", d, kAttName[att], cellMax, cellP95, skipped, skipped == 1 ? "" : "s");
                 if (cellP95 > worstP95) {
                     worstP95 = cellP95;
                     std::snprintf(worstAt, sizeof worstAt, "%d Spring(s) DECAY %.1f %s", m + 1, d, kAttName[att]);
