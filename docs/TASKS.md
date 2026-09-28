@@ -4,7 +4,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 **Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
 
-**Plugin installed in Ableton:** M7 build (commit `9e689b9`): SPLASH, the real Kick and WOBBLE now work, on top of the DRIVE retune and M6. Installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). **Known issue:** held notes can produce faint ticks around DECAY at noon (0.5); the fix is in progress. If you hear ticks, nudge DECAY slightly off noon.
+**Plugin installed in Ableton:** M7 + limiter fix (commit `81f8124`): SPLASH, the real Kick and WOBBLE work; the held-note ticks around DECAY noon are fixed. Installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan).
 
 ## To do (suggested order)
 
@@ -84,8 +84,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- Fixing held-tone ticks at DECAY 0.5 (a pre-M7 spring-model bug found in M7 checks; running). Then a fresh plugin build
 - Firmware flash: the profile build is at 98% after M7; trim before M8 (see the flash plan)
+- M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
@@ -93,6 +93,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: held-note ticks fixed: the output limiter was hard-clipping peaks; now a smooth limiter + soft clip, with a regression test
 
 - 28 Sep 2026: M7 built (SPLASH, real Kick, WOBBLE wired in; all 14 test suites pass). Installed in Ableton
 
