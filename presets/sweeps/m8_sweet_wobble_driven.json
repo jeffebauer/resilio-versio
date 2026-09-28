@@ -1,0 +1,36 @@
+{
+  "name": "m8_sweet_wobble_driven",
+  "input": "test_audio/stimulus/08_held_tones.wav",
+  "base": {
+    "decay": 0.5,
+    "tone": 0.5,
+    "boing": 0.5,
+    "splash": 0.3,
+    "drive": 0.25,
+    "mix": 0.5,
+    "springs": "2",
+    "attitude": "DRIVEN"
+  },
+  "grid": {
+    "wobble": [
+      0.0,
+      0.1,
+      0.2,
+      0.3,
+      0.4,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      1.0
+    ]
+  },
+  "tail_seconds": 4,
+  "ignore_flags": [
+    "max_step_db_100ms",
+    "resonance_peak_db",
+    "steady_tone",
+    "ringing_db"
+  ]
+}

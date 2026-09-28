@@ -31,3 +31,10 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 - **Why:** the M4 stereo fix staggered each Spring's pickup tap, so first echoes arrive at roughly 7 / 19 / 30 ms. A ~20 ms spread between first arrivals is heard as a flam. 1 Spring is deliberately the narrowest mode (a single tank is mono).
 - **Target:** no audible flam in any mode (first-arrival spread ≤ ~8 ms), M4 stereo checks still pass (correlation < 0.5, mono-safe); 1 Spring a little wider while mono-safe.
 - **Fix direction:** shrink the tap stagger; recover early decorrelation via detuning and short diffusion; revisit 1-Spring side level.
+
+## 6. From the sweet-spot sweeps ([m8-sweetspot.md](m8-sweetspot.md))
+- **SPLASH in CLEAN is a dead zone across the whole knob.** SPEC §4.5 designed CLEAN's SPLASH as "mild HF emphasis only", which measures as no change, against §2.3's "every knob usable". **Owner decision:** should CLEAN get a real (gentler) splash, or is CLEAN meant to be splash-free?
+- **DRIVE dead patches:** CLEAN 0–0.4 and 0.5–1, DRIVEN 0–0.3 (confirms item 3).
+- **Wet level varies 5–8 dB with material** (outside the Howl zone): broadband and low-heavy material excites the tank more than narrow bright tones. Suggested: a slow (~300 ms) level follower on the tank's excitation band with a gentle inverse trim.
+- **BOING** has the smallest step-to-step change of any knob (no dead zone, but a narrow range). Revisit with the chirp-direction switch.
+- **Expected, not bugs:** DECAY 0.9 → 1 in KICKED (the Howl zone, ADR 0002); MIX 0 → 0.1 (a measurement artefact).

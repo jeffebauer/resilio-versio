@@ -65,6 +65,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Howl: a rideable rough roar that dies away when DECAY comes down? (M6 makes it wander more, about ±7 cents like a siren, so it's never a steady tone. You'll hear that in the next plugin build)
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
 
+### 8b. Decide: SPLASH in CLEAN
+- The sweeps show SPLASH does **nothing** in CLEAN (by the original spec: "mild HF emphasis only"). It's the only knob with a fully dead range.
+- [ ] Should CLEAN get a real, gentler splash (a polite tank still clatters a little), or should CLEAN stay splash-free on purpose?
+
 ### 9. Listen + M7 questions (≈20 min) · the build is installed
 - Open from Finder: `renders/m7_splash/index.html` (ATTITUDE × SPLASH on hits), `renders/m7_wobble/index.html` (WOBBLE on held tones), and the Kick files in `renders/m7_kick/` (each ATTITUDE: singles, a pair, a 12-per-second train). Or play the plugin. Background: [m7-integration.md](m7-integration.md)
 - [ ] KICKED crash big enough? DRIVEN moderate? Kick a tight thud + crash, clean on the fast train?
