@@ -109,7 +109,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- M8 prep done: sweet-spot sweeps, reference ingest, firmware flash trim, chirp-direction switch (A/B in task 7). Tuning round 1 next
+- M8 tuning round 1 (running, 2 agents in separate worktrees): (A) 3-Spring flam, 1-Spring width, WOBBLE on the early echoes; (B) SPLASH crash level + level-adaptive hit detection, DRIVE into the tail, consistent wet level. Not touched until you decide: chirp direction, SPLASH in CLEAN, TENSION. After the merge: full tests, then a new plugin build for you
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
