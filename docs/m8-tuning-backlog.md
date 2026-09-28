@@ -35,7 +35,7 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 - **Fix direction:** shrink the tap stagger; recover early decorrelation via detuning and short diffusion; revisit 1-Spring side level.
 
 ## 6. From the sweet-spot sweeps ([m8-sweetspot.md](m8-sweetspot.md))
-- **SPLASH in CLEAN is a dead zone across the whole knob.** SPEC §4.5 designed CLEAN's SPLASH as "mild HF emphasis only", which measures as no change, against §2.3's "every knob usable". **Owner decision:** should CLEAN get a real (gentler) splash, or is CLEAN meant to be splash-free?
+- **SPLASH in CLEAN is a dead zone across the whole knob.** SPEC §4.5 designed CLEAN's SPLASH as "mild HF emphasis only", which measures as no change, against §2.3's "every knob usable". **Decided (ADR 0025):** CLEAN gets a real, gentler splash: light Clatter + tiny Jolt.
 - **DRIVE dead patches:** CLEAN 0–0.4 and 0.5–1, DRIVEN 0–0.3 (confirms item 3).
 - **Wet level varies 5–8 dB with material** (outside the Howl zone): broadband and low-heavy material excites the tank more than narrow bright tones. Suggested: a slow (~300 ms) level follower on the tank's excitation band with a gentle inverse trim.
 - **BOING** has the smallest step-to-step change of any knob (no dead zone, but a narrow range). Revisit with the chirp-direction switch.

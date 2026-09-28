@@ -73,7 +73,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 8b. Decide: SPLASH in CLEAN
 - The sweeps show SPLASH does **nothing** in CLEAN (by the original spec: "mild HF emphasis only"). It's the only knob with a fully dead range.
-- [ ] Should CLEAN get a real, gentler splash (a polite tank still clatters a little), or should CLEAN stay splash-free on purpose?
+- [x] Decided 29 Sep: **a real, gentler splash**: light clatter + a tiny pitch lurch; CLEAN gentle / DRIVEN clear / KICKED unmistakable ([ADR 0025](adr/0025-clean-gentle-splash.md)). Built after the highs-later switch-on
 
 ### 8c. Listen: M8 tuning round 1 (≈20 min) · the build is installed
 - Before/after WAV pairs (open in Ableton or Finder):
@@ -118,7 +118,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
 - Switching the chirp to highs-later and re-tuning the four round-1 checks it affects (wet level, aliasing, KICKED DRIVE level, Micro-mod floor check); then a new plugin build
-- Round 2 after your round-1 listen (8c) and decisions (8b, TENSION). Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
+- Then: CLEAN's gentle splash ([ADR 0025](adr/0025-clean-gentle-splash.md)), right after the highs-later switch-on (same files)
+- Round 2 after your round-1 listen (8c) and the TENSION question. Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
@@ -127,6 +128,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 29 Sep 2026: SPLASH in CLEAN decided: real, gentler splash ([ADR 0025](adr/0025-clean-gentle-splash.md))
 
 - 29 Sep 2026: chirp direction decided: highs later ([ADR 0024](adr/0024-chirp-highs-later.md))
 

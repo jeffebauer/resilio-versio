@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.10 — ADR 0025: CLEAN gets a real, gentler splash (light Clatter + tiny Jolt); §4.5 table updated.
 - v1.0.9 — ADR 0024: chirp direction is highs-later (owner by ear + IR library); §2.1, §7 and CONTEXT wording corrected.
 - v1.0.8 — §10: stereo-in recorded as an open question for after M3 (incl. plugin-only as a Core mode). Recipe: optional single-tank takes A-L / A-R.
 - v1.0.7 — M6: ADR 0023 (Ringing judged by calibrated `ringing_db` < 15 dB, replacing the 12 dB peak test); ADR 0019 floor band 200 Hz–2 kHz; Micro-mod floor set to ±0.05 % of L at ~0.2 Hz.
@@ -180,7 +181,7 @@ Values = **starting guesses, not from literature.** Exponential curves on L and 
 
 | Mode | Loop sat | Clatter | Jolt |
 |---|---|---|---|
-| CLEAN | off | off | off (SPLASH = mild HF emphasis only) |
+| CLEAN | off | gentle (ADR 0025) | tiny (ADR 0025) |
 | DRIVEN | gentle tape | moderate | small |
 | KICKED | hard, asymmetric | full | large + energy-dependent rattle |
 
