@@ -53,9 +53,15 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - The stereo fix has landed and the pages are re-rendered: 0 flags
 
 ### 7. Decide: which way should the boing chirp? (≈15 min) · blocks retuning BOING
-- **Why:** the IR study ([ir-dispersion-study.md](ir-dispersion-study.md)) found that **every real tank** has its **highs arriving later** than its lows. Ours does the opposite (lows later), because the spec said "highs before lows". The spec's wording came from planning, not measurement, so this is a genuine conflict. It's your call by ear.
-- Open from Finder: `renders/chirp_ab/current/index.html`. The renders are **ours now** (lows later). The references include **flipped** (highs later, *untuned*: treat BOING 1 as a direction test only) and six real tanks: *SNRA500 Plucky* (the clearest real chirp), *Amp Spring Bright/Dull*, *Classic Amp Spring*, *Space Echo Spring*, *Short Spring*
-- [ ] Which sounds more like a spring to you: **current** or **flipped**? Or does it depend on BOING?
+- **Why:** the IR study ([ir-dispersion-study.md](ir-dispersion-study.md)) found that **every real tank** sends its **highs later** than its lows. Ours does the opposite (lows later) because the spec said "highs before lows", which was written from memory, not measurement. It's your call by ear.
+- **Now properly tuned both ways** (one switch in the code). Open from Finder:
+  - `renders/chirp_ab2/lows_later/index.html` (today's sound)
+  - `renders/chirp_ab2/highs_later/index.html` (like the real tanks)
+  - Each page has BOING 0 → 1 on a click and on hits, with the other direction and six real tanks as references (*SNRA500 Plucky*, *Amp Spring Bright/Dull/High*, *Classic Amp Spring*, *Space Echo Spring*).
+- **Listen for:** highs-later makes each echo sweep **up**, with the sizzle arriving last, instead of today's falling "peeew". Lows stay tight and punchy, and repeats are a little quicker. Compare BOING 0–0.5 with the *Amp Spring* tanks and BOING 1 with *SNRA500*. Highs-later plays about 0.6 dB quieter; tick "Level-match".
+- **Worth knowing:** highs-later keeps the **tail length the same at every BOING** (your "BOING shortens decay" issue goes away); today's direction loses up to 12%.
+- [ ] Which sounds more like a spring to you: **lows later** (today) or **highs later**?
+- Related: the **TENSION** idea in "Later"; the chosen direction would carry into it.
 
 ### 8. Listen: M5 drive + TONE (≈15 min)
 - Open from Finder: `renders/m5_attitude_drive/index.html` (ATTITUDE × DRIVE on hits), `renders/m5_tone/index.html` (TONE sweep), and `renders/m5_howl/m5_kicked_howl_decay1_drive0.8_pull6s.wav` (KICKED Howl, DECAY pulled back at 6 s)
@@ -103,7 +109,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- M8 prep: sweet-spot sweeps ✓, reference ingest ✓, firmware flash trim ✓; chirp direction switch + new A/B page (running)
+- M8 prep done: sweet-spot sweeps, reference ingest, firmware flash trim, chirp-direction switch (A/B in task 7). Tuning round 1 next
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
