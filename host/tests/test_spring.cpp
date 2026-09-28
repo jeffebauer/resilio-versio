@@ -494,6 +494,7 @@ void performance()
     rv::Tank t;
     t.prepare(fs, 48);
     apply(t, Settings{1.0f, 1.0f, 1.0f, 0.5f});
+    t.setParam(rv::ParamId::Springs, 0.0f); // 1-Spring mode (M4: 2 idle Springs still run; test_tank has all modes)
     const auto t0 = std::chrono::steady_clock::now();
     for (size_t pos = 0; pos < n; pos += 48)
         t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
@@ -501,7 +502,7 @@ void performance()
     const double ns = std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
     // Daisy estimate: M7 @ 480 MHz assumed 15–25x slower per sample than this desktop.
     std::printf("INFO  process() worst case (DECAY/BOING/TONE 1): %.1f ns/sample desktop, "
-                "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget, 1 Spring)\n",
+                "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget, 1-Spring mode)\n",
                 ns, ns * 15 * 0.48, ns * 25 * 0.48, ns * 15 * 0.48 / 100, ns * 25 * 0.48 / 100);
     std::printf("INFO  Tank memory: %zu bytes at 48 kHz (object %zu + pool), %zu bytes at 96 kHz\n",
                 t.memoryBytes(), sizeof(rv::Tank),

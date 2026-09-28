@@ -1,5 +1,7 @@
 #include "dsp/Spring.h"
 
+#include "params/SpringModes.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -22,13 +24,21 @@ int nextPow2(int v)
     return p;
 }
 
-int lowDelaySize(float sampleRate) { return int(std::ceil(map::kLoopDelayMaxSeconds * sampleRate * 1.02f)) + 8; }
+// Sized for the longest L any Spring can have: DECAY max times the largest
+// detune factor (core/params/SpringModes.h), plus a little margin.
+constexpr float kLongestLoopSeconds = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
+int lowDelaySize(float sampleRate) { return int(std::ceil(kLongestLoopSeconds * sampleRate * 1.02f)) + 8; }
 int highDelaySize(float sampleRate)
 {
-    return int(std::ceil(Spring::kHighDelayRatio * map::kLoopDelayMaxSeconds * sampleRate * 1.02f)) + 8;
+    return int(std::ceil(Spring::kHighDelayRatio * kLongestLoopSeconds * sampleRate * 1.02f)) + 8;
 }
-// Each stretched section's ring holds K+1 samples; K is largest at the lowest fC.
-int ringSize(float sampleRate) { return nextPow2(int(std::ceil(map::stretchK(map::kTransitionMinHz, sampleRate) * 1.1f)) + 3); }
+// Each stretched section's ring holds K+1 samples; K is largest at the lowest
+// (detuned) fC.
+int ringSize(float sampleRate)
+{
+    const float kMax = map::stretchK(map::kTransitionMinHz * modes::kMinTransitionDetune, sampleRate);
+    return nextPow2(int(std::ceil(kMax * 1.1f)) + 3);
+}
 
 } // namespace
 

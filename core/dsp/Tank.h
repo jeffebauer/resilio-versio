@@ -1,33 +1,62 @@
 #pragma once
 // The Tank: 1–3 Springs plus Tank-level stages (CONTEXT.md).
 //
-// M1 signal flow (one Spring, CLEAN):
+// M4 signal flow:
 //
-//   in L,R ─ mono sum ─ Spring ─┬──────────────── L ─┐
-//                               └─ decorrelator ─ R ─┴─ high-shelf cut ─ limiter ─ wet
+//   in L,R ─ mono sum (+ Kick) ─┬─ Spring A ─┬──────────────── A ─┐
+//                               │            └─ decorrelator ─ D ─┤
+//                               ├─ Spring B ───────────────── B ─┤ SPRINGS output matrix
+//                               └─ Spring C ───────────────── C ─┘ (placement, cross-feed,
+//                                                                    level match, 20 ms fade)
+//                                     L, R ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
 //
-// Used at M1: DECAY, BOING, TONE, MIX. Stored but ignored until their
-// milestone: SPRINGS (M4; always one Spring), ATTITUDE (M5/M7; always CLEAN),
-// SPLASH, WOBBLE (M7), DRIVE (M5). Until M7, kick() injects a placeholder
-// impulse into the Tank input at the exact sample, so Kick timing is testable
-// (M2); the real thud + crash (ADR 0016) replaces it at M7.
+// Every Spring hears the same mono input, including the Kick, like the
+// springs in one physical tank all hang off the same driver. Each Spring is
+// detuned (own L, fC, a) and placed in the stereo field by the SPRINGS mode;
+// all the numbers live in core/params/SpringModes.h.
+//
+// SPRINGS switching (ADR 0003): all three Springs run all the time. A Spring
+// that is not heard in the current mode ("idle") still gets the input and
+// keeps a live tail, at the minimum stage count (24, the BOING floor), and
+// simply has gain 0 in the output matrix. A SPRINGS change is then only a
+// change of output matrix, faded over kSpringsFadeSeconds (20 ms) from
+// wherever the gains are now, so it is click-free even when flipped mid-fade.
+// Why run them rather than start them on demand: a Spring started at the
+// switch would be empty, so switching 1 -> 2 on a ringing tail would leave
+// the right channel almost silent until new input arrives, and no fade can
+// hide an empty tank. Why it is affordable: idle Springs run at the floor
+// stage count, and the stage caps are chosen so every mode, idle Springs
+// included, costs no more than 3-Spring mode (SpringModes.h). 3 Springs is
+// the SPEC §5 worst case anyway, so running idle Springs raises the average
+// load in 1/2-Spring mode but never the peak the budget is written for.
+// After a change, stage counts glide to the new mode (one stage per 8 ms, as
+// a BOING move), so an idle Spring's Chirp grows to full length over a few
+// hundred ms after it becomes audible.
+//
+// Used at M4: DECAY, BOING, TONE, MIX, SPRINGS. Stored but ignored until
+// their milestone: ATTITUDE (M5/M7; always CLEAN), SPLASH, WOBBLE (M7),
+// DRIVE (M5). Until M7, kick() injects a placeholder impulse into the Tank
+// input at the exact sample, so Kick timing is testable (M2); the real
+// thud + crash (ADR 0016) replaces it at M7.
 //
 // Real-time rules: process() never allocates, locks or does I/O. All memory
 // is taken once in prepare(). Output is identical for any block size:
 // parameters are smoothed and applied on a fixed 32-sample control grid
-// that runs across block boundaries.
+// that runs across block boundaries, and the SPRINGS fade advances per sample.
 //
-// Memory: the object is 1,880 bytes (fits in DTCM as a global); delay memory
-// is one pool of Tank::requiredPoolFloats(fs) floats for 3 Springs +
-// decorrelator. Total (memoryBytes(), printed by test_spring): 99,548 bytes
-// at 48 kHz, 197,000 bytes at 96 kHz. It is malloc'd in prepare(); on
-// the Daisy the heap lives in AXI SRAM (512 KB). prepare(fs, block, pool, n)
-// lets the Firmware pass its own buffer (e.g. SDRAM via DSY_SDRAM_BSS) instead.
+// Memory: the object is small (fits in DTCM as a global; exact size printed
+// by test_tank); delay memory is one pool of Tank::requiredPoolFloats(fs)
+// floats for 3 Springs + decorrelator, sized for the most-detuned Spring.
+// Total (memoryBytes(), printed by test_spring and test_tank): about 104 kB
+// at 48 kHz and 206 kB at 96 kHz. It is malloc'd in prepare(); on the Daisy
+// the heap lives in AXI SRAM (512 KB). prepare(fs, block, pool, n) lets the
+// Firmware pass its own buffer (e.g. SDRAM via DSY_SDRAM_BSS) instead.
 
 #include "dsp/Filters.h"
 #include "dsp/Spring.h"
 #include "params/ParamSpec.h"
+#include "params/SpringModes.h"
 
 #include <array>
 #include <cstddef>
@@ -45,6 +74,7 @@ public:
     static constexpr float kLimitReleaseS   = 0.15f;
     static constexpr int   kMaxPendingKicks = 16;
     static constexpr float kKickPlaceholder = 0.5f;    // impulse height (M2 placeholder)
+    static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
 
     Tank() = default;
     ~Tank();
@@ -80,6 +110,8 @@ public:
     float sampleRate() const { return sampleRate_; }
     int   maxBlockSize() const { return maxBlockSize_; }
     const Spring& spring(int i) const { return springs_[static_cast<size_t>(i)]; }
+    // SPRINGS mode now in effect: 0, 1, 2 = 1, 2, 3 Springs.
+    int springsMode() const { return mode_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
 
 private:
@@ -109,7 +141,12 @@ private:
     std::array<float, static_cast<size_t>(ParamId::Count)> tickCoeff_{};
 
     std::array<Spring, kMaxSprings> springs_{};
-    int activeSprings_ = 1;
+
+    // SPRINGS mode and its output-matrix fade (see "SPRINGS switching").
+    int              mode_     = 1;
+    modes::OutMatrix mixFrom_{}, mixTo_{}, mixCur_{};
+    float            fadePos_  = 1.0f; // 0 -> 1 over kSpringsFadeSeconds; 1 = settled
+    float            fadeStep_ = 0.0f;
 
     float* pool_       = nullptr;
     float* ownedPool_  = nullptr;

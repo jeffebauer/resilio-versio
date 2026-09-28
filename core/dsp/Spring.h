@@ -19,9 +19,11 @@
 // than highs, so every echo is smeared into a falling "peeew" (the Chirp).
 // The loop repeats it every round trip, losing a little each time (g < 1).
 //
-// M1 scope: CLEAN only. Not yet here (later milestones): AntiRes Micro-mod
-// floor and detuning (M4/M6), Loop saturation and drive (M5), Clatter/Jolt
-// (M7), WOBBLE (M7).
+// M1 scope: CLEAN only. Detuning (M4) is not done here: the Tank gives each
+// Spring its own detuned SpringSettings (core/params/SpringModes.h); the
+// delay memory is sized for the most-detuned Spring. Not yet here (later
+// milestones): AntiRes Micro-mod floor (M6), Loop saturation and drive (M5),
+// Clatter/Jolt (M7), WOBBLE (M7).
 //
 // Multirate (SPEC §5 mitigation 2, Parker 2011), not done at M1: the chain,
 // LPF(fC) and damping only carry content below fC (< 4.2 kHz), so they could

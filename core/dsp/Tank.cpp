@@ -24,6 +24,7 @@ constexpr std::array<uint32_t, Tank::kMaxSprings> kSeeds{{0x9E3779B9u, 0x7F4A7C1
 // The Tank object itself must stay small: the Firmware keeps it as a global
 // in DTCM (128 KB). Big buffers live in the pool.
 static_assert(sizeof(Spring) < 2048, "Spring object grew: move state into the pool");
+static_assert(Tank::kMaxSprings == modes::kNumSprings, "SpringModes.h tables are for 3 Springs");
 
 Tank::~Tank() { releaseOwnedPool(); }
 
@@ -66,6 +67,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     mix_.setTime(spec(ParamId::Mix).smoothingMs, sampleRate);
     for (auto& s : shelfSplit_) s.setCutoff(kShelfHz, sampleRate);
     limitRelease_ = std::exp(-1.0f / (kLimitReleaseS * sampleRate));
+    fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
     pool_       = ok_ ? pool : nullptr;
@@ -120,15 +122,39 @@ void Tank::controlTick(bool snap)
     const float boing = smoothed_[size_t(ParamId::Boing)];
     const float tone  = smoothed_[size_t(ParamId::Tone)];
 
-    SpringSettings s;
-    s.loopDelaySeconds = map::decayLoopDelaySeconds(decay);
-    s.t60Seconds       = map::decayT60Seconds(decay);
-    s.transitionHz     = map::decayTransitionHz(decay);
-    s.allpassCoeff     = map::boingCoefficient(boing);
-    s.stages           = map::boingStages(boing);
-    s.dampingHz        = map::toneDampingHz(tone);
-    s.highPathLevel    = map::toneHighPathLevel(tone);
-    for (int i = 0; i < activeSprings_; ++i) springs_[size_t(i)].setSettings(s, snap);
+    // SPRINGS: a switch, so never smoothed here. A change starts a fade of
+    // the output matrix from the gains playing right now (mixCur_), so a flip
+    // in the middle of a fade carries on smoothly from where it was.
+    const int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
+    if (snap) {
+        mode_    = mode;
+        mixCur_  = mixTo_ = mixFrom_ = modes::outMatrix(mode);
+        fadePos_ = 1.0f;
+    } else if (mode != mode_) {
+        mode_    = mode;
+        mixFrom_ = mixCur_;
+        mixTo_   = modes::outMatrix(mode);
+        fadePos_ = 0.0f;
+    }
+
+    SpringSettings base;
+    base.loopDelaySeconds = map::decayLoopDelaySeconds(decay);
+    base.t60Seconds       = map::decayT60Seconds(decay);
+    base.transitionHz     = map::decayTransitionHz(decay);
+    base.allpassCoeff     = map::boingCoefficient(boing);
+    base.dampingHz        = map::toneDampingHz(tone);
+    base.highPathLevel    = map::toneHighPathLevel(tone);
+    const int activeStages = modes::boingStages(boing, modes::kStageCap[size_t(mode_)]);
+    for (size_t i = 0; i < springs_.size(); ++i) {
+        // Same T60 for every Spring (g is designed from each Spring's own
+        // round trip), so detuning changes pitch/texture, not tail length.
+        SpringSettings s = base;
+        s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
+        s.transitionHz     *= modes::kDetune[i].transition;
+        s.allpassCoeff     *= modes::kDetune[i].allpassCoeff;
+        s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
+        springs_[i].setSettings(s, snap);
+    }
 }
 
 void Tank::process(const float* inL, const float* inR, float* outL, float* outR, int numSamples)
@@ -148,7 +174,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     }
 
     float mono[kControlInterval];
-    float wet[kControlInterval];
+    float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
         if (tick_ == 0) controlTick(false); // fixed grid, independent of block size
@@ -160,12 +186,42 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const int at = std::min(pendingKicks_[size_t(k)], numSamples - 1) - pos;
             if (at >= 0 && at < n) mono[at] += kKickPlaceholder;
         }
-        springs_[0].process(mono, wet, n);
+        for (size_t s = 0; s < springs_.size(); ++s) springs_[s].process(mono, wet[s], n);
 
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
-            float wl = kWetGain * wet[i];
-            float wr = decorrelator_[1].process(decorrelator_[0].process(wl));
+            // Sources A, B, C, D (D = A decorrelated; always run so its state
+            // is live when 1-Spring mode fades in).
+            float src[modes::kNumSources];
+            src[0] = kWetGain * wet[0][i];
+            src[1] = kWetGain * wet[1][i];
+            src[2] = kWetGain * wet[2][i];
+            src[3] = decorrelator_[1].process(decorrelator_[0].process(src[0]));
+
+            if (fadePos_ < 1.0f) {
+                // SPRINGS fade, smoothstep-shaped t (3t² - 2t³): every gain
+                // moves continuously and starts and ends with zero slope, so
+                // nothing jumps. Equal power: the *squared* gains are faded,
+                // g = sqrt(g_old² + t (g_new² - g_old²)). The sources are
+                // mostly independent, so power (loudness) is the sum of the
+                // squared gains, and that sum then stays constant through the
+                // fade. A plain linear fade would dip ~3 dB half way when
+                // one Spring hands over to another (e.g. R: D -> B at 1 -> 2).
+                // Costs 8 square roots per sample, only during the 20 ms fade.
+                fadePos_ = std::min(1.0f, fadePos_ + fadeStep_);
+                const float t = fadePos_ * fadePos_ * (3.0f - 2.0f * fadePos_);
+                for (int k = 0; k < modes::kNumSources; ++k) {
+                    const float fl = mixFrom_.l[k] * mixFrom_.l[k], tl = mixTo_.l[k] * mixTo_.l[k];
+                    const float fr = mixFrom_.r[k] * mixFrom_.r[k], tr = mixTo_.r[k] * mixTo_.r[k];
+                    mixCur_.l[k] = std::sqrt(std::max(0.0f, fl + t * (tl - fl)));
+                    mixCur_.r[k] = std::sqrt(std::max(0.0f, fr + t * (tr - fr)));
+                }
+            }
+            float wl = 0.0f, wr = 0.0f;
+            for (int k = 0; k < modes::kNumSources; ++k) {
+                wl += mixCur_.l[k] * src[k];
+                wr += mixCur_.r[k] * src[k];
+            }
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

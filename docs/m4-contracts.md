@@ -27,6 +27,8 @@ Add to the sidecar `metrics` object (existing keys unchanged). The review page s
 | `mono_notch_db` | Deepest dip in 200 Hz–5 kHz of the mono-sum power spectrum relative to the stereo-average power spectrum, both 1/3-octave smoothed (8192-point Hann average, T60 segment) | < −6 |
 | `max_step_db_100ms` | Largest absolute change in RMS dB between consecutive 100 ms windows, ignoring windows below −60 dBFS and the first 100 ms after each event onset (event = as in t60) | > 3 |
 
+**Note (lead, after M4):** `max_step_db_100ms` is only meaningful when the input has no new onsets in the measured span (e.g. parameter sweeps over a ringing tail). A hit arriving while the previous tail is still above −40 dBFS isn't an "event", so it reads as a step. Sweeps over rhythmic material set `"ignore_flags": ["max_step_db_100ms"]`.
+
 - `--analyze` computes them for stereo files too (e.g. the Wellspring's stereo wet takes).
 - Tests on synthetic signals: identical L/R → correlation 1, mono loss +3 dB, no notch; independent noise L/R → correlation ≈ 0, mono loss ≈ 0 dB; R = −L → mono loss < −40 dB; R = L delayed 1 ms → a deep notch near 500 Hz; a 6 dB step in level → max_step ≥ 5.
 - Review page: show the four new metrics in each card, with flags. Add a "stereo" filter chip (flagged-stereo only). The `ignore_flags` manifest key (already supported) applies to these too.

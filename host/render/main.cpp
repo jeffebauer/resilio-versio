@@ -85,10 +85,11 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
     const size_t frames = in.frames();
     const float sr = float(in.sampleRate);
 
+    // Output is always stereo, like the Versio's outputs and the Plugin:
+    // the Tank places Springs across L/R even for a mono input.
     Audio out = in;
-    out.channels.assign(in.channels.size(), std::vector<float>(frames));
-    std::vector<float> scratchR(frames);
-    float* dstR = in.channels.size() > 1 ? out.channels[1].data() : scratchR.data();
+    out.channels.assign(2, std::vector<float>(frames));
+    float* dstR = out.channels[1].data();
 
     std::vector<size_t> kickSamples;
     if (autom) {
