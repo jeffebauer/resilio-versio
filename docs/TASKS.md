@@ -88,6 +88,11 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - **When:** decide after M3 profiling shows the Versio's real CPU headroom. Background: [SPEC §10](../SPEC.md)
 - **Optional data to help:** Wellspring takes **A-L / A-R** (each tank alone) in the [recipe](recording-recipe.md)
 
+### TENSION instead of BOING? Explore before tuning BOING
+- **Idea (yours, 28 Sep):** real tanks have no BOING and usually no decay knob; their character comes from which tank is fitted. Replace BOING with **TENSION** (which tank: echo spacing + chirp + brightness together, tight/pingy ↔ loose/boingy) and make **DECAY feedback only** (how long it rings, no pitch bend).
+- **Trade-offs:** clearer knob jobs and closer to real springs (it also absorbs "BOING shortens decay"); less direct control of the cartoon boing; supersedes ADRs 0006/0007/0012 with a new one. Middle option: rename and widen BOING into TENSION, keep DECAY's size link.
+- **Next step when you want it:** prototype renders (same rimshot and chord, TENSION tight → loose at fixed DECAY, next to today's BOING), alongside the chirp-direction A/B (task 7)
+
 ## What to send Claude
 
 - **Recordings:** just say they're done. Claude commits and analyses them.
@@ -98,7 +103,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- M8 prep (running, 4 agents): sweet-spot sweeps (dead zones and cliffs per knob) + wet-level report; reference ingest (one command turns your recordings into aligned A/B pages) + pitch tracker for WOBBLE; chirp direction behind one switch with a tuned highs-later version and a new A/B page; 
+- M8 prep: sweet-spot sweeps ✓, reference ingest ✓, firmware flash trim ✓; chirp direction switch + new A/B page (running)
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
