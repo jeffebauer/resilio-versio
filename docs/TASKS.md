@@ -70,7 +70,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M6 anti-ringing: next (Micro-mod floor, resonance metric validation)
+- M6 anti-ringing (running): first recalibrating the Ringing metric (it currently "fails" 24 of 45 real tanks), then the Micro-mod floor
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - M6 anti-ringing: after M5
