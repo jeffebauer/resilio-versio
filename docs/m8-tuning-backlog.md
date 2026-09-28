@@ -40,3 +40,9 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 - **Wet level varies 5–8 dB with material** (outside the Howl zone): broadband and low-heavy material excites the tank more than narrow bright tones. Suggested: a slow (~300 ms) level follower on the tank's excitation band with a gentle inverse trim.
 - **BOING** has the smallest step-to-step change of any knob (no dead zone, but a narrow range). Revisit with the chirp-direction switch.
 - **Expected, not bugs:** DECAY 0.9 → 1 in KICKED (the Howl zone, ADR 0002); MIX 0 → 0.1 (a measurement artefact).
+
+## Round 1 status (28 Sep 2026, commit `a4fb02e`)
+- **Done, awaiting the owner's ears:** 5 (flam: first-arrival spread 23–77 → ~1 ms; 1 Spring correlation 0.43 → 0.28), 4 (WOBBLE on first echoes: ~25 cents on a snare at 1), 2 (SPLASH DRIVEN/KICKED: +6–7 / +10–12 dB crash on a rimshot at −18…−3 dBFS; level-adaptive Hit), 3 (DRIVE: no sweet-spot dead zones), 6-gain (wet spread 2.5–4.4 dB at DECAY ≤ 0.75; still ~8 dB at DECAY 1, held sines between long-loop modes).
+- **Merge fixes:** CLEAN pickup outK 4.5 → 4.0; kMorphSeconds 30 → 40 ms.
+- **Waiting on owner decisions:** 1 (BOING/decay, chirp direction, TENSION), SPLASH in CLEAN.
+- **Watch:** CPU worst case est. 65–66% (target 65%); WOBBLE 1 may be too deep on held notes; held-chord notes can lean L/R.

@@ -4,7 +4,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 **Last updated:** 28 Sep 2026 (M8 prep started) (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp-direction decision needed
 
-**Plugin installed in Ableton:** M7 + limiter fix (commit `81f8124`): SPLASH, the real Kick and WOBBLE work; the held-note ticks around DECAY noon are fixed. Installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan).
+**Plugin installed in Ableton:** M8 tuning round 1 (commit `a4fb02e`), installed 28 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New: no 3-Spring flam, wider 1 Spring, WOBBLE on the first echoes, audible SPLASH (DRIVEN/KICKED), DRIVE colour from ~9 o'clock and in the tail, steadier wet level. Unchanged until you decide: chirp direction, SPLASH in CLEAN.
 
 ## To do (suggested order)
 
@@ -75,6 +75,14 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - The sweeps show SPLASH does **nothing** in CLEAN (by the original spec: "mild HF emphasis only"). It's the only knob with a fully dead range.
 - [ ] Should CLEAN get a real, gentler splash (a polite tank still clatters a little), or should CLEAN stay splash-free on purpose?
 
+### 8c. Listen: M8 tuning round 1 (≈20 min) · the build is installed
+- Before/after WAV pairs (open in Ableton or Finder):
+  - `renders/m8_round1/space_motion/springs/`: hits and held chord at SPRINGS 1/2/3. **No flam in 3?** **2 still as spacious** (its width now comes from diffusion, not timing)? **1 wider but not phasey?**
+  - `renders/m8_round1/space_motion/wobble/`: WOBBLE 0/0.5/0.75/1 on hits and held tones. **Do snare echoes waver at 0.75+?** **Is WOBBLE 1 too much** on held notes (~45–65 cents)?
+  - `renders/m8_round1/dynamics_colour/before|after/`: rimshot and hits at −9 and −4 dBFS, SPLASH 0/0.5/1 and DRIVE 0/0.5/1 per ATTITUDE. **A bright crash on top at SPLASH 1, ghost notes quiet?** **KICKED DRIVE 1 gritting the tail?** **CLEAN DRIVE a gentle tint?**
+- [ ] Held chords: notes can now lean slightly left or right (side effect of the new width). OK or distracting?
+- [ ] Or just play the plugin (use a Utility before it to reach about −4 dBFS peaks, see [ableton-setup.md](ableton-setup.md))
+
 ### 9. Listen + M7 questions (≈20 min) · the build is installed
 - Open from Finder: `renders/m7_splash/index.html` (ATTITUDE × SPLASH on hits), `renders/m7_wobble/index.html` (WOBBLE on held tones), and the Kick files in `renders/m7_kick/` (each ATTITUDE: singles, a pair, a 12-per-second train). Or play the plugin. Background: [m7-integration.md](m7-integration.md)
 - [ ] KICKED crash big enough? DRIVEN moderate? Kick a tight thud + crash, clean on the fast train?
@@ -109,7 +117,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
 - M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- M8 tuning round 1 (running, 2 agents in separate worktrees): (A) 3-Spring flam, 1-Spring width, WOBBLE on the early echoes; (B) SPLASH crash level + level-adaptive hit detection, DRIVE into the tail, consistent wet level. Not touched until you decide: chirp direction, SPLASH in CLEAN, TENSION. After the merge: full tests, then a new plugin build for you
+- Round 2 after your round-1 listen (8c) and decisions (7, 8b, TENSION). Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
@@ -118,6 +126,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: M8 tuning round 1 merged and installed (flam gone, 1 Spring wider, early WOBBLE, audible SPLASH, DRIVE without dead zones, wet level spread 5.7–7.8 → 2.5–4.4 dB)
 
 - 28 Sep 2026: firmware flash trimmed (release 75%, profile 83%, was 98.5%)
 
