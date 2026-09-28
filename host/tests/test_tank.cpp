@@ -535,6 +535,57 @@ void stereoWidthAndMono()
     }
 }
 
+// ---- 3b. First arrivals: no flam (M8 backlog item 5) ---------------------------------
+// An impulse through each mode. The first echo's arrival = the energy
+// centroid below 1 kHz (the Loop's echo body; the high path's faint HF
+// echoes are not what reads as a flam; a centroid, not the loudest point,
+// because a long Chirp's envelope has several near-equal peaks) over the
+// first 1.2 base L (before any second echo), in L, in R and in the mono sum.
+// (D's short diffusion moves L and R alike, a few ms after mono.)
+// Their spread must stay <= 8 ms: Springs landing further apart read as a
+// flam. M4's staggered pickups: 11-37 ms between L and R in 2 Springs, and
+// in 3 Springs the centre Spring 20-40 ms before the sides.
+void firstArrivals()
+{
+    const size_t at = size_t(0.05f * kFs), n = at + size_t(0.2f * kFs);
+    Buf in(n, 0.0f);
+    in[at] = 0.5f;
+    double worst = 0;
+    char worstAt[64] = {};
+    bool ok = true;
+    for (float decay : {0.0f, 0.5f, 1.0f})
+        for (int m = 0; m < 3; ++m) {
+            Settings st{decay, 0.5f, 0.5f, 1.0f, m};
+            const Stereo o = renderWith(st, in);
+            Buf monoSum(n);
+            for (size_t i = 0; i < n; ++i) monoSum[i] = o.l[i] + o.r[i];
+            const Buf& mono = monoSum;
+            const size_t win = size_t(1.2f * rv::map::decayLoopDelaySeconds(decay) * kFs);
+            double first = 1e9, last = -1e9;
+            for (const Buf* raw : {&o.l, &o.r, &mono}) {
+                const Buf lp = onePoleLp(onePoleLp(*raw, 1000.0f), 1000.0f);
+                double sum = 0, moment = 0;
+                for (size_t i = 0; i < win && at + i < n; ++i) {
+                    const double e = double(lp[at + i]) * lp[at + i];
+                    sum += e;
+                    moment += e * double(i);
+                }
+                const double bestMs = sum > 0 ? 1000.0 * moment / sum / kFs : 0.0;
+                first = std::min(first, bestMs);
+                last  = std::max(last, bestMs);
+            }
+            const double spread = last - first;
+            ok &= spread <= 8.0;
+            if (spread > worst) {
+                worst = spread;
+                std::snprintf(worstAt, sizeof worstAt, "%s DECAY %.1f", kModeName[m], decay);
+            }
+        }
+    std::snprintf(msg, sizeof msg, "First arrivals (L, R, mono): spread <= 8 ms in every mode, DECAY 0/0.5/1 (worst "
+                                   "%.1f ms, %s)", worst, worstAt);
+    check(ok, msg);
+}
+
 // ---- 4. SPRINGS switching is click-free ------------------------------------------
 void switchingClickFree()
 {
@@ -798,6 +849,7 @@ int main()
     detuning();
     levelMatch();
     stereoWidthAndMono();
+    firstArrivals();
     switchingClickFree();
     decaySweep();
     kickReachesAllSprings();

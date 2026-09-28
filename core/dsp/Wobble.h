@@ -19,6 +19,11 @@
 // from reset() (one sinf per 32 samples) and linearly interpolated per
 // sample, so output is block-size independent and costs ~2 ops per sample.
 // Sample-rate aware: D scales with fs, rates are in Hz.
+//
+// Transport role (M8): the same generator with the early depth curve
+// (splash::wobbleEarlyDepthSamples) and its own rate ratio. The Tank runs
+// one, shared by all Springs, as an offset on every pickup read, so the
+// first echoes waver too (SplashVoicing.h "WOBBLE on the first echoes").
 
 #include "dsp/Filters.h"
 #include "dsp/Seed.h"
@@ -30,8 +35,11 @@ namespace rv::dsp {
 
 class Wobble {
 public:
-    // springIndex picks the rate ratio (0..2); seed makes it independent.
-    void prepare(float sampleRate, int springIndex, uint32_t seed);
+    enum class Role : uint8_t { Loop, Transport };
+
+    // springIndex picks the rate ratio (0..2; ignored for the Transport);
+    // seed makes it independent.
+    void prepare(float sampleRate, int springIndex, uint32_t seed, Role role = Role::Loop);
     void reset();
 
     // Control rate: smoothed WOBBLE Normalised value (Gliding tier, ADR 0015).
@@ -60,6 +68,7 @@ private:
 
     float    sampleRate_ = 48000.0f;
     float    rateScale_  = 1.0f;
+    Role     role_       = Role::Loop;
     uint32_t seed_       = 1;
     Rng      rng_;
 

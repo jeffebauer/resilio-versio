@@ -304,15 +304,61 @@ inline float wobbleSineWeight(float w) { return kWobbleSineMin + (kWobbleSineMax
 // they never lock (unrelated ratios).
 inline constexpr std::array<float, 3> kWobbleSpringRate{{0.87f, 1.0f, 1.13f}};
 
-// Modulation amplitude D in samples for WOBBLE w at sample rate fs (and a
-// Spring rate scale). 0 at w = 0.
-inline float wobbleDepthSamples(float w, float sampleRate, float rateScale = 1.0f)
+// Modulation amplitude D in samples that gives a peak shift of c cents at
+// WOBBLE w's rate and sine share (the formula above), sample rate fs.
+inline float wobbleDepthForCents(float c, float w, float sampleRate, float rateScale)
 {
-    const float c = wobbleCents(w);
     if (c <= 0.0f) return 0.0f;
     const float f = wobbleRateHz(w) * rateScale, ws = wobbleSineWeight(w);
     const float ratio = std::exp(c * (0.693147181f / 1200.0f)) - 1.0f;
     return ratio * sampleRate / (ws * 2.0f * map::kPi * f + (1.0f - ws) * 2.0f * kWobbleRandomRateRatio * f);
+}
+// Loop modulation amplitude D in samples for WOBBLE w at sample rate fs (and
+// a Spring rate scale). 0 at w = 0.
+inline float wobbleDepthSamples(float w, float sampleRate, float rateScale = 1.0f)
+{
+    return wobbleDepthForCents(wobbleCents(w), w, sampleRate, rateScale);
+}
+
+// ---- WOBBLE on the first echoes: the transport (M8, backlog item 4) ----------
+// The Loop wobble above builds up over repeats (per pass × tail factor), so a
+// drum's first echoes barely move: at DECAY noon the first echo carried only
+// the tap's share (~half a pass, ~6 cents at WOBBLE 1), inaudible on a snare.
+// Tape wobble moves the first echo too. So one more generator, the transport,
+// shared by all Springs (like one tape transport feeding the tank, so the
+// Springs' first echoes move together and never flange against each other),
+// moves every Spring's pickup read. It is heard once (a read of the delay
+// line, not inside the Loop), so it does not accumulate: the first echo
+// wavers by c_e(w) cents at once and the tail adds the Loop's build-up on top.
+//
+// Early depth c_e(w), set by the zone edges of ADR 0008 (peak cents on the
+// first echo, per zone edge; same rate and sine share as the Loop):
+//   Drift      0 – 0.50:  0 → 2 cents, linear   (under the pitch JND: in tune)
+//   transition 0.50–0.75: 2 → 14 cents, geometric (becoming audible)
+//   Warble     0.75–1.00: 14 → 36 cents, geometric (a snare's echoes audibly
+//                                     waver, hit to hit and echo to echo)
+// An exponential curve through 0 can't be both this flat in the Drift zone
+// and this steep in the transition, hence the three anchors. The slope
+// changes at the zone edges, the value never jumps; WOBBLE glides anyway.
+// Placeholders until the Magneto WOW & FLUTTER takes (ADR 0020) calibrate
+// them: with kWobbleMaxCents above, these are all the WOBBLE depth numbers.
+constexpr float kWobbleEarlyDriftCents  = 2.0f;  // at kDriftEnd
+constexpr float kWobbleEarlyWarbleCents = 14.0f; // at kWarbleStart
+constexpr float kWobbleEarlyMaxCents    = 36.0f; // at WOBBLE 1
+inline float wobbleEarlyCents(float w)
+{
+    if (w <= 0.0f) return 0.0f;
+    if (w <= kDriftEnd) return kWobbleEarlyDriftCents * w / kDriftEnd;
+    if (w <= kWarbleStart)
+        return map::expLerp(kWobbleEarlyDriftCents, kWobbleEarlyWarbleCents, (w - kDriftEnd) / (kWarbleStart - kDriftEnd));
+    return map::expLerp(kWobbleEarlyWarbleCents, kWobbleEarlyMaxCents, std::fmin(1.0f, (w - kWarbleStart) / (1.0f - kWarbleStart)));
+}
+// The transport's rate ratio (unrelated to the Springs' 0.87 / 1.0 / 1.13).
+constexpr float kWobbleTransportRate = 0.94f;
+// Transport amplitude in samples (pickup read offset). 0 at w = 0.
+inline float wobbleEarlyDepthSamples(float w, float sampleRate, float rateScale = kWobbleTransportRate)
+{
+    return wobbleDepthForCents(wobbleEarlyCents(w), w, sampleRate, rateScale);
 }
 // Upper bound of |m| (samples) over the whole knob, for sizing delay memory:
 // D·(wS + wR) = D. Largest at mid-knob where the rate is still low.

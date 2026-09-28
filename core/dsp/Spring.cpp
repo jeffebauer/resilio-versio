@@ -121,6 +121,7 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.transitionHz == settings_.transitionHz && s.allpassCoeff == settings_.allpassCoeff
                    && s.stages == settings_.stages && s.dampingHz == settings_.dampingHz
                    && s.highPathLevel == settings_.highPathLevel && s.tapRatio == settings_.tapRatio
+                   && s.tapOffsetSeconds == settings_.tapOffsetSeconds
                    && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
                    && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl
                    && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz;
@@ -156,6 +157,7 @@ void Spring::updateCoefficients()
     highpass_.setHighpass(kHighPassRatio * s.transitionHz, 0.7071f, sampleRate_);
     highPathLevel_ = s.highPathLevel;
     tapRatio_      = std::clamp(s.tapRatio, 0.05f, 0.95f);
+    tapOffset_     = s.tapOffsetSeconds * sampleRate_;
 
     // Loop gain g from the target T60 and the *actual* round trip. A tail
     // loses 60 dB in T60 seconds; one trip takes RT seconds, so each trip may
@@ -283,10 +285,14 @@ inline float Spring::advanceModulation()
     return modNow_;
 }
 
-inline float Spring::processLow(float in, float lMod)
+inline float Spring::processLow(float in, float lMod, float tapMod)
 {
     const float fb  = readLow(lMod);
-    const float tap = readLow(tapRatio_ * lMod); // pickup ~half way: first echo after ~half a round trip
+    // Pickup ~half way: first echo after ~half a round trip (+ the fixed
+    // stagger and WOBBLE's transport).
+    float tapAt = tapRatio_ * lMod + tapOffset_ + tapMod;
+    tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
+    const float tap = readLow(tapAt);
 
     float x = dc_.process(in + g_ * loopSat_.process(fb));
 
@@ -351,8 +357,8 @@ inline float Spring::processHigh(float in, float lhMod)
     return fb;
 }
 
-void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples, float* out,
-                     int n)
+void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples,
+                     const float* tapSamples, float* out, int n)
 {
     // Read limits: the delay memory holds the longest L plus all modulation
     // (lowDelaySize); the clamp only guards against a caller passing more.
@@ -367,7 +373,7 @@ void Spring::process(const float* in, const float* highIn, const float* lFrac, c
         const float mod  = advanceModulation() + (lFrac ? lFrac[i] : 0.0f);
         float       lMod = lCur_ * mod + (lSamples ? lSamples[i] : 0.0f);
         lMod = lMod < 2.0f ? 2.0f : (lMod > lMax ? lMax : lMod);
-        const float low  = processLow(x, lMod);
+        const float low  = processLow(x, lMod, tapSamples ? tapSamples[i] : 0.0f);
         const float high = processHigh(xh, lhCur_); // high path unmodulated, see "Micro-mod floor"
         out[i] = low + highPathLevel_ * high;
     }

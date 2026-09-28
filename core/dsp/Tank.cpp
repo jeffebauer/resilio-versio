@@ -13,10 +13,10 @@ namespace rv {
 
 namespace {
 
-// Decorrelator D (SPEC §4.3): two short allpasses at unrelated lengths.
+// Decorrelator D (SPEC §4.3): short allpasses at unrelated lengths (SpringModes.h).
 // Same spectrum and tail as its input (the mid signal), different phase.
 // Used only in the side (+D on L, -D on R), so it never reaches the mono sum.
-constexpr std::array<float, 2> kDiffuserSeconds{{0.0023f, 0.0037f}};
+constexpr auto kDiffuserSeconds = modes::kDecorrSeconds;
 
 int diffuserSize(float sampleRate, size_t i) { return int(std::ceil(kDiffuserSeconds[i] * sampleRate)) + 1; }
 
@@ -27,6 +27,7 @@ constexpr std::array<uint32_t, Tank::kMaxSprings> kSeeds{{0x9E3779B9u, 0x7F4A7C1
 constexpr uint32_t kSplashSeed = 0x51A5E001u;
 constexpr uint32_t kKickSeed   = 0x4B1C0002u;
 constexpr std::array<uint32_t, Tank::kMaxSprings> kWobbleSeeds{{0x0B0B1E01u, 0x0B0B1E02u, 0x0B0B1E03u}};
+constexpr uint32_t kTransportSeed = 0x0B0B1E04u;
 
 // Limiter backstop: identity below the knee, then dsp::softClip scaled into
 // the room between knee and threshold. softClip has slope 1 and no curvature
@@ -102,6 +103,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
+    transport_.prepare(sampleRate, 0, kTransportSeed, dsp::Wobble::Role::Transport);
     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
@@ -121,6 +123,7 @@ void Tank::bindPool(float* pool)
     for (size_t i = 0; i < decorrelator_.size(); ++i) {
         decorrelator_[i].buf  = p;
         decorrelator_[i].size = diffuserSize(sampleRate_, i);
+        decorrelator_[i].c    = modes::kDecorrCoeff;
         p += decorrelator_[i].size;
     }
 }
@@ -140,6 +143,7 @@ void Tank::reset()
     splash_.reset();
     kick_.reset();
     for (auto& w : wobble_) w.reset();
+    transport_.reset();
     hfGainFrom_ = hfGainTo_ = 1.0f;
     levelAcc_ = levelMs_ = 0.0f;
     compDrive_ = -1.0f;
@@ -211,6 +215,7 @@ void Tank::controlTick(bool snap)
     splash_.set(attW_, splashAmt);
     kick_.setAttitude(attW_);
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)]);
+    transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
     // Tank level for KICKED's energy-dependent rattle: smoothed RMS of the
     // wet mid over the last tick, scaled by SPLASH.
     levelMs_ += levelCoeff_ * (levelAcc_ * (1.0f / float(kControlInterval)) - levelMs_);
@@ -277,6 +282,7 @@ void Tank::controlTick(bool snap)
         s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA,
                                          -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         s.tapRatio          = modes::kPickupTap[i];
+        s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i];
         s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
         s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
         springs_[i].setSettings(s, snap);
@@ -301,7 +307,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval];
     float clatter[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
-    float lFrac[kControlInterval], lSamples[kControlInterval];
+    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -333,13 +339,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             mono[i] = tilt_.process(driven[i]) + kickLoop[i];
             high[i] = (mono[i] + clatter[i]) * (hfGainFrom_ + hfStep * float(tick_ + i));
         }
+        transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
                 lSamples[i] = wobble_[s].next();
             }
-            springs_[s].process(mono, high, lFrac, lSamples, wet[s], n);
+            springs_[s].process(mono, high, lFrac, lSamples, tapSamples, wet[s], n);
         }
 
         for (int i = 0; i < n; ++i) {
@@ -376,7 +383,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // D: mid with its phase scrambled (always running, so its state
             // is live whatever the mode). It goes into L and R with opposite
             // signs, so it widens the image and cancels exactly in mono.
-            const float d = mixCur_.decorr * decorrelator_[1].process(decorrelator_[0].process(mid));
+            float dd = mid;
+            for (auto& ap : decorrelator_) dd = ap.process(dd);
+            const float d = mixCur_.decorr * dd;
             // Output pickup (DriveOut), one per channel.
             // The Kick's direct thump joins the mid here: centred, mono-safe,
             // coloured by the pickups like the tank body moving under them.

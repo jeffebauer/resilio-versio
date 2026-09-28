@@ -4,11 +4,12 @@
 
 namespace rv::dsp {
 
-void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed)
+void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed, Role role)
 {
     sampleRate_ = sampleRate;
+    role_       = role;
     const int s = springIndex < 0 ? 0 : (springIndex > 2 ? 2 : springIndex);
-    rateScale_  = splash::kWobbleSpringRate[size_t(s)];
+    rateScale_  = role == Role::Transport ? splash::kWobbleTransportRate : splash::kWobbleSpringRate[size_t(s)];
     seed_       = mixSeed(seed);
     amount_     = -1.0f;
     setAmount(0.0f);
@@ -32,7 +33,8 @@ void Wobble::setAmount(float wobble)
 {
     if (wobble == amount_) return;
     amount_ = wobble;
-    depth_  = splash::wobbleDepthSamples(wobble, sampleRate_, rateScale_);
+    depth_  = role_ == Role::Transport ? splash::wobbleEarlyDepthSamples(wobble, sampleRate_, rateScale_)
+                                       : splash::wobbleDepthSamples(wobble, sampleRate_, rateScale_);
     rateHz_ = splash::wobbleRateHz(wobble) * rateScale_;
     sineW_  = splash::wobbleSineWeight(wobble);
     const float every = float(splash::kControlInterval) / sampleRate_;
