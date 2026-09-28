@@ -10,8 +10,9 @@ Measures what the Renderer's sidecar metrics don't:
   the lows (200-500 Hz) arrive than the highs (2-4 kHz) within the first
   repeat. Real-tank IRs start with a broadband pulse (dry signal or direct
   coupling) that swamps the first chirp, so this reads ~0 or negative for
-  them. A proper method tracks chirp ridges in later echoes (SPEC ref 5);
-  planned for M8 (ADR 0021).
+  them. Superseded by tools/ir_dispersion.py, which tracks the chirp ridge
+  across all later echoes and is validated (--selftest, --renders); see
+  docs/ir-dispersion-study.md.
 - brightness_db: energy at 3-6 kHz relative to 0.7-1.4 kHz, over the tail.
 - t60_s: from the file's sidecar JSON (rv_render --analyze), if present.
 
