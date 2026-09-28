@@ -21,6 +21,12 @@ DEST="$HOME/Library/Audio/Plug-Ins"
 rm -rf "$DEST/Components/Resilio Versio.component" "$DEST/VST3/Resilio Versio.vst3"
 cp -R "$ART/AU/Resilio Versio.component" "$DEST/Components/"
 cp -R "$ART/VST3/Resilio Versio.vst3" "$DEST/VST3/"
+# Sign ad hoc after copying. JUCE only signs in its copy-after-build step,
+# which is off (RV_INSTALL_PLUGIN), so the artefacts' signatures are
+# incomplete; macOS/Ableton won't load a bundle whose signature doesn't verify.
+for b in "$DEST/Components/Resilio Versio.component" "$DEST/VST3/Resilio Versio.vst3"; do
+    codesign --force --deep --sign - "$b" >/dev/null
+done
 # Record the version OUTSIDE the bundles: writing into a signed bundle breaks
 # its code signature and macOS/Ableton then refuse to load it.
 mkdir -p "$REPO/dist"

@@ -4,7 +4,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 **Last updated:** 28 Sep 2026 (IR library added) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M6 built; M4/M5 need your listen · chirp-direction decision needed
 
-**Plugin installed in Ableton:** M5 build (commit `d73d818`), installed 28 Sep 14:00. It only changes when Claude installs a milestone and notes it here. **Rescan plug-ins** after any change.
+**Plugin installed in Ableton:** M5 + M6 + DRIVE retune (commit `21a10c1`), installed 28 Sep 15:57. **Rescan plug-ins** (hold ⌥ and click Rescan) to pick it up. DRIVE is now clearly audible from noon; KICKED Howl wanders like a siren. SPLASH and WOBBLE still do nothing until the M7 build.
 
 ## To do (suggested order)
 
@@ -82,7 +82,6 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ## Waiting on Claude (no action needed)
 
 - M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): running
 - M7 components built and merged (Splash, Kick, WOBBLE, all tested stand-alone). Next: wire them into the Tank after the DRIVE retune, then a new plugin build for you
 - BOING retune: after your chirp-direction decision (task 7)
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
@@ -91,6 +90,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 28 Sep 2026: DRIVE retune ([ADR 0022](adr/0022-drive-retune.md)): DRIVE clearly audible from noon, level constant. Installed in Ableton
 
 - 28 Sep 2026: M6 anti-ringing ([write-up](m6-metric-calibration.md)): a Ringing test that passes real tanks, the Micro-mod floor (inaudible, ≤ 0.11 cents), 0 of 270 grid cells ring
 
