@@ -67,6 +67,28 @@ def load_sidecar(path):
 IGNORE_FLAGS = frozenset()  # set from manifest ignore_flags in main()
 
 
+def is_stereo_flagged(metrics, ignore=frozenset()):
+    """True if any of the M4/Stream E stereo metrics fail their threshold
+    (docs/m4-contracts.md Stream E). `null`/absent (mono files, or old
+    sidecars written before these metrics existed) never flags."""
+    if not metrics:
+        return False
+    metrics = {k: v for k, v in metrics.items() if k not in ignore}
+    sc = metrics.get("stereo_correlation")
+    if isinstance(sc, (int, float)) and sc > 0.5:
+        return True
+    ml = metrics.get("mono_loss_db")
+    if isinstance(ml, (int, float)) and ml < -1.5:
+        return True
+    mn = metrics.get("mono_notch_db")
+    if isinstance(mn, (int, float)) and mn < -6:
+        return True
+    ms = metrics.get("max_step_db_100ms")
+    if isinstance(ms, (int, float)) and ms > 3:
+        return True
+    return False
+
+
 def is_flagged(metrics, ignore=frozenset()):
     if not metrics:
         return False
@@ -81,6 +103,8 @@ def is_flagged(metrics, ignore=frozenset()):
         return True
     rp = metrics.get("resonance_peak_db")
     if isinstance(rp, (int, float)) and rp > 12:
+        return True
+    if is_stereo_flagged(metrics, ignore):
         return True
     return False
 
@@ -131,6 +155,7 @@ def build_renders(out_dir, manifest):
             "metrics": metrics,
             "spectrogram": sidecar.get("spectrogram"),
             "flagged": is_flagged(metrics, IGNORE_FLAGS),
+            "stereoFlagged": is_stereo_flagged(metrics, IGNORE_FLAGS),
         }
         renders.append(render)
     return renders
@@ -164,6 +189,7 @@ def build_references(out_dir, reference_dirs):
                 "metrics": metrics,
                 "spectrogram": sidecar.get("spectrogram"),
                 "flagged": is_flagged(metrics, IGNORE_FLAGS),
+                "stereoFlagged": is_stereo_flagged(metrics, IGNORE_FLAGS),
             })
     return references
 

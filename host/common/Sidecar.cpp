@@ -16,6 +16,10 @@ json::Value metricsToJson(const metrics::Metrics& m)
     v.set("nan_inf_count", json::Value::makeNumber(double(m.nanInfCount)));
     v.set("clip_count", json::Value::makeNumber(double(m.clipCount)));
     v.set("click_count", json::Value::makeNumber(double(m.clickCount)));
+    v.set("stereo_correlation", std::isnan(m.stereoCorrelation) ? json::Value::makeNull() : json::Value::makeNumber(m.stereoCorrelation));
+    v.set("mono_loss_db", std::isnan(m.monoLossDb) ? json::Value::makeNull() : json::Value::makeNumber(m.monoLossDb));
+    v.set("mono_notch_db", std::isnan(m.monoNotchDb) ? json::Value::makeNull() : json::Value::makeNumber(m.monoNotchDb));
+    v.set("max_step_db_100ms", std::isnan(m.maxStepDb100ms) ? json::Value::makeNull() : json::Value::makeNumber(m.maxStepDb100ms));
     return v;
 }
 
@@ -32,6 +36,16 @@ metrics::Metrics jsonToMetrics(const json::Value& v)
     m.nanInfCount = long(v.get("nan_inf_count", 0.0));
     m.clipCount = long(v.get("clip_count", 0.0));
     m.clickCount = long(v.get("click_count", 0.0));
+    // Missing entirely (old sidecars, pre-M4) or explicit JSON null both
+    // mean "not measured" -> NaN, same treatment as t60_s/resonance_peak_db.
+    const json::Value* corr = v.find("stereo_correlation");
+    m.stereoCorrelation = (corr && !corr->isNull()) ? corr->numberValue() : std::nan("");
+    const json::Value* loss = v.find("mono_loss_db");
+    m.monoLossDb = (loss && !loss->isNull()) ? loss->numberValue() : std::nan("");
+    const json::Value* notch = v.find("mono_notch_db");
+    m.monoNotchDb = (notch && !notch->isNull()) ? notch->numberValue() : std::nan("");
+    const json::Value* step = v.find("max_step_db_100ms");
+    m.maxStepDb100ms = (step && !step->isNull()) ? step->numberValue() : std::nan("");
     return m;
 }
 

@@ -215,22 +215,130 @@ void clickCountFlagsInjectedStep()
     check(rv::metrics::compute({clean}, sr).clickCount == 0, "click_count: 0 for a clean sine (no injected step)");
 }
 
+// Synthetic stereo signals per docs/m4-contracts.md Stream E's test list.
+void stereoMetricsOnSyntheticSignals()
+{
+    const float sr = 48000.0f;
+    const size_t n = size_t(2.0 * double(sr));
+    std::mt19937 rngL(11), rngR(22);
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+
+    // identical L/R -> correlation 1, mono loss +3 dB, no notch.
+    {
+        std::vector<float> L(n);
+        for (size_t i = 0; i < n; ++i) L[i] = dist(rngL) * 0.5f;
+        std::vector<float> R = L;
+        rv::metrics::Metrics m = rv::metrics::compute({L, R}, sr);
+        check(!std::isnan(m.stereoCorrelation) && std::fabs(m.stereoCorrelation - 1.0) < 1e-6,
+              "stereo_correlation: identical L/R -> 1.0");
+        check(!std::isnan(m.monoLossDb) && std::fabs(m.monoLossDb - 3.0) < 0.1,
+              "mono_loss_db: identical L/R -> +3 dB");
+        check(!std::isnan(m.monoNotchDb) && m.monoNotchDb > -1.0,
+              "mono_notch_db: identical L/R -> no notch (~0 dB)");
+    }
+
+    // independent noise L/R -> correlation ~= 0, mono loss ~= 0 dB.
+    {
+        std::vector<float> L(n), R(n);
+        for (size_t i = 0; i < n; ++i) { L[i] = dist(rngL) * 0.5f; R[i] = dist(rngR) * 0.5f; }
+        rv::metrics::Metrics m = rv::metrics::compute({L, R}, sr);
+        char what[128];
+        std::snprintf(what, sizeof what, "stereo_correlation: independent noise -> ~0 (got %.3f)",
+                      std::isnan(m.stereoCorrelation) ? -9.0 : m.stereoCorrelation);
+        check(!std::isnan(m.stereoCorrelation) && std::fabs(m.stereoCorrelation) < 0.1, what);
+        std::snprintf(what, sizeof what, "mono_loss_db: independent noise -> ~0 dB (got %.2f)",
+                      std::isnan(m.monoLossDb) ? -999.0 : m.monoLossDb);
+        check(!std::isnan(m.monoLossDb) && std::fabs(m.monoLossDb) < 0.5, what);
+    }
+
+    // R = -L -> mono loss < -40 dB.
+    {
+        std::vector<float> L(n), R(n);
+        for (size_t i = 0; i < n; ++i) { L[i] = dist(rngL) * 0.5f; R[i] = -L[i]; }
+        rv::metrics::Metrics m = rv::metrics::compute({L, R}, sr);
+        check(!std::isnan(m.monoLossDb) && m.monoLossDb < -40.0, "mono_loss_db: R = -L -> < -40 dB");
+    }
+
+    // R = L delayed 1 ms -> a deep notch near 500 Hz (comb filter, first
+    // null at 1 / (2 * delay)). White noise gives a broadband comb.
+    {
+        std::vector<float> L(n);
+        for (size_t i = 0; i < n; ++i) L[i] = dist(rngL) * 0.5f;
+        const size_t delaySamples = size_t(0.001 * double(sr)); // 1 ms
+        std::vector<float> R(n, 0.0f);
+        for (size_t i = delaySamples; i < n; ++i) R[i] = L[i - delaySamples];
+        rv::metrics::Metrics m = rv::metrics::compute({L, R}, sr);
+        check(!std::isnan(m.monoNotchDb) && m.monoNotchDb < -6.0,
+              "mono_notch_db: R = L delayed 1ms -> deep notch (< -6 dB)");
+    }
+
+    // A 6 dB step in level -> max_step >= 5. Independent noise so the
+    // step is a level change, not a stereo-image change; step lands
+    // exactly on a 100ms window boundary.
+    {
+        const size_t winLen = size_t(0.1 * double(sr));
+        const size_t stepAt = winLen * 5; // 500 ms in
+        std::vector<float> L(n), R(n);
+        for (size_t i = 0; i < n; ++i) {
+            const float level = i < stepAt ? 0.1f : 0.2f; // +6.02 dB step
+            L[i] = dist(rngL) * level;
+            R[i] = dist(rngR) * level;
+        }
+        rv::metrics::Metrics m = rv::metrics::compute({L, R}, sr);
+        char what[128];
+        std::snprintf(what, sizeof what, "max_step_db_100ms: 6 dB level step -> >= 5 dB (got %s)",
+                      std::isnan(m.maxStepDb100ms) ? "null" : std::to_string(m.maxStepDb100ms).c_str());
+        check(!std::isnan(m.maxStepDb100ms) && m.maxStepDb100ms >= 5.0, what);
+    }
+
+    // A true mono file (single channel) -> all three stereo metrics null.
+    {
+        std::vector<float> mono(n);
+        for (size_t i = 0; i < n; ++i) mono[i] = dist(rngL) * 0.5f;
+        rv::metrics::Metrics m = rv::metrics::compute({mono}, sr);
+        check(std::isnan(m.stereoCorrelation), "stereo_correlation: null for a mono file");
+        check(std::isnan(m.monoLossDb), "mono_loss_db: null for a mono file");
+        check(std::isnan(m.monoNotchDb), "mono_notch_db: null for a mono file");
+    }
+}
+
 void sidecarMetricsRoundTrip()
 {
     rv::metrics::Metrics m;
     m.peakDbfs = -3.1; m.rmsDbfs = -24.0; m.t60S = 8.7; m.resonancePeakDb = 7.5;
     m.steadyTone = false; m.nanInfCount = 0; m.clipCount = 0; m.clickCount = 2;
+    m.stereoCorrelation = 0.2; m.monoLossDb = -0.3; m.monoNotchDb = -2.5; m.maxStepDb100ms = 1.1;
     rv::json::Value v = rv::sidecar::metricsToJson(m);
     rv::metrics::Metrics back = rv::sidecar::jsonToMetrics(v);
     bool ok = back.peakDbfs == m.peakDbfs && back.rmsDbfs == m.rmsDbfs && back.t60S == m.t60S
            && back.resonancePeakDb == m.resonancePeakDb && back.steadyTone == m.steadyTone
-           && back.nanInfCount == m.nanInfCount && back.clipCount == m.clipCount && back.clickCount == m.clickCount;
+           && back.nanInfCount == m.nanInfCount && back.clipCount == m.clipCount && back.clickCount == m.clickCount
+           && back.stereoCorrelation == m.stereoCorrelation && back.monoLossDb == m.monoLossDb
+           && back.monoNotchDb == m.monoNotchDb && back.maxStepDb100ms == m.maxStepDb100ms;
     check(ok, "sidecar: metrics -> JSON -> metrics round-trips");
 
     rv::metrics::Metrics withNulls;
     rv::json::Value v2 = rv::sidecar::metricsToJson(withNulls);
     const rv::json::Value* t60 = v2.find("t60_s");
     check(t60 && t60->isNull(), "sidecar: unmeasurable t60_s is written as JSON null");
+    const rv::json::Value* corr = v2.find("stereo_correlation");
+    check(corr && corr->isNull(), "sidecar: mono stereo_correlation is written as JSON null");
+
+    // Old (pre-M4) sidecar JSON that never had the new keys at all must
+    // still parse, with the new metrics reported as "not measured".
+    rv::json::Value legacy = rv::json::Value::makeObject();
+    legacy.set("peak_dbfs", rv::json::Value::makeNumber(-6.0));
+    legacy.set("rms_dbfs", rv::json::Value::makeNumber(-20.0));
+    legacy.set("t60_s", rv::json::Value::makeNumber(5.0));
+    legacy.set("resonance_peak_db", rv::json::Value::makeNumber(4.0));
+    legacy.set("steady_tone", rv::json::Value::makeBool(false));
+    legacy.set("nan_inf_count", rv::json::Value::makeNumber(0));
+    legacy.set("clip_count", rv::json::Value::makeNumber(0));
+    legacy.set("click_count", rv::json::Value::makeNumber(0));
+    rv::metrics::Metrics legacyBack = rv::sidecar::jsonToMetrics(legacy);
+    check(std::isnan(legacyBack.stereoCorrelation) && std::isnan(legacyBack.monoLossDb)
+              && std::isnan(legacyBack.monoNotchDb) && std::isnan(legacyBack.maxStepDb100ms),
+          "sidecar: pre-M4 JSON missing the new keys entirely -> reported as not measured");
 }
 
 void sidecarSpectrogramRoundTrip()
@@ -256,6 +364,7 @@ int main()
     steadyToneDetectsSustainedSine();
     clickCountOnStimulusFiles();
     clickCountFlagsInjectedStep();
+    stereoMetricsOnSyntheticSignals();
     sidecarMetricsRoundTrip();
     sidecarSpectrogramRoundTrip();
     std::printf("%d failure(s)\n", failures);

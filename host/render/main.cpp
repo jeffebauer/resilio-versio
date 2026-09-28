@@ -154,9 +154,13 @@ int runAnalyze(const std::string& inPath, const std::string& sidecarOut, const s
     // Metrics use the requested channel selection directly (as `mono`
     // stands in for the whole file here: pass it as a single-channel set
     // so nan/inf + clip counts and every analysis metric read that
-    // selection, matching --channel L|R|mix).
+    // selection, matching --channel L|R|mix). The stereo metrics
+    // (docs/m4-contracts.md Stream E) are unaffected by --channel: pass
+    // the file's real channels so they measure its actual stereo image
+    // (e.g. a stereo wet take analyzed with --channel L still reports a
+    // real stereo_correlation, not "mono").
     std::vector<std::vector<float>> single{mono};
-    rv::metrics::Metrics m = rv::metrics::compute(single, float(in.sampleRate));
+    rv::metrics::Metrics m = rv::metrics::compute(single, float(in.sampleRate), &in.channels);
     rv::spectrogram::Spectrogram spec = rv::spectrogram::compute(mono, float(in.sampleRate));
     std::printf("%s\n", rv::metrics::summaryLine(m).c_str());
 

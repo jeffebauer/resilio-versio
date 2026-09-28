@@ -230,9 +230,147 @@ long clickCount(const std::vector<float>& mono, float sr)
     return count;
 }
 
+// Pearson correlation of L and R over [start, end) (docs/m4-contracts.md
+// Stream E). NaN if the segment is empty/out of range or either channel
+// has ~zero variance there (undefined correlation).
+double pearsonCorrelation(const std::vector<float>& L, const std::vector<float>& R, size_t start, size_t end)
+{
+    if (end <= start || end > L.size() || end > R.size()) return std::nan("");
+    const size_t n = end - start;
+    double sumL = 0.0, sumR = 0.0;
+    for (size_t i = start; i < end; ++i) { sumL += double(L[i]); sumR += double(R[i]); }
+    const double meanL = sumL / double(n), meanR = sumR / double(n);
+    double cov = 0.0, varL = 0.0, varR = 0.0;
+    for (size_t i = start; i < end; ++i) {
+        const double dl = double(L[i]) - meanL, dr = double(R[i]) - meanR;
+        cov += dl * dr; varL += dl * dl; varR += dr * dr;
+    }
+    if (varL <= 1e-20 || varR <= 1e-20) return std::nan("");
+    return cov / std::sqrt(varL * varR);
+}
+
+// 10*log10( power(L+R) / (power(L)+power(R)) ) over the whole file
+// (docs/m4-contracts.md Stream E). Uncorrelated -> ~0 dB, identical ->
+// +3 dB, out of phase -> very negative (floored so the result stays
+// finite rather than -inf for exact cancellation).
+double monoLossDb(const std::vector<float>& L, const std::vector<float>& R)
+{
+    const size_t n = std::min(L.size(), R.size());
+    if (n == 0) return std::nan("");
+    double sumMono = 0.0, sumSep = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        const double l = double(L[i]), r = double(R[i]);
+        const double mixed = l + r;
+        sumMono += mixed * mixed;
+        sumSep += l * l + r * r;
+    }
+    if (sumSep <= 1e-300) return std::nan(""); // silence: undefined
+    return 10.0 * std::log10(std::max(sumMono, 1e-300) / sumSep);
+}
+
+// Deepest dip in 200Hz-5kHz of the mono-sum power spectrum relative to the
+// stereo-average power spectrum ((|L|^2+|R|^2)/2), both averaged over
+// Hann-windowed frames and 1/3-octave-smoothed (docs/m4-contracts.md
+// Stream E). Destructive interference between L and R shows up as a comb
+// notch in the mono sum that the stereo-average (phase-blind) spectrum
+// doesn't have, so the difference isolates comb-filtering, not just
+// spectral shape. Same 8192-point-or-smaller-power-of-two framing as
+// resonancePeakDb.
+double monoNotchDb(const std::vector<float>& L, const std::vector<float>& R, size_t start, size_t end, float sr)
+{
+    if (end <= start || end > L.size() || end > R.size()) return std::nan("");
+    const size_t segLen = end - start;
+    size_t fftSize = 8192;
+    while (fftSize > 256 && fftSize > segLen) fftSize >>= 1;
+    if (segLen < 32) return std::nan("");
+
+    std::vector<float> monoSum(segLen);
+    for (size_t i = 0; i < segLen; ++i) monoSum[i] = L[start + i] + R[start + i];
+
+    const size_t hop = fftSize / 2;
+    std::vector<double> sumMonoPow(fftSize / 2 + 1, 0.0), sumAvgPow(fftSize / 2 + 1, 0.0);
+    size_t frames = 0;
+    for (size_t pos = 0; pos + std::min(fftSize, segLen) <= segLen; pos += hop) {
+        const size_t n = std::min(fftSize, segLen - pos);
+        const auto magM = fft::magnitudeSpectrum(monoSum.data() + pos, n, fftSize);
+        const auto magL = fft::magnitudeSpectrum(L.data() + start + pos, n, fftSize);
+        const auto magR = fft::magnitudeSpectrum(R.data() + start + pos, n, fftSize);
+        for (size_t k = 0; k < magM.size(); ++k) {
+            sumMonoPow[k] += double(magM[k]) * double(magM[k]);
+            sumAvgPow[k] += 0.5 * (double(magL[k]) * double(magL[k]) + double(magR[k]) * double(magR[k]));
+        }
+        ++frames;
+        if (n < fftSize) break;
+    }
+    if (frames == 0) {
+        const auto magM = fft::magnitudeSpectrum(monoSum.data(), segLen, fftSize);
+        const auto magL = fft::magnitudeSpectrum(L.data() + start, segLen, fftSize);
+        const auto magR = fft::magnitudeSpectrum(R.data() + start, segLen, fftSize);
+        for (size_t k = 0; k < magM.size(); ++k) {
+            sumMonoPow[k] += double(magM[k]) * double(magM[k]);
+            sumAvgPow[k] += 0.5 * (double(magL[k]) * double(magL[k]) + double(magR[k]) * double(magR[k]));
+        }
+        frames = 1;
+    }
+
+    std::vector<float> monoDb(sumMonoPow.size()), avgDb(sumMonoPow.size()), freqHz(sumMonoPow.size());
+    for (size_t k = 0; k < sumMonoPow.size(); ++k) {
+        monoDb[k] = spectral::toDb(float(std::sqrt(sumMonoPow[k] / double(frames))));
+        avgDb[k]  = spectral::toDb(float(std::sqrt(sumAvgPow[k] / double(frames))));
+        freqHz[k] = float(k) * sr / float(fftSize);
+    }
+    const auto monoSmoothed = spectral::thirdOctaveSmoothedMedian(monoDb, freqHz);
+    const auto avgSmoothed  = spectral::thirdOctaveSmoothedMedian(avgDb, freqHz);
+
+    float worst = 1e9f;
+    for (size_t k = 0; k < monoSmoothed.size(); ++k) {
+        if (freqHz[k] < 200.0f || freqHz[k] > 5000.0f) continue;
+        worst = std::min(worst, monoSmoothed[k] - avgSmoothed[k]);
+    }
+    return worst < 1e8f ? double(worst) : std::nan("");
+}
+
+// Largest absolute change in RMS dB between consecutive, non-overlapping
+// 100 ms windows, ignoring windows below -60 dBFS and the first 100 ms
+// window after each event onset (docs/m4-contracts.md Stream E; event =
+// as in t60, see findEvents above). Runs on the mono downmix regardless
+// of channel count, like t60/resonance.
+double maxStepDb100ms(const std::vector<float>& mono, float sr, const std::vector<size_t>& events)
+{
+    const size_t winLen = size_t(0.1 * double(sr));
+    if (winLen == 0 || mono.size() < winLen) return std::nan("");
+    const size_t numWindows = mono.size() / winLen;
+    if (numWindows < 2) return std::nan("");
+
+    std::vector<double> winDb(numWindows);
+    std::vector<bool> eligible(numWindows, true);
+    for (size_t w = 0; w < numWindows; ++w) {
+        const size_t start = w * winLen, end = start + winLen;
+        double sumSq = 0.0;
+        for (size_t i = start; i < end; ++i) sumSq += double(mono[i]) * double(mono[i]);
+        const double rms = std::sqrt(sumSq / double(winLen));
+        winDb[w] = rms > 0.0 ? double(spectral::toDb(float(rms))) : -200.0;
+        if (winDb[w] < -60.0) eligible[w] = false;
+    }
+    for (size_t onset : events) {
+        const size_t w = onset / winLen;
+        if (w < numWindows) eligible[w] = false;
+    }
+
+    double maxStep = 0.0;
+    bool any = false;
+    for (size_t w = 0; w + 1 < numWindows; ++w) {
+        if (!eligible[w] || !eligible[w + 1]) continue;
+        maxStep = std::max(maxStep, std::fabs(winDb[w + 1] - winDb[w]));
+        any = true;
+    }
+    return any ? maxStep : std::nan("");
+}
+
 } // namespace
 
-Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRate)
+Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRate,
+                 const std::vector<std::vector<float>>* stereoSource)
 {
     Metrics m;
     const size_t numCh = channels.size();
@@ -283,20 +421,42 @@ Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRat
 
     m.steadyTone = steadyTone(mono, sampleRate);
     m.clickCount = clickCount(mono, sampleRate);
+    m.maxStepDb100ms = maxStepDb100ms(mono, sampleRate, events);
+
+    const auto& stereoCh = stereoSource ? *stereoSource : channels;
+    if (stereoCh.size() >= 2 && !stereoCh[0].empty() && !stereoCh[1].empty()) {
+        const auto& L = stereoCh[0];
+        const auto& R = stereoCh[1];
+        const size_t sFrames = std::min(L.size(), R.size());
+        const size_t corrStart = std::min(segStart, sFrames), corrEnd = std::min(segEnd, sFrames);
+        m.stereoCorrelation = pearsonCorrelation(L, R, corrStart, corrEnd);
+        m.monoLossDb = monoLossDb(L, R);
+        m.monoNotchDb = monoNotchDb(L, R, corrStart, corrEnd, sampleRate);
+    }
     return m;
 }
 
 std::string summaryLine(const Metrics& m)
 {
-    char t60Buf[32], resBuf[32], buf[512];
+    char t60Buf[32], resBuf[32], corrBuf[32], lossBuf[32], notchBuf[32], stepBuf[32], buf[768];
     if (std::isnan(m.t60S)) std::snprintf(t60Buf, sizeof t60Buf, "null");
     else std::snprintf(t60Buf, sizeof t60Buf, "%.2fs", m.t60S);
     if (std::isnan(m.resonancePeakDb)) std::snprintf(resBuf, sizeof resBuf, "null");
     else std::snprintf(resBuf, sizeof resBuf, "%.1fdB", m.resonancePeakDb);
+    if (std::isnan(m.stereoCorrelation)) std::snprintf(corrBuf, sizeof corrBuf, "mono");
+    else std::snprintf(corrBuf, sizeof corrBuf, "%.2f", m.stereoCorrelation);
+    if (std::isnan(m.monoLossDb)) std::snprintf(lossBuf, sizeof lossBuf, "mono");
+    else std::snprintf(lossBuf, sizeof lossBuf, "%.1fdB", m.monoLossDb);
+    if (std::isnan(m.monoNotchDb)) std::snprintf(notchBuf, sizeof notchBuf, "mono");
+    else std::snprintf(notchBuf, sizeof notchBuf, "%.1fdB", m.monoNotchDb);
+    if (std::isnan(m.maxStepDb100ms)) std::snprintf(stepBuf, sizeof stepBuf, "null");
+    else std::snprintf(stepBuf, sizeof stepBuf, "%.1fdB", m.maxStepDb100ms);
     std::snprintf(buf, sizeof buf,
-        "peak=%.1fdBFS rms=%.1fdBFS t60=%s res=%s steady=%s nan/inf=%ld clip=%ld click=%ld",
+        "peak=%.1fdBFS rms=%.1fdBFS t60=%s res=%s steady=%s nan/inf=%ld clip=%ld click=%ld "
+        "corr=%s monoloss=%s notch=%s maxstep=%s",
         m.peakDbfs, m.rmsDbfs, t60Buf, resBuf,
-        m.steadyTone ? "true" : "false", m.nanInfCount, m.clipCount, m.clickCount);
+        m.steadyTone ? "true" : "false", m.nanInfCount, m.clipCount, m.clickCount,
+        corrBuf, lossBuf, notchBuf, stepBuf);
     return std::string(buf);
 }
 

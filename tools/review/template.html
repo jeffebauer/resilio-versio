@@ -469,7 +469,33 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     if (typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12) {
       reasons.push("resonance +" + metrics.resonance_peak_db.toFixed(1) + "dB");
     }
+    if (typeof metrics.stereo_correlation === "number" && metrics.stereo_correlation > 0.5) {
+      reasons.push("correlation " + metrics.stereo_correlation.toFixed(2));
+    }
+    if (typeof metrics.mono_loss_db === "number" && metrics.mono_loss_db < -1.5) {
+      reasons.push("mono loss " + metrics.mono_loss_db.toFixed(1) + "dB");
+    }
+    if (typeof metrics.mono_notch_db === "number" && metrics.mono_notch_db < -6) {
+      reasons.push("mono notch " + metrics.mono_notch_db.toFixed(1) + "dB");
+    }
+    if (typeof metrics.max_step_db_100ms === "number" && metrics.max_step_db_100ms > 3) {
+      reasons.push("level step +" + metrics.max_step_db_100ms.toFixed(1) + "dB/100ms");
+    }
     return reasons;
+  }
+
+  // True if any of the four M4/Stream E stereo metrics fail their
+  // threshold (docs/m4-contracts.md Stream E). Mirrors make_review.py's
+  // is_stereo_flagged() so the client-side "Stereo issues" filter agrees
+  // with the pre-computed render.stereoFlagged field.
+  function isStereoFlag(metrics) {
+    if (!metrics) return false;
+    metrics = withoutIgnored(metrics);
+    if (typeof metrics.stereo_correlation === "number" && metrics.stereo_correlation > 0.5) return true;
+    if (typeof metrics.mono_loss_db === "number" && metrics.mono_loss_db < -1.5) return true;
+    if (typeof metrics.mono_notch_db === "number" && metrics.mono_notch_db < -6) return true;
+    if (typeof metrics.max_step_db_100ms === "number" && metrics.max_step_db_100ms > 3) return true;
+    return false;
   }
 
   function metricsList(metrics) {
@@ -484,12 +510,22 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
       "clip_count": (metrics.clip_count || 0) > 0,
       "click_count": (metrics.click_count || 0) > 0,
       "steady_tone": metrics.steady_tone === true,
-      "resonance_peak_db": typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12
+      "resonance_peak_db": typeof metrics.resonance_peak_db === "number" && metrics.resonance_peak_db > 12,
+      "stereo_correlation": typeof metrics.stereo_correlation === "number" && metrics.stereo_correlation > 0.5,
+      "mono_loss_db": typeof metrics.mono_loss_db === "number" && metrics.mono_loss_db < -1.5,
+      "mono_notch_db": typeof metrics.mono_notch_db === "number" && metrics.mono_notch_db < -6,
+      "max_step_db_100ms": typeof metrics.max_step_db_100ms === "number" && metrics.max_step_db_100ms > 3
     };
     function item(label, flag) {
       var li = el("li", { text: label });
       if (flag) li.className = "flag";
       return li;
+    }
+    // "mono" / null / absent (mono file, or an old sidecar written before
+    // these metrics existed) reads as "mono" rather than a dash, since
+    // that's the actual reason the metric wasn't measured.
+    function stereoOrFmt(v, digits, suffix) {
+      return (v === null || v === undefined) ? "mono" : fmt(v, digits, suffix);
     }
     ul.appendChild(item("peak " + fmt(metrics.peak_dbfs, 1, " dBFS")));
     ul.appendChild(item("rms " + fmt(metrics.rms_dbfs, 1, " dBFS")));
@@ -499,6 +535,11 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     ul.appendChild(item("NaN/Inf " + fmt(metrics.nan_inf_count, 0), isFlag.nan_inf_count));
     ul.appendChild(item("clip " + fmt(metrics.clip_count, 0), isFlag.clip_count));
     ul.appendChild(item("click " + fmt(shown.click_count, 0) + (IGNORED.click_count ? " (n/a for this input)" : ""), isFlag.click_count));
+    ul.appendChild(item("correlation " + stereoOrFmt(metrics.stereo_correlation, 2), isFlag.stereo_correlation));
+    ul.appendChild(item("mono loss " + stereoOrFmt(metrics.mono_loss_db, 1, " dB"), isFlag.mono_loss_db));
+    ul.appendChild(item("mono notch " + stereoOrFmt(metrics.mono_notch_db, 1, " dB"), isFlag.mono_notch_db));
+    ul.appendChild(item("max step " + (metrics.max_step_db_100ms === null || metrics.max_step_db_100ms === undefined
+      ? "—" : fmt(metrics.max_step_db_100ms, 1, " dB/100ms")), isFlag.max_step_db_100ms));
     return ul;
   }
 
@@ -550,6 +591,7 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
 
   function matchesFilters(render, filters) {
     if (filters.flaggedOnly && !render.flagged) return false;
+    if (filters.stereoOnly && !render.stereoFlagged) return false;
     for (var key in filters.values) {
       var wanted = filters.values[key];
       if (wanted.size === 0) continue;
@@ -570,9 +612,11 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
   }
 
   function readFilters() {
-    var filters = { flaggedOnly: false, values: {} };
+    var filters = { flaggedOnly: false, stereoOnly: false, values: {} };
     var flagCb = document.getElementById("filter-flagged");
     filters.flaggedOnly = !!(flagCb && flagCb.checked);
+    var stereoCb = document.getElementById("filter-stereo");
+    filters.stereoOnly = !!(stereoCb && stereoCb.checked);
     document.querySelectorAll(".chip-row[data-param]").forEach(function (row) {
       var key = row.getAttribute("data-param");
       var set = new Set();
@@ -610,6 +654,16 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     flagGroup.appendChild(cb);
     flagGroup.appendChild(el("label", { for: "filter-flagged", text: "Flagged only" }));
     toolbar.appendChild(flagGroup);
+
+    // "Stereo issues" chip (docs/m4-contracts.md Stream E): flagged-stereo
+    // only, i.e. correlation/mono-loss/mono-notch/max-step failures,
+    // distinct from the general "Flagged only" toggle above.
+    var stereoGroup = el("div", { class: "flag-toggle" });
+    var stereoCb = el("input", { type: "checkbox", id: "filter-stereo" });
+    stereoCb.addEventListener("change", applyFilters);
+    stereoGroup.appendChild(stereoCb);
+    stereoGroup.appendChild(el("label", { for: "filter-stereo", text: "Stereo issues" }));
+    toolbar.appendChild(stereoGroup);
   }
 
   function buildMeta() {
