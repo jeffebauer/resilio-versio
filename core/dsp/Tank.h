@@ -132,6 +132,8 @@ public:
     static constexpr float kShelfHz         = 5000.0f; // output high-shelf corner (SPEC §4.8)
     static constexpr float kShelfGain       = 0.7f;    // -3 dB above the corner
     static constexpr float kLimitThreshold  = 0.89f;   // ≈ -1 dBFS: wet peaks never reach 1.0
+    static constexpr float kLimitKnee       = 0.82f;   // limiter aims peaks here; soft clip from here to the threshold
+    static constexpr float kLimitAttackS    = 0.001f;  // gain glides down (no corner in the waveform)
     static constexpr float kLimitReleaseS   = 0.15f;
     static constexpr int   kMaxPendingKicks = 16;
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
@@ -249,7 +251,7 @@ private:
     std::array<Diffuser, 2>             decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
-    float limitEnv_ = 0.0f, limitRelease_ = 0.0f;
+    float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;

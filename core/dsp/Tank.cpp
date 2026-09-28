@@ -28,6 +28,20 @@ constexpr uint32_t kSplashSeed = 0x51A5E001u;
 constexpr uint32_t kKickSeed   = 0x4B1C0002u;
 constexpr std::array<uint32_t, Tank::kMaxSprings> kWobbleSeeds{{0x0B0B1E01u, 0x0B0B1E02u, 0x0B0B1E03u}};
 
+// Limiter backstop: identity below the knee, then dsp::softClip scaled into
+// the room between knee and threshold. softClip has slope 1 and no curvature
+// at 0, so the join at the knee has no corner in slope or curvature (a
+// curvature step is a tick on held tones too), and it holds exactly at the
+// threshold from 3x the room above the knee.
+inline float softLimit(float x)
+{
+    constexpr float kRoom = Tank::kLimitThreshold - Tank::kLimitKnee;
+    const float     e     = std::fabs(x) - Tank::kLimitKnee;
+    if (e <= 0.0f) return x;
+    const float y = Tank::kLimitKnee + kRoom * dsp::softClip(e * (1.0f / kRoom));
+    return x < 0.0f ? -y : y;
+}
+
 } // namespace
 
 // The Tank object itself must stay small: the Firmware keeps it as a global
@@ -79,6 +93,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     mix_.setTime(spec(ParamId::Mix).smoothingMs, sampleRate);
     for (auto& s : shelfSplit_) s.setCutoff(kShelfHz, sampleRate);
     limitRelease_ = std::exp(-1.0f / (kLimitReleaseS * sampleRate));
+    limitAttack_  = 1.0f - std::exp(-1.0f / (kLimitAttackS * sampleRate));
     fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
     morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
     driveIn_.prepare(sampleRate);
@@ -128,7 +143,8 @@ void Tank::reset()
     hfGainFrom_ = hfGainTo_ = 1.0f;
     levelAcc_ = levelMs_ = 0.0f;
     compDrive_ = -1.0f;
-    limitEnv_ = 0.0f;
+    limitEnv_  = 0.0f;
+    limitGain_ = 1.0f;
     numPendingKicks_ = 0;
     tick_     = 0;
     primed_   = false;
@@ -373,13 +389,21 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             wl = ll + kShelfGain * (wl - ll);
             wr = lr + kShelfGain * (wr - lr);
 
-            // Safety limiter (stereo-linked, instant attack): the envelope is
-            // never below the current peak, so |out| <= threshold always.
+            // Safety limiter (stereo-linked). The envelope jumps to each new
+            // peak and releases slowly; the gain glides down to knee/envelope
+            // over ~1 ms and follows the (smooth) release straight back. An
+            // instant gain would pin every rising peak flat at the threshold:
+            // a corner in the waveform, i.e. a tick per new peak on held tones
+            // (it was the DECAY-0.5 held-chord tick). The overshoot the glide
+            // lets through is caught by a soft clip: identity up to the knee,
+            // then a smooth curve that holds at the threshold T (softLimit).
             const float peak = std::max(std::fabs(wl), std::fabs(wr));
             limitEnv_ = std::max(peak, limitEnv_ * limitRelease_);
-            const float gain = limitEnv_ > kLimitThreshold ? kLimitThreshold / limitEnv_ : 1.0f;
-            wl *= gain;
-            wr *= gain;
+            const float gainTarget = limitEnv_ > kLimitKnee ? kLimitKnee / limitEnv_ : 1.0f;
+            if (gainTarget < limitGain_) limitGain_ += limitAttack_ * (gainTarget - limitGain_);
+            else limitGain_ = gainTarget;
+            wl = softLimit(wl * limitGain_);
+            wr = softLimit(wr * limitGain_);
 
             const map::MixGains m = map::mixGains(mix_.process(values_[size_t(ParamId::Mix)]));
             outL[pos + i] = m.dry * dryL + m.wet * wl;
