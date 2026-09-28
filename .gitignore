@@ -9,3 +9,4 @@ dist/
 *.asd
 Ableton Project Info/
 Backup/
+tools/__pycache__/
