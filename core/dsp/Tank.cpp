@@ -298,7 +298,7 @@ void Tank::controlTick(bool snap)
     base.howl             = howlAmt;
     // AntiRes Micro-mod floor, always on (WOBBLE adds on top, per sample), plus
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
-    base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;
+    base.modDepth         = antires::microModDepth(base.loopDelaySeconds) + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
     const int activeStages = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C

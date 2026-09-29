@@ -35,6 +35,20 @@ namespace rv::antires {
 constexpr float kMicroModDepth       = 0.0005f; // 0.05 % of L, peak
 constexpr float kMicroModHoldSeconds = 0.6f;    // new random target this often (~0.2 Hz glide)
 constexpr float kMicroModNorm        = 1.35f;   // smoothed-random peaks -> ~+-1 (measured, test_antires)
+// TENSION (ADR 0026): a tight tank (L 33 ms) has its resonances ~30 Hz
+// apart, three times wider than a loose one's; a drift that is a fixed
+// fraction of L moves every resonance by the same few tenths of a Hz, so on
+// a tight tank it moves them a much smaller share of their spacing, and at
+// max DECAY (~270 round trips) one of them could outlive its neighbours
+// (M6 grid: 4 of 90 TENSION-0 cells at ringing_db 15-20). Below
+// kMicroModRefLoopSeconds the depth grows as 1/L, so the drift in samples
+// stays what it is at the reference tank.
+constexpr float kMicroModRefLoopSeconds = 0.069f; // TENSION noon's L
+inline float microModDepth(float loopDelaySeconds)
+{
+    return loopDelaySeconds >= kMicroModRefLoopSeconds ? kMicroModDepth
+                                                       : kMicroModDepth * kMicroModRefLoopSeconds / loopDelaySeconds;
+}
 
 // ---- Howl movement (ADR 0019: "rough, moving, never a steady sine") --------
 // In the KICKED Howl zone the Loop self-oscillates, and a self-oscillating
