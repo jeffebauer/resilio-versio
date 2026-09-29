@@ -54,7 +54,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 7. Decide: which way should the boing chirp? (≈15 min) · blocks retuning BOING
 - **Why:** the IR study ([ir-dispersion-study.md](ir-dispersion-study.md)) found that **every real tank** sends its **highs later** than its lows. Ours does the opposite (lows later) because the spec said "highs before lows", which was written from memory, not measurement. It's your call by ear.
-- **Now properly tuned both ways** (one switch in the code). Open from Finder:
+- **Now properly tuned both ways** (one switch in the code). *(These A/B pages were deleted on 29 Sep after the decision, to free disk space.)* Open from Finder:
   - `renders/chirp_ab2/lows_later/index.html` (today's sound)
   - `renders/chirp_ab2/highs_later/index.html` (like the real tanks)
   - Each page has BOING 0 → 1 on a click and on hits, with the other direction and six real tanks as references (*SNRA500 Plucky*, *Amp Spring Bright/Dull/High*, *Classic Amp Spring*, *Space Echo Spring*).
@@ -116,7 +116,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### TENSION instead of BOING (adopted and built, see task 10)
 - **Idea (yours, 28 Sep):** real tanks have no BOING and usually no decay knob; their character comes from which tank is fitted. Replace BOING with **TENSION** (which tank: echo spacing + chirp + brightness together, tight/pingy ↔ loose/boingy) and make **DECAY feedback only** (how long it rings, no pitch bend).
 - **Trade-offs:** clearer knob jobs and closer to real springs (it also absorbs "BOING shortens decay"); less direct control of the cartoon boing; supersedes ADRs 0006/0007/0012 with a new one. Middle option: rename and widen BOING into TENSION, keep DECAY's size link.
-- **Prototype ready to hear (29 Sep):** open `renders/tension_proto/index.html` from Finder. Guide: `renders/tension_proto/GUIDE.md`. The code is on branch `proto/tension`, not merged
+- **Prototype ready to hear (29 Sep; pages deleted after the decision, the built version is in task 10):** open `renders/tension_proto/index.html` from Finder. Guide: `renders/tension_proto/GUIDE.md`. The code is on branch `proto/tension`, not merged
   - [ ] Does each TENSION position sound like **one real tank**? Is the tight end still clearly a spring, and the loose end a proper dub tank rather than cartoonish?
   - [ ] DECAY page: does **only the length** change?
   - [ ] Turning page: TENSION bends pitch, DECAY doesn't. Do you miss DECAY's bend?
