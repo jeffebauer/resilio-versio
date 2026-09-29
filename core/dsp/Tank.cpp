@@ -233,6 +233,14 @@ void Tank::controlTick(bool snap)
     splash_.set(attW_, splashAmt);
     kick_.setAttitude(attW_);
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)]);
+    {
+        // PROTOTYPE: shared at low WOBBLE (the Drift), independent through
+        // the transition (smoothstep kShareFrom..kShareTo).
+        const float w = smoothed_[size_t(ParamId::Wobble)];
+        float t = (w - protoShareFrom) / (protoShareTo - protoShareFrom);
+        t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        wobIndep_ = protoWobbleShare == 0 ? 1.0f : protoIndepFloor + (1.0f - protoIndepFloor) * t * t * (3.0f - 2.0f * t);
+    }
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
     // Tank level for KICKED's energy-dependent rattle: smoothed RMS of the
     // wet mid over the last tick, scaled by SPLASH.
@@ -370,7 +378,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
-    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
+    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wob0[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -421,9 +429,16 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
+            const int   v  = protoWobbleShare;
+            const float lr = v == 2 ? modes::kDetune[s].loopDelay / modes::kDetune[0].loopDelay : 1.0f;
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
-                lSamples[i] = wobble_[s].next();
+                float wv    = wobble_[s].next();
+                if (s == 0) wob0[i] = wv;
+                else if (v == 1 || v == 2) wv = lr * wob0[i] + wobIndep_ * (wv - lr * wob0[i]);
+                else if (v == 10) wv = 0.0f;
+                else if (v == 11) wv = wob0[i];
+                lSamples[i] = wv;
                 loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
                 high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }

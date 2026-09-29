@@ -209,6 +209,14 @@ public:
     const dsp::Wobble&    transport() const { return transport_; }
     // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
     float excitationTrim() const { return excTrimTo_; }
+    // PROTOTYPE (proto/wobble-hang, not merged): how the Springs' Loop
+    // WOBBLE is shared. 0 = independent (main), 1 = shared Drift blending to
+    // independent over WOBBLE's transition, 2 = as 1 with the shared part
+    // scaled by each Spring's L (same pitch ratio on every Spring);
+    // 10/11 = diagnostics (Spring A only / identical offset on every Spring).
+    static inline int   protoWobbleShare = 2;
+    static inline float protoShareFrom = 0.40f, protoShareTo = 0.70f, protoIndepFloor = 0.0f;
+    float wobbleIndependence() const { return wobIndep_; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
@@ -280,6 +288,7 @@ private:
     dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
     dsp::Wobble                        transport_; // WOBBLE on the first echoes: every pickup, shared
+    float wobIndep_ = 1.0f; // PROTOTYPE: 0 = every Spring shares Spring A's Drift, 1 = independent
     bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
     float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level
     // M8 excitation trim (DriveVoicing.h "Excitation trim"): band-weighted and
