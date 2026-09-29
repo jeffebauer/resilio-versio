@@ -12,8 +12,9 @@
 //                      feeds the Tank a synthetic test signal, reports
 //                      CpuLoadMeter stats per corner over serial.
 //   RV_MODE_RELEASE - The real instrument (default). Knobs/switches/button/
-//                      gate -> ParamSpec -> Tank, LEDs per SPEC §3. No serial
-//                      logging (ADR 0011 flash-size watch item).
+//                      gate -> ParamSpec -> Tank, LEDs as level meters (SPEC
+//                      §3, ADR 0031). No serial logging (ADR 0011 flash-size
+//                      watch item).
 //
 // Each variant's code lives in its own #if block below; they share nothing
 // but BootPattern() (identical in all three) and the include list, so any
@@ -639,6 +640,13 @@ int main()
 // lands within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
 // (ADR 0011: flash-size watch item at M3, ~35 KB left for DSP code once the
 // M0 test firmware's 94 KB baseline is accounted for).
+//
+// LEDs (SPEC §3, ADR 0031): level meters, the owner's Noise Engineering
+// habit. Left pair In L / In R, right pair Out L / Out R; brightness follows
+// level (dB scale), colour warms green -> amber, red = input near clip or
+// output limiter pulling down. No mode colours, no Kick flash.
+
+#include "LedMeter.h"
 
 namespace {
 
@@ -696,15 +704,28 @@ bool PrepareTank()
     return need <= kTankPoolFloats;
 }
 
-// Shared with the main loop for LED display; only ever written by the audio
-// callback, only ever read by the (much slower) main loop, so plain floats
-// are fine here (worst case the loop shows a half-updated value for 1 ms).
-volatile float gInputLevel  = 0.0f; // smoothed input peak, for LED_0 clip
-volatile float gWetEnergy   = 0.0f; // smoothed output RMS, for LED_1 (proxy for wet tank energy:
-                                     // Tank has no public wet-only accessor, only the MIX-blended
-                                     // output; a true wet-only meter is a Core follow-up, M9 polish)
-volatile int   gSpringsPos  = 1;
-volatile int   gAttitudePos = 0;
+// ---- LED level meters (SPEC §3 LEDs, ADR 0031; maths in LedMeter.h) -------
+// The owner's NE habit: left pair = input, right pair = output.
+enum Meter { kInL, kInR, kOutL, kOutR, kNumMeters };
+
+// Meter -> libDaisy LED index. Wanted on the panel (docs/panel/ LED1..LED4,
+// left to right): In L, In R, Out L, Out R. NOT YET CONFIRMED ON HARDWARE:
+// the M0 check never recorded which LED_n sits where, so this assumes
+// LED_0..LED_3 run left to right. If the meters light in the wrong places,
+// reorder this one line.
+constexpr size_t kMeterLed[kNumMeters] = {
+    DaisyVersio::LED_0, // In L  -> panel LED1 (leftmost)
+    DaisyVersio::LED_1, // In R  -> panel LED2
+    DaisyVersio::LED_2, // Out L -> panel LED3
+    DaisyVersio::LED_3, // Out R -> panel LED4 (rightmost)
+};
+
+// Written by the audio callback (peak since the main loop last looked), read
+// and cleared by the main loop. Single-word float stores are atomic on the
+// M7; a block landing between the loop's read and clear is lost, which a
+// 1 ms LED can't show anyway.
+volatile float gPeak[kNumMeters] = {};
+volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
 {
@@ -720,50 +741,33 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
         tank.setParam(kPotParams[p], hw.GetKnobValue(kPotKnob[p]));
 
-    gSpringsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
-    gAttitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
-    tank.setParam(rv::ParamId::Springs, rv::switchToNormalised(gSpringsPos));
-    tank.setParam(rv::ParamId::Attitude, rv::switchToNormalised(gAttitudePos));
+    const int springsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
+    const int attitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
+    tank.setParam(rv::ParamId::Springs, rv::switchToNormalised(springsPos));
+    tank.setParam(rv::ParamId::Attitude, rv::switchToNormalised(attitudePos));
 
-    float peak = 0.0f;
-    for (size_t i = 0; i < size; ++i) peak = std::max(peak, std::fabs(0.5f * (in[0][i] + in[1][i])));
-    gInputLevel = 0.9f * gInputLevel + 0.1f * peak; // simple one-pole for a readable LED, not a meter
+    // Meters: only a per-block abs peak per channel here; all smoothing and
+    // colour maths runs in the main loop.
+    float inL = 0.0f, inR = 0.0f;
+    for (size_t i = 0; i < size; ++i) {
+        inL = std::max(inL, std::fabs(in[0][i]));
+        inR = std::max(inR, std::fabs(in[1][i]));
+    }
 
     tank.process(in[0], in[1], out[0], out[1], int(size));
+    float outL = 0.0f, outR = 0.0f;
     for (size_t i = 0; i < size; ++i) {
         out[0][i] *= kOutputTrim;
         out[1][i] *= kOutputTrim;
+        outL = std::max(outL, std::fabs(out[0][i]));
+        outR = std::max(outR, std::fabs(out[1][i]));
     }
 
-    float sumSq = 0.0f;
-    for (size_t i = 0; i < size; ++i) {
-        const float m = 0.5f * (out[0][i] + out[1][i]);
-        sumSq += m * m;
-    }
-    const float rms = std::sqrt(sumSq / float(size));
-    gWetEnergy       = 0.9f * gWetEnergy + 0.1f * rms;
-}
-
-void SpringsColour(int pos, float& r, float& g, float& b)
-{
-    // Placeholder palette (tuned by ear at M9): green/blue/magenta for
-    // 1/2/3 Springs, sparse -> classic -> dense.
-    switch (pos) {
-        case 0: r = 0; g = 1; b = 0; break;
-        case 1: r = 0; g = 0; b = 1; break;
-        default: r = 1; g = 0; b = 1;
-    }
-}
-
-void AttitudeColour(int pos, float& r, float& g, float& b)
-{
-    // Placeholder palette (tuned by ear at M9): green -> amber -> red,
-    // clean -> driven -> kicked (cool to hot).
-    switch (pos) {
-        case 0: r = 0; g = 1; b = 0; break;
-        case 1: r = 1; g = 0.5f; b = 0; break;
-        default: r = 1; g = 0; b = 0;
-    }
+    gPeak[kInL]  = std::max(float(gPeak[kInL]), inL);
+    gPeak[kInR]  = std::max(float(gPeak[kInR]), inR);
+    gPeak[kOutL] = std::max(float(gPeak[kOutL]), outL);
+    gPeak[kOutR] = std::max(float(gPeak[kOutR]), outR);
+    gLimiterGain = std::min(float(gLimiterGain), tank.limiterGain());
 }
 
 } // namespace
@@ -774,24 +778,39 @@ int main()
     hw.SetAudioBlockSize(kBlockSize);
     gTankPrepared = PrepareTank();
 
-    BootPattern();
+    BootPattern(); // then metering
 
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
 
+    rvled::LevelMeter meters[kNumMeters];
+    uint32_t          lastUs = System::GetUs();
     while (true) {
-        const float clip = std::min(gInputLevel / 0.95f, 1.0f);
-        hw.SetLed(DaisyVersio::LED_0, clip, 1.0f - clip, 0.0f); // green -> red on clip
+        const uint32_t nowUs = System::GetUs();
+        const float    dt    = float(nowUs - lastUs) * 1.0e-6f;
+        lastUs               = nowUs;
 
-        const float e = std::min(gWetEnergy * 4.0f, 1.0f); // scale tuned by ear at M9
-        hw.SetLed(DaisyVersio::LED_1, e, e, e);
+        float peak[kNumMeters];
+        for (int m = 0; m < kNumMeters; ++m) {
+            peak[m]  = gPeak[m];
+            gPeak[m] = 0.0f;
+        }
+        const float limiterGain = gLimiterGain;
+        gLimiterGain            = 1.0f;
 
-        float r, g, b;
-        SpringsColour(gSpringsPos, r, g, b);
-        hw.SetLed(DaisyVersio::LED_2, r, g, b);
-        AttitudeColour(gAttitudePos, r, g, b);
-        hw.SetLed(DaisyVersio::LED_3, r, g, b);
+        // Red: input near the ADC's full scale (the jack's clip point);
+        // output while the Tank's safety limiter pulls the wet down. The
+        // limiter is stereo-linked, so both output LEDs go red together.
+        const bool limiting = rvled::limiterReducing(limiterGain);
+        meters[kInL].update(peak[kInL], rvled::inputNearClip(peak[kInL]), dt);
+        meters[kInR].update(peak[kInR], rvled::inputNearClip(peak[kInR]), dt);
+        meters[kOutL].update(peak[kOutL], limiting, dt);
+        meters[kOutR].update(peak[kOutR], limiting, dt);
 
+        for (int m = 0; m < kNumMeters; ++m) {
+            const rvled::Rgb c = meters[m].colour();
+            hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
+        }
         hw.UpdateLeds();
         System::Delay(1);
     }

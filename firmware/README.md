@@ -9,7 +9,7 @@ One `main.cpp` produces three different `.bin` files, picked with `MODE`:
 |---|---|---|---|
 | **m0test** | `make -C firmware MODE=m0test` | `build/resilio_versio_m0test.bin` | The hardware bring-up check (SPEC §7 M0): dry passthrough, every control shown on the LEDs and over USB serial. Unchanged behaviour from the build you've already been checking against — see `docs/m0-hardware-check.md`. |
 | **profile** | `make -C firmware MODE=profile` | `build/resilio_versio_profile.bin` | Hardware CPU profiling (SPEC §7 M3). No knobs, no audio in needed — runs on USB power alone off your desk. Cycles through 24 setting combinations automatically and prints CPU load for each over USB serial. |
-| **release** | `make -C firmware` (MODE defaults to `release`) | `build/resilio_versio.bin` | The actual instrument: knobs, switches, tap, gate, CV, all wired to the reverb. This is what eventually goes on the module for real use. No serial printing (keeps it small — see "why release doesn't print" below). |
+| **release** | `make -C firmware` (MODE defaults to `release`) | `build/resilio_versio.bin` | The actual instrument: knobs, switches, tap, gate, CV, all wired to the reverb. The LEDs are level meters (ADR 0031): left pair In L / In R, right pair Out L / Out R, green → amber with level, red on input clip or when the output limiter pulls down. This is what eventually goes on the module for real use. No serial printing (keeps it small — see "why release doesn't print" below). |
 
 **Important — this changes what `build/resilio_versio.bin` means.** Before this
 change, `firmware/build/resilio_versio.bin` *was* the M0 test firmware (that's
@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release ≈ 96 KB (75%), ≈32 KB headroom
-- m0test ≈ 84 KB (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile ≈ 107 KB (83%), ≈22 KB headroom
+- release 110,848 B (84%), ≈20 KB headroom (30 Sep 2026, with the LED meters)
+- m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
+- profile 124,996 B (95%): the M3 benchmark code; trim before adding profile features
 
 ### Flash-budget techniques in use (ADR 0011)
 

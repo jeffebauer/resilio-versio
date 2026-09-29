@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0030). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0031). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.18 — ADR 0031 (owner): the LEDs are level meters, as on NE's own Versio firmware. Left pair In L / In R, right pair Out L / Out R; brightness follows level (dB), green → amber when hot, red = input near clip / output limiter pulling down. Replaces the input-clip / tank-energy / mode-colour plan (§3, §7 M9).
 - v1.0.17 — ADR 0030: how the Versio's CPU budget is met (DTCM pool, no fused multiply-add, pipelined Chirp sections, Springs redesigned in turn with the Jolt kept together, reciprocal saturators). Block 48 kept; idle Springs keep running. Worst case 83 → ~63 % average.
 - v1.0.16 — ADR 0029 (owner): earlier first echo. Loop pickup 0.52 → 0.36 L, high path gets its own pickup at 0.70 L_hf; echo spacing unchanged. Loose tank's first sound 45 → 32 ms (Wellspring 32 ms).
 - v1.0.15 — ADR 0028: knobs follow the owner's printed Versio panel (§3 now by pot P1–P7: MIX, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE); M0 found libDaisy's knob indexes aren't in panel order. Release output corrects the Versio's polarity flip and +1.2 dB (M0).
@@ -129,11 +130,13 @@ CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–1
 
 ### LEDs
 
-- LED_0: input level / drive clip (green → red)
-- LED_1: tank energy (brightness = wet RMS)
-- LED_2: SPRINGS mode colour
-- LED_3: ATTITUDE mode colour (no Kick flash; owner choice, M9 interview)
-- Boot pattern: unique colour sequence confirming firmware loaded (NE convention).
+Level meters, like NE's own Versio firmware (ADR 0031). Panel LEDs left to right: **In L, In R, Out L, Out R**.
+- Brightness follows the level on a dB scale: −48 dBFS and below is off, 0 dBFS full, so quiet signals still glow.
+- Colour warms green → amber as the level gets hot (from −18 dBFS, fully amber at −6 dBFS). Level alone never makes red.
+- **Red** is a warning, held 0.5 s: input LEDs when the input peaks at −1 dBFS or above (the ADC's full scale, i.e. the jack's clip point); output LEDs while the output safety limiter pulls the wet down by 0.5 dB or more (e.g. a loud Howl).
+- Fast rise, ~0.3 s fall.
+- No mode colours (the switches show their own position) and no Kick flash (owner choices, M9).
+- Boot pattern: unique colour sequence confirming firmware loaded (NE convention), then metering.
 
 ---
 
@@ -452,7 +455,7 @@ All four must hold:
 - Final ranges/curves written back into ParamSpec, and SPEC starting guesses replaced with the tuned values.
 
 ### M9 — Polish
-- [H] LEDs: LED_0 input level/clip (green → red), LED_1 Tank energy (glows with tail and Howl), LED_2 SPRINGS colour, LED_3 ATTITUDE colour. Boot pattern.
+- [H] LEDs (ADR 0031): left pair meters In L / In R, right pair Out L / Out R; brightness follows level, green → amber when hot; input red near clip, output red while the limiter pulls down (a loud Howl). Boot pattern, then metering.
 - One-page manual: panel map, controls, flashing via NE Firmware Swap, recovery to NE firmware.
 - Panel overlay from NE's blank-panel/DXF template, labelled with Resilio Versio controls.
 - Tagged release with `.bin` installable via NE Firmware Swap.

@@ -209,6 +209,10 @@ public:
     const dsp::Wobble&    transport() const { return transport_; }
     // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
     float excitationTrim() const { return excTrimTo_; }
+    // Output safety limiter's gain now in effect (linear, stereo-linked):
+    // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
+    // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
+    float limiterGain() const { return limitGain_; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
