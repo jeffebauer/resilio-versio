@@ -24,6 +24,14 @@
 // the depth (a fraction of L). Seeded per Spring and reset by Tank::reset(),
 // so renders stay deterministic.
 //
+// Independent drifts have a cost with 2 and 3 Springs (M8, after TENSION):
+// where A's and B's modes line up, the drifts slide each pair in and out of
+// phase, and a pair that slides into phase late in the tail can swell out
+// of it as one note. WOBBLE does the same, harder. What keeps that quiet is
+// the damping / decay spread between Springs (SpringModes.h "Detune"), not
+// this floor; a floor shared by every Spring was tried and measured no
+// better once the spread was in (it also leaves WOBBLE's drift untouched).
+//
 // WOBBLE (ADR 0008, M7) rides on top of this: the Tank's dsp::Wobble per
 // Spring gives a per-sample offset in samples, added to the same Loop delay
 // read (Spring::process()); the floor stays underneath at WOBBLE 0. (M6

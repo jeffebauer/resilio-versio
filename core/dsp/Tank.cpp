@@ -307,11 +307,14 @@ void Tank::controlTick(bool snap)
                                                    base.transitionHz * modes::kDetune[0].transition, activeStages,
                                                    sampleRate_);
     for (size_t i = 0; i < springs_.size(); ++i) {
-        // Same T60 for every Spring (g is designed from each Spring's own
-        // round trip), so detuning changes pitch/texture, not tail length.
+        // g is designed from each Spring's own round trip, so the L/fC/a
+        // detune changes pitch/texture, not tail length; the damping and
+        // decay detune (SpringModes.h) make each Spring fade its own way.
         SpringSettings s = base;
         s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
         s.transitionHz     *= modes::kDetune[i].transition;
+        s.dampingHz        *= modes::kDetune[i].damping; // Spring.cpp clamps to 0.45 fs
+        s.t60Seconds       *= modes::kDetune[i].decay;
         s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
                                          -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         s.tapRatio          = modes::kPickupTap[i];

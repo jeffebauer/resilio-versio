@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.14 — ADR 0027: the Springs also differ in damping and tail length (§4.3); fixes mid-DECAY resonances between Springs after TENSION.
 - v1.0.13 — ADR 0026 amended (owner, by ear): TENSION turns up = tighter (CW tight, CCW loose); §3 and §4.4 flipped.
 - v1.0.12 — ADR 0026 implemented: K2 TENSION (§3), DECAY = T60 only (§3, §4.4 rewritten), M1/M4/M8/§5 criteria reworded from BOING to TENSION.
 - v1.0.11 — ADR 0026: TENSION replaces BOING ("which tank"), DECAY becomes tail length only; supersedes ADR 0012; implementation staged.
@@ -161,7 +162,7 @@ out_spring = DriveOut( C_lf + hf_level(tone) × C_hf )
 
 ### 4.3 Multiple springs (SW0)
 
-- 1/2/3 instances of §4.2 in parallel, **detuned** L, K, `a` per spring (±3–8%, tune by ear). Detuning = beating + density, and helps prevent shared resonances (§4.10).
+- 1/2/3 instances of §4.2 in parallel, **detuned** L, K, `a` per spring (±3–8%, tune by ear), and (ADR 0027) each a step darker and shorter than the one before (damping × 1 / 0.85 / 0.72, T60 × 1 / 0.93 / 0.865), so modes that line up between Springs die at different rates instead of singing. Detuning = beating + density, and helps prevent shared resonances (§4.10).
 - Stereo: Spring A → L, B → R, C centre with small cross-feed. 1-spring mode: decorrelate R with short allpass diffuser.
 - Input summed to mono before tank (real tanks are mono). Dry path stays stereo.
 - ~20 ms crossfade on spring-count change.

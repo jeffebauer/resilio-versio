@@ -32,15 +32,51 @@ constexpr int kNumModes   = 3; // SPRINGS left / centre / right = 1 / 2 / 3 Spri
 // slow beating/density that makes 2 and 3 Springs sound richer than one.
 // Spring A is what 1-Spring mode plays; it is detuned too (by the smallest
 // amounts) so the three are symmetric around the ParamSpec mapping.
+//
+//   damping      multiplies the Loop's damping cutoff (TONE) -> each Spring
+//                loses its highs at its own speed
+//   decay        multiplies T60 -> each Spring dies away at its own speed
+//                (never longer than DECAY asks)
+// Why (M8, after TENSION, ADR 0026): interleaving is not enough on its own.
+// Two combs with slightly different spacings still line up every
+// 1/(RT_B - RT_A) Hz (a Vernier: ~330 Hz apart on the tightest tank, where
+// the round trips differ by ~3 ms). Near each line-up a mode of A and a mode
+// of B sit a fraction of a Hz apart and beat slowly. If they also die at the
+// same speed, a pair that drifts into phase late in the tail swells up out
+// of it as one singing note ("resonances creeping in at mid DECAY", owner):
+// ringing_db 12-23 on 2 and 3 Springs at DECAY 0.3-0.75, worst on the tight
+// tanks, where the modes are ~30 Hz apart and one pair has few neighbours to
+// hide among. One Spring alone never does this (ringing_db <= 4). Any slow
+// drift that moves the Springs apart (WOBBLE, the Micro-mod floor) makes
+// more pairs slide into phase, at random. The cure is to let the two
+// modes of a pair die at different speeds, as the springs in a real tank do:
+// by the late tail one of them has faded and the pair is one mode, not a
+// beat. Both spreads point the same way (a darker Spring is also a shorter
+// one), so the two modes of a pair part at every frequency, from the low
+// mids (decay) to the top (damping); darker-but-longer cancels out near
+// 1-2 kHz and made it worse. A, B, C each a step darker and shorter than
+// the one before, so every pair differs: A x1 / x1 (1 Spring renders
+// exactly as before), B x0.85 damping (about 0.09 of a TONE turn darker)
+// and x0.93 T60, C x0.72 and x0.865. No Spring rings longer than DECAY asks
+// (AntiRes layer 1); the longest, A, still sets the tail length you hear.
+// Tank scan (WOBBLE 0.2, TONE noon, TENSION 0-1 x DECAY 0.3-0.75, clicks /
+// hits / bursts, 2 and 3 Springs): cells >= 12 dB 49 -> 5, >= 15 dB 19 -> 0.
+// Twice the spread (B x0.8 / x0.9, C x0.64 / x0.81) scored 0 there, but at
+// long DECAY it thinned a 3-Spring chord tail into Spring A alone and left
+// one partial singing over it (+9 dB), so the gentler step won.
+// The Loop gain design sees the damping (it checks every band), so a
+// Spring's decay factor is exactly its T60 change.
 struct Detune {
     float loopDelay;
     float transition;
     float allpassCoeff;
+    float damping;
+    float decay;
 };
 inline constexpr std::array<Detune, kNumSprings> kDetune{{
-    {0.965f, 1.040f, 1.030f}, // A: -3.5 % L, +4 % fC, +3 % a  (left)
-    {1.050f, 0.955f, 0.960f}, // B: +5 % L, -4.5 % fC, -4 % a   (right)
-    {0.925f, 1.075f, 1.070f}, // C: -7.5 % L, +7.5 % fC, +7 % a (centre)
+    {0.965f, 1.040f, 1.030f, 1.00f, 1.000f}, // A: -3.5 % L, +4 % fC, +3 % a                      (left)
+    {1.050f, 0.955f, 0.960f, 0.85f, 0.930f}, // B: +5 % L, -4.5 % fC, -4 % a; darker, shorter     (right)
+    {0.925f, 1.075f, 1.070f, 0.72f, 0.865f}, // C: -7.5 % L, +7.5 % fC, +7 % a; darkest, shortest (centre)
 }};
 // Extremes of the table, so the Spring sizes its delay memory for the
 // longest detuned L and largest detuned K (checked by static_asserts below).
@@ -207,7 +243,7 @@ constexpr float kDecorr1 = 0.75f; // w, 1 Spring
 constexpr float kDecorr2 = 0.65f; // w, 2 Springs
 constexpr float kDecorr3 = 0.65f; // w, 3 Springs
 constexpr float kCentre3 = 0.40f; // c, 3 Springs
-constexpr float kSide2   = 0.43f; // k, 2 Springs (0.5 = hard pan)
+constexpr float kSide2   = 0.40f; // k, 2 Springs (0.5 = hard pan). 0.43 -> 0.40 (29 Sep): mono-notch margin with SPLASH's clang in the Loops (stabs -4.8 dB at DECAY 0 x tightest TENSION)
 constexpr float kSide3   = 0.45f; // k, 3 Springs
 // HighsLater Chirp (Mappings.h): the lows' round trip is ~20 ms shorter (the
 // allpass chain barely delays them), so with the same T60 they make more
