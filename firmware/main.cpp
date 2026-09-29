@@ -296,7 +296,7 @@ int FracToPercentTenths(float frac)
     return int(frac * 1000.0f + 0.5f);
 }
 
-constexpr size_t kLineBufSize = 160;
+constexpr size_t kLineBufSize = 320; // CORNER + SPLIT lines, sent in one transmit
 
 void TransmitLine(const char* buf, size_t len)
 {
@@ -554,13 +554,13 @@ int main()
             AppendStr(p, end, " Hz | ~");
             AppendInt(p, end, cyclesPerSample);
             AppendStr(p, end, " cyc/sample\r\n");
-            TransmitLine(buf, size_t(p - buf));
 
             // Where the time goes, each section as % of the whole budget
             // (10,000 cycles per sample at 480 MHz / 48 kHz): cycles / (samples x 10) = tenths of a %.
             static const char* const kSectionNames[kNumSections] = {
                 "ctl", "drvIn", "splash", "tilt", "sprA", "sprB", "sprC", "out"};
-            p = buf;
+            // Same buffer, one transmit: the USB CDC send is non-blocking and
+            // drops a second call made while the first is still going out.
             AppendStr(p, end, "  SPLIT");
             for (int k = 0; k < kNumSections; ++k) {
                 AppendStr(p, end, " ");
