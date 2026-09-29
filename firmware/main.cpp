@@ -297,7 +297,7 @@ int FracToPercentTenths(float frac)
     return int(frac * 1000.0f + 0.5f);
 }
 
-constexpr size_t kLineBufSize = 480; // CORNER + SPLIT (+ BENCH) lines, sent in one transmit
+constexpr size_t kLineBufSize = 640; // CORNER + SPLIT (+ BENCH) lines, sent in one transmit
 m3bench::Results gBench{};
 
 void TransmitLine(const char* buf, size_t len)
@@ -423,6 +423,8 @@ int                 gCurrentCorner = 0;
 constexpr int kNumSections = rv::prof::kNumSections;
 uint32_t      gProfLast = 0;
 uint64_t      gProfAcc[kNumSections]{};
+uint64_t      gProfPrev[kNumSections]{};
+uint32_t      gProfPeak[kNumSections]{}; // worst single block per section, this corner
 
 void ProfMark(int section)
 {
@@ -445,6 +447,7 @@ struct Result {
     size_t   memBytes;
     bool     prepared;
     uint64_t split[kNumSections];
+    uint32_t peak[kNumSections];
     size_t   samples;
 };
 volatile bool gResultReady = false;
@@ -464,6 +467,11 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
     }
     gProfLast = DWT->CYCCNT;
     tank.process(bufL, bufR, out[0], out[1], int(size));
+    for (int k = 0; k < kNumSections; ++k) {
+        const uint32_t d = uint32_t(gProfAcc[k] - gProfPrev[k]);
+        if (d > gProfPeak[k]) gProfPeak[k] = d;
+        gProfPrev[k] = gProfAcc[k];
+    }
 
     gLoadMeter.OnBlockEnd();
 
@@ -478,7 +486,10 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
         gPendingResult.samples  = gCornerElapsed;
         for (int k = 0; k < kNumSections; ++k) {
             gPendingResult.split[k] = gProfAcc[k];
+            gPendingResult.peak[k]  = gProfPeak[k];
             gProfAcc[k]             = 0;
+            gProfPrev[k]            = 0;
+            gProfPeak[k]            = 0;
         }
         gResultReady            = true;
 
@@ -571,6 +582,15 @@ int main()
                 AppendFixed1(p, end, r.samples ? int(r.split[k] / (uint64_t(r.samples) * 10u)) : 0, 5);
             }
             AppendStr(p, end, "  (% of budget)\r\n");
+            // The worst single block per section (% of one block's budget): what
+            // makes max jump above avg.
+            AppendStr(p, end, "  PEAK ");
+            for (int k = 0; k < kNumSections; ++k) {
+                AppendStr(p, end, " ");
+                AppendStr(p, end, kSectionNames[k]);
+                AppendFixed1(p, end, int(r.peak[k] / (uint32_t(kBlockSize) * 10u)), 5);
+            }
+            AppendStr(p, end, "\r\n");
             if (r.index == 0) { // once per pass through the corners
                 const m3bench::Results& b = gBench;
                 AppendStr(p, end, "BENCH clock ");
@@ -589,6 +609,10 @@ int main()
                 AppendFixed1(p, end, b.split, 5);
                 AppendStr(p, end, " split3");
                 AppendFixed1(p, end, b.split3, 5);
+                AppendStr(p, end, " pipe");
+                AppendFixed1(p, end, b.pipe, 5);
+                AppendStr(p, end, " fused3");
+                AppendFixed1(p, end, b.fused3, 5);
                 AppendStr(p, end, "\r\n");
             }
             TransmitLine(buf, size_t(p - buf));

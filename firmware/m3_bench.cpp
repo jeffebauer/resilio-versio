@@ -115,6 +115,65 @@ __attribute__((noinline)) float RunSplit3()
     return acc;
 }
 
+// fused, with the next section's D{v} (independent of x) computed while this
+// section's x chain waits: the in-order M7 then has other work to issue.
+__attribute__((noinline)) float RunPipe()
+{
+    float acc = 0.0f;
+    for (int t = 0; t < kSamples; ++t) {
+        const int iw = t & kMask, ir0 = (iw - kN) & kMask, ir1 = (iw - kN - 1) & kMask;
+        for (int s = 0; s < kSprings; ++s) {
+            const float a = kA[s], eta = kEta[s];
+            float       x = Input(t);
+            float       d = eta * (gRings[s][0][ir0] - gY1[s][0]) + gRings[s][0][ir1];
+            for (int j = 0; j < kStages - 1; ++j) {
+                const float* next = gRings[s][j + 1];
+                const float  dn   = eta * (next[ir0] - gY1[s][j + 1]) + next[ir1];
+                gY1[s][j]         = d;
+                const float v     = x - a * d;
+                gRings[s][j][iw]  = v;
+                x                 = a * v + d;
+                d                 = dn;
+            }
+            gY1[s][kStages - 1]          = d;
+            const float v                = x - a * d;
+            gRings[s][kStages - 1][iw]   = v;
+            x                            = a * v + d;
+            acc += x;
+        }
+    }
+    return acc;
+}
+
+// fused, the three Springs' sections side by side: three independent chains.
+__attribute__((noinline)) float RunFused3()
+{
+    float acc = 0.0f;
+    for (int t = 0; t < kSamples; ++t) {
+        const int   iw = t & kMask, ir0 = (iw - kN) & kMask, ir1 = (iw - kN - 1) & kMask;
+        const float a0 = kA[0], a1 = kA[1], a2 = kA[2], e0 = kEta[0], e1 = kEta[1], e2 = kEta[2];
+        float       x0 = Input(t), x1 = x0, x2 = x0;
+        for (int j = 0; j < kStages; ++j) {
+            float *r0 = gRings[0][j], *r1 = gRings[1][j], *r2 = gRings[2][j];
+            const float d0 = e0 * (r0[ir0] - gY1[0][j]) + r0[ir1];
+            const float d1 = e1 * (r1[ir0] - gY1[1][j]) + r1[ir1];
+            const float d2 = e2 * (r2[ir0] - gY1[2][j]) + r2[ir1];
+            gY1[0][j] = d0;
+            gY1[1][j] = d1;
+            gY1[2][j] = d2;
+            const float v0 = x0 - a0 * d0, v1 = x1 - a1 * d1, v2 = x2 - a2 * d2;
+            r0[iw] = v0;
+            r1[iw] = v1;
+            r2[iw] = v2;
+            x0 = a0 * v0 + d0;
+            x1 = a1 * v1 + d1;
+            x2 = a2 * v2 + d2;
+        }
+        acc += x0 + x1 + x2;
+    }
+    return acc;
+}
+
 __attribute__((noinline)) float ChainFma(float x, float a, float b, int n)
 {
     for (int i = 0; i < n; ++i) x = x * a + b;
@@ -165,6 +224,10 @@ Results Run()
     r.split = Tenths(Time([] { gSink = RunSplit(); }), kSections);
     Clear();
     r.split3 = Tenths(Time([] { gSink = RunSplit3(); }), kSections);
+    Clear();
+    r.pipe = Tenths(Time([] { gSink = RunPipe(); }), kSections);
+    Clear();
+    r.fused3 = Tenths(Time([] { gSink = RunFused3(); }), kSections);
     return r;
 }
 

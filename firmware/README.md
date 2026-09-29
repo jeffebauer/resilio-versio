@@ -217,3 +217,7 @@ Run 6 results (29 Sep 2026): **~5 points better everywhere, still over.** BENCH:
 
 Next candidates (no sound change unless noted): (1) spread the Springs' coefficient redesign over several control ticks (the ~16-point `max` bursts follow setting changes, i.e. any knob move); (2) the Chirp section's scheduling (~21 cycles vs a ~8–10 floor; test loop shapes on-chip with m3_bench); (3) LoopSat: two soft clips with divisions per sample per Spring at 2× (`sIn` ~5.6 % per Spring in run 4); (4) skip muted Springs at SPRINGS 1/2 (worst case unaffected; a newly switched-in Spring would start empty: owner question); (5) block 96 instead of 48 (halves per-block overhead and the burst's share; +1 ms latency: owner question, SPEC §5).
 
+Owner (29 Sep): unused Springs keep running (seamless SPRINGS switching); block 96 only if the sound-neutral fixes fall short.
+
+**Run 7** (`dist/resilio_versio_m3_profile_peak.bin`): adds a `PEAK` line (the worst single block per section, % of one block's budget: what lifts `max` above `avg`) and two more Chirp section shapes to BENCH: `pipe` (the next section's D{v} computed while this section's x chain waits; the fused section is a 7-step chain at ~3 cycles a step = 21) and `fused3` (the three Springs' sections side by side).
+

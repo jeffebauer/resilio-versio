@@ -16,6 +16,8 @@ struct Results {
     int fused;         // Chirp section as in Spring.cpp today, per section-sample
     int split;         // same maths: all D{v} first, then the x chain
     int split3;        // split, with the three Springs' x chains interleaved
+    int pipe;          // fused, next section's D{v} computed during this one's x chain
+    int fused3;        // fused, the three Springs' sections side by side
 };
 
 // Runs everything once (a few ms); needs the DWT cycle counter running.

@@ -52,6 +52,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Run 4 (29 Sep): the reordering was slower on the chip; reverted
 - [x] Run 5 (29 Sep): chip at full speed, caches on; the compiler's choice of multiply-add instruction was stalling every calculation
 - [x] Run 6 (29 Sep): worst case 83 → 76 % average, 100 → 93 % peak. Still over the 65 % target; more work on Claude's side, then another run
+- [x] Decided (29 Sep): idle springs keep running (seamless SPRINGS switching); the 2 ms audio slice only if still needed
+- [ ] Run 7: flash **`dist/resilio_versio_m3_profile_peak.bin`** (USB only), stream ~2 minutes. Shows what causes the peaks, and tests two faster spring loops
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)
