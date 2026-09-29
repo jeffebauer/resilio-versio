@@ -64,6 +64,25 @@ exists is still processed, and the missing core takes are called out.
    showed up in this tool's own `--selftest` fake data at one DECAY setting.
    Treat it the way the contract does: "not measurable" for that take, not
    an error, and the DECAY search below is prepared for it.
+
+   **Caution:** on repeated stimuli this single-segment T60 reads **long**.
+   The segment ends at the next event's -40 dBFS crossing, and a spring's
+   output builds up quietly for ~30 ms before it crosses, so the next
+   event's build-up props up the end of the decay curve (same render: 1.23 s
+   vs 1.03 s measured cleanly). The Wellspring's B/C "5.0-5.2 s" came from
+   this; per hit, B's tails are really 3.3-4.3 s.
+4b. **Combined-click T60** (click takes: A, A-L, A-R, MA), the number the
+   matched A/B uses. Each click's tail is cut from its stimulus onset to
+   0.1 s before the next click; the six identical tails are averaged
+   (`combined_click_t60()`). The fit is `schroederT60()`'s (-5 to -35 dB,
+   extrapolated to 60), made noise-aware: the floor's power (last 1 s of
+   the segment) is subtracted, integration starts where the 50 ms envelope
+   falls to ~3 dB above the floor, and the tail energy lost below the floor
+   is added back from the fitted slope (Lundeby-style). Checked on noisy
+   renders of known T60: within 3 % at >= 46 dB peak-to-floor, about -8 %
+   at 36 dB; the report flags takes under 42 dB. Wellspring A: 3.52 s at
+   50 dB (per click 3.50-3.55 s). Hits takes get the same fit per hit
+   (`per_event_t60()`, no averaging: the hits differ).
 5. **Dispersion** (click takes: A, A-L, A-R, MA) via `tools/ir_dispersion.py`:
    chirp repeat time, lows-later dispersion, fC.
 6. **Wow & flutter → WOBBLE targets** (Magneto MW0-MW4 only) via
@@ -83,9 +102,14 @@ exists is still processed, and the missing core takes are called out.
    absolute % figure.
 8. **Matched A/B render.** DECAY is searched (bisection, since T60 increases
    monotonically with DECAY per SPEC M1) so our own render's T60 matches the
-   Wellspring take A's (or Magneto MA's) measured T60, at MIX 1. The recipe
-   and SPEC say "DECAY set to match T60" but don't say which ATTITUDE — this
-   tool renders **both CLEAN and DRIVEN** rather than guessing one.
+   Wellspring take A's (or Magneto MA's) combined-click T60 (4b), at MIX 1.
+   Our renders are measured the same way (not with the sidecar's T60, which
+   reads long, see 4). The recipe and SPEC say "DECAY set to match T60" but
+   don't say which ATTITUDE — this tool renders **both CLEAN and DRIVEN**
+   rather than guessing one, each on `01_clicks`, `02_hits` and `04_skank`
+   so every reference take (A, B, E) has its like-for-like render on the
+   page. The report adds the per-hit tail lengths of the hits take next to
+   our matched hits renders.
 
 ## Testing it (no real recordings needed)
 

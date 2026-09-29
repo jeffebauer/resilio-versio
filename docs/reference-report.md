@@ -8,8 +8,15 @@ Found 12 take(s): 0, A, A-L, A-R, B, C, D, E, E2, F, G, G2.
 Interface latency (from take 0): **-0.21 ms**.
 
 **A (clicks):** T60 -, ringing_db 5.0 dB, peak -32.9 dBFS.
+**Tail length (T60) from all 6 clicks combined: 3.52 s** (per click 3.50-3.55 s; 50.3 dB above the noise floor). The single-segment T60 above is blank because each tail sinks into the noise floor before -35 dB.
 Chirp repeat 82.9 ms, dispersion (lows-later) -5.72 ms, fC 4531 Hz.
 100% wet check: no direct click found at any onset (fully wet).
+
+**Matched Resilio A/B render** (DECAY searched so our click T60, measured the same combined-click way, matches the reference; MIX 1, other knobs default; rendered on clicks, hits and skank):
+- CLEAN: DECAY 0.7031 -> T60 3.51 s
+- DRIVEN: DECAY 0.7031 -> T60 3.53 s
+- Tail length per hit of `02_hits` (s), same DECAY: reference B: 4.3 / 4.3 / 4.0 / 3.3 / 3.3 / 3.3; Resilio CLEAN: 3.5 / 3.5 / 3.5 / 3.5 / 3.5 / 3.6; Resilio DRIVEN: 3.5 / 3.5 / 3.5 / 3.4 / 3.5 / 3.6
+- Review page: `renders/references/wellspring/ab/index.html`
 
 **Drive colour (proxy, not true THD -- see docs/reference-ingest.md):**
 - C: brightness -12.1 dB, crest 20.6 dB, HF-distortion proxy -18.5 dB
@@ -37,8 +44,15 @@ Found 13 take(s): 0, MA, MB, MD1, MD2, MD3, ME, MS, MW0, MW1, MW2, MW3, MW4.
 Interface latency (from take 0): **1.75 ms**.
 
 **MA (clicks):** T60 -, ringing_db 4.7 dB, peak -28.4 dBFS.
+**Tail length (T60) from all 6 clicks combined: 3.48 s** (per click 3.47-3.48 s; 68.0 dB above the noise floor). The single-segment T60 above is blank because each tail sinks into the noise floor before -35 dB.
 Chirp repeat 29.3 ms, dispersion (lows-later) -, fC 1851 Hz.
 100% wet check: no direct click found at any onset (fully wet).
+
+**Matched Resilio A/B render** (DECAY searched so our click T60, measured the same combined-click way, matches the reference; MIX 1, other knobs default; rendered on clicks, hits and skank):
+- CLEAN: DECAY 0.7031 -> T60 3.51 s
+- DRIVEN: DECAY 0.7031 -> T60 3.53 s
+- Tail length per hit of `02_hits` (s), same DECAY: reference MB: 3.4 / 3.4 / 3.3 / 3.2 / 3.2 / 3.2; Resilio CLEAN: 3.5 / 3.5 / 3.5 / 3.5 / 3.5 / 3.6; Resilio DRIVEN: 3.5 / 3.5 / 3.5 / 3.4 / 3.5 / 3.6
+- Review page: `renders/references/magneto/ab/index.html`
 
 **Wow & flutter -> WOBBLE targets (ADR 0008):**
 - MW0 (fully CCW): 0.0 cents depth
@@ -135,9 +149,4 @@ Copied byte-for-byte and renamed; the Eurorack `01_clicks` clip again started 0.
 
 Not used: Eurorack 0001 [180028], 0005, 0006 (unused passes, no clip in the set).
 ```
-
-## Warnings
-
-- wellspring: no measured T60 for A, skipping matched A/B renders
-- magneto: no measured T60 for MA, skipping matched A/B renders
 

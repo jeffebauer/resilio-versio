@@ -314,6 +314,106 @@ def drive_colour(mono, sr, onset_i, dur_s=2.0):
     }
 
 
+# ---------------------------------------------------------------- combined-click T60 (docs/reference-ingest.md)
+
+def noise_compensated_t60(y, sr, noise_s=1.0, lo_db=-5.0, hi_db=-35.0):
+    """Schroeder T60 with the same fit range as Metrics.cpp schroederT60()
+    (-5 to -35 dB, extrapolated to 60), but for a recording with a noise
+    floor: the floor's power (from the segment's last `noise_s` seconds,
+    where the tail has long gone) is subtracted before the backward
+    integration, and the integration starts where the 50 ms envelope first
+    falls to ~3 dB above that floor. Without this, the floor's energy props
+    up the decay curve and the fit never reaches -35 dB (why take A's plain
+    metric was null). Returns (t60_s or None, peak_to_floor_db, truncated_at_s)."""
+    p = [v * v for v in y]
+    n_noise = int(noise_s * sr)
+    nf = sum(p[-n_noise:]) / n_noise
+    w = int(0.05 * sr)
+    idx = len(p)
+    for i in range(int(0.2 * sr), len(p) - w, w):
+        if sum(p[i:i + w]) / w < 2.0 * nf:
+            idx = i
+            break
+    peak_block = max(sum(p[i:i + w]) / w for i in range(0, min(len(p), int(0.3 * sr)) - w, w // 4))
+    peak_to_floor = 10 * math.log10(peak_block / nf) if nf > 0 and peak_block > 0 else None
+    acc = 0.0
+    edc = [0.0] * idx
+    for i in range(idx - 1, -1, -1):
+        acc += max(p[i] - nf, 0.0)
+        edc[i] = acc
+    if acc <= 0:
+        return None, peak_to_floor, idx / sr
+    # Energy lost below the floor (after idx) would make the curve drop too
+    # fast near the end. Estimate it from the current fit: the tail's power
+    # at idx, decaying exponentially at the fitted rate (Lundeby-style), and
+    # add it back; a few rounds converge.
+    p_end = max(sum(p[max(0, idx - w):idx]) / w - nf, 0.0) if idx < len(p) else 0.0
+    t60 = None
+    extra = 0.0
+    for _ in range(5):
+        sx = sy = sxx = sxy = 0.0
+        k = 0
+        reached = False
+        e0 = edc[0] + extra
+        for i in range(idx):
+            d = 10 * math.log10((edc[i] + extra) / e0 + 1e-300)
+            if d > lo_db:
+                continue
+            if d < hi_db:
+                reached = True
+                break
+            t = i / sr
+            sx += t; sy += d; sxx += t * t; sxy += t * d
+            k += 1
+        if not reached or k < 10:
+            break
+        slope = (k * sxy - sx * sy) / (k * sxx - sx * sx)
+        if slope >= 0:
+            break
+        t60 = -60.0 / slope
+        extra = p_end * sr * t60 / (6.0 * math.log(10))  # integral of p_end * exp(-t / tau), tau = T60 / 13.8
+    return t60, peak_to_floor, idx / sr
+
+
+def combined_click_t60(mono, sr, stim_events):
+    """Take A's T60 from all its clicks at once. The clicks are identical
+    and the spring is (nearly) deterministic, so lining the tails up on the
+    stimulus's click onsets and averaging them keeps the tail and averages
+    down the uncorrelated part of the noise; the average's noise-compensated
+    fit is the take's T60. Per-click fits are kept as a spread check."""
+    if len(stim_events) < 2:
+        return None
+    gap = min(b - a for a, b in zip(stim_events, stim_events[1:]))
+    seg_len = gap - int(0.1 * sr)
+    segs = [mono[o:o + seg_len] for o in stim_events if o + seg_len <= len(mono)]
+    if not segs:
+        return None
+    avg = [sum(col) / len(segs) for col in zip(*segs)]
+    t60, ptf, trunc = noise_compensated_t60(avg, sr)
+    singles = [noise_compensated_t60(s, sr)[0] for s in segs]
+    ok = [v for v in singles if v is not None]
+    return {
+        "t60_s": t60,
+        "clicks_combined": len(segs),
+        "peak_to_floor_db": ptf,
+        "fit_until_s": trunc,
+        "per_click_t60_s": singles,
+        "per_click_spread_s": (max(ok) - min(ok)) if len(ok) > 1 else None,
+    }
+
+
+def per_event_t60(mono, sr, stim_events):
+    """Noise-compensated T60 of each event's tail, from its onset to just
+    before the next one (hits aren't identical, so no averaging). Shows how
+    the tail length depends on the material (low drums ring longer)."""
+    bounds = list(stim_events[1:]) + [len(mono)]
+    out = []
+    for a, b in zip(stim_events, bounds):
+        seg = mono[a:min(b, len(mono)) - int(0.1 * sr)]
+        out.append(noise_compensated_t60(seg, sr)[0] if len(seg) > 2 * sr else None)
+    return out
+
+
 # ---------------------------------------------------------------- subprocess helpers
 
 def run_rv_render(args, timeout=600):
@@ -362,6 +462,11 @@ def run_ir_dispersion(wav_path):
 # ---------------------------------------------------------------- DECAY search (matched Resilio A/B render)
 
 ATTITUDE_NORM = {"CLEAN": 0.0, "DRIVEN": 0.5, "KICKED": 1.0}
+AB_STIMULI = [("01_clicks.wav", "clicks"), ("02_hits.wav", "hits"), ("04_skank.wav", "skank")]
+# Below this peak-to-floor (50 ms blocks), the combined-click T60 reads
+# low (about -8 % at 36 dB on noisy renders of known T60; within 3 % from
+# 46 dB up).
+T60_MIN_PEAK_TO_FLOOR_DB = 42.0
 
 
 def make_search_stimulus(tmp_dir):
@@ -381,15 +486,18 @@ def make_search_stimulus(tmp_dir):
 
 
 def measure_t60(search_stim, tmp_dir, sets, tag):
+    """Render and measure with the same combined-click method as the
+    reference (not the sidecar's t60_s: rv_render --analyze ends its T60
+    segment at the next event's -40 dBFS crossing, which on a spring
+    includes the next click's quiet build-up and reads long)."""
     out_wav = tmp_dir / f"{tag}.wav"
     err = rv_render_set(search_stim, out_wav, sets)
     if err:
         return None, err
-    sidecar_path = out_wav.with_suffix(".json")
-    if not sidecar_path.exists():
-        return None, "rv_render did not write a sidecar"
-    t60 = json.loads(sidecar_path.read_text()).get("metrics", {}).get("t60_s")
-    return t60, None
+    stim, sr = read_wav(search_stim)
+    channels, _ = read_wav(out_wav)
+    c = combined_click_t60(mono_of(channels), sr, detect_events(stim[0], sr))
+    return (c or {}).get("t60_s"), None
 
 
 def search_decay(target_t60, search_stim, tmp_dir, base_sets, iterations=14):
@@ -517,6 +625,7 @@ def process_take(unit, take, path, out_dir, warnings, unit_lag=None):
         if err:
             warnings.append(f"{unit} {take}: ir_dispersion: {err}")
         result["dispersion"] = ir
+        result["combined_t60"] = combined_click_t60(mono_of(aligned), sr, events)
 
     if take in DRIVE_TAKES.get(unit, []):
         aligned_mono = mono_of(aligned)
@@ -636,7 +745,7 @@ def ingest(ref_dir, out_root, notes_text=None, tmp_dir=None):
         # Matched Resilio A/B renders against the click take's measured T60.
         click_take = "A" if unit == "wellspring" else "MA"
         click_detail = unit_summary["take_details"].get(click_take, {})
-        target_t60 = (click_detail.get("metrics") or {}).get("t60_s")
+        target_t60 = (click_detail.get("combined_t60") or {}).get("t60_s")
         if target_t60:
             ab_dir = unit_out / "ab"
             ab_dir.mkdir(parents=True, exist_ok=True)
@@ -651,19 +760,43 @@ def ingest(ref_dir, out_root, notes_text=None, tmp_dir=None):
                 if err:
                     warnings.append(f"{unit} matched render ({attitude}): {err}")
                     continue
-                final_wav = ab_dir / f"resilio_match_{attitude}.wav"
                 sets = dict(base_sets)
                 sets["decay"] = round(decay, 6)
-                rerr = rv_render_set(str(STIMULUS_DIR / "01_clicks.wav"), str(final_wav), sets)
-                if rerr:
-                    warnings.append(f"{unit} matched render ({attitude}): {rerr}")
-                    continue
-                renders_entries.append({"wav": final_wav.name, "sidecar": final_wav.with_suffix(".json").name,
-                                         "params": sets})
+                # Same DECAY on the clicks, hits and skank, so each sits next
+                # to its reference take (A, B, E on the Wellspring).
+                for stim_name, label in AB_STIMULI:
+                    final_wav = ab_dir / f"resilio_match_{attitude}_{label}.wav"
+                    rerr = rv_render_set(str(STIMULUS_DIR / stim_name), str(final_wav), sets)
+                    if rerr:
+                        warnings.append(f"{unit} matched render ({attitude}, {label}): {rerr}")
+                        continue
+                    renders_entries.append({"wav": final_wav.name, "sidecar": final_wav.with_suffix(".json").name,
+                                             "params": dict(sets, stimulus=label)})
             unit_summary["matched_decay_search"] = matched
+            # Per-hit tail lengths: the reference hits take vs each matched
+            # hits render (same DECAY found on the clicks).
+            hits_take = "B" if unit == "wellspring" else "MB"
+            hits_detail = unit_summary["take_details"].get(hits_take, {})
+            hits_stim, hsr = read_wav(STIMULUS_DIR / "02_hits.wav")
+            hev = detect_events(hits_stim[0], hsr)
+            per_hit = {}
+            if hits_detail.get("aligned_wav"):
+                ch, _ = read_wav(ROOT / hits_detail["aligned_wav"])
+                per_hit[f"reference {hits_take}"] = per_event_t60(mono_of(ch), hsr, hev)
+            for attitude in matched:
+                wav = ab_dir / f"resilio_match_{attitude}_hits.wav"
+                if wav.exists():
+                    ch, _ = read_wav(wav)
+                    per_hit[f"Resilio {attitude}"] = per_event_t60(mono_of(ch), hsr, hev)
+            unit_summary["per_hit_t60_s"] = per_hit
             if renders_entries:
                 manifest = {"name": f"{unit}_ab", "created": "generated-by-ingest_references",
-                            "input": "test_audio/stimulus/01_clicks.wav", "renders": renders_entries}
+                            "input": ", ".join(f"test_audio/stimulus/{n}" for n, _ in AB_STIMULI),
+                            "renders": renders_entries,
+                            # Percussive stimuli: every hit is a >3 dB step, and
+                            # the clicks stimulus is itself clicks (the references
+                            # trip both too). Not faults here.
+                            "ignore_flags": ["max_step_db_100ms", "click_count"]}
                 (ab_dir / "manifest.json").write_text(json.dumps(manifest, indent=1) + "\n")
                 if MAKE_REVIEW.exists():
                     r = subprocess.run([sys.executable, str(MAKE_REVIEW), str(ab_dir), "--reference", str(unit_out)],
@@ -727,6 +860,16 @@ def write_report(summary, path, notes_text):
             lines.append(f"**{click_take} (clicks):** T60 {fmt(m.get('t60_s'), 2, ' s')}, "
                          f"ringing_db {fmt(m.get('ringing_db'), 1, ' dB')}, "
                          f"peak {fmt(m.get('peak_dbfs'), 1, ' dBFS')}.")
+            ct = click.get("combined_t60")
+            if ct and ct.get("t60_s"):
+                low = ct["peak_to_floor_db"] is not None and ct["peak_to_floor_db"] < T60_MIN_PEAK_TO_FLOOR_DB
+                lines.append(f"**Tail length (T60) from all {ct['clicks_combined']} clicks combined: "
+                             f"{fmt(ct['t60_s'], 2, ' s')}** (per click {fmt(min(v for v in ct['per_click_t60_s'] if v), 2)}"
+                             f"-{fmt(max(v for v in ct['per_click_t60_s'] if v), 2)} s; "
+                             f"{fmt(ct['peak_to_floor_db'], 1, ' dB')} above the noise floor"
+                             f"{', **low: reads short**' if low else ''}). "
+                             f"The single-segment T60 above is blank because each tail sinks into the noise floor "
+                             f"before -35 dB.")
             disp = click.get("dispersion")
             if disp and disp.get("ok"):
                 lines.append(f"Chirp repeat {fmt(disp.get('repeat_ms'), 1, ' ms')}, "
@@ -741,12 +884,18 @@ def write_report(summary, path, notes_text):
 
         matched = u.get("matched_decay_search")
         if matched:
-            lines.append("**Matched Resilio A/B render** (DECAY searched so T60 matches the reference, MIX 1):")
+            lines.append("**Matched Resilio A/B render** (DECAY searched so our click T60, measured the same "
+                         "combined-click way, matches the reference; MIX 1, other knobs default; rendered on "
+                         "clicks, hits and skank):")
             for att, m in matched.items():
                 if m.get("error"):
                     lines.append(f"- {att}: search failed ({m['error']})")
                 else:
                     lines.append(f"- {att}: DECAY {fmt(m['decay'], 4)} -> T60 {fmt(m['final_t60_s'], 2, ' s')}")
+            per_hit = u.get("per_hit_t60_s")
+            if per_hit:
+                lines.append("- Tail length per hit of `02_hits` (s), same DECAY: " + "; ".join(
+                    f"{k}: " + " / ".join(fmt(v, 1) for v in vals) for k, vals in per_hit.items()))
             if u.get("review_page"):
                 lines.append(f"- Review page: `{u['review_page']}`")
             lines.append("")
@@ -950,7 +1099,7 @@ def selftest():
     fails += not ok
 
     matched = w.get("matched_decay_search", {}).get("CLEAN", {})
-    a_t60 = (a.get("metrics") or {}).get("t60_s")
+    a_t60 = (a.get("combined_t60") or {}).get("t60_s")
     m_t60 = matched.get("final_t60_s")
     ok = a_t60 and m_t60 and abs(m_t60 - a_t60) <= max(0.1, 0.03 * a_t60)
     print(f"{'PASS' if ok else 'FAIL'}  T60 match: reference A {fmt(a_t60,3)} s, matched render {fmt(m_t60,3)} s")

@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 2 wrap) · **Milestones:** M0 needs your hardware check · M1: Wellspring recorded, Claude builds the A/B next · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 · **Milestones:** M0 needs your hardware check · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -43,6 +43,12 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Rescan plug-ins first** and use a fresh instance (see the top of this page). The second knob is now TENSION, not BOING
 - [ ] Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz
 - A 10th control, **Bypass**, is normal (added by the plugin framework)
+
+### 4b. Listen: Resilio vs the Wellspring (≈15 min) · M1 A/B
+- Open from Finder: `renders/references/wellspring/ab/index.html`. The Wellspring's own takes are in its Reference section; ours are rendered at the DECAY that gives the **same tail length (3.5 s, DECAY about 2 o'clock)**, CLEAN and DRIVEN, on the same clicks, hits and skank. Pin a Wellspring take as A (A = clicks, B = hits, E = skank) and ours on the same material as B
+- [ ] Same **length** of tail by ear? (The "~5 s" we quoted before was a measuring error; it's 3.5 s)
+- [ ] On hits and skank: the Wellspring's **low drums ring longer** (4.3 s) than its higher ones (3.3 s); ours is an even 3.5 s on every hit. Does ours sound too even, or is it fine?
+- [ ] Anything else that gives ours away: brightness, the echo spacing, the "boing"?
 
 ### 5. Listen: M1 renders (≈15 min)
 - Open from Finder: `renders/m1_click_grid/index.html`, `renders/m1_hits_grid/index.html`. These are from the very first build (BOING era), so judge the spring character, not the details
@@ -119,13 +125,14 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **M1:** match DECAY to the Wellspring's tail (~5 s) and build the A/B page against your takes. Also: make the tool measure take A's tail by combining the clicks
 - **Possible follow-up:** on the skank with WOBBLE around 9 o'clock, one partial on a tight tank can still hang on after the chord (ADR 0027 "Open"); WOBBLE's per-spring drift is the suspect
 - Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target (TENSION adds ~2%); confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 
 ## Done
+
+- 29 Sep 2026: **M1 A/B page built** against the Wellspring: its tail is 3.5 s (not ~5 s; the old number was a measuring error), matched by DECAY about 2 o'clock (task 4b)
 
 - 29 Sep 2026: **installed `ae844da`**: TENSION up = tighter, SPLASH "heavier clang", TONE low cut, mid-DECAY resonances fixed
 - 29 Sep 2026: **Wellspring and Magneto recorded** and analysed (recordings stay on your Mac)
