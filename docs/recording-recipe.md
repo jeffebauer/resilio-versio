@@ -81,7 +81,7 @@ Don't change the interface input gain during the session. If the wet signal clip
 | 0 | `01_clicks` | Loopback cable instead of the Wellspring | Interface latency + level |
 | A | `01_clicks` | none | Chirp spacing, dispersion, T60 |
 | B | `02_hits` | none | Priority sound (snare/rim) |
-| C | `02_hits` | **INPUT turned up** from the base position until the CLIP light flashes on the loudest snare. Note the position. | Driven-spring reference for M5 DRIVE |
+| C | `02_hits` | The **only take with INPUT raised**: turn it up from the base position until the CLIP light flashes on the loudest snare (on purpose: this take overdrives the input). Note the position, check the recording doesn't clip in Ableton, and **turn INPUT back to the base position** afterwards (easiest: record C last). | Driven-spring reference for M5 DRIVE |
 | D | `03_sweep` | none. Don't touch anything during the take | Precise impulse + frequency response |
 | E | `04_skank` | none | Musical A/B material |
 | E2 | `04_skank` | **SPRINGS DRY/WET** where it sounds best to you for dub. Note the position | Hints at a good MIX taper |
