@@ -92,12 +92,12 @@ struct Voice {
     //     800 Hz) sound driven. Aliasing stays <= -60 dB (test_drive).
     float outFluxOpenDb;
     //   outAmount0 (M8): the pickup's saturation is blended in parallel,
-    //     y = x + a·(sat(x) − x), a rising *linearly* from outAmount0 at
-    //     DRIVE 0 to 1 at DRIVE 1. A saturator alone changes the sound mostly
-    //     at the top of its range (its distortion grows ~2 dB per dB of
-    //     drive), so CLEAN, whose only post-tank stage this is, had dead
-    //     patches (0–0.4 and 0.5–1, docs/m8-sweetspot.md). A linear blend
-    //     adds the same amount of tint per step: CLEAN 0 = hi-fi pickup,
+    //     y = x + a·(sat(x) − x), a rising from outAmount0 at DRIVE 0 to 1
+    //     at DRIVE 1 along outAmountCurve (below). A saturator alone changes
+    //     the sound mostly at the top of its range (its distortion grows
+    //     ~2 dB per dB of drive), so CLEAN, whose only post-tank stage this
+    //     is, had dead patches (0–0.4 and 0.5–1, docs/m8-sweetspot.md). The
+    //     blend adds tint evenly across the knob: CLEAN 0 = hi-fi pickup,
     //     CLEAN 1 = a gentle, audible transducer tint. DRIVEN/KICKED: 1
     //     (always full, as before).
     float outAmount0;
@@ -134,7 +134,7 @@ struct Voice {
 inline constexpr std::array<Voice, 3> kVoice{{
     //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    lDrv   oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
     {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
-    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 5.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN
+    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 3.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN (emph 5 -> 3 at TENSION: aliasing, see below)
     { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  1.6f, 0.0f}, // KICKED (wMk 1.3 -> 1.6 at the HighsLater re-tune: steady-noise level across DRIVE)
 }};
 
@@ -149,6 +149,15 @@ inline constexpr std::array<Voice, 3> kVoice{{
 constexpr float kFluxHz = 400.0f;
 
 // Pre-emphasis / de-emphasis shelf corner (tape).
+// DRIVEN's pre-emphasis (Voice::preEmphDb) is 3 dB, not 5 (ADR 0026
+// re-check): at DRIVE 1 a 0 dBFS 5 kHz tone got through DRIVEN's 6.5 kHz
+// band-limit hot enough for the tape curve to square it off, and its 19th
+// harmonic (95 kHz at the doubled rate) folded back to 1 kHz. At TENSION 1
+// (fC 2.7 kHz) the Loop keeps ringing at 1 kHz but passes little of the
+// 5 kHz tone, so that fold-back read -54 dB re the tone (test_drive, limit
+// -60). 3 dB: -66 dB. The emphasis only decides how hard highs above
+// ~3 kHz hit the tape (the de-emphasis restores them), and the springs
+// darken those anyway: DRIVEN's DRIVE nulls on 02_hits move <= 0.2 dB.
 constexpr float kPreEmphHz = 3000.0f;
 // HF smear low-pass at DRIVE 0 (effectively open).
 constexpr float kSmearOpenHz = 16000.0f;
@@ -245,11 +254,26 @@ inline float pushCurve(float v)
     const float l0 = l(0.0f), l1 = l(1.0f);
     return (l(v) - l0) / (l1 - l0);
 }
+//
+// 3. The pickup blend (Voice::outAmount0; only CLEAN uses it, DRIVEN and
+//    KICKED are always at 1): DRIVE^kOutAmountPower, 0 -> 1. Was linear
+//    (power 1). CLEAN's pre-gain curve (1. above) does almost nothing below
+//    ~10 o'clock, so with a linear blend the bottom three 0.1 steps sat
+//    just under the "heard" line (02_hits step nulls about -40.5 dB, a dead
+//    patch at TENSION noon, ADR 0026). A slightly concave blend puts a
+//    little more of the tint at the bottom and a little less at the top;
+//    the end points are unchanged, so DRIVE 0 and DRIVE 1 sound exactly as
+//    before (CLEAN 0 vs 1 null still -15.8 dB).
+constexpr float kOutAmountPower = 0.8f;
+inline float outAmountCurve(float v)
+{
+    return v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : std::exp(kOutAmountPower * std::log(v)));
+}
 struct Push {
     float loopDb = 0.0f; // LoopSat hardness raise, dB (the Tank scales it down in the Howl zone)
     float out    = 1.0f; // output pickup hardness factor, linear
     float outFluxDb = kOutFluxDb; // output pickup flux cut, dB (kOutFluxDb - outFluxOpenDb · c)
-    float outAmount = 1.0f;       // output pickup blend (outAmount0 -> 1, linear in DRIVE)
+    float outAmount = 1.0f;       // output pickup blend (outAmount0 -> 1 along outAmountCurve)
     float wet    = 1.0f; // static wet makeup, linear
 };
 // Computed only when DRIVE or the ATTITUDE Morph moved (a few exp calls).
@@ -260,7 +284,7 @@ inline Push push(const Voice& vc, float drive)
     p.loopDb = vc.loopDriveDb * c;
     p.out    = dbToGain(vc.outDriveDb * c);
     p.outFluxDb = kOutFluxDb - vc.outFluxOpenDb * c;
-    p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * (drive < 0.0f ? 0.0f : (drive > 1.0f ? 1.0f : drive));
+    p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * outAmountCurve(drive);
     // The LoopSat's squash of the tail (the part the automatic makeups
     // cannot see, it happens inside the Loop) lags the push: c².
     p.wet    = dbToGain(vc.wetMakeupDb * c * c);

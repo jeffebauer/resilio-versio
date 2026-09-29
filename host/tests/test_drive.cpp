@@ -835,8 +835,12 @@ void audibleAtDriveZero()
 // re the fundamental, or below -100 dBFS absolute (under the Versio's
 // converter noise floor: this only matters where the band-limit has already
 // removed most of the tone, e.g. 15 kHz through KICKED's 5 kHz transducer).
+// "Worst" = the product closest to failing: the one whose smaller excess
+// over the two limits (rel + 60, abs + 100) is largest. A loud relative
+// reading that sits far under -100 dBFS (noise floor at 15 kHz through a
+// dark band-limit) is not the one that matters.
 struct AliasResult {
-    double worst = -300, atHz = 0, fromHz = 0, absDb = -300;
+    double worst = -300, atHz = 0, fromHz = 0, absDb = -300, excess = -1e9;
     bool ok = true;
 };
 
@@ -855,7 +859,9 @@ void accumulate(AliasResult& r, const Buf& y, float f0)
     const double absDb = fundDbfs + rel;
     const bool good = rel <= -60.0 || absDb <= -100.0;
     r.ok &= good;
-    if (rel > r.worst) {
+    const double excess = std::min(rel + 60.0, absDb + 100.0);
+    if (excess > r.excess) {
+        r.excess = excess;
         r.worst = rel;
         r.atHz = at;
         r.fromHz = f0;
@@ -877,7 +883,7 @@ void aliasing()
     const rv::drive::Voice v = rv::dsp::blendVoice(kicked);
     auto report = [](const char* what, const AliasResult& r) {
         std::snprintf(msg, sizeof msg,
-                      "Aliasing %s: worst non-harmonic product %.1f dB re fundamental (%.0f Hz, from %.0f Hz; %.0f dBFS "
+                      "Aliasing %s: deciding non-harmonic product %.1f dB re fundamental (%.0f Hz, from %.0f Hz; %.0f dBFS "
                       "abs). Limit -60 dB re fundamental or -100 dBFS",
                       what, r.worst, r.atHz, r.fromHz, r.absDb);
         check(r.ok, msg);
