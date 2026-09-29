@@ -168,6 +168,32 @@ def noise_bursts():
     return out
 
 
+def pink_noise():
+    """Steady pink noise, 20 s at -18 dBFS RMS (peaks about -6), 10 ms fades.
+    For the M0 passthrough-vs-cable level and hiss check (docs/m0-hardware-check.md
+    step 10). Paul Kellet's refined pink filter on white noise: within about
+    0.05 dB of -3 dB/octave from 10 Hz to Nyquist at 48 kHz."""
+    rng = random.Random(9)
+    b0 = b1 = b2 = b3 = b4 = b5 = b6 = 0.0
+    out = []
+    for _ in range(int(20 * SR)):
+        w = rng.uniform(-1, 1)
+        b0 = 0.99886 * b0 + w * 0.0555179
+        b1 = 0.99332 * b1 + w * 0.0750759
+        b2 = 0.96900 * b2 + w * 0.1538520
+        b3 = 0.86650 * b3 + w * 0.3104856
+        b4 = 0.55000 * b4 + w * 0.5329522
+        b5 = -0.7616 * b5 - w * 0.0168980
+        out.append(b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362)
+        b6 = w * 0.115926
+    rms = math.sqrt(sum(v * v for v in out) / len(out))
+    out = [v * db(-18) / rms for v in out]
+    fade = int(0.01 * SR)
+    n = len(out)
+    out = [v * min(1.0, i / fade, (n - 1 - i) / fade) for i, v in enumerate(out)]
+    return silence(1) + out + silence(1)
+
+
 if __name__ == "__main__":
     write("01_clicks.wav", clicks())
     write("02_hits.wav", hits())
@@ -177,3 +203,4 @@ if __name__ == "__main__":
     write("06_noise_bursts.wav", noise_bursts())
     write("07_click_single.wav", click_single())
     write("08_held_tones.wav", held_tones())
+    write("09_pink_noise.wav", pink_noise())
