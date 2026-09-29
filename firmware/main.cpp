@@ -27,12 +27,15 @@
 // in AXI SRAM (512 KB - 32 KB), not DTCM (only 128 KB total, and already
 // carries the app's stack + HAL/USB buffers) and not SDRAM (64 MB, but an
 // external bus - slower, and this pool is nowhere near large enough to need
-// it). So: static pool, default placement, passed through the
-// prepare(fs, block, pool, n) overload. If M3 profiling ever shows SRAM
-// pressure from other buffers, the single line to change is the
-// kTankPool declaration below: add DSY_SDRAM_BSS (from
-// libs/libDaisy/src/dev/sdram.h) to move just this pool to SDRAM, nothing
-// else in this file needs to change.
+// it).
+//
+// M3 (29 Sep 2026): with the pool in AXI SRAM the worst case measured 83 %
+// average / 100 % peak CPU: the delay reads jump around 120 KB behind a
+// 16 KB D-cache. DTCM (zero-wait, no cache) was completely unused (the
+// stack lives in AXI SRAM), so the pool now goes there (kDtcm below):
+// 120,000 of its 131,072 bytes. .dtcmram_bss is NOLOAD (startup doesn't
+// zero it), so PrepareTank() clears the pool first. The Tank object itself
+// (~5.6 KB, has a constructor) stays in ordinary .bss.
 
 #include "daisy_versio.h"
 #if !defined(RV_MODE_M0TEST)
@@ -43,6 +46,10 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+
+// Tightly-coupled data RAM (see "Memory placement" above).
+#define RV_DTCM __attribute__((section(".dtcmram_bss")))
 
 using namespace daisy;
 
@@ -299,14 +306,15 @@ void TransmitLine(const char* buf, size_t len)
 // ---- Tank delay pool (see file header for placement reasoning) ------------
 // ~104 KB measured at 48 kHz (host/tests/test_tank, test_spring); sized with
 // headroom in case per-Spring memory grows a little as Core work continues.
-constexpr size_t kTankPoolFloats = 30000; // 120,000 bytes, ~23% of AXI SRAM
-float             kTankPool[kTankPoolFloats];
+constexpr size_t kTankPoolFloats = 30000; // 120,000 bytes, in DTCM (RV_DTCM)
+RV_DTCM float     kTankPool[kTankPoolFloats];
 bool              gTankPrepared = false;
 
 bool PrepareTank()
 {
     const float  fs   = hw.AudioSampleRate();
     const size_t need = rv::Tank::requiredPoolFloats(fs);
+    std::memset(kTankPool, 0, sizeof kTankPool); // NOLOAD section: not zeroed at startup
     tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats);
     return need <= kTankPoolFloats; // Tank itself falls back to passthrough if this is false
 }
@@ -582,13 +590,14 @@ constexpr rv::ParamId kPotParams[DaisyVersio::KNOB_LAST] = {
 
 // ---- Tank delay pool (see file header for placement reasoning) ------------
 constexpr size_t kTankPoolFloats = 30000; // 120,000 bytes; ~104 KB measured need + headroom
-float             kTankPool[kTankPoolFloats];
+RV_DTCM float     kTankPool[kTankPoolFloats];
 bool              gTankPrepared = false;
 
 bool PrepareTank()
 {
     const float  fs   = hw.AudioSampleRate();
     const size_t need = rv::Tank::requiredPoolFloats(fs);
+    std::memset(kTankPool, 0, sizeof kTankPool); // NOLOAD section: not zeroed at startup
     tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats);
     return need <= kTankPoolFloats;
 }

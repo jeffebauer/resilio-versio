@@ -168,3 +168,19 @@ Two knobs (SPLASH is used lightly, DRIVE and full ATTITUDE behaviour) and
 some SPEC-described character are still landing in Core in later milestones
 (M5–M7) — turning those knobs already sends the value through, it just
 won't audibly do everything the SPEC describes until Core catches up.
+
+## M3 results
+
+**Run 1, 29 Sep 2026** (`dist/resilio_versio_m3_profile.bin`, pool in AXI SRAM, block 48, KICKED, DRIVE max). **Over budget.**
+
+| Corner | avg | max |
+|---|---|---|
+| S1 loose (TN0) | 71.5–71.6 % | 85–88 % |
+| S2 loose | 81.0–81.3 % | 98.3–98.4 % |
+| S3 loose (SPEC worst case, D1.0 TN0.0) | 82.3–82.6 % | 99.9–100 % |
+| S2/S3 tight (TN1) | 61.3–61.8 % | 78.7–78.9 % steady; 99–100.8 % on the corner right after a TENSION change |
+
+Readings: TENSION loose → tight is ~20 points (the loose tank runs up to 64 Chirp stages per Spring per sample). 2 → 3 Springs costs ~1 point because the Tank always runs all three Springs and mutes the unused ones. The short 100 % peaks follow a setting change. Desktop estimate was 65–70 %.
+
+**Run 2** (`dist/resilio_versio_m3_profile_dtcm.bin`): the delay pool moved to DTCM, which was completely unused. Same DSP, same sound. Results pending.
+
