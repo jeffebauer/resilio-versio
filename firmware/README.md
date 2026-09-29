@@ -186,3 +186,19 @@ Readings: TENSION loose → tight is ~20 points (the loose tank runs up to 64 Ch
 
 **Run 3** (`dist/resilio_versio_m3_profile_split.bin`): adds a `SPLIT` line under each corner, the time per Tank section as % of the budget (`ctl` control tick, `drvIn` input drive + excitation followers, `splash` Kick + Splash, `tilt` TONE tilt + transport, `sprA/B/C` each Spring incl. its input prep, `out` mix, decorrelator, pickups, shelf, limiter, MIX). Hooks: `core/dsp/ProfileHook.h`, compiled in only with `RV_PROFILE_HOOKS` (profile builds); release is unchanged.
 
+Run 3 results (29 Sep 2026), % of the budget:
+
+| Corner | ctl | drvIn | splash | tilt | sprA | sprB | sprC | out | total |
+|---|---|---|---|---|---|---|---|---|---|
+| S3 loose (worst case) | 2.0 | 7.4 | 2.4 | 0.8 | 19.6 | 19.4 | 19.4 | 10.0 | 81.4 |
+| S2 loose | 2.0 | 7.4 | 2.4 | 0.8 | 22.4 | 22.2 | 12.7 | 10.0 | 80.2 |
+| S1 tight | 1.9 | 7.4 | 2.3 | 0.8 | 12.8 | 12.6 | 12.7 | 9.7 | 60.7 |
+
+- The Springs are 58 of the worst case's 81 points. An unused Spring still runs (at ~12.7, like a tight one).
+- A Chirp section costs ~24 cycles: the per-sample chain waits on each multiply-add (the loop itself is 17 instructions).
+- `ctl` rises to 5.3–5.8 on the corner after a TENSION change (coefficient redesign).
+- `max` sits ~17 points above `avg` even on steady corners: something outside the Tank interrupts the audio callback now and then (suspect: USB serial, profile-only).
+
+**Run 4** (stage-by-stage order over 32-sample runs, bit-exact on the desktop): **slower**, S2 loose 80.2 → 87.5 %, tight 61 → 65 %. Its finer split (all three Springs together, worst case): Chirp stages ~42 %, Loop reads + LoopSat + DC block ~17 %, high path 3.4 %, fC low-pass + damping 0.7 %, Tank-side prep 1.1 %. A Chirp section costs ~28 cycles in either order. Reverted. Reading: the M7 issues in order, and each multiply-add in the section waits on the one before it, whatever the loop order.
+
+**Run 5** (`dist/resilio_versio_m3_profile_bench.bin`): the run 3 build (sample-by-sample Springs, per-Spring SPLIT) plus `firmware/m3_bench.cpp`, micro-benchmarks run once at boot and printed as a `BENCH` line after the first corner of each pass: clock, I/D-cache state, one multiply-add's latency and throughput, and the Chirp section's cycles in three loop shapes with identical arithmetic: `fused` (today), `split` (every section's D{v} first, then the x chain), `split3` (split with the three Springs' x chains interleaved).

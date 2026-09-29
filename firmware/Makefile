@@ -37,6 +37,9 @@ ifeq ($(MODE),m0test)
 else
   CPP_SOURCES = main.cpp no_uart_spi.cpp $(wildcard ../core/dsp/*.cpp)
 endif
+ifeq ($(MODE),profile)
+  CPP_SOURCES += m3_bench.cpp # micro-benchmarks, printed with the corners
+endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)
 CPP_STANDARD = -std=gnu++17

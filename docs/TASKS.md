@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Knob layout set to your panel (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3: over budget; run 3 (timing split) ready to flash (task 3c) · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Knob layout set to your panel (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3: over budget; run 5 (on-chip benchmark) ready to flash (task 3c) · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -48,7 +48,9 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] Open the serial stream in Claude's Terminal (`screen /dev/tty.usbmodem* 115200`) and let it run ~2 minutes (24 settings, ~3 s each), then tell Claude. Claude reads the `CORNER …` lines: the number that matters is `max`, target ≤ 65%
 - [x] Run 1 (29 Sep): **over budget**, worst case 83 % average with peaks at 100 % (would click). Details: [firmware/README.md](../firmware/README.md) "M3 results"
 - [x] Run 2 (29 Sep): faster memory, only ~1 point better. The cost is in the calculation itself
-- [ ] Run 3: flash **`dist/resilio_versio_m3_profile_split.bin`** (USB only), stream ~2 minutes. It prints where the time goes, part by part
+- [x] Run 3 (29 Sep): the three springs are 58 of the 81 points; their "boing" stages were stalling the chip
+- [x] Run 4 (29 Sep): the reordering was slower on the chip; reverted
+- [ ] Run 5: flash **`dist/resilio_versio_m3_profile_bench.bin`** (USB only), stream ~2 minutes. A `BENCH` line (after the first `CORNER`) times three versions of the spring loop on the chip, plus its clock and caches
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)

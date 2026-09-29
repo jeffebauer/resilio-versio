@@ -212,6 +212,7 @@ int main()
 
 #include "util/CpuLoadMeter.h"
 #include "dsp/ProfileHook.h"
+#include "m3_bench.h"
 
 #include <cstdint>
 #include <cstring>
@@ -296,7 +297,8 @@ int FracToPercentTenths(float frac)
     return int(frac * 1000.0f + 0.5f);
 }
 
-constexpr size_t kLineBufSize = 320; // CORNER + SPLIT lines, sent in one transmit
+constexpr size_t kLineBufSize = 480; // CORNER + SPLIT (+ BENCH) lines, sent in one transmit
+m3bench::Results gBench{};
 
 void TransmitLine(const char* buf, size_t len)
 {
@@ -496,6 +498,7 @@ int main()
 
     gTankPrepared = PrepareTank();
     StartCycleCounter();
+    gBench = m3bench::Run(); // before audio starts: nothing else competing
     rv::prof::markHook = ProfMark;
     BuildCornerTable();
     ApplyCorner(0);
@@ -568,6 +571,26 @@ int main()
                 AppendFixed1(p, end, r.samples ? int(r.split[k] / (uint64_t(r.samples) * 10u)) : 0, 5);
             }
             AppendStr(p, end, "  (% of budget)\r\n");
+            if (r.index == 0) { // once per pass through the corners
+                const m3bench::Results& b = gBench;
+                AppendStr(p, end, "BENCH clock ");
+                AppendUInt(p, end, unsigned(b.clockHz / 1000000u));
+                AppendStr(p, end, " MHz icache ");
+                AppendStr(p, end, b.icache ? "on" : "OFF");
+                AppendStr(p, end, " dcache ");
+                AppendStr(p, end, b.dcache ? "on" : "OFF");
+                AppendStr(p, end, " | fma latency");
+                AppendFixed1(p, end, b.fmaLatency, 5);
+                AppendStr(p, end, " throughput");
+                AppendFixed1(p, end, b.fmaThroughput, 5);
+                AppendStr(p, end, " | section cycles: fused");
+                AppendFixed1(p, end, b.fused, 5);
+                AppendStr(p, end, " split");
+                AppendFixed1(p, end, b.split, 5);
+                AppendStr(p, end, " split3");
+                AppendFixed1(p, end, b.split3, 5);
+                AppendStr(p, end, "\r\n");
+            }
             TransmitLine(buf, size_t(p - buf));
 
             if (r.max > 0.65f) everExceeded = true; // SPEC §5 target: <= 65% worst case
