@@ -32,6 +32,6 @@ Measured from the **top-left** corner, in mm. Full table: `versio_panel_coordina
 
 ## Not in NE's file (confirm on your module)
 
-- **Which jack is which** (the 7 CV inputs, gate, In L/R, Out L/R) and **which pot is which knob index** (K0–K6 in firmware). Knobs don't read over serial on USB power (M0), so the pot → K order is still assumed to be reading order (P1–P7 = K0–K6) until the owner confirms it from the LED check.
-- `versio_panel_current_mapping.svg` (`tools/make_panel_mapping_svg.py`): the panel labelled with Resilio's current functions and an id per control, for choosing a remap.
+- **Which jack is which** (the 7 CV inputs, gate, In L/R, Out L/R) and **which pot is which knob index** (K0–K6 in firmware). Knobs don't read over serial on USB power (M0), so the pot → K order came from the M0 LED check: P1–P7 = K0, K4, K2, K1, K5, K3, K6 (not reading order).
+- `versio_panel_current_mapping.svg` (`tools/make_panel_mapping_svg.py`): the panel labelled with Resilio's functions (ADR 0028: P1 MIX, P2 DECAY, P3 TONE, P4 SPLASH, P5 TENSION, P6 WOBBLE, P7 DRIVE) and an id per control.
 - Knob-cap, nut and switch-body sizes (for artwork clearances), so measure your parts.

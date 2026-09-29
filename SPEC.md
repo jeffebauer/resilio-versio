@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0028). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.15 — ADR 0028: knobs follow the owner's printed Versio panel (§3 now by pot P1–P7: MIX, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE); M0 found libDaisy's knob indexes aren't in panel order. Release output corrects the Versio's polarity flip and +1.2 dB (M0).
 - v1.0.14 — ADR 0027: the Springs also differ in damping and tail length (§4.3); fixes mid-DECAY resonances between Springs after TENSION.
 - v1.0.13 — ADR 0026 amended (owner, by ear): TENSION turns up = tighter (CW tight, CCW loose); §3 and §4.4 flipped.
 - v1.0.12 — ADR 0026 implemented: K2 TENSION (§3), DECAY = T60 only (§3, §4.4 rewritten), M1/M4/M8/§5 criteria reworded from BOING to TENSION.
@@ -91,15 +92,17 @@ Owner's own hardware (Wellspring, Teaching Machines: desktop stereo BBD delay + 
 
 ### Knobs (all CV-able, 0–5 V + pot offset)
 
-| # | Name | Function | Notes |
+Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/panel/versio_panel_current_mapping.svg`). The layout follows the owner's printed Versio panel until a custom panel exists (ADR 0028). The P → libDaisy knob index table is in `firmware/main.cpp` (`kPotKnob`).
+
+| Pot | Name | Function | Notes |
 |---|---|---|---|
-| K0 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | Range ~0.3–0.5 s → ~8–10 s, always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION low). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
-| K1 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
-| K2 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
-| K3 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
-| K4 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
-| K5 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
-| K6 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
+| P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
+| P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | Range ~0.3–0.5 s → ~8–10 s, always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION low). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
+| P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
+| P4 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
+| P5 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
+| P6 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
+| P7 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
 
 ### Switches
 

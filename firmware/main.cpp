@@ -568,10 +568,16 @@ int SwitchPosition(int sw, bool invert)
 // through it, so the dry/wet balance is unchanged.
 constexpr float kOutputTrim = -0.874f; // -(10^(-1.17/20))
 
-// K0..K6 -> ParamSpec, panel order (SPEC §3).
-constexpr rv::ParamId kKnobParams[DaisyVersio::KNOB_LAST] = {
-    rv::ParamId::Decay, rv::ParamId::Tone,   rv::ParamId::Tension,  rv::ParamId::Splash,
-    rv::ParamId::Drive, rv::ParamId::Wobble, rv::ParamId::Mix,
+// Panel pots P1..P7 (reading order: top to bottom, left to right, as in
+// docs/panel/) -> libDaisy knob index. A hardware fact from the M0 LED check
+// (29 Sep 2026): libDaisy's KNOB_0..KNOB_6 are NOT in reading order. Each
+// pot's CV input is summed with it in hardware, so CV follows its pot.
+constexpr int kPotKnob[DaisyVersio::KNOB_LAST] = {0, 4, 2, 1, 5, 3, 6};
+
+// P1..P7 -> ParamSpec: the owner's panel layout (SPEC §3, ADR 0028).
+constexpr rv::ParamId kPotParams[DaisyVersio::KNOB_LAST] = {
+    rv::ParamId::Mix,     rv::ParamId::Decay,  rv::ParamId::Tone,  rv::ParamId::Splash,
+    rv::ParamId::Tension, rv::ParamId::Wobble, rv::ParamId::Drive,
 };
 
 // ---- Tank delay pool (see file header for placement reasoning) ------------
@@ -608,8 +614,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     lastGate = gate;
     if (hw.tap.RisingEdge()) tank.kick(0);
 
-    for (int i = 0; i < DaisyVersio::KNOB_LAST; ++i)
-        tank.setParam(kKnobParams[i], hw.GetKnobValue(i));
+    for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
+        tank.setParam(kPotParams[p], hw.GetKnobValue(kPotKnob[p]));
 
     gSpringsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
     gAttitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);

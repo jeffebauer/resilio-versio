@@ -3,14 +3,10 @@
 deciding a remap (which knob does what) before a custom panel exists.
 
 Geometry comes from tools/make_panel_svg.py (NE's official template).
-Functions come from the release firmware (firmware/main.cpp kKnobParams:
-K0..K6 = DECAY, TONE, TENSION, SPLASH, DRIVE, WOBBLE, MIX; SW_0 = SPRINGS,
-SW_1 = ATTITUDE; button + gate = Kick).
-
-ASSUMPTION, not yet confirmed on hardware: libDaisy's KNOB_0..KNOB_6 follow
-the panel in reading order (P1..P7: top to bottom, left to right), the top
-toggle is SW_0, and LED1..LED4 left to right are LED_0..LED_3. The owner
-confirms or corrects this from the M0 LED check.
+Functions and the pot -> libDaisy knob order mirror the release firmware
+(firmware/main.cpp kPotParams / kPotKnob, ADR 0028). The pot order was
+measured at the M0 LED check (29 Sep 2026); SW_0 = top toggle = SPRINGS,
+SW_1 = ATTITUDE; button + gate = Kick.
 
 Usage: python3 tools/make_panel_mapping_svg.py [out.svg]
 Default output: docs/panel/versio_panel_current_mapping.svg. Stdlib only.
@@ -22,10 +18,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_panel_svg import PANEL_W, PANEL_H, PARTS, f  # noqa: E402
 
-KNOBS = {  # pot id -> (firmware knob index, function)
-    "P1": ("K0", "DECAY"), "P2": ("K1", "TONE"), "P3": ("K2", "TENSION"),
-    "P4": ("K3", "SPLASH"), "P5": ("K4", "DRIVE"), "P6": ("K5", "WOBBLE"),
-    "P7": ("K6", "MIX"),
+KNOBS = {  # pot id -> (libDaisy knob index, function)
+    "P1": ("K0", "MIX"), "P2": ("K4", "DECAY"), "P3": ("K2", "TONE"),
+    "P4": ("K1", "SPLASH"), "P5": ("K5", "TENSION"), "P6": ("K3", "WOBBLE"),
+    "P7": ("K6", "DRIVE"),
 }
 TOGGLES = {"SW1": ("SW_0", "SPRINGS", "1 · 2 · 3 (left→right)"), "SW2": ("SW_1", "ATTITUDE", "CLN·DRV·KCK")}
 LEDS = {"LED1": "clip", "LED2": "wet", "LED3": "springs", "LED4": "attitude"}
@@ -60,7 +56,7 @@ def build():
       '.note{font-size:1.35px;fill:#555}'
       '</style>')
     a(f'  <rect class="panel" x="0" y="0" width="{f(PANEL_W)}" height="{f(PANEL_H)}" rx="0.6"/>')
-    a(f'  <text class="fn" x="{f(PANEL_W / 2)}" y="8.6" text-anchor="middle" font-size="2.6px">RESILIO · current map</text>')
+    a(f'  <text class="fn" x="{f(PANEL_W / 2)}" y="8.6" text-anchor="middle" font-size="2.6px">RESILIO · panel map</text>')
 
     for pid, kind, cx, cy, d in PARTS:
         if kind == "mounting":
@@ -73,10 +69,10 @@ def build():
             a(f'  <text class="id" x="{f(cx)}" y="{f(cy + 0.9)}" text-anchor="middle">{pid}</text>')
             if pid == "P6":  # the toggles' labels sit below it: one line above instead
                 a(f'  <text class="fn" x="{f(cx)}" y="{f(cy - r - 1.3)}" text-anchor="middle">{fn} '
-                  f'<tspan class="idx" font-weight="400">firmware {idx}</tspan></text>')
+                  f'<tspan class="idx" font-weight="400">{idx}</tspan></text>')
             else:
                 a(f'  <text class="fn" x="{f(cx)}" y="{f(cy + r + 3.1)}" text-anchor="middle">{fn}</text>')
-                a(f'  <text class="idx" x="{f(cx)}" y="{f(cy + r + 4.8)}" text-anchor="middle">firmware {idx}</text>')
+                a(f'  <text class="idx" x="{f(cx)}" y="{f(cy + r + 4.8)}" text-anchor="middle">{idx}</text>')
         elif kind == "toggle":
             idx, fn, pos = TOGGLES[pid]
             a(f'  <circle class="tog" cx="{f(cx)}" cy="{f(cy)}" r="{f(d / 2)}"/>')
@@ -97,8 +93,8 @@ def build():
             a(f'  <text class="sid" x="{f(cx)}" y="{f(cy + d / 2 + 3.0)}" text-anchor="middle" font-size="1.6px">{pid}</text>')
 
     y = 75.6  # the free band between the button and the jacks
-    for line in ("Assumed: firmware K0–K6 run in reading order P1→P7 (confirm).",
-                 "A knob's CV jack moves with it when the knob is remapped."):
+    for line in ("K = libDaisy knob index (measured at M0; not reading order).",
+                 "Each knob's CV input follows its knob."):
         a(f'  <text class="note" x="{f(PANEL_W / 2)}" y="{f(y)}" text-anchor="middle">{line}</text>')
         y += 1.8
     a('</svg>')
