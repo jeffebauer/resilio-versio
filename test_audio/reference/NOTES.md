@@ -8,8 +8,8 @@ Interface input gain unchanged all session (skank peaks about −14 dBTP at the 
 
 - **Take 0 (loopback):** front output 3 → front input 1 (input 1 gain: records 6.0 dB hotter than the stimulus, so its level doesn't represent inputs 11/12; use it for timing only). Timing check: take E2's dry signal on the rear inputs gives −8 samples; the loopback gives −10. The front and rear inputs match within 2 samples.
 - **Base INPUT:** set on `04_skank`, just shy of the CLIP light; no other stimulus clips at that setting. Used for A, B, D, E, E2, F, G, G2, A-L, A-R.
-- **C:** INPUT raised until the CLIP light flashes on the loudest (−6 dBFS) snare of `02_hits`. Position: _(owner to add)_
-- **E2:** SPRINGS DRY/WET at: _(owner to add)_
+- **C:** INPUT raised until the CLIP light flashes on the loudest (−6 dBFS) snare of `02_hits`. Position: **about 1:30–2 o'clock**.
+- **E2:** SPRINGS DRY/WET at **noon** (where it sounded best for dub).
 - **G, feedback parallel** (`wellspring_G_ringing_parallel.wav`): FEEDBACK + MAGIC 11:30, feedback switch PARALLEL, delay time noon, delay DRY/WET full wet (fully CW), filter HP fully CCW. The feedback switch position had a marked effect on frequency buildup.
 - **G2, feedback ping-pong** (`wellspring_G2_ringing_pingpong.wav`): FEEDBACK + MAGIC 11:00, feedback switch PING PONG, delay time noon, delay DRY/WET full wet (fully CW), filter HP fully CCW.
 

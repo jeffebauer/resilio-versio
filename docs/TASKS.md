@@ -16,7 +16,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Core: **B, C** (hot INPUT), **D, E, E2** (29 Sep)
 - [x] Optional: **F** (knocks), **G** + **G2** (ringing, parallel and ping-pong feedback), **A-L / A-R** (29 Sep)
 - [x] Copied and renamed by Claude; analysed: [reference-report.md](reference-report.md) (tail ~5 s, echoes ~83 ms apart, highs 5.7 ms later; G/G2 flagged as Ringing, as intended)
-- [ ] **Two notes for `test_audio/reference/NOTES.md`:** take C's INPUT position, and E2's SPRINGS DRY/WET position (clock face is fine)
+- [x] Notes: take C's INPUT about 1:30–2 o'clock; E2's SPRINGS DRY/WET at noon (29 Sep)
 - [ ] **Decide:** the recordings stay **out of git** (CLAUDE.md: recordings of commercial units are never committed or published), though ADR 0009 said they'd be committed. OK to make that official (`.gitignore` + ADR 0009)?
 - Check every take: delay DRY/WET fully **dry**, MAGIC **zero**, SPRINGS fully **wet**
 
