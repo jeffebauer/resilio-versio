@@ -63,7 +63,7 @@ Set once, then check before every take:
 | Control | Setting | Why |
 |---|---|---|
 | Input selector | **LINE** | Rear inputs |
-| INPUT | As high as possible with the **CLIP light never on** (on the snare at −6 dBFS in `02_hits`). Note the position. | Best spring signal-to-noise (manual) |
+| INPUT | As high as possible with the **CLIP light never on**, set while playing **`04_skank`**: its held chords clip before `02_hits`' snares do (same −6 dBFS peak, far more sustained energy). Keep this one position for takes A, B, D, E, E2. Note it. | Best spring signal-to-noise (manual), with every clean take clean and comparable |
 | OUTPUT | **Top centre** (unity) | |
 | Delay **DRY/WET** | **Fully CCW (dry)** | Springs hear only the clean input |
 | FEEDBACK | Minimum | Belt and braces |
@@ -81,7 +81,7 @@ Don't change the interface input gain during the session. If the wet signal clip
 | 0 | `01_clicks` | Loopback cable instead of the Wellspring | Interface latency + level |
 | A | `01_clicks` | none | Chirp spacing, dispersion, T60 |
 | B | `02_hits` | none | Priority sound (snare/rim) |
-| C | `02_hits` | **INPUT turned up** until the CLIP light flashes on the loudest snare. Note the position. | Driven-spring reference for M5 DRIVE |
+| C | `02_hits` | **INPUT turned up** from the base position until the CLIP light flashes on the loudest snare. Note the position. | Driven-spring reference for M5 DRIVE |
 | D | `03_sweep` | none. Don't touch anything during the take | Precise impulse + frequency response |
 | E | `04_skank` | none | Musical A/B material |
 | E2 | `04_skank` | **SPRINGS DRY/WET** where it sounds best to you for dub. Note the position | Hints at a good MIX taper |
