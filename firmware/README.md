@@ -225,3 +225,14 @@ Run 7 results: `PEAK ctl` is 16.5–17.7 % of a block on every corner (avg ~2 %)
 
 **Run 8** (`dist/resilio_versio_m3_profile_pipe.bin`), both bit-exact with run 7 (float32, desktop, with and without FMA contraction): the `pipe` section loop in `Spring::processLow`; and the Loop gain design caches cos(w) and the LoopSat latency at its eight fixed design frequencies (`Spring::prepare`) and shares cos(w) between round trip and magnitude at the fC points. Flash: release 108,752 B (82 %), profile 123,732 B (94 %, the benchmark code).
 
+Run 8 results (29 Sep 2026): **worst case average under target.**
+
+| Corner | avg | max | Springs (each) | PEAK ctl |
+|---|---|---|---|---|
+| S3 loose (worst case) | **62.9 %** | 74.7–75.6 % | ~13.6 | 13.1–13.2 |
+| S2 loose | 62.2 % | 74.3 % | 15.3 / 15.2 / 10.0 | 13.3 |
+| S1 loose | 57.0 % | 68.0 % | 15.4 / 9.9 / 10.0 | 14.3 |
+| any tight | 51.6–52.0 % | 63.7 % | ~10.1 | 13.1–13.2 |
+
+`max` is now `avg` + the control burst (~12 points): every other section peaks at its average. Next: stagger the three Springs' coefficient redesign over consecutive control ticks (not bit-exact: B and C take a change up to 2 ticks, ~1.3 ms, later); LoopSat divisions for margin; block 96 held in reserve.
+

@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Knob layout set to your panel (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3: 76 % worst case (target 65 %), Claude optimising (task 3c) · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Knob layout set to your panel (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3: worst case 63 % average (target 65 %), peaks 75 % still to fix (task 3c) · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -54,7 +54,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Run 6 (29 Sep): worst case 83 → 76 % average, 100 → 93 % peak. Still over the 65 % target; more work on Claude's side, then another run
 - [x] Decided (29 Sep): idle springs keep running (seamless SPRINGS switching); the 2 ms audio slice only if still needed
 - [x] Run 7 (29 Sep): the peaks come from the springs recalculating their settings; a faster spring loop found (a third cheaper)
-- [ ] Run 8: flash **`dist/resilio_versio_m3_profile_pipe.bin`** (USB only), stream ~2 minutes. Both fixes in; sound proven identical
+- [x] Run 8 (29 Sep): worst case **62.9 % average (under the 65 % target)**, peaks 75 %. The peaks are the springs recalculating all at once when a knob moves or a hit jolts them
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)
