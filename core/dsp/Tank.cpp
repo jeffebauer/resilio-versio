@@ -301,6 +301,11 @@ void Tank::controlTick(bool snap)
     base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
     const int activeStages = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
+    // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
+    // line their first echoes up on it (1 Spring = A alone, unchanged).
+    const float alignA = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
+                                                   base.transitionHz * modes::kDetune[0].transition, activeStages,
+                                                   sampleRate_);
     for (size_t i = 0; i < springs_.size(); ++i) {
         // Same T60 for every Spring (g is designed from each Spring's own
         // round trip), so detuning changes pitch/texture, not tail length.
@@ -310,9 +315,15 @@ void Tank::controlTick(bool snap)
         s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
                                          -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         s.tapRatio          = modes::kPickupTap[i];
-        s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i];
+        s.stages            = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
+        // Pickup: tapRatio lines the first echoes up along the delay line;
+        // the offset lines up the Chirp chains too (SpringModes.h "Pickup
+        // position"), plus a fixed trim. Uses a without the Jolt, so it
+        // moves with TENSION and SPRINGS only, and the Spring glides to it.
+        const float aNoJolt = base.allpassCoeff * modes::kDetune[i].allpassCoeff;
+        s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i]
+                           + (alignA - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
         s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
-        s.stages = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
         springs_[i].setSettings(s, snap);
     }
 }

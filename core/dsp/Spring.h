@@ -92,8 +92,11 @@ struct SpringSettings {
     // first echo arrives after about tapRatio·L (+ the chain's delay).
     // Fixed per Spring (not a knob), so it never needs to glide.
     float tapRatio         = 0.5f;
-    // Plus a fixed offset (s, may be negative): a small stagger between
-    // Springs that does not grow with DECAY (SpringModes.h kPickupOffset).
+    // Plus an offset (s, may be negative) that does not grow with L: the
+    // Tank's alignment of this Spring's first echo on Spring A's (chain
+    // delay difference, SpringModes.h kPickupAlignHz) plus a small fixed
+    // trim (kPickupOffsetSeconds). It follows TENSION and SPRINGS, so the
+    // pickup glides to it (kTapSlewPerSample), never jumps.
     float tapOffsetSeconds = 0.0f;
     // LoopSat (ATTITUDE Morph): amount 0 = linear, hardness per half.
     float loopSatAmount    = 0.0f;
@@ -128,6 +131,7 @@ public:
     static constexpr float kT60DesignScale     = 1.13f;
     static constexpr float kLoopSlewPerSample  = 0.08f;  // max |dL/dn|: pitch bend <= 8 % (ADR 0012)
     static constexpr float kStageRampSeconds   = 0.008f; // time to fade one stage in or out
+    static constexpr float kTapSlewPerSample   = 0.02f;  // pickup offset glide: <= 2 % pitch bend, ~1 ms in 50 ms
     static constexpr float kDenormalNoise      = 1.0e-10f; // -200 dB seeded noise keeps state off denormals
 
     // Pool floats needed at this sample rate (worst-case settings).
@@ -220,7 +224,7 @@ private:
     dsp::Biquad         highpass_;
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
-    float tapRatio_ = 0.5f, tapOffset_ = 0.0f;
+    float tapRatio_ = 0.5f, tapOffset_ = 0.0f, tapOffsetTarget_ = 0.0f;
 
     // L modulation state (see "Micro-mod floor").
     dsp::Rng modRng_;

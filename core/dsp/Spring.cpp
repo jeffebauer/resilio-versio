@@ -112,6 +112,7 @@ void Spring::reset()
     lfoS_ = 0.0f;
     lfoC_ = 1.0f;
     modNow_ = 1.0f;
+    tapOffset_ = tapOffsetTarget_;
 }
 
 void Spring::setSettings(const SpringSettings& s, bool snap)
@@ -138,6 +139,7 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
         mActive_ = mTarget_;
     }
     updateCoefficients();
+    if (snap) tapOffset_ = tapOffsetTarget_;
 }
 
 void Spring::updateCoefficients()
@@ -158,7 +160,7 @@ void Spring::updateCoefficients()
     highpass_.setHighpass(kHighPassRatio * s.transitionHz, 0.7071f, sampleRate_);
     highPathLevel_ = s.highPathLevel;
     tapRatio_      = std::clamp(s.tapRatio, 0.05f, 0.95f);
-    tapOffset_     = s.tapOffsetSeconds * sampleRate_;
+    tapOffsetTarget_ = s.tapOffsetSeconds * sampleRate_; // glides in advanceGlides()
 
     // Loop gain g from the target T60 and the *actual* round trip. A tail
     // loses 60 dB in T60 seconds; one trip takes RT seconds, so each trip may
@@ -257,6 +259,13 @@ inline void Spring::advanceGlides()
     else if (dl < -kLoopSlewPerSample) lCur_ -= kLoopSlewPerSample;
     else lCur_ = lTarget_; // land exactly, so "at rest" is detectable
     lhCur_ = kHighDelayRatio * lCur_;
+
+    // The pickup offset glides too (it follows TENSION and SPRINGS, see
+    // SpringSettings::tapOffsetSeconds): a jump in the read point would click.
+    const float dt = tapOffsetTarget_ - tapOffset_;
+    if (dt > kTapSlewPerSample) tapOffset_ += kTapSlewPerSample;
+    else if (dt < -kTapSlewPerSample) tapOffset_ -= kTapSlewPerSample;
+    else tapOffset_ = tapOffsetTarget_;
 
     // Stage count M glides one stage at a time: the stage at the edge is
     // cross-faded in/out, so TENSION never clicks. At rest mPos_ is a whole
