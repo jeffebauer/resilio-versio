@@ -2,11 +2,11 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 2, before your studio session) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION, CLEAN splash and TONE low cut built; SPLASH "heavier clang" and the mid-DECAY resonance fix being finished, then one install
+**Last updated:** 29 Sep 2026 (session 2, evening) · **Milestones:** M0 needs your hardware check · M1: Wellspring recorded, Claude builds the A/B next · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
-**Plugin installed in Ableton:** TENSION + CLEAN's gentle splash (commit `df8e5a3`), installed 29 Sep 11:49. In this build TENSION still runs the old way (up = looser) and SPLASH is the old "hi-hat on top" crash.
-**Next install (Claude installs it when it's finished, today):** TENSION flipped (up = tighter), TONE's bright side thins the lows, SPLASH "heavier clang" (through the springs, no click at SPLASH 0), and the mid-DECAY resonance fix. The top of this page will say when it's in. **Then:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
-**Studio order:** the recordings and hardware (tasks 1–3) need no new build. Leave the listening (tasks 5–10) until the next install is in, since several questions depend on it.
+**Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
+**To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
+**Next:** the listening tasks (8–10) are ready on the new build.
 
 ## To do (suggested order)
 
@@ -20,13 +20,15 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Recordings stay **out of git** (29 Sep, your call; `.gitignore` + [ADR 0009](adr/0009-wellspring-reference-recordings.md) amended). They live only on your Mac
 - Check every take: delay DRY/WET fully **dry**, MAGIC **zero**, SPRINGS fully **wet**
 
-### 2. Record the Magneto (≈30 min)
+### 2. Record the Magneto · **recorded 29 Sep**
 - **Doc:** [recording-recipe-magneto.md](recording-recipe-magneto.md) · why: [ADR 0020](adr/0020-magneto-benchmark.md)
-- [ ] Rack **off** → rear DIP **S2 = ON** (Dual Split). Set it back to OFF afterwards
-- [ ] **First, take 0 through the OPTX2 (ADAT loopback):** patch the OPTX2 output jack you'll use straight into the OPTX2 input jack you'll use, play `01_clicks` and record it as `magneto_0_adat_loopback.wav`. The ADAT path has its own latency and level, so the Wellspring's TRS loopback can't stand in for it. Note the ADAT channels in `NOTES.md` and keep them for every Magneto take
-- [ ] Spring (Right in/out): **MA, MB, ME**
-- [ ] Tape (Left in/out): **MW0–MW4** (WOW & FLUTTER × 5, `08_held_tones.wav`), **MD1–MD3** (REC LVL green/amber/red)
-- [ ] Save as `test_audio/reference/magneto_<take>_<desc>.wav`, with notes in the same `NOTES.md`
+- [ ] Rack **off** → rear DIP **S2 = ON** (Dual Split). **Set it back to OFF** for normal use
+- Analysed: [reference-report.md](reference-report.md). Your ADAT hunch was right: that path is ~2 ms slower than the TRS jacks
+- [ ] **Decide:** the Magneto's tape wobble tops out at about **8 cents** on one echo (WOW & FLUTTER 3 o'clock to fully CW; 3.5 cents at noon). Our WOBBLE's first echo swings up to about **36 cents** at max, on purpose ("clearly out of tune", ADR 0008). Keep our wilder top end, or bring it closer to the Magneto? Try WOBBLE on held chords in the plugin
+- [x] **First, take 0 through the OPTX2 (ADAT loopback):** patch the OPTX2 output jack you'll use straight into the OPTX2 input jack you'll use, play `01_clicks` and record it as `magneto_0_adat_loopback.wav`. The ADAT path has its own latency and level, so the Wellspring's TRS loopback can't stand in for it. Note the ADAT channels in `NOTES.md` and keep them for every Magneto take
+- [x] Spring (Right in/out): **MA, MB, ME**
+- [x] Tape (Left in/out): **MW0–MW4** (WOW & FLUTTER × 5, `08_held_tones.wav`), **MD1–MD3** (REC LVL green/amber/red)
+- [x] Save as `test_audio/reference/magneto_<take>_<desc>.wav`, with notes in the same `NOTES.md`
 
 ### 3. M0 hardware check on the Versio (≈30 min) · unblocks M3
 - After M0, the M3 profile build will need one extra check: its serial output was rewritten to save flash, so confirm the `CORNER …` lines are readable in `screen` (details come with the M3 instructions)
@@ -59,16 +61,16 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - Open from Finder: `renders/m5_attitude_drive/index.html` (ATTITUDE × DRIVE on hits) and `renders/m5_howl/m5_kicked_howl_decay1_drive0.8_pull6s.wav` (KICKED Howl, DECAY pulled back at 6 s). These are from the M5 build; DRIVE has been retuned since, so the plugin is the better judge for DRIVE. For TONE, use the new before/after: `renders/tone_ab/before/index.html` and `renders/tone_ab/after/index.html` (hits at TONE noon, 3 o'clock, full right)
 - [ ] CLEAN / DRIVEN / KICKED: clearly **hi-fi / warm tape dub / trashed**?
 - [x] **DRIVE at noon:** too subtle, even at max. Decided and built: obvious from noon, cranked tape/tank at max, level constant ([ADR 0022](adr/0022-drive-retune.md))
-- [x] TONE: dark side good; bright side should thin the lows (29 Sep, your note). Built, in the next install
-- [ ] TONE after the next install: is full right now thin and splashy enough, too thin, or should the low cut start earlier?
+- [x] TONE: dark side good; bright side should thin the lows (29 Sep, your note). Installed
+- [ ] TONE now: is full right now thin and splashy enough, too thin, or should the low cut start earlier?
 - [ ] Howl: a rideable rough roar that dies away when DECAY comes down? (Since M6 it wanders about ±7 cents like a siren, so it's never a steady tone; that's in the plugin)
 - [ ] **Decide:** if you flip ATTITUDE away from KICKED *while Howling at max DECAY*, should it calm into the normal long (~9 s) tail, or fade within 1–2 s (as ADR 0018 says)? Both can't hold at max DECAY
 
 ### 8b. SPLASH: in CLEAN, and "heavier clang"
 - [x] SPLASH in CLEAN: **a real, gentler splash** (29 Sep, [ADR 0025](adr/0025-clean-gentle-splash.md)). Built
-- [x] SPLASH sounded like an open hi-hat on top: from `renders/splash_ab/` you picked **C, "heavier clang"** (29 Sep), a lower, metallic crash that goes through the springs. Being finished, in the next install
-- [x] The click at SPLASH 0: DRIVEN/KICKED's built-in faint splash. Removed, in the next install
-- [ ] **After the next install (≈10 min):** open `renders/splash_ab/C/hits/index.html` and `renders/splash_ab/C/rim/index.html` (re-rendered from the finished code), or play the plugin. Does SPLASH feel part of the reverb now? Is CLEAN gentle, DRIVEN clear and KICKED unmistakable? Anything metallic that bothers you?
+- [x] SPLASH sounded like an open hi-hat on top: from `renders/splash_ab/` you picked **C, "heavier clang"** (29 Sep), a lower, metallic crash that goes through the springs. Installed
+- [x] The click at SPLASH 0: DRIVEN/KICKED's built-in faint splash. Removed, installed
+- [ ] **Listen (≈10 min):** open `renders/splash_ab/C/hits/index.html` and `renders/splash_ab/C/rim/index.html` (re-rendered from the finished code), or play the plugin. Does SPLASH feel part of the reverb now? Is CLEAN gentle, DRIVEN clear and KICKED unmistakable? Anything metallic that bothers you?
 
 ### 8c. Listen: M8 tuning round 1 (≈20 min)
 - Before/after WAV pairs (open in Ableton or Finder):
@@ -86,18 +88,18 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] **SPLASH at 0 in DRIVEN:** the faint natural splash came across as a click. Removed (29 Sep)
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on the left spring and the other way on the right, so hard hits briefly spread in stereo. Keep it, or lurch together?
 - [ ] **WOBBLE at max:** about 50–55 cents of wobble in the tail (clearly seasick). Right ceiling, more, or less? (The Magneto WOW & FLUTTER takes will help set this)
-- [ ] **Kick with SPLASH at 0:** should a Kick still give the full crash, or should SPLASH scale the Kick's crash too? (Answer after the next install: the Kick uses the new "clang" crash)
+- [ ] **Kick with SPLASH at 0:** should a Kick still give the full crash, or should SPLASH scale the Kick's crash too? (The Kick now uses the new "clang" crash)
 - [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 (dry only) it's silent. OK?
 - [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material than on bright, hissy material. OK, or should it even out?
 
-### 10. Listen: TENSION + DECAY (≈20 min) · after the next install
+### 10. Listen: TENSION + DECAY (≈20 min)
 - Open from Finder: `renders/tension/tension_clean/index.html` (and `tension_driven`, `tension_kicked`): TENSION 0 → 1 on hits, DECAY noon. *(These pages were made before the flip: on them TENSION 0 is tight. In the plugin now, turning TENSION **up** is tighter.)* Then `renders/tension/decay_clean/index.html` (and `_driven`, `_kicked`): DECAY 0 → 1 at TENSION noon. All at MIX 0.5, SPRINGS 2. Or just play the plugin
 - [ ] Does each TENSION position sound like **one real tank**, a proper dub tank (not cartoonish) fully down and tight and pingy fully up?
 - [ ] DECAY: does **only the length** change, with the echoes staying put?
 - [x] Direction: **turning up = tighter** (29 Sep, your note; flipped)
 - [ ] Turn TENSION on a ringing tail: turning up raises the pitch like tightening a string. Nice, or too much?
-- [x] Resonances creeping in at mid DECAY (29 Sep, your note). Being fixed, in the next install
-- [ ] After the next install: any note still **ringing** out of the tail, especially on a tight tank (TENSION fully up) at DECAY 9–12 o'clock?
+- [x] Resonances creeping in at mid DECAY (29 Sep, your note). Fixed and installed ([ADR 0027](adr/0027-springs-differ-in-damping-and-decay.md))
+- [ ] Any note still **ringing** out of the tail? Especially: a tight tank (TENSION fully up) at DECAY 9–12 o'clock; **KICKED, 1 Spring, TENSION fully up, TONE fully right, DECAY ~3 o'clock** (the one corner the meters put near the line); and chords with WOBBLE around 9 o'clock on a tight tank
 - [ ] **KICKED Howl on a tight tank** (TENSION fully up, DECAY max): it leans more toward one pitch, like a siren. Still a rough roar, or too tonal?
 - [ ] Anything in the old BOING range you miss (e.g. a short tank with a huge chirp)?
 
@@ -117,13 +119,16 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **Next install, today:** finish SPLASH "heavier clang" (C) and the mid-DECAY resonance fix, merge them with the TENSION flip and TONE low cut, re-run every test and the ringing checks, install, and update the top of this page
+- **M1:** match DECAY to the Wellspring's tail (~5 s) and build the A/B page against your takes. Also: make the tool measure take A's tail by combining the clicks
+- **Possible follow-up:** on the skank with WOBBLE around 9 o'clock, one partial on a tight tank can still hang on after the chord (ADR 0027 "Open"); WOBBLE's per-spring drift is the suspect
 - Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target (TENSION adds ~2%); confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
-- After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
 
 ## Done
+
+- 29 Sep 2026: **installed `ae844da`**: TENSION up = tighter, SPLASH "heavier clang", TONE low cut, mid-DECAY resonances fixed
+- 29 Sep 2026: **Wellspring and Magneto recorded** and analysed (recordings stay on your Mac)
 
 - 29 Sep 2026: **TONE's bright side thins the lows**: a low cut sweeps up the right half, ~105 Hz at 3 o'clock to 300 Hz fully right; noon and the dark side unchanged (your note). Next install
 - 29 Sep 2026: **TENSION direction flipped**: turning up = tighter (your note, [ADR 0026](adr/0026-tension-replaces-boing.md) amendment). Next install
