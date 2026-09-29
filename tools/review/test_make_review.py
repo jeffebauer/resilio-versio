@@ -112,7 +112,37 @@ class ListenPageTest(unittest.TestCase):
         fixed = {c["k"]: c for c in data["fixed"]}
         self.assertEqual(fixed["DECAY"], {"k": "DECAY", "v": "0.5", "c": "noon"})
         self.assertNotIn("SPLASH", fixed)
-        self.assertTrue(data["levelMatch"])
+        self.assertFalse(data["levelMatch"])  # knob sweep: loudness is part of the knob
+
+    def test_level_match_defaults_and_flags(self):
+        sweep = self.root / "decay_sweep"
+        make_sweep(sweep, "decay_sweep", {"decay": [0.0, 0.5, 1.0]})
+        proto = self.root / "proto"
+        for v in ("A_today", "B_new"):
+            write_wav(proto / "02_hits_{}.wav".format(v))
+        run(sweep)
+        run(proto)
+        self.assertFalse(page_data(sweep / "index.html")["levelMatch"])
+        self.assertTrue(page_data(proto / "index.html")["levelMatch"])
+        run(sweep, "--level-match")
+        run(proto, "--no-level-match")
+        self.assertTrue(page_data(sweep / "index.html")["levelMatch"])
+        self.assertFalse(page_data(proto / "index.html")["levelMatch"])
+        self.assertNotEqual(run(sweep, "--level-match", "--no-level-match", ok=False).returncode, 0)
+
+    def test_level_match_median_and_cap(self):
+        d = self.root / "loud_quiet"
+        for v, rms in (("A_loud", -5.0), ("B_mid", -20.0), ("C_quiet", -45.0)):
+            name = "02_hits_{}".format(v)
+            write_wav(d / (name + ".wav"))
+            (d / (name + ".json")).write_text(json.dumps(sidecar(name + ".wav", {}, rms=rms)))
+        run(d)
+        data = page_data(d / "index.html")
+        panel = data["panels"]["r0|c0"]
+        self.assertEqual(panel["medianRms"], -20.0)
+        # -15 and +25 dB to reach the median, capped at 12 either way.
+        self.assertEqual([v["lm"] for v in panel["variants"]], [-12.0, 0.0, 12.0])
+        self.assertEqual(data["levelMatchCapDb"], 12.0)
 
     def test_overrides_and_boing_alias(self):
         d = self.root / "grid"
@@ -215,6 +245,12 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(listen.clock(1.0), "fully right")
         self.assertEqual(listen.clock(0.6000000238), "1 o'clock")
         self.assertEqual(listen.clock(0.25), "9:30")
+
+    def test_level_offsets(self):
+        self.assertEqual(listen.level_offsets([-10.0, -20.0, -50.0]), [-10.0, 0.0, 12.0])
+        self.assertEqual(listen.level_offsets([-10.0, -14.0]), [-2.0, 2.0])  # even count: mean of the middle two
+        self.assertEqual(listen.level_offsets([None, -10.0]), [None, 0.0])
+        self.assertEqual(listen.level_offsets([None]), [None])
 
     def test_canon_params(self):
         self.assertEqual(listen.canon_params({"boing": 0.5, "attitude": 1.0, "springs": 0.5}),

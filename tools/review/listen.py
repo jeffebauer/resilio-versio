@@ -660,7 +660,8 @@ ATT_COLOR = {"CLEAN": "--clean", "DRIVEN": "--driven", "KICKED": "--kicked"}
 
 
 def build_page_data(root, out_path, items, refs, rows=None, columns=None, variants=None,
-                    title=None, level_match=True):
+                    title=None, level_match=None):
+    """level_match: True / False, or None for the default (see default_level_match)."""
     if not items:
         raise LayoutError("no renders found in {} (no manifest.json and no .wav files)".format(root))
     row_keys, col_key, var_key = choose_roles(items, rows, columns, variants)
@@ -749,7 +750,10 @@ def build_page_data(root, out_path, items, refs, rows=None, columns=None, varian
                 vchips = [chip(p, it.params[p]) for p in varying_here if p in it.params and p not in shown_keys]
                 vs.append({"k": k, "n": n, "d": d, "item": iid, "chips": vchips})
                 items_out[iid] = item_json(it, rel)
-            panels["r{}|c{}".format(ri, ci)] = {"chips": extra, "variants": vs}
+            rms = [items_out[v["item"]]["rms"] for v in vs]
+            for v, off in zip(vs, level_offsets(rms)):
+                v["lm"] = off
+            panels["r{}|c{}".format(ri, ci)] = {"chips": extra, "variants": vs, "medianRms": median(rms)}
 
     # One legend for the page when every panel offers the same versions.
     lists = [[(v["k"], v["n"]) for v in p["variants"]] for p in panels.values()]
@@ -792,8 +796,42 @@ def build_page_data(root, out_path, items, refs, rows=None, columns=None, varian
         "legend": legend,
         "items": items_out,
         "references": refs_out,
-        "levelMatch": bool(level_match),
+        "levelMatch": default_level_match(var_key) if level_match is None else bool(level_match),
+        "levelMatchCapDb": LEVEL_MATCH_CAP_DB,
     }
+
+
+# Level-match: each version is moved towards the median loudness of its panel,
+# by at most this much either way.
+LEVEL_MATCH_CAP_DB = 12.0
+
+
+def default_level_match(var_key):
+    """On for lettered versions / prototype voicings (A/B/C, before/after, one render
+    per panel against a reference): there loudness would only bias the choice.
+    Off for a knob or switch sweep: the loudness change is part of what the knob does."""
+    return var_key is None or var_key == "variant" or var_key.startswith("folder")
+
+
+def median(values):
+    v = sorted(x for x in values if x is not None)
+    if not v:
+        return None
+    m = len(v) // 2
+    return v[m] if len(v) % 2 else (v[m - 1] + v[m]) / 2.0
+
+
+def level_offsets(rms_values, cap=LEVEL_MATCH_CAP_DB):
+    """dB to add to each version so it sits at the panel's median loudness, capped at
+    +/- cap. None where the loudness is unknown."""
+    med = median(rms_values)
+    out = []
+    for r in rms_values:
+        if r is None or med is None:
+            out.append(None)
+        else:
+            out.append(round(max(-cap, min(cap, med - r)), 1))
+    return out
 
 
 def source_label(root):

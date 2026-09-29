@@ -4,7 +4,7 @@
 Usage:
     python3 tools/review/make_review.py renders/<name> [--reference DIR ...] [--title T]
         [--columns KEY] [--variants KEY] [--rows KEY[,KEY]] [--out FILE]
-        [--no-level-match] [--no-spectrograms] [--classic]
+        [--level-match | --no-level-match] [--no-spectrograms] [--classic]
 
 The default page is laid out like the SPLASH voicings page the owner approved
 (renders/splash_voicings, Sep 2026):
@@ -16,8 +16,11 @@ The default page is laid out like the SPLASH voicings page the owner approved
   - settings as readable chips (DECAY 0.6, TENSION noon), not raw JSON;
   - "My pick" per panel, notes per column plus overall notes, and
     "Copy results for Claude" (plain text) / "Download results";
-  - level-matched playback (on by default: every version plays at the
-    loudness of the quietest one in its panel), blind mode, loop, keys,
+  - level-matched playback: every version is moved towards the median
+    loudness of its panel (at most +/-12 dB), shown per version. On by default
+    for lettered versions / prototypes (A/B/C, before/after), off for knob
+    sweeps, where the loudness change is part of the knob (--level-match /
+    --no-level-match set the default; the page has a toggle). Blind mode, loop, keys,
     a small spectrogram of the selected version, flags (clips, ringing...);
   - with --reference, a "Compare with" menu adds a reference recording to
     every panel as version R.
@@ -343,7 +346,7 @@ def write_listen(out_dir, out_path, args):
         rows = [r.strip() for r in args.rows.split(",") if r.strip()] if args.rows is not None else None
         data = listen.build_page_data(out_dir, out_path, items, refs, rows=rows, columns=args.columns,
                                       variants=args.variants, title=args.title or (name and name.replace("_", " ")),
-                                      level_match=not args.no_level_match)
+                                      level_match=args.level_match)
     except listen.LayoutError as e:
         die(str(e))
     out_path.write_text(listen.render_html(data), encoding="utf-8")
@@ -364,7 +367,11 @@ def main():
     parser.add_argument("--variants", default=None, help="What A/B/C inside a panel are (default: lettered versions, else the knob with the most positions)")
     parser.add_argument("--rows", default=None, help="Comma-separated: what the rows are (default: material + whatever is left over; '' for none)")
     parser.add_argument("--out", default=None, help="Output file name in <dir> or a path (default: <dir>/index.html)")
-    parser.add_argument("--no-level-match", action="store_true", help="Start with level-matching off (the page still has the toggle)")
+    lm = parser.add_mutually_exclusive_group()
+    lm.add_argument("--level-match", dest="level_match", action="store_true", default=None,
+                    help="Start with level-matching on (default: on for lettered versions, off for knob sweeps)")
+    lm.add_argument("--no-level-match", dest="level_match", action="store_false",
+                    help="Start with level-matching off (the page still has the toggle)")
     parser.add_argument("--no-spectrograms", action="store_true", help="Leave out the small spectrograms (smaller page)")
     parser.add_argument("--classic", action="store_true", help="Write the older metrics page (template.html) instead")
     args = parser.parse_args()

@@ -197,7 +197,8 @@ const lmEl = $("levelmatch"), blindEl = $("blind"), loopEl = $("loop"), refEl = 
 const hasRms = Object.values(DATA.items).some(it => it.rms != null);
 if (!hasRms) $("lmwrap").hidden = true;
 lmEl.checked = !!state.levelMatch && hasRms;
-lmEl.parentElement.title = "Plays every version in a panel at the loudness of the quietest one, so none wins by being louder";
+lmEl.parentElement.title = "Moves every version in a panel towards the panel's median loudness (at most ±" + (DATA.levelMatchCapDb || 12) +
+  " dB), so none wins by being louder. Off by default on knob sweeps, where the loudness change is part of the knob.";
 if (DATA.references.length) {
   $("refwrap").hidden = false;
   DATA.references.forEach(r => { const o = document.createElement("option"); o.value = r.id; o.textContent = r.name; refEl.appendChild(o); });
@@ -274,14 +275,22 @@ function makeGroup(row, col, panel, key) {
   const master = () => g.audios[g.sel] || g.audios[0];
   g.pick = state.picks[key] != null && state.picks[key] < n ? state.picks[key] : null;
 
+  // Level-match offset (dB) towards the panel's median loudness, capped (make_review.py
+  // computes it for the versions; a reference gets the same rule here).
+  const cap = DATA.levelMatchCapDb || 12;
   g.gainDb = i => {
     if (!lmEl.checked) return 0;
-    const all = g.sources.map(s => s.rms).filter(r => r != null);
+    if (i < n) return panel.variants[i].lm || 0;
     const r = g.sources[i] && g.sources[i].rms;
-    if (r == null || !all.length) return 0;
-    return Math.max(-30, Math.min(...all) - r);
+    if (r == null || panel.medianRms == null) return 0;
+    return Math.max(-cap, Math.min(cap, panel.medianRms - r));
   };
-  g.applyGains = () => g.audios.forEach((a, i) => { a.volume = Math.pow(10, g.gainDb(i) / 20); });
+  // audio.volume can only turn down (Web Audio gain is blocked on file://), so the
+  // whole panel drops by its largest boost and the offsets between versions stay exact.
+  g.applyGains = () => {
+    const offs = g.audios.map((_, i) => g.gainDb(i)), head = Math.max(0, ...offs);
+    g.audios.forEach((a, i) => { a.volume = Math.min(1, Math.pow(10, (offs[i] - head) / 20)); });
+  };
 
   g.renderPick = () => {
     if (!pickEl) return;
@@ -318,7 +327,8 @@ function makeGroup(row, col, panel, key) {
       b.style.setProperty("--vc", isRef ? "var(--ref)" : blindEl.checked ? VC(0) : VC(vi));
       const gd = g.gainDb(vi);
       // Only show the level-match offset when it is audible enough to matter.
-      const lm = lmEl.checked && src && src.rms != null && gd <= -0.5 ? `played ${gd.toFixed(1).replace("-", "−")} dB` : "";
+      const lm = lmEl.checked && src && src.rms != null && Math.abs(gd) >= 0.5
+        ? `matched ${gd > 0 ? "+" : "−"}${Math.abs(gd).toFixed(1)} dB${Math.abs(gd) >= cap ? " (capped)" : ""}` : "";
       const flags = !blindEl.checked && src && src.flags.length ? `<span class="flag" title="${esc(src.flags.join(", "))}">! ${esc(src.flags[0])}</span>` : "";
       // With a legend at the top, panels keep to the short names (like the SPLASH voicings page).
       const desc = DATA.legend && !isRef && !/o'clock|noon|fully/.test(v.d || "") ? "" : v.d;
