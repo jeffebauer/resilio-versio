@@ -542,11 +542,10 @@ namespace {
 
 constexpr int kBlockSize = 48; // SPEC §5
 
-// libDaisy quirk (SPEC §8.1): knobs are already flipped for us. Whether
-// "left" on the panel is Switch3::POS_LEFT or POS_RIGHT is exactly what the
-// M0 hardware check (docs/m0-hardware-check.md step 5) tells us; until then
-// these are single named switches to flip, nothing else in this file needs
-// to change either way.
+// libDaisy quirk (SPEC §8.1): knobs are already flipped for us. Switches:
+// the M0 hardware check (29 Sep 2026, docs/m0-hardware-check.md step 5)
+// confirmed both read 0 (Switch3::POS_LEFT) pointing left on the panel, so
+// left = 1 Spring / CLEAN as SPEC §3 wants and neither needs inverting.
 constexpr bool kSpringsSwitchInverted  = false;
 constexpr bool kAttitudeSwitchInverted = false;
 

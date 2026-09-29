@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 · **Milestones:** M0 needs your hardware check · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 · **Milestones:** M0: Session 1 passed, Session 2 (rack power) next · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -33,9 +33,9 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### 3. M0 hardware check on the Versio (≈30 min) · unblocks M3
 - After M0, the M3 profile build will need one extra check: its serial output was rewritten to save flash, so confirm the `CORNER …` lines are readable in `screen` (details come with the M3 instructions)
 - **Doc:** [m0-hardware-check.md](m0-hardware-check.md)
-- [ ] Flash **`dist/resilio_versio_m0_test.bin`** (NE Firmware Swap → Select Custom File). Not `firmware/build/…`, which changes with every build
-- [ ] Session 1, **USB only**: boot pattern, serial values for knobs, switches and button. Note which switch direction reads 0
-- [ ] Session 2, **rack power only**: LEDs, CV at 0 V/5 V (LED_3 green), gate, passthrough vs cable
+- [x] Flash **`dist/resilio_versio_m0_test.bin`** (29 Sep)
+- [x] Session 1, **USB only** (29 Sep): boots, serial works, switches pass (**pointing left = 0**, matches the firmware), button pass (37 of 37). Knobs read 1000 on USB: expected, the knob circuit needs rack power
+- [ ] Session 2, **rack power only** (USB unplugged first): LEDs, **including the knob check** (each knob fades its LED colour smoothly from off to full), CV at 0 V/5 V (LED_3 green), gate, passthrough vs cable
 - Never connect USB and rack power at the same time
 
 ### 4. M2 Ableton check (≈15 min)
@@ -131,6 +131,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 
 ## Done
+
+- 29 Sep 2026: **M0 Session 1 passed** (USB): switches (left = 0) and button work; knobs move to Session 2 (they need rack power)
 
 - 29 Sep 2026: **M1 A/B page built** against the Wellspring: its tail is 3.5 s (not ~5 s; the old number was a measuring error), matched by DECAY about 2 o'clock (task 4b)
 
