@@ -32,3 +32,29 @@ Copied byte-for-byte from the Ableton recordings (`Samples/Recorded/`), renamed 
 | A-R | wellspring_A-R_clicks_right.wav | Wellspring 0011 (+248) |
 
 Not used: Loopback 0001 and Wellspring 0007 (unused passes, no clip in the set).
+
+## Magneto session, 29 Sep 2026
+
+Same Ableton set as the Wellspring session. Rear DIP S2 = ON (Dual Split): L = tape delay, R = spring. 48 kHz / 24-bit, mono.
+Path: Ableton → interface ADAT output channel **17** → OPTX2 channel 1 output jack → Magneto; Magneto → OPTX2 channel 1 input jack → interface ADAT input channel **17** → Ableton. One output and one input for every take; repatched at the Magneto between R (spring) and L (tape).
+
+- **Take 0 (ADAT loopback):** OPTX2 ch 1 out → OPTX2 ch 1 in. Measured +84 samples (the TRS path reads −10: the ADAT/OPTX2 round trip is ~94 samples, ~2 ms, longer).
+- **Spring takes (MA, MB, ME, MS):** the spring path has no input control in Dual Split; stimulus at 0 dB. No clipping, no audible distortion. **MS** (`03_sweep` through the spring) is an extra take, not in the recipe.
+- **Tape takes (MW, MD):** SPEED/PITCH noon. DRY 0, WET 100 %, REPEATS 0, FEEDBACK buttons off, head 1 only. Base REC LVL 8–8:30 (bright green; yellow just above). MW0–MW4: WOW & FLUTTER fully CCW / 9 / 12 / 3 o'clock / fully CW.
+- **MD REC LVL:** MD1 green = 9 o'clock, MD2 amber = 12 o'clock, MD3 red = 4 o'clock.
+
+### How the files were made (Claude)
+Copied byte-for-byte and renamed; the Eurorack `01_clicks` clip again started 0.005176 s (248 samples) into the file, so takes 0 and MA got 248 samples of silence added at the front.
+
+| Take | File | From |
+|---|---|---|
+| 0 | magneto_0_adat_loopback.wav | Eurorack 0002 [180455] (+248) |
+| MA | magneto_MA_clicks.wav | Eurorack 0001 [180713] (+248) |
+| MB | magneto_MB_hits.wav | Eurorack 0002 [181726] |
+| MS | magneto_MS_sweep.wav | Eurorack 0003 |
+| ME | magneto_ME_skank.wav | Eurorack 0004 |
+| MW0–MW4 | magneto_MW0_wow_ccw … MW4_wow_cw | Eurorack 0007–0011 |
+| MD1–MD3 | magneto_MD1_reclvl_green … MD3_reclvl_red | Eurorack 0012–0014 |
+
+Not used: Eurorack 0001 [180028], 0005, 0006 (unused passes, no clip in the set).
+

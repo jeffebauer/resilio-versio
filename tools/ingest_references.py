@@ -70,13 +70,13 @@ TAKE_STIMULUS = {
         "MA": "01_clicks.wav", "MB": "02_hits.wav", "ME": "04_skank.wav",
         "MW0": "08_held_tones.wav", "MW1": "08_held_tones.wav", "MW2": "08_held_tones.wav",
         "MW3": "08_held_tones.wav", "MW4": "08_held_tones.wav",
-        "MD1": "02_hits.wav", "MD2": "02_hits.wav", "MD3": "02_hits.wav",
+        "MD1": "02_hits.wav", "MD2": "02_hits.wav", "MD3": "02_hits.wav", "MS": "03_sweep.wav",
     },
 }
 CORE_TAKES = {"wellspring": ["0", "A", "B", "C", "D", "E"], "magneto": ["0", "MA", "MB", "ME"]}
 OPTIONAL_TAKES = {
     "wellspring": ["E2", "F", "G", "G2", "A-L", "A-R"],
-    "magneto": ["MW0", "MW1", "MW2", "MW3", "MW4", "MD1", "MD2", "MD3"],
+    "magneto": ["MS", "MW0", "MW1", "MW2", "MW3", "MW4", "MD1", "MD2", "MD3"],
 }
 ALL_TAKES = {u: CORE_TAKES[u] + OPTIONAL_TAKES[u] for u in CORE_TAKES}
 CLICK_TAKES = {"wellspring": ["A", "A-L", "A-R"], "magneto": ["MA"]}

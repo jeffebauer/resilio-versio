@@ -33,25 +33,44 @@ Chirp repeat 82.9 ms, dispersion (lows-later) -5.72 ms, fC 4531 Hz.
 
 ## Magneto
 
-Found 0 take(s): (none).
-Missing: 0, MA, MB, ME, MW0, MW1, MW2, MW3, MW4, MD1, MD2, MD3. (**core takes missing**: 0, MA, MB, ME)
+Found 13 take(s): 0, MA, MB, MD1, MD2, MD3, ME, MS, MW0, MW1, MW2, MW3, MW4.
+Interface latency (from take 0): **1.75 ms**.
+
+**MA (clicks):** T60 -, ringing_db 4.7 dB, peak -28.4 dBFS.
+Chirp repeat 29.3 ms, dispersion (lows-later) -, fC 1851 Hz.
+100% wet check: no direct click found at any onset (fully wet).
+
+**Wow & flutter -> WOBBLE targets (ADR 0008):**
+- MW0 (fully CCW): 0.0 cents depth
+- MW1 (9 o'clock): 0.6 cents depth
+- MW2 (12 o'clock): 3.5 cents depth
+- MW3 (3 o'clock): 8.4 cents depth
+- MW4 (fully CW): 7.7 cents depth
+- Proposed Drift target range (9 o'clock-noon): 0.6-3.5 cents
+- Proposed Warble target range (3 o'clock-CW): 7.7-8.4 cents
+
+**Drive colour (proxy, not true THD -- see docs/reference-ingest.md):**
+- MD1: brightness 4.7 dB, crest 27.0 dB, HF-distortion proxy 1.6 dB
+- MD2: brightness 4.9 dB, crest 25.5 dB, HF-distortion proxy 1.7 dB
+- MD3: brightness 5.7 dB, crest 20.8 dB, HF-distortion proxy 2.0 dB
 
 ### Per-take detail
 
 | Take | Latency (ms) | Peak dBFS | T60 s | Ringing dB | Clip count | Notes |
 |---|---|---|---|---|---|---|
-| 0 | - | - | - | - | - | missing |
-| MA | - | - | - | - | - | missing |
-| MB | - | - | - | - | - | missing |
-| ME | - | - | - | - | - | missing |
-| MW0 | - | - | - | - | - | missing |
-| MW1 | - | - | - | - | - | missing |
-| MW2 | - | - | - | - | - | missing |
-| MW3 | - | - | - | - | - | missing |
-| MW4 | - | - | - | - | - | missing |
-| MD1 | - | - | - | - | - | missing |
-| MD2 | - | - | - | - | - | missing |
-| MD3 | - | - | - | - | - | missing |
+| 0 | 1.75 | -5.3 | 0.00 | 3.5 | 0 |  |
+| MA | 1.75 | -28.4 | - | 4.7 | 0 |  |
+| MB | 1.75 | -13.7 | 3.64 | 7.4 | 0 |  |
+| ME | 1.75 | -13.7 | 10.16 | 28.8 | 0 |  |
+| MS | 1.75 | -3.2 | 4.60 | 19.5 | 0 |  |
+| MW0 | 1.75 | - | - | - | 0 | wow/flutter, see above |
+| MW1 | 1.75 | - | - | - | 0 | wow/flutter, see above |
+| MW2 | 1.75 | - | - | - | 0 | wow/flutter, see above |
+| MW3 | 1.75 | - | - | - | 0 | wow/flutter, see above |
+| MW4 | 1.75 | - | - | - | 0 | wow/flutter, see above |
+| MD1 | 1.75 | -15.2 | 0.39 | 0.0 | 0 |  |
+| MD2 | 1.75 | -5.8 | 0.39 | - | 0 |  |
+| MD3 | 1.75 | -2.7 | 0.40 | - | 0 |  |
 
 ## Session notes (`NOTES.md`, verbatim)
 
@@ -66,8 +85,8 @@ Interface input gain unchanged all session (skank peaks about −14 dBTP at the 
 
 - **Take 0 (loopback):** front output 3 → front input 1 (input 1 gain: records 6.0 dB hotter than the stimulus, so its level doesn't represent inputs 11/12; use it for timing only). Timing check: take E2's dry signal on the rear inputs gives −8 samples; the loopback gives −10. The front and rear inputs match within 2 samples.
 - **Base INPUT:** set on `04_skank`, just shy of the CLIP light; no other stimulus clips at that setting. Used for A, B, D, E, E2, F, G, G2, A-L, A-R.
-- **C:** INPUT raised until the CLIP light flashes on the loudest (−6 dBFS) snare of `02_hits`. Position: _(owner to add)_
-- **E2:** SPRINGS DRY/WET at: _(owner to add)_
+- **C:** INPUT raised until the CLIP light flashes on the loudest (−6 dBFS) snare of `02_hits`. Position: **about 1:30–2 o'clock**.
+- **E2:** SPRINGS DRY/WET at **noon** (where it sounded best for dub).
 - **G, feedback parallel** (`wellspring_G_ringing_parallel.wav`): FEEDBACK + MAGIC 11:30, feedback switch PARALLEL, delay time noon, delay DRY/WET full wet (fully CW), filter HP fully CCW. The feedback switch position had a marked effect on frequency buildup.
 - **G2, feedback ping-pong** (`wellspring_G2_ringing_pingpong.wav`): FEEDBACK + MAGIC 11:00, feedback switch PING PONG, delay time noon, delay DRY/WET full wet (fully CW), filter HP fully CCW.
 
@@ -90,12 +109,35 @@ Copied byte-for-byte from the Ableton recordings (`Samples/Recorded/`), renamed 
 | A-R | wellspring_A-R_clicks_right.wav | Wellspring 0011 (+248) |
 
 Not used: Loopback 0001 and Wellspring 0007 (unused passes, no clip in the set).
+
+## Magneto session, 29 Sep 2026
+
+Same Ableton set as the Wellspring session. Rear DIP S2 = ON (Dual Split): L = tape delay, R = spring. 48 kHz / 24-bit, mono.
+Path: Ableton → interface ADAT output channel **17** → OPTX2 channel 1 output jack → Magneto; Magneto → OPTX2 channel 1 input jack → interface ADAT input channel **17** → Ableton. One output and one input for every take; repatched at the Magneto between R (spring) and L (tape).
+
+- **Take 0 (ADAT loopback):** OPTX2 ch 1 out → OPTX2 ch 1 in. Measured +84 samples (the TRS path reads −10: the ADAT/OPTX2 round trip is ~94 samples, ~2 ms, longer).
+- **Spring takes (MA, MB, ME, MS):** the spring path has no input control in Dual Split; stimulus at 0 dB. No clipping, no audible distortion. **MS** (`03_sweep` through the spring) is an extra take, not in the recipe.
+- **Tape takes (MW, MD):** SPEED/PITCH noon. DRY 0, WET 100 %, REPEATS 0, FEEDBACK buttons off, head 1 only. Base REC LVL 8–8:30 (bright green; yellow just above). MW0–MW4: WOW & FLUTTER fully CCW / 9 / 12 / 3 o'clock / fully CW.
+- **MD REC LVL:** MD1 green = 9 o'clock, MD2 amber = 12 o'clock, MD3 red = 4 o'clock.
+
+### How the files were made (Claude)
+Copied byte-for-byte and renamed; the Eurorack `01_clicks` clip again started 0.005176 s (248 samples) into the file, so takes 0 and MA got 248 samples of silence added at the front.
+
+| Take | File | From |
+|---|---|---|
+| 0 | magneto_0_adat_loopback.wav | Eurorack 0002 [180455] (+248) |
+| MA | magneto_MA_clicks.wav | Eurorack 0001 [180713] (+248) |
+| MB | magneto_MB_hits.wav | Eurorack 0002 [181726] |
+| MS | magneto_MS_sweep.wav | Eurorack 0003 |
+| ME | magneto_ME_skank.wav | Eurorack 0004 |
+| MW0–MW4 | magneto_MW0_wow_ccw … MW4_wow_cw | Eurorack 0007–0011 |
+| MD1–MD3 | magneto_MD1_reclvl_green … MD3_reclvl_red | Eurorack 0012–0014 |
+
+Not used: Eurorack 0001 [180028], 0005, 0006 (unused passes, no clip in the set).
 ```
 
 ## Warnings
 
 - wellspring: no measured T60 for A, skipping matched A/B renders
-- magneto: no take 0 of its own. The other unit's loopback is NOT used (TRS and ADAT paths differ); record magneto_0_... through magneto's own signal path
-- magneto: no take 0 (loopback) found anywhere; per-take latency is measured independently against each take's own stimulus (less reliable on spring takes)
 - magneto: no measured T60 for MA, skipping matched A/B renders
 
