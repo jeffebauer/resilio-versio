@@ -2,9 +2,9 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 2: CLEAN splash built; TENSION in progress) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · M8: highs-later chirp on, CLEAN splash built, TENSION next
+**Last updated:** 29 Sep 2026 (session 2: CLEAN splash + TENSION built and installed) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · M8: highs-later chirp, CLEAN splash and TENSION in; your listen (task 10) feeds round 2
 
-**Plugin installed in Ableton:** highs-later chirp + M8 round 1 (commit `8f0a09c`), installed 29 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New since the last build: each echo now sweeps **up** like a real tank, and tail length no longer changes with BOING. Listening pages for this build: `renders/m8_hl/` (BOING, SPLASH and DRIVE sweeps per ATTITUDE, plus `chirp_boing` with real tanks). Still to come: CLEAN's gentle splash, then TENSION replacing BOING.
+**Plugin installed in Ableton:** CLEAN's gentle splash + **TENSION** (commit `df8e5a3`), installed 29 Sep 11:49. **Rescan plug-ins** (hold ⌥ and click Rescan). New since the last build: the second knob is now **TENSION** (which tank: tight/pingy ↔ loose/boingy), **DECAY only sets the tail length** (no pitch bend), and SPLASH now works in CLEAN. ⚠ Saved Live sets that used the old BOING knob will open with TENSION at its default (noon), and any BOING automation won't carry over. Listening pages: `renders/tension/` and `renders/clean_splash/`.
 
 ## To do (suggested order)
 
@@ -96,6 +96,15 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 (dry only) it's silent. OK?
 - [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material than on bright, hissy material. OK, or should it even out?
 
+### 10. Listen: TENSION + DECAY (≈20 min) · the build is installed
+- Open from Finder: `renders/tension/tension_clean/index.html` (and `tension_driven`, `tension_kicked`): TENSION 0 → 1 on hits, DECAY noon. Then `renders/tension/decay_clean/index.html` (and `_driven`, `_kicked`): DECAY 0 → 1 at TENSION noon. All at MIX 0.5, SPRINGS 2. Or just play the plugin
+- [ ] Does each TENSION position sound like **one real tank**, tight and pingy at the left and a proper dub tank (not cartoonish) at the right?
+- [ ] DECAY: does **only the length** change, with the echoes staying put?
+- [ ] Turn TENSION on a ringing tail: it bends the pitch like stretching the tank. Nice, or too much?
+- [ ] **Tight tank, short-to-medium tail** (TENSION fully left, DECAY 9–12 o'clock): does one note **ping** out of the end of the tail? The meters put it right at the edge of "Ringing"; your ears decide whether it needs fixing
+- [ ] **KICKED Howl on a tight tank** (TENSION left, DECAY max): it leans more toward one pitch, like a siren. Still a rough roar, or too tonal?
+- [ ] Anything in the old BOING range you miss (e.g. a short tank with a huge chirp)?
+
 ## Later (no action now)
 
 ### Stereo in: explore down the line
@@ -104,7 +113,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - **When:** decide after M3 profiling shows the Versio's real CPU headroom. Background: [SPEC §10](../SPEC.md)
 - **Optional data to help:** Wellspring takes **A-L / A-R** (each tank alone) in the [recipe](recording-recipe.md)
 
-### TENSION instead of BOING? Explore before tuning BOING
+### TENSION instead of BOING (adopted and built, see task 10)
 - **Idea (yours, 28 Sep):** real tanks have no BOING and usually no decay knob; their character comes from which tank is fitted. Replace BOING with **TENSION** (which tank: echo spacing + chirp + brightness together, tight/pingy ↔ loose/boingy) and make **DECAY feedback only** (how long it rings, no pitch bend).
 - **Trade-offs:** clearer knob jobs and closer to real springs (it also absorbs "BOING shortens decay"); less direct control of the cartoon boing; supersedes ADRs 0006/0007/0012 with a new one. Middle option: rename and widen BOING into TENSION, keep DECAY's size link.
 - **Prototype ready to hear (29 Sep):** open `renders/tension_proto/index.html` from Finder. Guide: `renders/tension_proto/GUIDE.md`. The code is on branch `proto/tension`, not merged
@@ -121,13 +130,14 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **TENSION** replacing BOING ([ADR 0026](adr/0026-tension-replaces-boing.md)): in progress now. Then one plugin install with CLEAN's splash + TENSION, and a listening task here
-- Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
+- Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target (TENSION adds ~2%); confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 - After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
 
 ## Done
+
+- 29 Sep 2026: **TENSION replaces BOING** and DECAY is tail length only ([ADR 0026](adr/0026-tension-replaces-boing.md)); installed with CLEAN's splash (`df8e5a3`). Along the way: loose tank + short tail stays full in mono, cleaner max DRIVE in DRIVEN, no dead patch at the bottom of CLEAN's DRIVE, a tighter Kick thud at long DECAY, held chords in tune at WOBBLE noon, no Ringing on tight tanks at max DECAY
 
 - 29 Sep 2026: CLEAN's gentle splash built ([ADR 0025](adr/0025-clean-gentle-splash.md)): SPLASH now works in CLEAN (no dead zone), smaller than DRIVEN's at every hit level; ghost notes still ignored
 
