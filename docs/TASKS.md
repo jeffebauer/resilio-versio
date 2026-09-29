@@ -68,6 +68,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Then decide:** should higher DRIVE make SPLASH bite sooner and harder (realistic, matched to your Wellspring takes B vs C), or keep them independent?
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
+### 3e. Two prototypes to listen to (≈10 min each, from the overnight agents, 30 Sep)
+- [ ] **Hanging note at WOBBLE ~9 o'clock:** open `renders/proto_wobble_hang/index.html` from Finder. **A** today, **B** "Springs drift together at low WOBBLE" (Claude's pick: the hang drops to the WOBBLE-0 level), **C** halfway. Listen for: does the chord now fade evenly? Does B lose any life at 9 o'clock, or sound narrower at noon? Pick, notes, **Copy results for Claude**
+- [ ] **Lows ring longer, like your Wellspring:** open `renders/proto_low_tail/index.html`. **A** today, **B** "lows linger" (snare tail 3.5 → 3.8 s, rims unchanged), **C** "lows linger, top fades sooner" (closer to the tank's rims; one ringing check slightly over its limit), **W** your Wellspring (DECAY 2 o'clock rows). Question: more like a real tank, or just muddier? Note: the Wellspring's lows ring long but quietly; ours are louder, so the same stretch risks mud
+
 ### 4. M2 Ableton check (≈15 min)
 - **Doc:** [m2-ableton-check.md](m2-ableton-check.md) · MIDI clip: `test_audio/midi/kicks_16ths.mid`
 - [ ] **Rescan plug-ins first** and use a fresh instance (see the top of this page). The second knob is now TENSION, not BOING
@@ -155,6 +159,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
+- **Overnight results, waiting for your OK to merge** (each reviewed and re-tested by Claude: all test suites pass): tail-length measurement fix, LED meters (+ ADR 0031, SPEC v1.0.18), manual + presets drafts, new review-page tool. Prototypes stay unmerged until you listen (3e)
 - **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
 
 - **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
