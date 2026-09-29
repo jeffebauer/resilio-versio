@@ -26,7 +26,7 @@ Test firmware: **`dist/resilio_versio_m0_test.bin`** (a saved copy; rebuild with
 
 LED key:
 
-Which pot is which K (measured in this check, 29 Sep 2026; pots P1–P7 in reading order, see `docs/panel/`): **P1 = K0, P2 = K4, P3 = K2, P4 = K1, P5 = K5, P6 = K3, P7 = K6.** The key below is by K; the names are what the m0test build called them, not the release layout (ADR 0028).
+Which pot is which K (measured in this check, 29 Sep 2026; pots P1–P7 in reading order, see `docs/panel/`): **P1 = K0, P2 = K4, P3 = K2, P4 = K1, P5 = K5, P6 = K3, P7 = K6.** Switches: top = SW0 (SPRINGS), bottom = SW1 (ATTITUDE), confirmed. The key below is by K; the names are what the m0test build called them, not the release layout (ADR 0028).
 
 | LED | Shows |
 |---|---|
