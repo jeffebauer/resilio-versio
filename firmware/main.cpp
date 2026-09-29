@@ -211,6 +211,7 @@ int main()
 // case and needing a rewrite later.
 
 #include "util/CpuLoadMeter.h"
+#include "dsp/ProfileHook.h"
 
 #include <cstdint>
 #include <cstring>
@@ -414,11 +415,35 @@ daisy::CpuLoadMeter gLoadMeter;
 size_t              gCornerElapsed = 0;
 int                 gCurrentCorner = 0;
 
+// Per-section cycle split (dsp/ProfileHook.h): the Tank marks each section's
+// end; the time since the previous mark goes to that section. DWT cycle
+// counter, 480 MHz.
+constexpr int kNumSections = rv::prof::kNumSections;
+uint32_t      gProfLast = 0;
+uint64_t      gProfAcc[kNumSections]{};
+
+void ProfMark(int section)
+{
+    const uint32_t now = DWT->CYCCNT;
+    gProfAcc[section] += now - gProfLast;
+    gProfLast = now;
+}
+
+void StartCycleCounter()
+{
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->LAR = 0xC5ACCE55; // unlock (Cortex-M7)
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+
 struct Result {
-    int    index;
-    float  avg, max, min;
-    size_t memBytes;
-    bool   prepared;
+    int      index;
+    float    avg, max, min;
+    size_t   memBytes;
+    bool     prepared;
+    uint64_t split[kNumSections];
+    size_t   samples;
 };
 volatile bool gResultReady = false;
 Result        gPendingResult{};
@@ -435,6 +460,7 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
         if (++gClickPhase >= gClickPeriodSamples) gClickPhase = 0;
         bufL[i] = bufR[i] = x;
     }
+    gProfLast = DWT->CYCCNT;
     tank.process(bufL, bufR, out[0], out[1], int(size));
 
     gLoadMeter.OnBlockEnd();
@@ -447,6 +473,11 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
         gPendingResult.min      = gLoadMeter.GetMinCpuLoad();
         gPendingResult.memBytes = tank.memoryBytes();
         gPendingResult.prepared = gTankPrepared;
+        gPendingResult.samples  = gCornerElapsed;
+        for (int k = 0; k < kNumSections; ++k) {
+            gPendingResult.split[k] = gProfAcc[k];
+            gProfAcc[k]             = 0;
+        }
         gResultReady            = true;
 
         gCurrentCorner = (gCurrentCorner + 1) % kNumCorners;
@@ -464,6 +495,8 @@ int main()
     hw.SetAudioBlockSize(kBlockSize);
 
     gTankPrepared = PrepareTank();
+    StartCycleCounter();
+    rv::prof::markHook = ProfMark;
     BuildCornerTable();
     ApplyCorner(0);
 
@@ -521,6 +554,20 @@ int main()
             AppendStr(p, end, " Hz | ~");
             AppendInt(p, end, cyclesPerSample);
             AppendStr(p, end, " cyc/sample\r\n");
+            TransmitLine(buf, size_t(p - buf));
+
+            // Where the time goes, each section as % of the whole budget
+            // (10,000 cycles per sample at 480 MHz / 48 kHz): cycles / (samples x 10) = tenths of a %.
+            static const char* const kSectionNames[kNumSections] = {
+                "ctl", "drvIn", "splash", "tilt", "sprA", "sprB", "sprC", "out"};
+            p = buf;
+            AppendStr(p, end, "  SPLIT");
+            for (int k = 0; k < kNumSections; ++k) {
+                AppendStr(p, end, " ");
+                AppendStr(p, end, kSectionNames[k]);
+                AppendFixed1(p, end, r.samples ? int(r.split[k] / (uint64_t(r.samples) * 10u)) : 0, 5);
+            }
+            AppendStr(p, end, "  (% of budget)\r\n");
             TransmitLine(buf, size_t(p - buf));
 
             if (r.max > 0.65f) everExceeded = true; // SPEC §5 target: <= 65% worst case

@@ -182,5 +182,7 @@ won't audibly do everything the SPEC describes until Core catches up.
 
 Readings: TENSION loose → tight is ~20 points (the loose tank runs up to 64 Chirp stages per Spring per sample). 2 → 3 Springs costs ~1 point because the Tank always runs all three Springs and mutes the unused ones. The short 100 % peaks follow a setting change. Desktop estimate was 65–70 %.
 
-**Run 2** (`dist/resilio_versio_m3_profile_dtcm.bin`): the delay pool moved to DTCM, which was completely unused. Same DSP, same sound. Results pending.
+**Run 2** (`dist/resilio_versio_m3_profile_dtcm.bin`): the delay pool moved to DTCM, which was completely unused. Same DSP, same sound. **Only ~1 point better** (S1 loose 70.5 %, S2 loose 80.1 %): memory wasn't the bottleneck. Even the tight tank sits at ~60 %, so most of the cost isn't the Chirp stages.
+
+**Run 3** (`dist/resilio_versio_m3_profile_split.bin`): adds a `SPLIT` line under each corner, the time per Tank section as % of the budget (`ctl` control tick, `drvIn` input drive + excitation followers, `splash` Kick + Splash, `tilt` TONE tilt + transport, `sprA/B/C` each Spring incl. its input prep, `out` mix, decorrelator, pickups, shelf, limiter, MIX). Hooks: `core/dsp/ProfileHook.h`, compiled in only with `RV_PROFILE_HOOKS` (profile builds); release is unchanged.
 

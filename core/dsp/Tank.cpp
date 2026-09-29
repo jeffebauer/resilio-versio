@@ -1,4 +1,5 @@
 #include "dsp/Tank.h"
+#include "dsp/ProfileHook.h"
 
 #include "params/AntiRes.h"
 #include "params/DriveVoicing.h"
@@ -46,6 +47,10 @@ inline float softLimit(float x)
 }
 
 } // namespace
+
+#if defined(RV_PROFILE_HOOKS)
+void (*prof::markHook)(int) = nullptr;
+#endif
 
 // The Tank object itself must stay small: the Firmware keeps it as a global
 // in DTCM (128 KB). Big buffers live in the pool.
@@ -354,6 +359,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     int pos = 0;
     while (pos < numSamples) {
         if (tick_ == 0) controlTick(false); // fixed grid, independent of block size
+        prof::mark(prof::kControl);
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
@@ -369,6 +375,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             excAccBroad_ += x * x;
             excAccBand_ += w * w;
         }
+        prof::mark(prof::kDriveIn);
 
         // Kick: onsets on their exact sample (offsets clamp to the block).
         for (int k = 0; k < numPendingKicks_; ++k) {
@@ -383,6 +390,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         if (!splashOn_) // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
         if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
+        prof::mark(prof::kSplash);
 
         // Spring inputs: TONE's tilt, plus the Kick's high-passed Loop feed
         // (post-drive). Each Spring also gets its own Clatter stream (same
@@ -393,6 +401,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         for (int i = 0; i < n; ++i)
             mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
+        prof::mark(prof::kTilt);
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
@@ -403,6 +412,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }
             springs_[s].process(loopIn, high, lFrac, lSamples, tapSamples, wet[s], n);
+            prof::mark(prof::Section(prof::kSpringA + int(s)));
         }
 
         for (int i = 0; i < n; ++i) {
@@ -489,6 +499,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             outL[pos + i] = m.dry * dryL + m.wet * wl;
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
+        prof::mark(prof::kOutput);
         pos += n;
         tick_ = (tick_ + n) % kControlInterval;
     }

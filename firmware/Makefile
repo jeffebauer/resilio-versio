@@ -20,7 +20,7 @@ ifeq ($(MODE),m0test)
   MODE_DEFS = -DRV_MODE_M0TEST
 else ifeq ($(MODE),profile)
   TARGET    = resilio_versio_profile
-  MODE_DEFS = -DRV_MODE_PROFILE
+  MODE_DEFS = -DRV_MODE_PROFILE -DRV_PROFILE_HOOKS
 else ifeq ($(MODE),release)
   TARGET    = resilio_versio
   MODE_DEFS = -DRV_MODE_RELEASE
