@@ -207,3 +207,13 @@ Run 5 results: `BENCH clock 480 MHz icache on dcache on | fma latency 9.0 throug
 
 **Run 6** (`dist/resilio_versio_m3_profile_nofma.bin`): firmware built with `-ffp-contract=off` (plain `vmul` + `vadd`, three-operand, pipelined). Release and profile. Output vs the fused build (desktop, 12 s Tank run with moves and Kicks): the difference stays 84–95 dB below the signal (recirculating tails carry the last-bit rounding); inaudible, no drift.
 
+Run 6 results (29 Sep 2026): **~5 points better everywhere, still over.** BENCH: mul-add latency 6.0, independent throughput 2.0 (was 8.3); Chirp section still ~21 cycles (fused), split3 19.5.
+
+| Corner | avg | max | Springs (each) | out | drvIn | splash | ctl |
+|---|---|---|---|---|---|---|---|
+| S3 loose (worst case) | 75.7–76.0 % | 92.5 % | ~18.0 | 9.4 | 6.7 | 2.5 | 2.0 (5.4 after a change) |
+| S2 loose | 74.9 % | 91.4 % | 20.5 / 20.5 / 11.9 | 9.4 | 6.7 | 2.5 | 2.0 |
+| any tight | 57.0–57.4 % | 73.6 % | ~11.9 | 9.3 | 6.7 | 2.5 | 1.9 |
+
+Next candidates (no sound change unless noted): (1) spread the Springs' coefficient redesign over several control ticks (the ~16-point `max` bursts follow setting changes, i.e. any knob move); (2) the Chirp section's scheduling (~21 cycles vs a ~8–10 floor; test loop shapes on-chip with m3_bench); (3) LoopSat: two soft clips with divisions per sample per Spring at 2× (`sIn` ~5.6 % per Spring in run 4); (4) skip muted Springs at SPRINGS 1/2 (worst case unaffected; a newly switched-in Spring would start empty: owner question); (5) block 96 instead of 48 (halves per-block overhead and the burst's share; +1 ms latency: owner question, SPEC §5).
+
