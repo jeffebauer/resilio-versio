@@ -560,6 +560,14 @@ int SwitchPosition(int sw, bool invert)
     return invert ? (2 - pos) : pos;
 }
 
+// Output calibration from the M0 passthrough check (29 Sep 2026,
+// docs/m0-hardware-check.md): with a plain in -> out copy, the Versio's
+// analog path came out polarity-inverted and 1.17 dB hotter than a patch
+// cable (flat 30 Hz-4 kHz, both channels). Undo both on the way out so MIX 0
+// is indistinguishable from a cable (SPEC §7 M0). Both sides of MIX go
+// through it, so the dry/wet balance is unchanged.
+constexpr float kOutputTrim = -0.874f; // -(10^(-1.17/20))
+
 // K0..K6 -> ParamSpec, panel order (SPEC §3).
 constexpr rv::ParamId kKnobParams[DaisyVersio::KNOB_LAST] = {
     rv::ParamId::Decay, rv::ParamId::Tone,   rv::ParamId::Tension,  rv::ParamId::Splash,
@@ -613,6 +621,10 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     gInputLevel = 0.9f * gInputLevel + 0.1f * peak; // simple one-pole for a readable LED, not a meter
 
     tank.process(in[0], in[1], out[0], out[1], int(size));
+    for (size_t i = 0; i < size; ++i) {
+        out[0][i] *= kOutputTrim;
+        out[1][i] *= kOutputTrim;
+    }
 
     float sumSq = 0.0f;
     for (size_t i = 0; i < size; ++i) {

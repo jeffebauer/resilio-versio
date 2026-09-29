@@ -18,6 +18,8 @@ Test firmware: **`dist/resilio_versio_m0_test.bin`** (a saved copy; rebuild with
 5. Each switch: left / centre / right → `SW` shows 0 / 1 / 2. **Note which physical direction reads 0**, because libDaisy calls it "left/up".
 6. Button: each press adds exactly 1 to the second `BTN` number (no double counts from fast or slow presses).
 
+**Session 2 result (29 Sep 2026): pass**, with one correction built into the release firmware. Knob LEDs fade smoothly, LED_3 green with knobs down, CV and gate pass. Passthrough vs cable (`test_audio/m0/`, not in git: `versio_*` vs `cable_*`, same interface jacks): both channels within 0.06 dB of each other; In L only → both outs; no hum (50 Hz −122 dBFS, below the cable path's −109); noise floor −96 vs −101 dBFS, no audible hiss (owner). **The Versio's analog path is polarity-inverted and +1.17 dB hot** (flat 30 Hz–4 kHz; −1.2 dB relative at 16 kHz, converter roll-off), delay 131 samples (2.7 ms). `firmware/main.cpp` `kOutputTrim` (−0.874) undoes both in the release build; the m0test build stays a raw copy so it keeps measuring the hardware.
+
 **Session 1 result (29 Sep 2026): pass.** Boots, USB serial streams. Both switches step 0 → 1 → 2 cleanly; **pointing left reads 0** (matches the firmware: left = 1 Spring / CLEAN). Button: ~37 presses, 37 counted, slow and fast, no doubles. Knobs: 1000 on USB (step 4).
 
 ## Session 2: rack power (USB unplugged)

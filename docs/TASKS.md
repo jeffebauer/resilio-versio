@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 · **Milestones:** M0: Session 1 passed, Session 2 (rack power) next · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Control remap: your pick (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -35,7 +35,12 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - **Doc:** [m0-hardware-check.md](m0-hardware-check.md)
 - [x] Flash **`dist/resilio_versio_m0_test.bin`** (29 Sep)
 - [x] Session 1, **USB only** (29 Sep): boots, serial works, switches pass (**pointing left = 0**, matches the firmware), button pass (37 of 37). Knobs read 1000 on USB: expected, the knob circuit needs rack power
-- [ ] Session 2, **rack power only** (USB unplugged first): LEDs, **including the knob check** (each knob fades its LED colour smoothly from off to full), CV at 0 V/5 V (LED_3 green), gate, passthrough vs cable
+- [x] Session 2, **rack power** (29 Sep): all knobs fade their LEDs smoothly, LED_3 green with knobs down, CV and gate pass. Passthrough (recordings in `test_audio/m0/`): both channels, In L → both outs, no hum, no audible hiss (you listened). Found: the Versio **flips polarity** and is **1.2 dB louder** than a cable; the release firmware now undoes both
+
+### 3b. Control remap (≈10 min)
+- **Drawing:** [panel/versio_panel_current_mapping.svg](panel/versio_panel_current_mapping.svg) shows today's mapping with an id per control (P1–P7, SW1–SW2, BTN, L1–L4, J1–J12)
+- [ ] First, does the drawing match what you saw in the LED test? (It assumes the firmware's knobs K0–K6 run in reading order P1 → P7)
+- [ ] Tell Claude which function goes on which P (e.g. "P1 = MIX"), to match your Versio's printed panel. Each knob's CV input follows it
 - Never connect USB and rack power at the same time
 
 ### 4. M2 Ableton check (≈15 min)
@@ -131,6 +136,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
 
 ## Done
+
+- 29 Sep 2026: **M0 passed** on the Versio: controls, LEDs, CV, gate and audio all work. The Versio's own circuit flips the signal and adds 1.2 dB; the release firmware now undoes both, so MIX 0 matches a cable
 
 - 29 Sep 2026: **M0 Session 1 passed** (USB): switches (left = 0) and button work; knobs move to Session 2 (they need rack power)
 
