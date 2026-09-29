@@ -131,6 +131,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
+- **From your Ableton session (29 Sep), in progress:** (1) SPLASH sounds like an open hi-hat on top, not part of the reverb: reworking the crash to go *through* the springs, with 3 versions for you to A/B in `renders/splash_ab/`; (2) a click at SPLASH 0: tracking down; (3) resonances at mid DECAY since TENSION: tracking down and fixing. TENSION's direction is already flipped (turning up = tighter), in the next install
 - Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target (TENSION adds ~2%); confirm on hardware in M3 before trimming
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
