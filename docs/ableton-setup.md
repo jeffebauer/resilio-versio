@@ -12,8 +12,10 @@ For sending the test stimulus to the Wellspring, the Magneto and the Plugin.
 
 ## Input level: match the module
 
+**Only for your own material through the Plugin.** Never level the stimulus files: their levels differ on purpose (e.g. `02_hits` plays the same snare at −6, −12 and −18 dBFS to test how SPLASH and DRIVE react to level). Stimulus clips stay at clip gain 0 dB, track 0 dB. For hardware recordings the level is set on the device (Wellspring INPUT, Magneto REC LVL), as each recipe says.
+
 Resilio reacts to input level (DRIVE, SPLASH), and Eurorack signals are hot: a 10 Vpp modular signal is about **−4 dBFS**. Most DAW tracks sit lower. To hear the plugin as the module will sound:
-- Put a **Utility before** Resilio Versio and raise the gain until the loudest hits **peak around −4 dBFS** (check with a meter such as Swiss Army Meter's true peak).
+- Put a **Utility before** Resilio Versio (or use clip gain) and raise the gain until the **loudest hits** peak around **−4 dBFS**. Read **True peak** on a meter such as Swiss Army Meter (its highest value over the loudest passage). Not LUFS or RMS: those measure loudness, not peaks. Max dB (sample peak) reads almost the same but can read slightly low.
 - Unless MIX is full, this also raises the dry signal. Add a second **Utility after** the plugin to bring the level back down, or judge the wet sound at MIX full.
 - Hotter than −4 dBFS drives the tank harder than the module normally gets. That's fine as an effect.
 
