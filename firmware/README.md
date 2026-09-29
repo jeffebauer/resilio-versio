@@ -221,3 +221,7 @@ Owner (29 Sep): unused Springs keep running (seamless SPRINGS switching); block 
 
 **Run 7** (`dist/resilio_versio_m3_profile_peak.bin`): adds a `PEAK` line (the worst single block per section, % of one block's budget: what lifts `max` above `avg`) and two more Chirp section shapes to BENCH: `pipe` (the next section's D{v} computed while this section's x chain waits; the fused section is a 7-step chain at ~3 cycles a step = 21) and `fused3` (the three Springs' sections side by side).
 
+Run 7 results: `PEAK ctl` is 16.5–17.7 % of a block on every corner (avg ~2 %): the Springs' coefficient redesign, triggered by the Jolt on each test click (in use: on hits and knob moves). Every other section peaks at its average. BENCH: `pipe` **14.4** cycles per section (fused 21.3, split3 19.1, fused3 19.1).
+
+**Run 8** (`dist/resilio_versio_m3_profile_pipe.bin`), both bit-exact with run 7 (float32, desktop, with and without FMA contraction): the `pipe` section loop in `Spring::processLow`; and the Loop gain design caches cos(w) and the LoopSat latency at its eight fixed design frequencies (`Spring::prepare`) and shares cos(w) between round trip and magnitude at the fC points. Flash: release 108,752 B (82 %), profile 123,732 B (94 %, the benchmark code).
+

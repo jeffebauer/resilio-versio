@@ -193,6 +193,11 @@ private:
     float processLow(float in, float lMod, float tapMod);
     float processHigh(float in, float lhMod);
     void  updateCoefficients();
+    // roundTripSamples / loopMagnitude with cos(w) and the LoopSat latency
+    // already known (the design loop shares them, and caches them for the
+    // fixed design frequencies: prepare()).
+    float roundTripAt(float freqHz, float cosW, float loopSatLatency) const;
+    float loopMagnitudeAt(float cosW) const;
     void  clearStage(int j);
     float readLow(float delay) const;
     float advanceModulation();
@@ -217,6 +222,8 @@ private:
     float mPos_ = 0.0f, mRate_ = 0.0f;
     int   mTarget_ = 0, mActive_ = 0;
     float g_ = 0.0f;
+    static constexpr int kNumDesignHz = 8;
+    std::array<float, kNumDesignHz> designCos_{}, designLatency_{}; // at kDesignHz, per sample rate
     dsp::LoopSat loopSat_;
 
     // High path state.

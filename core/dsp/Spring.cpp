@@ -82,6 +82,16 @@ void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
     highCeiling_.setCutoff(std::min(kHighCeilingHz, 0.45f * sampleRate), sampleRate);
     mRate_ = 1.0f / (kStageRampSeconds * sampleRate);
     loopSat_.prepare(sampleRate);
+    // The Loop gain design evaluates the Loop at kDesignHz on every
+    // coefficient change (each tick while a knob or the Jolt moves). cos(w)
+    // and the LoopSat latency there depend only on the sample rate: work
+    // them out once (M3: the redesign of three Springs was a 17 %-of-a-block
+    // burst).
+    static_assert(kDesignHz.size() == size_t(kNumDesignHz), "Spring.h caches one value per design frequency");
+    for (size_t k = 0; k < kDesignHz.size(); ++k) {
+        designCos_[k]     = std::cos(2.0f * map::kPi * kDesignHz[k] / sampleRate_);
+        designLatency_[k] = dsp::LoopSat::latencySamples(kDesignHz[k], sampleRate_);
+    }
     modHold_ = std::max(1, int(antires::kMicroModHoldSeconds * sampleRate));
     modC_    = 1.0f - std::exp(-1.0f / (antires::kMicroModHoldSeconds * sampleRate));
 
@@ -169,16 +179,19 @@ void Spring::updateCoefficients()
     // slowest band hits T60 and no band rings longer.
     const float t60 = kT60DesignScale * s.t60Seconds;
     float g = kMaxGain, maxMag = 0.0f;
-    for (float hz : kDesignHz) {
-        const float rt = roundTripSamples(hz);
-        const float m  = loopMagnitude(hz);
+    for (size_t k = 0; k < kDesignHz.size(); ++k) {
+        const float rt = roundTripAt(kDesignHz[k], designCos_[k], designLatency_[k]);
+        const float m  = loopMagnitudeAt(designCos_[k]);
         const float gf = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / m;
         g = std::min(g, gf);
         maxMag = std::max(maxMag, m);
     }
     for (float r : kDesignFcRatios) {
         const float hz = r * s.transitionHz;
-        g = std::min(g, std::exp(-3.0f * kLn10 * roundTripSamples(hz) / (t60 * sampleRate_)) / loopMagnitude(hz));
+        const float cw = std::cos(2.0f * map::kPi * hz / sampleRate_);
+        g = std::min(g, std::exp(-3.0f * kLn10 * roundTripAt(hz, cw, dsp::LoopSat::latencySamples(hz, sampleRate_))
+                                 / (t60 * sampleRate_))
+                            / loopMagnitudeAt(cw));
     }
     g = std::max(0.0f, g);
 
@@ -209,16 +222,24 @@ float Spring::chainGroupDelaySamples(float freqHz) const
 
 float Spring::roundTripSamples(float freqHz) const
 {
-    const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
+    return roundTripAt(freqHz, std::cos(2.0f * map::kPi * freqHz / sampleRate_),
+                       dsp::LoopSat::latencySamples(freqHz, sampleRate_));
+}
+
+float Spring::roundTripAt(float freqHz, float cw, float loopSatLatency) const
+{
     // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
     const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
-    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay
-         + dsp::LoopSat::latencySamples(freqHz, sampleRate_);
+    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + loopSatLatency;
 }
 
 float Spring::loopMagnitude(float freqHz) const
 {
-    const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
+    return loopMagnitudeAt(std::cos(2.0f * map::kPi * freqHz / sampleRate_));
+}
+
+float Spring::loopMagnitudeAt(float cw) const
+{
     return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * damping_.magnitudeSquared(cw));
 }
 
@@ -316,13 +337,28 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     const int   ir1  = (iw - n_ - 1) & ringMask_;
     const size_t stride = size_t(ringMask_ + 1);
     const float a = a_, eta = eta_;
-    for (int j = 0; j < full; ++j) {
-        float* ring = rings_ + size_t(j) * stride;
-        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(j)]) + ring[ir1];
-        thiranY1_[size_t(j)] = dOut;
-        const float v = x - a * dOut;
+    // D{v} of a section needs only last sample's state, not this sample's x.
+    // So the next section's D{v} is worked out while this section's x chain
+    // waits on its multiply-adds (the M7 issues in order: without other work
+    // in between, a section was a 7-step chain at ~21 cycles; this way ~14,
+    // firmware/m3_bench.cpp "pipe"). Same arithmetic, same order per value.
+    if (full > 0) {
+        float* ring = rings_;
+        float  d    = eta * (ring[ir0] - thiranY1_[0]) + ring[ir1];
+        for (int j = 0; j < full - 1; ++j) {
+            float* const next = ring + stride;
+            const float  dn   = eta * (next[ir0] - thiranY1_[size_t(j + 1)]) + next[ir1];
+            thiranY1_[size_t(j)] = d;
+            const float v = x - a * d;
+            ring[iw] = v;
+            x = a * v + d;
+            d    = dn;
+            ring = next;
+        }
+        thiranY1_[size_t(full - 1)] = d;
+        const float v = x - a * d;
         ring[iw] = v;
-        x = a * v + dOut;
+        x = a * v + d;
     }
     if (frac > 0.0f && full < kMaxStages) {
         float* ring = rings_ + size_t(full) * stride;
