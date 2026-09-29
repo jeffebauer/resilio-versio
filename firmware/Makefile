@@ -42,6 +42,12 @@ ifeq ($(MODE),profile)
 endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)
+# No fused multiply-add (M3, 29 Sep 2026). On the M7, GCC's vfma accumulates
+# into its destination, so every a*b+c becomes vmov/vfma/vmov and each one
+# waits for the last: ~9 cycles per multiply-add, even for independent ones
+# (firmware/m3_bench.cpp). A separate vmul + vadd is three-operand and
+# pipelines. Rounding differs from the desktop build in the last bit only.
+C_DEFS     += -ffp-contract=off
 CPP_STANDARD = -std=gnu++17
 OPT = -O3
 

@@ -579,7 +579,7 @@ int main()
                 AppendStr(p, end, b.icache ? "on" : "OFF");
                 AppendStr(p, end, " dcache ");
                 AppendStr(p, end, b.dcache ? "on" : "OFF");
-                AppendStr(p, end, " | fma latency");
+                AppendStr(p, end, " | mul-add latency");
                 AppendFixed1(p, end, b.fmaLatency, 5);
                 AppendStr(p, end, " throughput");
                 AppendFixed1(p, end, b.fmaThroughput, 5);
