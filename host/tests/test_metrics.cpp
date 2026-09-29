@@ -136,6 +136,44 @@ void t60MeasuresKnownDecays()
     }
 }
 
+// A repeated stimulus: the same tail measured alone must read the same
+// when a second event follows it. The second event builds up quietly
+// under -40 dBFS first (like a spring's output before the next click
+// crosses the event threshold); that build-up must not reach the fit.
+void t60IgnoresNextEventBuildUp()
+{
+    const float sr = 48000.0f;
+    const double t60 = 1.0;
+    std::vector<float> tail = decayingNoise(t60, 2.5, sr, 7);
+    for (float& x : tail) x *= 0.1f; // -20 dBFS peak: a quiet take
+    std::mt19937 floorRng(99); // plus a -80 dBFS noise floor, like a recording
+    std::uniform_real_distribution<float> floorDist(-1.0f, 1.0f);
+    for (float& x : tail) x += 1e-4f * floorDist(floorRng);
+    std::vector<float> alone = tail;
+    alone.resize(alone.size() + size_t(1.0 * sr), 0.0f);
+
+    std::vector<float> repeated = tail;
+    std::mt19937 rng(11);
+    std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+    const size_t buildUp = size_t(0.080 * sr); // -70 -> -41 dBFS peak over 80 ms
+    for (size_t i = 0; i < buildUp; ++i) {
+        const double db = -70.0 + 29.0 * double(i) / double(buildUp);
+        repeated.push_back(float(std::pow(10.0, db / 20.0) * dist(rng)));
+    }
+    std::vector<float> next = decayingNoise(t60, 2.5, sr, 8);
+    for (float x : next) repeated.push_back(0.1f * x);
+
+    const double a = rv::metrics::compute({alone}, sr).t60S;
+    const double r = rv::metrics::compute({repeated}, sr).t60S;
+    const bool ok = !std::isnan(a) && !std::isnan(r) && std::fabs(r / a - 1.0) < 0.01
+                    && std::fabs(a - t60) / t60 < 0.05;
+    char what[192];
+    std::snprintf(what, sizeof what,
+                  "T60: a tail reads the same alone (%.3f s) and followed by a second event with an 80 ms build-up "
+                  "(%.3f s), within 1%% (true %.1f s, -80 dBFS floor)", a, r, t60);
+    check(ok, what);
+}
+
 void resonancePeakDistinguishesTone()
 {
     const float sr = 48000.0f;
@@ -532,6 +570,7 @@ int main()
     base64RoundTrips();
     fftMatchesDirectDft();
     t60MeasuresKnownDecays();
+    t60IgnoresNextEventBuildUp();
     resonancePeakDistinguishesTone();
     steadyToneDetectsSustainedSine();
     clickCountOnStimulusFiles();

@@ -73,7 +73,7 @@ rv_render --analyze <in.wav> [--sidecar-out x.json]      # metrics + spectrogram
 
 Metric definitions (SPEC §4.10, §6.2, §7):
 - **peak/rms** over the whole file, mono sum of channels ÷ channel count. Report −inf as −200.
-- **t60_s:** Schroeder backward integration of the (mono) output. Fit −5 → −35 dB, extrapolate to 60 dB. For multi-event files (click trains), use the segment from the **first** event to just before the second (event = sample exceeding −40 dBFS after ≥ 0.5 s under it). `null` if not measurable.
+- **t60_s:** Schroeder backward integration of the (mono) output. Fit −5 → −35 dB, extrapolate to 60 dB. For multi-event files (click trains), use the segment from the **first** event to just before the second (event = sample exceeding −40 dBFS after ≥ 0.5 s under it). "Just before" = the quietest 10 ms block between the tail's peak and the second event, so the second event's quiet build-up under −40 dBFS stays out of the fit (fixed 30 Sep 2026; before, the segment ran to the crossing and read long). `null` if not measurable.
 - **resonance_peak_db:** from 1 s after the first event onward (the same segment as T60). Average power spectrum (Hann, 8192-point), 1/3-octave-smoothed median per bin. Max over 100 Hz–10 kHz of (bin dB − smoothed dB).
 - **steady_tone:** true if some narrowband peak stays > 12 dB above the smoothed spectrum, at an unchanged bin (±1), across consecutive 0.5 s frames covering > 2 s while its level is > −30 dBFS.
 - **clip_count:** samples with |x| ≥ 0.999. **nan_inf_count:** non-finite samples (a Renderer error should be printed too).

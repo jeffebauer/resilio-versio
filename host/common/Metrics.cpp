@@ -69,6 +69,35 @@ double schroederT60(const std::vector<float>& mono, size_t start, size_t end, fl
     return -60.0 / slope;
 }
 
+// End of the T60 fit when another event follows at `end`. The next event
+// doesn't start at its -40 dBFS crossing: a spring's output (or a fading-in
+// stimulus) builds up quietly for tens of ms before it, and that energy,
+// fed into the backward integration, props up the end of the decay curve
+// and makes the tail read long (1.23 s vs 1.03 s on one render). So the
+// fit stops at the quietest point between the tail's peak and the next
+// onset: the lowest-energy 10 ms block after the loudest one (the latest
+// on ties, e.g. digital silence). Before it the tail is still falling;
+// after it the next event is arriving. Cutting the tail there costs
+// nothing measurable: by then it is at its floor, far below the -35 dB
+// end of the fit. Returns `end` if the segment is too short to split.
+size_t decayEnd(const std::vector<float>& mono, size_t start, size_t end, float sr)
+{
+    const size_t block = std::max<size_t>(1, size_t(0.010 * double(sr)));
+    if (end > mono.size() || end <= start + 4 * block) return end;
+    const size_t numBlocks = (end - start) / block;
+    std::vector<double> e(numBlocks, 0.0);
+    for (size_t b = 0; b < numBlocks; ++b) {
+        const size_t from = start + b * block;
+        for (size_t i = from; i < from + block; ++i) e[b] += double(mono[i]) * double(mono[i]);
+    }
+    const size_t peak = size_t(std::max_element(e.begin(), e.end()) - e.begin());
+    size_t quietest = peak;
+    for (size_t b = peak; b < numBlocks; ++b)
+        if (e[b] <= e[quietest]) quietest = b;
+    if (quietest == peak) return end;
+    return start + quietest * block;
+}
+
 // Average power spectrum over [start, end), Hann-windowed FFT (8192, or
 // the largest power of two <= 8192 that fits the segment, min 256), then
 // max over 100 Hz-10 kHz of (bin dB - 1/3-octave-smoothed median dB).
@@ -776,7 +805,10 @@ Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRat
         segStart = events[0];
         segEnd = events.size() > 1 ? events[1] : frames;
     }
-    m.t60S = schroederT60(mono, segStart, segEnd, sampleRate);
+    // T60 stops before the next event's build-up (decayEnd above); the
+    // other segment metrics keep the full [first event, second event).
+    const size_t t60End = events.size() > 1 ? decayEnd(mono, segStart, segEnd, sampleRate) : segEnd;
+    m.t60S = schroederT60(mono, segStart, t60End, sampleRate);
 
     // Resonance segment starts 1 s after the first event (or 1 s into the
     // file when no event is found, e.g. analyzing a sustained reference
