@@ -57,6 +57,7 @@ struct Settings {
 struct Out {
     Buf l, r;
     Buf jolt; // Splash Jolt envelope after each block
+    Buf clat; // Splash Clatter burst envelope after each block
 };
 
 Out render(const Settings& s, const Buf& in, int block = 48)
@@ -73,11 +74,14 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSplashParts(s.clatterOn, s.joltOn);
-    Out o{Buf(in.size()), Buf(in.size()), Buf(in.size())};
+    Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
         t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, n);
-        for (int i = 0; i < n; ++i) o.jolt[pos + size_t(i)] = t.splash().joltEnvelope();
+        for (int i = 0; i < n; ++i) {
+            o.jolt[pos + size_t(i)] = t.splash().joltEnvelope();
+            o.clat[pos + size_t(i)] = s.clatterOn ? t.splash().clatterEnvelope() : 0.0f;
+        }
     }
     return o;
 }
@@ -126,6 +130,10 @@ bool load(const char* name, Buf& x)
 // DRIVE 0.5, 2 Springs.
 struct HitStats {
     double splashE[6], clatterDb[6], crashDb[6], settledDb[6];
+    // Hard snare: how far the crash (Clatter-only - off, 1-6 kHz) and the
+    // hit's own tail (off, 1-6 kHz) fall from the first 150 ms to 1.0-1.5 s
+    // after the hit, power per second, dB.
+    double crashFall = 0, tailFall = 0;
     float  joltPeak = 0, joltAt1s = 0; // hard snare
 };
 
@@ -155,7 +163,9 @@ HitStats hitStats(const Buf& x, int att, float splash)
         h.settledDb[k] = db(energy(hOn, at + size_t(kFs), at + size_t(1.5f * kFs))
                             / energy(hOff, at + size_t(kFs), at + size_t(1.5f * kFs)));
     }
-    const size_t at = size_t(kFs);
+    const size_t at = size_t(kFs), e1 = at + size_t(0.15f * kFs), l0 = at + size_t(kFs), l1 = at + size_t(1.5f * kFs);
+    h.crashFall = db((energy(hC, at, e1) / 0.15) / (energy(hC, l0, l1) / 0.5));
+    h.tailFall  = db((energy(hOff, at, e1) / 0.15) / (energy(hOff, l0, l1) / 0.5));
     for (size_t i = at; i < at + size_t(0.5f * kFs); ++i) h.joltPeak = std::max(h.joltPeak, on.jolt[i]);
     h.joltAt1s = on.jolt[at + size_t(kFs)];
     return h;
@@ -192,35 +202,59 @@ void splashOnHits()
     // note, and gives it a crash in proportion to its size (SplashVoicing.h).
     // "Ghosts barely trigger" is now checked where ghosts live, between
     // louder hits (ghostGroove below); here its energy is still < 25 %.
+    // The crash is the springs clanging, in the tank (Clatter mostly into
+    // the Loop, SplashVoicing.h), so it rings on with the tail and dies with
+    // it, instead of stopping dead on top of it (M8 round 1's direct share:
+    // settled +0.1 dB, "a sound played over the top"). So "settled back to
+    // the tail within 1.5 dB after 1 s" no longer applies; what must hold:
+    //  - it dies with the tail, never slower: from the first 150 ms to
+    //    1.0-1.5 s the crash falls at least as far as the hit's own tail
+    //    (within 1 dB), so it can never outlast it or build into a wash;
+    //  - the tail is still the hit's: settled <= +6 dB (KICKED; the crash
+    //    in the 1-6 kHz band at most ~3x the hit's own, dark, tail there),
+    //    and never above the crash's own first 150 ms.
     std::snprintf(msg, sizeof msg,
                   "KICKED SPLASH 1, -6 dBFS snare: big bright crash (Clatter %+.1f dB re the hit's own 1-6 kHz, >= -6; crash "
-                  "%+.1f dB); settled into the tail after 1 s (%+.1f dB, within 1.5 dB; Jolt %.2f %% of its peak, < 2 %%)",
-                  k1.clatterDb[0], k1.crashDb[0], k1.settledDb[0], 100.0 * k1.joltAt1s / std::max(1e-9f, k1.joltPeak));
-    check(k1.clatterDb[0] >= -6.0 && std::fabs(k1.settledDb[0]) <= 1.5 && k1.joltAt1s < 0.02f * k1.joltPeak, msg);
+                  "%+.1f dB); dies with the tail (crash falls %.1f dB from the first 150 ms to 1-1.5 s, tail %.1f dB: no "
+                  "slower than the tail - 1 dB; settled %+.1f dB, <= +6 and <= the crash); Jolt %.2f %% of its peak (< 2 %%)",
+                  k1.clatterDb[0], k1.crashDb[0], k1.crashFall, k1.tailFall, k1.settledDb[0],
+                  100.0 * k1.joltAt1s / std::max(1e-9f, k1.joltPeak));
+    check(k1.clatterDb[0] >= -6.0 && k1.crashFall >= k1.tailFall - 1.0 && k1.settledDb[0] <= 6.0
+              && k1.settledDb[0] <= k1.crashDb[0] && k1.joltAt1s < 0.02f * k1.joltPeak,
+          msg);
     std::snprintf(msg, sizeof msg, "DRIVEN SPLASH 1 moderate: Clatter %+.1f dB re the hit (between KICKED's %+.1f and -20)",
                   d1.clatterDb[0], k1.clatterDb[0]);
     check(d1.clatterDb[0] < k1.clatterDb[0] && d1.clatterDb[0] > -20.0, msg);
 
+    // SPLASH 0: no Clatter in any ATTITUDE. DRIVEN / KICKED used to keep a
+    // "faint natural splash" floor there, which the owner heard as a click
+    // on every hard hit (Clatter peak ~13 dB under the wet peak on a 0 dBFS
+    // snare). The small Jolt floor stays: a pitch lurch, no transient.
     std::snprintf(msg, sizeof msg,
-                  "DRIVEN SPLASH 0: faint natural splash on the hard hit, not zero (Clatter %+.1f dB re the hit, %.1f dB "
-                  "below SPLASH 1; plan: ~27 dB below)",
-                  d0.clatterDb[0], d1.clatterDb[0] - d0.clatterDb[0]);
-    check(d0.clatterDb[0] > -60.0 && d0.clatterDb[0] < d1.clatterDb[0] - 15.0 && d0.splashE[0] > 0.0, msg);
+                  "DRIVEN SPLASH 0: no Clatter, so no click on hard hits (Clatter %+.1f dB re the hit); the Jolt floor "
+                  "stays (Splash energy %s)",
+                  d0.clatterDb[0], d0.splashE[0] > 0.0 ? "> 0" : "0");
+    check(d0.clatterDb[0] < -200.0 && d0.splashE[0] > 0.0, msg);
 
     // CLEAN (ADR 0025): a real but gentle splash. Nothing at SPLASH 0; at
-    // SPLASH 1 a light crash under DRIVEN's that settles into the tail, and
-    // a Jolt peak at most a third of DRIVEN's.
+    // SPLASH 1 a light crash under DRIVEN's that dies with the tail (as
+    // KICKED above; its settled share at most DRIVEN's and <= +3 dB, was
+    // "within 1 dB" when the crash sat on top), and a Jolt peak at most a
+    // third of DRIVEN's.
     c1 = hitStats(x, 0, 1.0f);
     const HitStats c0 = hitStats(x, 0, 0.0f);
     // The lurch: Jolt envelope peak x the Loop delay offset at j = 1 (% of L).
     const double cLurch = 100.0 * c1.joltPeak * rv::splash::kVoice[0].joltLoopFrac;
     const double dLurch = 100.0 * d1.joltPeak * rv::splash::kVoice[1].joltLoopFrac;
     std::snprintf(msg, sizeof msg,
-                  "CLEAN SPLASH 1 gentle: Clatter %+.1f dB re the hit (below DRIVEN's %+.1f), crash %+.1f dB, settled %+.1f dB "
-                  "(within 1 dB); Jolt lurch %.3f %% of L (DRIVEN %.3f %%, <= 1/3); SPLASH 0 adds nothing",
-                  c1.clatterDb[0], d1.clatterDb[0], c1.crashDb[0], c1.settledDb[0], cLurch, dLurch);
+                  "CLEAN SPLASH 1 gentle: Clatter %+.1f dB re the hit (below DRIVEN's %+.1f), crash %+.1f dB; dies with the "
+                  "tail (falls %.1f dB, tail %.1f); settled %+.1f dB (<= +3, <= DRIVEN's %+.1f); Jolt lurch %.3f %% of L "
+                  "(DRIVEN %.3f %%, <= 1/3); SPLASH 0 adds nothing",
+                  c1.clatterDb[0], d1.clatterDb[0], c1.crashDb[0], c1.crashFall, c1.tailFall, c1.settledDb[0],
+                  d1.settledDb[0], cLurch, dLurch);
     check(c1.clatterDb[0] < d1.clatterDb[0] && c1.crashDb[0] > 0.0 && c1.crashDb[0] < d1.crashDb[0]
-              && std::fabs(c1.settledDb[0]) <= 1.0 && cLurch > 0.0 && cLurch <= dLurch / 3.0 && c0.splashE[0] == 0.0,
+              && c1.crashFall >= c1.tailFall - 1.0 && c1.settledDb[0] <= 3.0 && c1.settledDb[0] <= d1.settledDb[0]
+              && cLurch > 0.0 && cLurch <= dLurch / 3.0 && c0.splashE[0] == 0.0,
           msg);
 }
 
@@ -314,9 +348,9 @@ void splashAudible()
 // A groove: -6 dBFS snare backbeats every 1 s, -18 dBFS rimshot ghost notes
 // half way between. The level-adaptive detector judges each hit against the
 // program level, so the ghosts barely trigger while the backbeats crash.
-// Clatter (Clatter-only render - no-Splash render, Jolt off) in 1-6 kHz,
-// first 150 ms: ghost re its own bright part <= -15 dB (the M7 criterion),
-// and < 25 % of a backbeat's Clatter energy. Every ATTITUDE, SPLASH 1.
+// The ghost's Clatter burst < 25 % of a backbeat's (source energy), and its
+// crash re its own bright part <= -15 dB (the M7 criterion; derived from the
+// backbeat's measured crash, see below). Every ATTITUDE, SPLASH 1.
 void ghostGroove()
 {
     const size_t len = size_t(5.0f * kFs);
@@ -336,9 +370,11 @@ void ghostGroove()
         pk = std::max(pk, std::fabs(sn[i]));
     }
     const Buf ghost = rimshot(-18.0f, size_t(0.2f * kFs), 0.0f);
+    Buf beats = x; // backbeats only
     for (int k = 0; k < 4; ++k) {
         const size_t b = size_t((0.5f + float(k)) * kFs), g = size_t((1.0f + float(k)) * kFs);
         for (size_t i = 0; i < sn.size(); ++i) x[b + i] += 0.5012f / pk * sn[i];
+        for (size_t i = 0; i < sn.size(); ++i) beats[b + i] += 0.5012f / pk * sn[i];
         for (size_t i = 0; i < ghost.size(); ++i) x[g + i] += ghost[i];
     }
     bool ok = true;
@@ -348,24 +384,43 @@ void ghostGroove()
         s.splash = 1.0f;
         s.drive  = rv::spec(rv::ParamId::Drive).defaultValue;
         s.joltOn = false;
-        const Buf mc = mono(render(s, x));
+        const Out on = render(s, x);
+        const Buf bc = mono(render(s, beats));
         s.clatterOn = false;
-        const Buf mo = mono(render(s, x));
-        Buf dc(mc.size());
-        for (size_t i = 0; i < dc.size(); ++i) dc[i] = mc[i] - mo[i];
-        const Buf hc = band(dc, 1000.0f, 6000.0f), ho = band(mo, 1000.0f, 6000.0f);
-        double worstOwn = -300, worstShare = -300, beatOwn = 300;
+        const Buf mo = mono(render(s, x)), bo = mono(render(s, beats));
+        // The crash rings in the tank (Clatter into the Loop), so a
+        // backbeat's crash is still sounding half a second later, under the
+        // ghost, and a render difference cannot isolate the ghost's own crash
+        // (the ghosts nudge the detector's program level, which changes the
+        // backbeat's ringing crash by a fraction of a dB). So the ghost's
+        // crash is judged at its source: its Clatter burst energy re a
+        // backbeat's (the Splash's burst envelope, squared and summed; the
+        // Tank carries every burst the same way). The backbeat's crash re
+        // its own bright part is measured (1-6 kHz, first 150 ms, Clatter-
+        // only render - no-Clatter render, backbeats only), and the ghost's
+        // follows: backbeat crash + burst ratio + (backbeat's own bright
+        // part re the ghost's own: no-Clatter render with - without ghosts).
+        Buf dbt(bc.size()), dg(bc.size());
+        for (size_t i = 0; i < dbt.size(); ++i) {
+            dbt[i] = bc[i] - bo[i];
+            dg[i]  = mo[i] - bo[i];
+        }
+        const Buf hb = band(dbt, 1000.0f, 6000.0f), hob = band(bo, 1000.0f, 6000.0f), hog = band(dg, 1000.0f, 6000.0f);
+        double worstShare = -300, beatOwn = 300, worstOwn = -300;
         const size_t w = size_t(0.15f * kFs);
         for (int k = 1; k < 4; ++k) { // from the second bar: the program level has settled
             const size_t b = size_t((0.5f + float(k)) * kFs), g = size_t((1.0f + float(k)) * kFs);
-            worstOwn   = std::max(worstOwn, db(energy(hc, g, g + w) / energy(ho, g, g + w)));
-            worstShare = std::max(worstShare, db(energy(hc, g, g + w) / energy(hc, b, b + w)));
-            beatOwn    = std::min(beatOwn, db(energy(hc, b, b + w) / energy(ho, b, b + w)));
+            const double burstG = energy(on.clat, g, g + w), burstB = energy(on.clat, b, b + w);
+            const double share = db(burstG / burstB);
+            const double own   = db(energy(hb, b, b + w) / energy(hob, b, b + w));
+            worstShare = std::max(worstShare, share);
+            beatOwn    = std::min(beatOwn, own);
+            worstOwn   = std::max(worstOwn, own + share + db(energy(hob, b, b + w) / energy(hog, g, g + w)));
         }
         std::snprintf(msg, sizeof msg,
-                      "%s SPLASH 1 groove: ghost notes (-18 dBFS between -6 dBFS backbeats) barely trigger: Clatter %+.1f dB "
-                      "re the ghost's own 1-6 kHz (<= -15), %.1f dB re a backbeat's Clatter (< -6); backbeats %+.1f dB",
-                      kAttName[att], worstOwn, worstShare, beatOwn);
+                      "%s SPLASH 1 groove: ghost notes (-18 dBFS between -6 dBFS backbeats) barely trigger: Clatter burst "
+                      "%.1f dB re a backbeat's (< -6), so its crash %+.1f dB re its own 1-6 kHz (<= -15); backbeats %+.1f dB",
+                      kAttName[att], worstShare, worstOwn, beatOwn);
         const bool good = worstOwn <= -15.0 && worstShare < -6.0 && beatOwn > worstOwn + 15.0;
         check(good, msg);
         ok &= good;
@@ -498,7 +553,7 @@ void determinism()
         t.setParam(rv::ParamId::Splash, 1.0f);
         t.setParam(rv::ParamId::Wobble, 1.0f);
         t.setParam(rv::ParamId::Springs, 1.0f);
-        Out o{Buf(x.size()), Buf(x.size()), {}};
+        Out o{Buf(x.size()), Buf(x.size()), {}, {}};
         const long kickAt = long(3.3f * kFs);
         for (size_t pos = 0; pos < x.size(); pos += size_t(block)) {
             const int n = int(std::min(size_t(block), x.size() - pos));

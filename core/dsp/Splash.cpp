@@ -46,16 +46,21 @@ void Clatter::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_ = sampleRate;
     seed_       = seed;
-    hp_.setHighpass(splash::kClatterHpHz, 0.707f, sampleRate);
-    lp_.setLowpass(splash::kClatterLpHz, 0.707f, sampleRate);
+    for (auto& f : hp_) f.setHighpass(splash::kClatterHpHz, 0.707f, sampleRate);
+    for (auto& f : lp_) f.setLowpass(splash::kClatterLpHz, 0.707f, sampleRate);
+    clickGain_ = std::sqrt(float(kCell) / 3.0f);
     reset();
 }
 
 void Clatter::reset()
 {
-    hp_.reset();
-    lp_.reset();
-    rng_.seed(seed_);
+    for (auto& f : hp_) f.reset();
+    for (auto& f : lp_) f.reset();
+    // Stream 0 keeps the Clatter's own seed; the others are scrambled from it.
+    for (size_t s = 0; s < rng_.size(); ++s) {
+        rng_[s].seed(s == 0 ? seed_ : mixSeed(seed_ + uint32_t(s)));
+        if (kCell > 1) newCell(s);
+    }
     env_ = decay_ = 0.0f;
     idle_ = true;
 }
@@ -247,8 +252,9 @@ void Splash::controlTick()
     jolt_.tick(tankLevel_);
 }
 
-void Splash::process(const float* driven, float* clatterOut, float* joltLoopOut, int n)
+void Splash::process(const float* driven, float* clatterOut, float* clatterB, float* clatterC, float* joltLoopOut, int n)
 {
+    const int streams = clatterB && clatterC ? Clatter::kStreams : 1;
     for (int i = 0; i < n; ++i) {
         // Kick strikes land on their exact sample, no jitter, at full force.
         for (int s = 0; s < numStrikes_; ++s) {
@@ -266,7 +272,13 @@ void Splash::process(const float* driven, float* clatterOut, float* joltLoopOut,
 
         if (sinceStroke_ < (1 << 30)) ++sinceStroke_;
         detector_.push(driven[i]);
-        clatterOut[i] = clatter_.process();
+        float cy[Clatter::kStreams];
+        clatter_.process(cy, streams);
+        clatterOut[i] = cy[0];
+        if (streams > 1) {
+            clatterB[i] = cy[1];
+            clatterC[i] = cy[2];
+        }
         const float jl = jolt_.process(k_);
         if (joltLoopOut) joltLoopOut[i] = jl;
         if (++k_ == splash::kControlInterval) {

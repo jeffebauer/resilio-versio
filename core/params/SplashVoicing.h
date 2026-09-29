@@ -91,44 +91,78 @@ constexpr float kRearmRatio     = 0.5f;
 constexpr float kMinStrokeMs    = 20.0f;
 
 // ---- Clatter (SPEC §4.5 step 2) -------------------------------------------------
-// Band-passed noise bursts, 1–6 kHz (2nd-order HP + 2nd-order LP), fed into
-// each Spring's high path. Each impact fires a seeded timing jitter of
-// kJitterMin..MaxMs after the Hit peaked, with the peak Hit as its strength.
-constexpr float kClatterHpHz  = 1000.0f;
-constexpr float kClatterLpHz  = 6000.0f;
+// The crash: the springs themselves clanging. Each impact fires a burst of
+// sparse metallic knocks, band-passed 400 Hz – 5 kHz (2nd-order HP + 2nd-
+// order LP), into every Spring, mostly into its Loop. One independent
+// stream per Spring, same burst envelope. Each impact fires after a seeded
+// timing jitter of kJitterMin..MaxMs from the Hit's peak, with the peak Hit
+// as its strength.
+//
+// History (owner by ear, Splash A/B, renders/splash_ab):
+//  - M7: noise into the high path alone, gain 3.0: inaudible (0.0 dB of
+//    brightening on a rimshot in DRIVEN).
+//  - M8 round 1: plus a direct share (kClatterWet 0.45, Clatter straight to
+//    the wet after the pickups). Audible, but "an open hi-hat triggered ...
+//    a sound played over the top": bright noise that never went through
+//    the springs, so not chirped, coloured or decayed with the tank, and
+//    gone after ~0.13 s while the tail rang on.
+//  - M8 round 2: four variants; the owner picked C "heavier clang: the most
+//    spring-reverb-like". That is this voicing:
+//      * no direct share: nothing bypasses the springs;
+//      * kClatterLoop 0.7 into the Loop (dispersed into the Chirp, coloured
+//        by the tank, dies with the tail) and kClatterHigh 0.6 into the high
+//        path (fast echoes: the attack, ~30 ms after the hit, with the
+//        tank's first echo). The high share is small because sparse clicks
+//        pass the high path nearly un-dispersed and read as clicks (CLEAN);
+//      * a lower, wider band (was 1–6 kHz) and sparse knocks instead of
+//        hiss: less cymbal, more "springs hitting each other". About 60 %
+//        of the crash lies under 2 kHz (round 1: 25 %);
+//      * one noise stream per Spring (dsp::Clatter::kStreams): a common
+//        burst through the Springs, whose first echoes are lined up
+//        (SpringModes.h), combed the mono sum.
+// Crash on the owner's rimshot at −9 dBFS (1–6 kHz brightening, SPLASH 1 vs
+// 0, first 150 ms): CLEAN +3.3, DRIVEN +6.1, KICKED +9.3 dB (round 1: +3.8
+// / +8.4 / +12.3); it now rings ~0.8 s (to −30 dB) instead of ~0.13 s, and
+// falls no slower than the tail (test_m7_tank).
+constexpr float kClatterHpHz  = 400.0f;
+constexpr float kClatterLpHz  = 5000.0f;
+// Excitation density: 0 = white noise; p > 0 = sparse knocks ("velvet
+// noise", dsp::Clatter::excite): one click of fixed size and random sign
+// at a random place in every 1/p samples, at the noise's power. 0.01 =
+// one per 100 samples (~480 a second): a 6–30 ms burst is a handful of
+// knocks, each chirping through the Springs. One click per cell (not a
+// coin toss per sample) keeps the knocks per burst, so its energy, steady
+// hit to hit: with random clicks a −18 dBFS hit could draw a lucky handful
+// and crash within 5 dB of a −6 dBFS one.
+constexpr float kClatterSparse = 0.01f;
 // Burst peak at Hit 1, amount 1 (before the band-pass), for a hit of the
-// reference level. 0.6 in the stand-alone build; 3.0 at M7 integration.
-// M8: the crash follows the hit's size. A burst's peak is scaled by the
-// stroke's level λ = d / kClatterLevelRef (d of the −6 dBFS snare, so λ = 1
-// there), capped at kClatterLevelMax: with the level-adaptive Hit, a hit
-// that stands out gets the same crash *relative to itself* at −18 or −3
-// dBFS (the owner's DAW levels vs the module's), and a quiet hit can never
-// get a crash louder than a hard one. A Kick's forced strike: kKickClatterLevel.
-// M7's 3.0 left the crash inaudible to the owner: Clatter −8 dB (DRIVEN) /
-// −2 dB (KICKED) under the hit's own 1–6 kHz, and 0.0 dB of brightening on
-// a rimshot in DRIVEN. M8 (test_m7_tank splashAudible):
-//  - kClatterGain 3 → 3.5 into the Springs' high path (more than that and
-//    the common burst through the detuned Springs combs the mono sum:
-//    test_tank's mono-notch margin);
-//  - kClatterWet: a share of the Clatter also goes straight to the wet,
-//    after the pickups (Tank.cpp): the pickup hearing the springs clatter,
-//    on top of the tail rather than only through the quiet high path.
-// Crash (1–6 kHz, SPLASH 1 vs 0, first 150 ms) on a rimshot at −18 / −9 /
-// −3 dBFS: DRIVEN +4.5 / +5.7 / +5.8 dB (M7: 0.0), KICKED +8 / +10 / +10.
-constexpr float kClatterGain     = 3.5f;
-constexpr float kClatterWet      = 0.45f;
-// The direct share's side copy: delayed kClatterSideMs, at kClatterSide of
-// the mid's level (L/R correlation of the direct crash (1 − 0.8²)/(1 + 0.8²)
-// ≈ 0.22; the mono sum is the plain burst; test_tank's L/R correlation
-// margin on hits).
+// reference level. The crash follows the hit's size (M8): a burst's peak is
+// scaled by the stroke's level λ = d / kClatterLevelRef (d of the −6 dBFS
+// snare, so λ = 1 there), capped at kClatterLevelMax: with the level-
+// adaptive Hit, a hit that stands out gets the same crash *relative to
+// itself* at −18 or −3 dBFS (the owner's DAW levels vs the module's), and a
+// quiet hit can never get a crash louder than a hard one. A Kick's forced
+// strike: kKickClatterLevel. 3.2: KICKED's crash on the −6 dBFS snare
+// stays over test_m7_tank's +6 dB "unmistakable" bar (+6.2).
+constexpr float kClatterGain     = 3.2f;
+// Shares of the burst into each Spring's Loop and high path, and straight
+// to the wet (0: kept as a knob; round 1 had 0.45, Splash A/B variant D 0.1).
+constexpr float kClatterLoop     = 0.7f;
+constexpr float kClatterHigh     = 0.6f;
+constexpr float kClatterWet      = 0.0f;
+// The direct share's side copy (only when kClatterWet > 0): delayed
+// kClatterSideMs, at kClatterSide of the mid's level (L/R correlation of the
+// direct crash (1 − 0.8²)/(1 + 0.8²) ≈ 0.22; the mono sum is the plain
+// burst; test_tank's L/R correlation margin on hits).
 constexpr float kClatterSideMs   = 1.3f;
 constexpr float kClatterSide     = 0.8f;
 constexpr float kClatterLevelRef = 0.22f;
 constexpr float kClatterLevelMax = 2.5f;
-// A Kick's forced strike: its crash level λ. With the direct share the M7
-// value (1) put the Kick's crash so far over its thud that the limiter
-// ducked the thud (KICKED Kick low end, test_kick); 0.5 keeps the Kick's
-// crash about where M7 had it (high path −3 dB, plus the direct share).
+// A Kick's forced strike: its crash level λ. With the round-1 direct share
+// the M7 value (1) put the Kick's crash so far over its thud that the
+// limiter ducked the thud (KICKED Kick low end, test_kick); 0.5 kept the
+// Kick's crash about where M7 had it. Kept at 0.5 in the tank (test_kick
+// passes: thud + crash).
 constexpr float kKickClatterLevel = 0.5f;
 // The jitter counts from the Hit's peak (the countdown restarts while the
 // stroke is still growing, for at most kMaxRiseMs), so the burst takes the
@@ -179,7 +213,7 @@ constexpr float kMaxAllpassMagnitude = 0.85f;
 // ---- Per-ATTITUDE table (SPEC §4.5) -----------------------------------------------
 // Blended by the ATTITUDE Morph weights exactly like drive::Voice.
 struct Voice {
-    float clatterFloor;   // Clatter amount at SPLASH 0 ("polite tank" natural splash)
+    float clatterFloor;   // Clatter amount at SPLASH 0 (0 in every ATTITUDE: see below)
     float clatterMax;     // at SPLASH 1
     float clatterDecayMinMs; // burst decay (1/e) for a weak impact
     float clatterDecayMaxMs; // for a Hit-1 impact
@@ -194,10 +228,19 @@ struct Voice {
 
 inline constexpr std::array<Voice, 3> kVoice{{
     //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
-    {  0.00f, 0.35f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
-    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
-    {  0.25f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
+    {  0.00f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
+    {  0.00f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
+    {  0.00f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
 }};
+
+// SPLASH 0 has no Clatter in any ATTITUDE (M8 round 2). DRIVEN / KICKED had
+// a "faint natural splash" floor (0.18 / 0.25): the owner heard it as a
+// transient click on hard hits at SPLASH 0 (Clatter peak ~13 dB under the
+// wet peak on a 0 dBFS snare, 1–6 kHz −14 / −11 dB re the hit, landing
+// 0.3–3 ms after the attack; nothing at all in CLEAN, which is why CLEAN
+// had no click). The Jolt floor stays: a slight pitch lurch, no transient.
+// CLEAN's clatterMax 0.35 → 0.45 with the move into the tank, so its crash
+// stays over the +1.5 dB "audible" bar.
 
 // CLEAN (ADR 0025, replaces SPEC §4.5's "mild HF emphasis only", which
 // measured as no change: the knob's only dead range): a real but gentle
@@ -237,8 +280,8 @@ inline Voice blendVoice(const std::array<float, 3>& w)
     return v;
 }
 
-// Clatter / Jolt amount for SPLASH v: floor at 0 (a DRIVEN tank still splashes
-// a little on hard hits), max at 1, linear between (the Hit curve is already
+// Clatter / Jolt amount for SPLASH v: floor at 0 (Clatter floors are all 0;
+// the Jolt keeps a small one), max at 1, linear between (the Hit curve is already
 // steep; a linear amount keeps the knob even).
 inline float clatterAmount(const Voice& vc, float splash) { return vc.clatterFloor + (vc.clatterMax - vc.clatterFloor) * splash; }
 inline float joltAmount(const Voice& vc, float splash) { return vc.joltFloor + (vc.joltMax - vc.joltFloor) * splash; }

@@ -83,6 +83,7 @@ Buf hit(float peakDb, bool rim, float seconds, float fs, float at = 0.2f, uint32
 
 struct Run {
     Buf clatter, jolt;
+    Buf env; // Clatter burst envelope after each block (per sample at block 1)
     float maxHit = 0, maxJolt = 0, maxAllpass = 0;
     int impacts = 0, strokes = 0;
 };
@@ -94,11 +95,12 @@ Run run(const Buf& in, int attitude, float splashV, int block = 48, float fs = k
     rv::dsp::Splash sp;
     sp.prepare(fs, seed);
     sp.set(att(attitude), splashV);
-    Run r{Buf(in.size()), Buf(in.size())};
+    Run r{Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
         if (strikeAt >= long(pos) && strikeAt < long(pos) + n) sp.strike(1.0f, int(strikeAt - long(pos)));
         sp.process(in.data() + pos, r.clatter.data() + pos, r.jolt.data() + pos, n);
+        for (int i = 0; i < n; ++i) r.env[pos + size_t(i)] = sp.clatterEnvelope();
         r.maxHit = std::max(r.maxHit, sp.hit());
         r.maxJolt = std::max(r.maxJolt, std::fabs(r.jolt[pos]));
         r.maxAllpass = std::max(r.maxAllpass, std::fabs(sp.allpassDelta()));
@@ -249,7 +251,7 @@ int main()
         for (int a : {0, 1, 2})
             for (bool rim : {false, true})
                 for (float s : {0.0f, 0.5f, 1.0f}) {
-                    if (a == 0 && s == 0.0f) continue; // CLEAN SPLASH 0: no Clatter at all (checked below)
+                    if (s == 0.0f) continue; // SPLASH 0: no Clatter in any ATTITUDE (checked below)
                     const double e6 = energy(run(hit(-6, rim, 1.0f, kFs), a, s).clatter);
                     const double e12 = energy(run(hit(-12, rim, 1.0f, kFs), a, s).clatter);
                     const double e18 = energy(run(hit(-18, rim, 1.0f, kFs), a, s).clatter);
@@ -258,7 +260,7 @@ int main()
                                 kAttName[a], rim ? "rim  " : "snare", s, db(e12 / e6), db(r), 100.0 * r);
                     ok &= e6 > 0 && r < 0.25 && e12 < e6;
                 }
-        check(ok, "-18 dBFS ghost gives < 25 % of the -6 dBFS hit's Clatter energy (CLEAN 0.5/1, DRIVEN, KICKED 0/0.5/1, snare+rim)");
+        check(ok, "-18 dBFS ghost gives < 25 % of the -6 dBFS hit's Clatter energy (every ATTITUDE, SPLASH 0.5/1, snare+rim)");
     }
 
     // ---- Per-ATTITUDE behaviour ------------------------------------------------------
@@ -266,13 +268,19 @@ int main()
         const Buf hard = hit(-6, false, 1.5f, kFs);
         const Run d0 = run(hard, 1, 0.0f), d1 = run(hard, 1, 1.0f), k1 = run(hard, 2, 1.0f), k0 = run(hard, 2, 0.0f);
         const double ed0 = energy(d0.clatter), ed1 = energy(d1.clatter), ek1 = energy(k1.clatter), ek0 = energy(k0.clatter);
-        std::snprintf(msg, sizeof msg, "DRIVEN SPLASH 0: faint natural splash on a hard hit, %.1f dB re SPLASH 1 (between -30 and -6 dB)",
-                      db(ed0 / ed1));
-        check(ed0 > 0 && db(ed0 / ed1) > -30.0 && db(ed0 / ed1) < -6.0, msg);
-        std::snprintf(msg, sizeof msg, "KICKED > DRIVEN at SPLASH 1: Clatter %+.1f dB, Jolt peak %.4f vs %.4f of L; KICKED SPLASH 0 > DRIVEN SPLASH 0 (%+.1f dB)",
+        // SPLASH 0 has no Clatter in any ATTITUDE (was a "faint natural
+        // splash" floor in DRIVEN / KICKED: the owner heard it as a click on
+        // every hard hit, not as splash). The Jolt floor stays: a slight
+        // pitch lurch, no transient.
+        std::snprintf(msg, sizeof msg,
+                      "SPLASH 0: no Clatter on a hard hit (DRIVEN, KICKED: the old floor read as a click); Jolt floor stays "
+                      "(peak %.4f / %.4f of L)",
+                      d0.maxJolt, k0.maxJolt);
+        check(ed0 == 0.0 && ek0 == 0.0 && d0.maxJolt > 0.0f && k0.maxJolt > d0.maxJolt, msg);
+        std::snprintf(msg, sizeof msg, "KICKED > DRIVEN at SPLASH 1: Clatter %+.1f dB, Jolt peak %.4f vs %.4f of L",
                       db(ek1 / ed1), *std::max_element(k1.jolt.begin(), k1.jolt.end()),
-                      *std::max_element(d1.jolt.begin(), d1.jolt.end()), db(ek0 / ed0));
-        check(ek1 > ed1 && ek0 > ed0 &&
+                      *std::max_element(d1.jolt.begin(), d1.jolt.end()));
+        check(ek1 > ed1 &&
                   *std::max_element(k1.jolt.begin(), k1.jolt.end()) > 1.5f * *std::max_element(d1.jolt.begin(), d1.jolt.end()),
               msg);
         std::snprintf(msg, sizeof msg, "KICKED rattle: %d impacts from one hard hit (DRIVEN %d), one stroke each", k1.impacts, d1.impacts);
@@ -323,8 +331,10 @@ int main()
         const Buf hard = hit(-6, false, 0.5f, kFs);
         double lo = 1e9, hi = 0;
         for (uint32_t seed = 1; seed <= 16; ++seed) {
-            const Run r = run(hard, 2, 1.0f, 48, kFs, -1, seed);
-            const double ms = 1000.0 * (double(firstNonZero(r.clatter)) - 0.2 * kFs) / kFs;
+            // The burst's onset = its envelope's first sample (the sparse
+            // excitation's first click lands anywhere in its first cell).
+            const Run r = run(hard, 2, 1.0f, 1, kFs, -1, seed);
+            const double ms = 1000.0 * (double(firstNonZero(r.env)) - 0.2 * kFs) / kFs;
             lo = std::min(lo, ms);
             hi = std::max(hi, ms);
         }
@@ -365,9 +375,15 @@ int main()
     // ---- Kick strike, rolls, determinism, block size ------------------------------------------
     {
         const Buf quiet(size_t(1.0f * kFs), 0.0f);
-        bool exact = true;
-        for (int b : {1, 7, 32, 48, 333, 1024}) exact &= firstNonZero(run(quiet, 2, 0.0f, b, kFs, 12345).clatter) == 12345;
-        check(exact, "Kick strike: Clatter starts on the exact sample, for blocks 1, 7, 32, 48, 333, 1024");
+        // The burst starts on the strike's sample: its envelope, read per
+        // sample at block 1 (the sparse excitation's first click lands
+        // somewhere in its first cell); every other block size gives a
+        // bit-identical Clatter, so the same onset.
+        const Run one = run(quiet, 2, 0.0f, 1, kFs, 12345);
+        bool exact = firstNonZero(one.env) == 12345;
+        for (int b : {7, 32, 48, 333, 1024}) exact &= run(quiet, 2, 0.0f, b, kFs, 12345).clatter == one.clatter;
+        check(exact, "Kick strike: the Clatter burst starts on the exact sample (envelope, block 1); blocks 7, 32, 48, 333, "
+                     "1024 bit-identical");
         const Run s0 = run(quiet, 2, 0.0f, 48, kFs, 12345), s1 = run(quiet, 2, 1.0f, 48, kFs, 12345);
         check(s0.clatter == s1.clatter && s0.strokes == 1, "Kick strike is maximal whatever SPLASH is (forced Hit 1, SPLASH 1)");
 
@@ -458,12 +474,14 @@ int main()
             bool ok = true;
             for (int at : {1, 2})
                 for (float sv : {0.5f, 1.0f}) {
-                    const Run r = run(x, at, sv);
+                    // Burst energy (envelope squared): the size of each crash,
+                    // not the few sparse clicks it happens to be made of.
+                    const Run r = run(x, at, sv, 1);
                     double e[6];
                     for (int h = 0; h < 6; ++h) {
                         const size_t from = size_t((1.0f + 6.0f * float(h)) * kFs), to = from + size_t(6.0f * kFs);
                         e[h] = 0;
-                        for (size_t i = from; i < std::min(to, r.clatter.size()); ++i) e[h] += double(r.clatter[i]) * r.clatter[i];
+                        for (size_t i = from; i < std::min(to, r.env.size()); ++i) e[h] += double(r.env[i]) * r.env[i];
                     }
                     std::printf("      02_hits %-6s SPLASH %.1f: snare -12/-18 %.1f / %.1f dB, rim -12/-18 %.1f / %.1f dB re -6 dBFS; %d strokes\n",
                                 kAttName[at], sv, db(e[1] / e[0]), db(e[2] / e[0]), db(e[4] / e[3]), db(e[5] / e[3]), r.strokes);

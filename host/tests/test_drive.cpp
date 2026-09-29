@@ -487,7 +487,7 @@ void driveSweep()
 // clearly audible. Also reported level-matched (the DRIVE b render scaled
 // by the gain that best matches DRIVE a): that part cannot be a loudness
 // cue, so it shows the change is character. Settings as ADR 0022: MIX 1,
-// SPRINGS 2, DECAY 0.6, TENSION 0.5, TONE 0.5.
+// SPRINGS 2, DECAY 0.6, TENSION 0.5, TONE 0.5 (SPLASH 0: DRIVE's own sound).
 bool readStimulus(const std::string& name, rv::wav::Audio& out)
 {
     std::string error;
@@ -516,6 +516,10 @@ void driveAudibility()
         Settings s;
         s.att = att;
         s.drive = drive;
+        // SPLASH 0, as the sweet-spot test below: the Clatter follows the
+        // driven level, and since SPLASH round 2 its knocks land differently
+        // at each DRIVE, which a null test counts as DRIVE's sound.
+        s.splash = 0.0f;
         apply(t, s);
         Stereo o{Buf(n), Buf(n)};
         for (size_t pos = 0; pos < n; pos += 48) {

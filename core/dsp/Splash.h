@@ -4,7 +4,7 @@
 //
 //   driven mono (post-DriveIn) ─ HitDetector ─ Hit (0..1, control rate)
 //                                                  │ onset → impact (seeded jitter, then KICKED rattle impacts)
-//                                                  ├─► Clatter: band-passed noise bursts ─► each Spring's high path
+//                                                  ├─► Clatter: bursts of band-passed knocks ─► each Spring's Loop + high path
 //                                                  └─► Jolt: envelope ─► Loop delay offset (fraction of L), Δa
 //   Kick ─ strike() ────────────────────────────────┘ (forced: Hit 1, SPLASH 1)
 //
@@ -71,30 +71,83 @@ private:
     float threshold_ = 0.2f, rel_ = 1.0f;
 };
 
-// Band-passed (1–6 kHz) seeded noise with an exponential burst envelope
-// (SPEC §4.5 step 2). impact() raises the envelope; process() per sample.
+// Band-passed seeded sparse knocks (or noise) with an exponential burst
+// envelope (SPEC §4.5 step 2; band and density in SplashVoicing.h). impact() raises the envelope; process()
+// per sample. kStreams independent noise streams share the one envelope:
+// one per Spring, so each Spring clangs on its own (a common burst through
+// the Springs, whose first echoes are lined up, combs the mono sum).
 class Clatter {
 public:
+    static constexpr int kStreams = 3;
     void prepare(float sampleRate, uint32_t seed);
     void reset();
     // Peak amplitude (before the band-pass) and 1/e decay time.
     void impact(float amplitude, float decayMs);
+    // Stream 0 only.
     float process()
     {
-        if (env_ == 0.0f && idle_) return 0.0f;
-        const float x = env_ * rng_.bipolar();
+        float y[1];
+        process(y, 1);
+        return y[0];
+    }
+    // Streams 0..count-1 into y (count <= kStreams). Streams above 0 only
+    // run when asked for, so count must stay the same from call to call.
+    void process(float* y, int count)
+    {
+        if (env_ == 0.0f && idle_) {
+            for (int s = 0; s < count; ++s) y[s] = 0.0f;
+            return;
+        }
+        float mx = 0.0f;
+        for (int s = 0; s < count; ++s) {
+            const float x = env_ * excite(size_t(s));
+            const float v = lp_[size_t(s)].process(hp_[size_t(s)].process(x));
+            y[s] = v;
+            mx = mx > (v < 0.0f ? -v : v) ? mx : (v < 0.0f ? -v : v);
+        }
         env_ *= decay_;
         if (env_ < 1.0e-7f) env_ = 0.0f;
-        const float y = lp_.process(hp_.process(x));
-        idle_ = env_ == 0.0f && (y < 0.0f ? -y : y) < 1.0e-9f;
-        return y;
+        idle_ = env_ == 0.0f && mx < 1.0e-9f;
     }
     float envelope() const { return env_; }
 
 private:
+    // Excitation sample of stream s: white noise (splash::kClatterSparse 0),
+    // or sparse clicks, "velvet noise": time is cut into cells of
+    // kClatterCell samples, and each cell holds exactly one click of fixed
+    // size at a random position with a random sign. Sharp little knocks that
+    // each chirp through the Springs, a clang rather than a hiss. One click
+    // per cell (not a coin toss per sample) keeps the number of knocks in a
+    // burst, and so its energy, steady from hit to hit: a quiet hit can't
+    // draw a lucky handful of clicks and crash like a loud one.
+    float excite(size_t s)
+    {
+        if constexpr (splash::kClatterSparse <= 0.0f) {
+            return rng_[s].bipolar();
+        } else {
+            float x = 0.0f;
+            if (cellPos_[s] == clickAt_[s]) x = clickSign_[s] * clickGain_;
+            if (++cellPos_[s] == kCell) newCell(s);
+            return x;
+        }
+    }
+    void newCell(size_t s)
+    {
+        cellPos_[s] = 0;
+        const float u = rng_[s].bipolar();                          // position, [-1, 1)
+        clickAt_[s]   = int(0.5f * (u + 1.0f) * float(kCell)) % kCell;
+        clickSign_[s] = rng_[s].bipolar() < 0.0f ? -1.0f : 1.0f;
+    }
+    // Cell length (samples) and click size: same power as the dense noise
+    // (E[u²] = 1/3): a² / kCell = 1/3.
+    static constexpr int   kCell      = splash::kClatterSparse > 0.0f ? int(1.0f / splash::kClatterSparse + 0.5f) : 1;
+    float clickGain_ = 1.0f; // sqrt(kCell / 3), prepare()
+    std::array<int, kStreams>   cellPos_{}, clickAt_{};
+    std::array<float, kStreams> clickSign_{};
+
     float  sampleRate_ = 48000.0f;
-    Biquad hp_, lp_;
-    Rng    rng_;
+    std::array<Biquad, kStreams> hp_{}, lp_{};
+    std::array<Rng, kStreams>    rng_{};
     uint32_t seed_ = 1;
     float  env_ = 0.0f, decay_ = 0.0f;
     bool   idle_ = true;
@@ -157,15 +210,23 @@ public:
     void strike(float strength, int sampleOffset);
 
     // n samples. driven = post-DriveIn mono (the detector input).
-    // clatterOut = Clatter (feed the Springs' high path; the Tank also sends
+    // clatterOut = Clatter (stream 0; the Tank feeds each Spring's Loop and
+    // high path, splash::kClatterLoop / kClatterHigh, and sends
     // splash::kClatterWet of it straight to the wet mid). joltLoopOut =
     // Loop delay offset as a fraction of L (Spring A scale; may be null).
-    void process(const float* driven, float* clatterOut, float* joltLoopOut, int n);
+    void process(const float* driven, float* clatterOut, float* joltLoopOut, int n)
+    {
+        process(driven, clatterOut, nullptr, nullptr, joltLoopOut, n);
+    }
+    // Same, plus the Clatter's other two noise streams (same envelope,
+    // independent noise: one per Spring). Pass both or neither.
+    void process(const float* driven, float* clatterOut, float* clatterB, float* clatterC, float* joltLoopOut, int n);
 
     // Control-rate outputs (valid after process()).
     float hit() const { return hit_; }
     float allpassDelta() const { return jolt_.allpassDelta(); }
     float joltEnvelope() const { return jolt_.envelope(); }
+    float clatterEnvelope() const { return clatter_.envelope(); } // burst envelope (tests)
     int   impactCount() const { return impacts_; } // impacts fired since reset, rattle included (tests)
     int   strokeCount() const { return strokes_; } // primary impacts (one per stroke / strike)
     const splash::Voice& voice() const { return voice_; }

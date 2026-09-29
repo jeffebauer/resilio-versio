@@ -344,8 +344,8 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         primed_    = true;
     }
 
-    float mono[kControlInterval], driven[kControlInterval], high[kControlInterval];
-    float clatter[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
+    float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
+    float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
@@ -375,26 +375,31 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         kick_.process(kickLoop, kickDirect, n);
         // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
-        splash_.process(driven, clatter, jolt, n);
-        if (!splashOn_) std::fill(clatter, clatter + n, 0.0f); // test hooks (Tank.h)
+        float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
+        splash_.process(driven, clatter, clatterB, clatterC, jolt, n);
+        if (!splashOn_) // test hooks (Tank.h)
+            for (auto* c : clat) std::fill(c, c + n, 0.0f);
         if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
 
         // Spring inputs: TONE's tilt, plus the Kick's high-passed Loop feed
-        // (post-drive); the high path also gets the Clatter (the same for every
-        // Spring: their detuned high paths decorrelate it).
+        // (post-drive). Each Spring also gets its own Clatter stream (same
+        // burst envelope, independent noise: every spring clangs on its own),
+        // into the Loop (dispersed into the Chirp, decays with the tail) and
+        // the high path (fast echoes), splash::kClatterLoop / kClatterHigh.
         const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
-        for (int i = 0; i < n; ++i) {
+        for (int i = 0; i < n; ++i)
             mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
-            high[i] = mono[i] + clatter[i];
-        }
         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
+            const float* c = clat[s];
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
                 lSamples[i] = wobble_[s].next();
+                loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
+                high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }
-            springs_[s].process(mono, high, lFrac, lSamples, tapSamples, wet[s], n);
+            springs_[s].process(loopIn, high, lFrac, lSamples, tapSamples, wet[s], n);
         }
 
         for (int i = 0; i < n; ++i) {
@@ -440,13 +445,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float body = mid + kWetGain * kickDirect[i];
             float wl = driveOut_[0].process(body + side + d);
             float wr = driveOut_[1].process(body - side - d);
-            // Clatter share straight to the wet (M8): the crash on top of
-            // the tail, after the pickups (an asymmetric pickup would turn
-            // the burst's envelope into lows: KICKED Kick's low end, ADR
+            // Clatter share straight to the wet (M8 round 1; 0 since round 2,
+            // splash::kClatterWet: it read as a hi-hat on top of the reverb):
+            // the crash on top of the tail, after the pickups (an asymmetric
+            // pickup would turn the burst's envelope into lows: KICKED Kick's low end, ADR
             // 0016). Mid, plus a copy delayed by kClatterSideMs in the side
             // (band noise a millisecond apart is uncorrelated): a wide crash
             // that sums to the plain burst in mono.
-            {
+            if (kClatterWetGain > 0.0f) {
                 const float cw = kClatterWetGain * clatter[i];
                 const float cs = splash::kClatterSide * clatBuf_[size_t(clatPos_)];
                 clatBuf_[size_t(clatPos_)] = cw;

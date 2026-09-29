@@ -74,3 +74,13 @@ K2 is TENSION (L, fC, a and M together: tight 33 ms / 4.6 kHz / 0.40 / 24, noon 
 - **Cost:** desktop CPU estimate ~2 % above `main` on the same machine (control-rate pickup alignment + per-sample tap glide); confirm in M3. Firmware release 103,488 B (78 %).
 - **Sweet spots:** no dead zones or cliffs on TENSION or DECAY (KICKED DECAY 0.9→1 is the Howl zone, as designed).
 - **Listening:** `renders/tension/` (TENSION and DECAY sweeps × ATTITUDE on 02_hits, MIX 0.5).
+
+## SPLASH round 2 (29 Sep 2026, owner by ear)
+From the owner's Ableton session: SPLASH sounded "like an open high hat triggered … a sound played over the top", and "even when splash is at 0, there still seems to be a transient click". A/B of four crash voicings (`renders/splash_ab/`); the owner picked **C, "heavier clang: most spring-reverb-like"**.
+- **SPLASH-0 click (real):** DRIVEN / KICKED kept a "faint natural splash" Clatter floor (0.18 / 0.25) that fired a bright noise burst on hard hits' attack; at DAW levels (0 dBFS snare) ~13 dB under the wet peak, heard as a click. Floors 0 in every ATTITUDE; the Jolt floor stays.
+- **"Hi-hat on top" (real):** round 1's direct share (Clatter straight to the output, 0.45) bypassed the springs. Removed. The crash is now the springs clanging: velvet-noise knocks (one per 100 samples) band-passed 400 Hz–5 kHz, one stream per Spring, 0.7 into the Loop and 0.6 into the high path, gain 3.2. It chirps, takes the tank's colour and dies with the tail (~0.9 s, was 0.13 s); ~63 % of its energy under 2 kHz (was 25 %).
+- **Numbers:** crash on a −9 dBFS rimshot CLEAN +3.1, DRIVEN +5.8, KICKED +9.1 dB; ghost bursts 41–44 dB under a backbeat's; Kick = thud + crash (−9 to −12 dB re the thud), starting on its exact sample; click_count 0 everywhere.
+- **Tests reworked** to measure the burst envelope (onsets, ghost ratio) and "dies with the tail" instead of "gone after 1 s"; test_drive's DRIVE audibility nulls now run at SPLASH 0 (the knocks landing differently at each DRIVE read as DRIVE's sound).
+- **Exposed:** test_tank's stab mono-notch margin (−4.9 dB at 2 Springs, DECAY 0, tightest TENSION) is the Springs' own; round 1's direct noise masked it. With the resonance work.
+- **Cost:** flash +~2.3 KB (release 105,776 B, 80 %).
+
