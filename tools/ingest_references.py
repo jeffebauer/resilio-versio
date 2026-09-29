@@ -62,7 +62,7 @@ TAKE_STIMULUS = {
     "wellspring": {
         "0": "01_clicks.wav", "A": "01_clicks.wav", "B": "02_hits.wav", "C": "02_hits.wav",
         "D": "03_sweep.wav", "E": "04_skank.wav", "E2": "04_skank.wav",
-        "F": "05_silence_for_kicks.wav", "G": "06_noise_bursts.wav",
+        "F": "05_silence_for_kicks.wav", "G": "06_noise_bursts.wav", "G2": "06_noise_bursts.wav",
         "A-L": "01_clicks.wav", "A-R": "01_clicks.wav",
     },
     "magneto": {
@@ -75,7 +75,7 @@ TAKE_STIMULUS = {
 }
 CORE_TAKES = {"wellspring": ["0", "A", "B", "C", "D", "E"], "magneto": ["0", "MA", "MB", "ME"]}
 OPTIONAL_TAKES = {
-    "wellspring": ["E2", "F", "G", "A-L", "A-R"],
+    "wellspring": ["E2", "F", "G", "G2", "A-L", "A-R"],
     "magneto": ["MW0", "MW1", "MW2", "MW3", "MW4", "MD1", "MD2", "MD3"],
 }
 ALL_TAKES = {u: CORE_TAKES[u] + OPTIONAL_TAKES[u] for u in CORE_TAKES}
@@ -170,13 +170,23 @@ def best_lag_direct(rec, templ, lag_range):
     return best_lag, best_score
 
 
-def find_latency(rec_mono, stim_mono, sr, max_lag_s=1.0, coarse_hz=1000.0):
+def find_latency(rec_mono, stim_mono, sr, max_lag_s=1.0, coarse_hz=1000.0, early_s=0.1):
     """rec[lag] aligns with stim[0]. Returns (lag_samples, confidence 0-1) or
-    (None, 0). Coarse stage: a wide (2 s) decimated template, cheap and
+    (None, 0). lag may be negative (down to -early_s): a DAW that
+    over-compensates its recording latency places the recording slightly
+    *before* the stimulus (Ableton + AudioFuse 16Rig, 29 Sep 2026: -135
+    samples). The search runs on the recording padded with early_s of
+    silence and the pad is taken off the result. Coarse stage: a wide (2 s) decimated template, cheap and
     tolerant of where the stimulus's own leading silence ends. Fine stage:
     a short template *anchored on the stimulus's first event* (an all-silence
     window, e.g. the first 0.125 s of a file that leads with 1 s of silence,
     would correlate with everything and nothing)."""
+    pad = int(early_s * sr)
+    lag, score = _find_latency_nonneg([0.0] * pad + list(rec_mono), stim_mono, sr, max_lag_s + early_s, coarse_hz)
+    return (None, 0.0) if lag is None else (lag - pad, score)
+
+
+def _find_latency_nonneg(rec_mono, stim_mono, sr, max_lag_s, coarse_hz):
     rec_d, dsr = decimate(rec_mono, sr, coarse_hz)
     stim_d, _ = decimate(stim_mono, sr, coarse_hz)
     templ_len = min(len(stim_d), int(2.0 * dsr))
@@ -472,6 +482,12 @@ def process_take(unit, take, path, out_dir, warnings, unit_lag=None):
         return result
 
     # Trim to the stimulus timeline (drop the interface latency, pad/trim to stimulus+tail length).
+    # A negative lag (recording placed early) pads the front instead.
+    if lag < 0:
+        channels = [[0.0] * (-lag) + list(ch) for ch in channels]
+        rec_mono = [0.0] * (-lag) + list(rec_mono)
+        lag = 0
+        result["padded_front_samples"] = -result["latency_samples"]
     tail = max(0, len(rec_mono) - lag - len(stim_mono))
     end = lag + len(stim_mono) + min(tail, int(2.0 * sr))
     aligned = [ch[lag:end] if lag < len(ch) else [] for ch in channels]
