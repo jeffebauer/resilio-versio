@@ -83,7 +83,7 @@ Buf hit(float peakDb, bool rim, float seconds, float fs, float at = 0.2f, uint32
 
 struct Run {
     Buf clatter, jolt;
-    float maxHit = 0, maxHfGain = 1, maxAllpass = 0;
+    float maxHit = 0, maxJolt = 0, maxAllpass = 0;
     int impacts = 0, strokes = 0;
 };
 
@@ -100,7 +100,7 @@ Run run(const Buf& in, int attitude, float splashV, int block = 48, float fs = k
         if (strikeAt >= long(pos) && strikeAt < long(pos) + n) sp.strike(1.0f, int(strikeAt - long(pos)));
         sp.process(in.data() + pos, r.clatter.data() + pos, r.jolt.data() + pos, n);
         r.maxHit = std::max(r.maxHit, sp.hit());
-        r.maxHfGain = std::max(r.maxHfGain, sp.highPathGain());
+        r.maxJolt = std::max(r.maxJolt, std::fabs(r.jolt[pos]));
         r.maxAllpass = std::max(r.maxAllpass, std::fabs(sp.allpassDelta()));
     }
     r.impacts = sp.impactCount();
@@ -246,9 +246,10 @@ int main()
     // ---- Ghost notes barely trigger: Clatter energy ratio -------------------------
     {
         bool ok = true;
-        for (int a : {1, 2})
+        for (int a : {0, 1, 2})
             for (bool rim : {false, true})
                 for (float s : {0.0f, 0.5f, 1.0f}) {
+                    if (a == 0 && s == 0.0f) continue; // CLEAN SPLASH 0: no Clatter at all (checked below)
                     const double e6 = energy(run(hit(-6, rim, 1.0f, kFs), a, s).clatter);
                     const double e12 = energy(run(hit(-12, rim, 1.0f, kFs), a, s).clatter);
                     const double e18 = energy(run(hit(-18, rim, 1.0f, kFs), a, s).clatter);
@@ -257,7 +258,7 @@ int main()
                                 kAttName[a], rim ? "rim  " : "snare", s, db(e12 / e6), db(r), 100.0 * r);
                     ok &= e6 > 0 && r < 0.25 && e12 < e6;
                 }
-        check(ok, "-18 dBFS ghost gives < 25 % of the -6 dBFS hit's Clatter energy (DRIVEN, KICKED, SPLASH 0/0.5/1, snare+rim)");
+        check(ok, "-18 dBFS ghost gives < 25 % of the -6 dBFS hit's Clatter energy (CLEAN 0.5/1, DRIVEN, KICKED 0/0.5/1, snare+rim)");
     }
 
     // ---- Per-ATTITUDE behaviour ------------------------------------------------------
@@ -277,13 +278,21 @@ int main()
         std::snprintf(msg, sizeof msg, "KICKED rattle: %d impacts from one hard hit (DRIVEN %d), one stroke each", k1.impacts, d1.impacts);
         check(k1.impacts > d1.impacts && k1.strokes == 1 && d1.strokes == 1, msg);
 
+        // CLEAN (ADR 0025): a real but gentle splash. Nothing at SPLASH 0;
+        // at SPLASH 1 a light Clatter under DRIVEN's, no rattle, and a Jolt
+        // (Loop and allpass) at most a third of DRIVEN's.
         const Run c1 = run(hard, 0, 1.0f), c0 = run(hard, 0, 0.0f);
-        const bool silent = energy(c1.clatter) == 0.0 && std::all_of(c1.jolt.begin(), c1.jolt.end(), [](float v) { return v == 0.0f; })
-                         && c1.maxAllpass == 0.0f;
-        check(silent, "CLEAN: no Clatter, no Jolt (SPEC §4.5 table)");
-        std::snprintf(msg, sizeof msg, "CLEAN: SPLASH = mild HF emphasis only: high-path gain peaks at %+.2f dB (SPLASH 1), %+.2f dB (SPLASH 0)",
-                      20.0 * std::log10(c1.maxHfGain), 20.0 * std::log10(c0.maxHfGain));
-        check(c1.maxHfGain > 1.2f && c1.maxHfGain <= 1.42f && c0.maxHfGain == 1.0f && d1.maxHfGain == 1.0f, msg);
+        const bool silent0 = energy(c0.clatter) == 0.0 && c0.maxJolt == 0.0f && c0.maxAllpass == 0.0f;
+        check(silent0, "CLEAN SPLASH 0: no Clatter, no Jolt (hi-fi unless asked)");
+        const double ec1 = energy(c1.clatter);
+        std::snprintf(msg, sizeof msg,
+                      "CLEAN SPLASH 1: gentle splash: Clatter %+.1f dB re DRIVEN SPLASH 1 (-12 .. -2), %d impact (no rattle); "
+                      "Jolt %.4f of L (DRIVEN %.4f, <= 1/3), allpass %.4f (DRIVEN %.4f, <= 1/3)",
+                      db(ec1 / ed1), c1.impacts, c1.maxJolt, d1.maxJolt, c1.maxAllpass, d1.maxAllpass);
+        check(ec1 > 0.0 && db(ec1 / ed1) >= -12.0 && db(ec1 / ed1) <= -2.0 && c1.impacts == 1 && c1.strokes == 1
+                  && c1.maxJolt > 0.0f && c1.maxJolt <= d1.maxJolt / 3.0f && c1.maxAllpass > 0.0f
+                  && c1.maxAllpass <= d1.maxAllpass / 3.0f,
+              msg);
     }
 
     // ---- Clatter: band, decay, jitter ----------------------------------------------------

@@ -34,7 +34,7 @@ advance per sample, so they stay aligned.
 in L,R ─ mono sum ─ DriveIn ─┬──────────────────────── Tilt ─ + ─┬─ Spring A ─┐
                              │                                 ▲  ├─ Spring B ─┼─ SPRINGS mix ─ mid ─ + ─ … DriveOut ─ shelf ─ limiter
                              └─ Splash (Hit detector)          │  └─ Spring C ─┘                       ▲
-                                  │ Clatter ──► each Spring's high-path input (× highPathGain in CLEAN)│
+                                  │ Clatter ──► each Spring's high-path input                          │
                                   │ Jolt ────► each Spring: L offset (× kJoltSpringScale[i]), Δa       │
    Tank::kick(offset) ─ KickVoice ├─ loopOut (HP120⁴(thump + burst)) ───┘ (post-drive Tank input)      │
                                   ├─ directOut (thump) ────────────────────────────────────────────────┘ (wet mid, pre-DriveOut)
@@ -59,9 +59,9 @@ in L,R ─ mono sum ─ DriveIn ─┬──────────────
 - **Clatter → each Spring's high path.** Spring needs one new input: an
   extra signal added to the high-path input only (`processHigh(in + clatter)`).
   Suggested API: `Spring::process(const float* in, const float* highExtra,
-  float* out, int n)`. In CLEAN, the high-path *input* is also multiplied by
-  `splash_.highPathGain()` (control rate; 1 at rest, up to +2.8 dB on
-  transients at SPLASH 1). That is "SPLASH = mild HF emphasis only".
+  float* out, int n)`. (M7 also lifted CLEAN's high-path input on
+  transients, "SPLASH = mild HF emphasis only"; it measured as no change
+  and was replaced by a real, gentler splash in ADR 0025.)
   The same Clatter goes to all three Springs. Their own detuned high paths
   decorrelate it.
 - **Jolt → L:** `joltLoop[k]` is a fraction of L, per sample. Spring i adds
@@ -180,13 +180,12 @@ Already in the Tank (equal-power sqrt law, Snappy 5 ms, per sample).
 
 | | CLEAN | DRIVEN | KICKED |
 |---|---|---|---|
-| Clatter amount SPLASH 0 → 1 | 0 → 0 | 0.18 → 0.55 | 0.25 → 1.0 |
-| Clatter burst decay (weak → Hit 1) | – | 6 → 18 ms | 8 → 30 ms |
+| Clatter amount SPLASH 0 → 1 | 0 → 0.35 (ADR 0025; M7: 0) | 0.18 → 0.55 | 0.25 → 1.0 |
+| Clatter burst decay (weak → Hit 1) | 4 → 10 ms | 6 → 18 ms | 8 → 30 ms |
 | Rattle impacts after a Hit-1 stroke | 0 | 1 | 3 |
-| Jolt amount SPLASH 0 → 1 (Kick = max) | 0 | 0.10 → 0.50 | 0.20 → 1.0 |
-| Jolt decay / L depth / Δa at j = 1 | – | 90 ms / 0.6 % / 0.05 | 180 ms / 1.1 % / 0.12 |
+| Jolt amount SPLASH 0 → 1 (Kick = max) | 0 → 0.50 (ADR 0025; M7: 0) | 0.10 → 0.50 | 0.20 → 1.0 |
+| Jolt decay / L depth / Δa at j = 1 | 60 ms / 0.2 % / 0.005 | 90 ms / 0.6 % / 0.05 | 180 ms / 1.1 % / 0.12 |
 | Hard snare, SPLASH 1: Jolt peak, lurch at L = 55 ms | – | 0.15 % of L, −12 cents | 0.59 % of L, −43 cents per pass |
-| HF emphasis (SPLASH 1, transients) | +2.8 dB | – | – |
 | Kick thump (Hz, 1/e) / burst | 80→55 Hz, 22 ms / 0.20 | 75→50 Hz, 28 ms / 0.35 | 70→45 Hz, 35 ms / 0.50 |
 | Kick energy re KICKED | −8.0 dB | −3.9 dB | 0 |
 

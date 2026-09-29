@@ -37,7 +37,7 @@ void HitDetector::prepare(float sampleRate)
 void HitDetector::reset()
 {
     hpLp_.reset();
-    fast_ = slow_ = dMax_ = lastD_ = prog_ = hitAbs_ = 0.0f;
+    fast_ = slow_ = dMax_ = lastD_ = prog_ = 0.0f;
 }
 
 // ---- Clatter -----------------------------------------------------------------------
@@ -124,7 +124,6 @@ void Splash::prepare(float sampleRate, uint32_t seed)
     clatter_.prepare(sampleRate, mixSeed(seed_ + 1u));
     jolt_.prepare(sampleRate, mixSeed(seed_ + 2u));
     const float every = float(splash::kControlInterval);
-    hfCoeff_       = decayPerStep(splash::kHfEmphasisReleaseMs, sampleRate, every);
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
     maxRiseTicks_  = int(splash::kMaxRiseMs * 0.001f * sampleRate / every + 0.5f);
     attW_   = {{-1.0f, -1.0f, -1.0f}};
@@ -140,7 +139,7 @@ void Splash::reset()
     jolt_.reset();
     rng_.seed(seed_);
     k_ = 0;
-    hit_ = hfEnv_ = strokePeak_ = valley_ = 0.0f;
+    hit_ = strokePeak_ = valley_ = 0.0f;
     pending_ = pendingPrimary_ = forced_ = false;
     armed_   = true;
     countdown_ = secondaries_ = 0;
@@ -158,7 +157,7 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash)
     attW_   = attitudeWeights;
     splash_ = splash;
     voice_  = splash::blendVoice(attitudeWeights);
-    detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash), splash::absThreshold(splash));
+    detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
 
@@ -245,9 +244,6 @@ void Splash::controlTick()
         if (lv > level_) level_ = lv;
         if (rising && ++riseTicks_ <= maxRiseTicks_) countdown_ = jitter_ + splash::kControlInterval; // re-checked next tick
     }
-    // CLEAN's HF emphasis rides on the M7 absolute Hit (unchanged, SplashVoicing.h).
-    const float ha = detector_.lastAbsoluteHit();
-    hfEnv_ = ha > hfEnv_ * hfCoeff_ ? ha : hfEnv_ * hfCoeff_;
     jolt_.tick(tankLevel_);
 }
 

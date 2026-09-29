@@ -144,7 +144,7 @@ public:
 
     // Same, with the M7 per-sample inputs (each may be null = none):
     //   highIn   replaces the high path's input (the Tank passes the same
-    //            input plus Clatter, times CLEAN's HF emphasis gain);
+    //            input plus Clatter);
     //   lFrac    Loop delay offset as a fraction of L (Jolt, this Spring's
     //            share), added after the slew limiter;
     //   lSamples Loop delay offset in samples (WOBBLE).

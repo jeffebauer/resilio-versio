@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 1 wrap) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · chirp direction decided (highs later), being switched on
+**Last updated:** 29 Sep 2026 (session 2: CLEAN splash built; TENSION in progress) · **Milestones:** M0 needs your hardware check · M1 needs a Wellspring take + your listen · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built; listening tasks 5–9 ready · M8: highs-later chirp on, CLEAN splash built, TENSION next
 
 **Plugin installed in Ableton:** highs-later chirp + M8 round 1 (commit `8f0a09c`), installed 29 Sep. **Rescan plug-ins** (hold ⌥ and click Rescan). New since the last build: each echo now sweeps **up** like a real tank, and tail length no longer changes with BOING. Listening pages for this build: `renders/m8_hl/` (BOING, SPLASH and DRIVE sweeps per ATTITUDE, plus `chirp_boing` with real tanks). Still to come: CLEAN's gentle splash, then TENSION replacing BOING.
 
@@ -73,7 +73,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 8b. Decide: SPLASH in CLEAN
 - The sweeps show SPLASH does **nothing** in CLEAN (by the original spec: "mild HF emphasis only"). It's the only knob with a fully dead range.
-- [x] Decided 29 Sep: **a real, gentler splash**: light clatter + a tiny pitch lurch; CLEAN gentle / DRIVEN clear / KICKED unmistakable ([ADR 0025](adr/0025-clean-gentle-splash.md)). Built after the highs-later switch-on
+- [x] Decided 29 Sep: **a real, gentler splash**: light clatter + a tiny pitch lurch; CLEAN gentle / DRIVEN clear / KICKED unmistakable ([ADR 0025](adr/0025-clean-gentle-splash.md)). **Built 29 Sep** (not in Ableton yet; it goes in together with TENSION)
+- [ ] **Listen (≈10 min):** open `renders/clean_splash/index.html` from Finder. Rows are ATTITUDE (CLEAN, DRIVEN, KICKED), columns SPLASH 0 / 0.5 / 1, on the snare and rim hits. CLEAN at SPLASH 0 is exactly what CLEAN used to be at any SPLASH. **Is CLEAN at SPLASH 1 a gentle, bright shimmer on the hard hits, clearly smaller than DRIVEN's crash?** Is the tiny pitch lurch noticeable, and is that OK in CLEAN?
 
 ### 8c. Listen: M8 tuning round 1 (≈20 min) · the build is installed
 - Before/after WAV pairs (open in Ableton or Finder):
@@ -120,18 +121,15 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- M7 components (running, separate worktree): Splash (Hit, Clatter, Jolt), real Kick, WOBBLE, MIX checks
-- M8 tuning backlog from your plugin session ([m8-tuning-backlog.md](m8-tuning-backlog.md)): BOING shortens decay, SPLASH inaudible, DRIVE subtle (plugin input level), WOBBLE inaudible on drums, 3-Spring flam. Tuning round 1 starts when the M8 prep lands
-- Then: CLEAN's gentle splash ([ADR 0025](adr/0025-clean-gentle-splash.md)), right after the highs-later switch-on (same files)
-- Round 2 after your round-1 listen (8c) and the TENSION question. Known: worst-case CPU is now estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
-- M8 gain staging: loud held chords can push the wet up to the safety limiter (now smooth, but it means the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
-- BOING retune: after your chirp-direction decision (task 7)
+- **TENSION** replacing BOING ([ADR 0026](adr/0026-tension-replaces-boing.md)): in progress now. Then one plugin install with CLEAN's splash + TENSION, and a listening task here
+- Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target; confirm on hardware in M3 before trimming
+- M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
 - M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
-- M6 anti-ringing: after M5
 - After take A: match DECAY to the Wellspring's T60, build the M1 A/B page
-- After M0 passes: M3 profiling on the Versio
 
 ## Done
+
+- 29 Sep 2026: CLEAN's gentle splash built ([ADR 0025](adr/0025-clean-gentle-splash.md)): SPLASH now works in CLEAN (no dead zone), smaller than DRIVEN's at every hit level; ghost notes still ignored
 
 - 29 Sep 2026: highs-later chirp switched on and installed (`8f0a09c`); round 1 re-checked in the new direction
 

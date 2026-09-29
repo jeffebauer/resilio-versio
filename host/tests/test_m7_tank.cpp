@@ -5,7 +5,7 @@
 // test_kick_voice and test_wobble.
 //
 // "Splash share": the Tank has test hooks (setSplashParts) that keep the
-// Splash listening but drop its Clatter (+ CLEAN HF emphasis) and/or its
+// Splash listening but drop its Clatter and/or its
 // Jolt. The Splash's contribution is then the difference of renders that
 // are otherwise identical (same seeds, same everything):
 //   splash energy  = energy of (on − off) in the 6 s after a hit (Clatter + Jolt)
@@ -16,7 +16,8 @@
 //   settled dB     = the same 1.0–1.5 s after the hit
 // M8 adds SPLASH audibility on a rimshot at -18..-3 dBFS (splashAudible)
 // and ghost notes judged between louder hits (ghostGroove), for the
-// level-adaptive hit detector (SplashVoicing.h).
+// level-adaptive hit detector (SplashVoicing.h), and CLEAN's gentle splash
+// (ADR 0025: CLEAN gentle < DRIVEN clear < KICKED unmistakable).
 // Stimuli are read from test_audio/stimulus (tools/make_stimulus.py); a
 // missing file skips its section.
 
@@ -206,25 +207,21 @@ void splashOnHits()
                   d0.clatterDb[0], d1.clatterDb[0] - d0.clatterDb[0]);
     check(d0.clatterDb[0] > -60.0 && d0.clatterDb[0] < d1.clatterDb[0] - 15.0 && d0.splashE[0] > 0.0, msg);
 
-    // CLEAN: SPLASH = mild HF emphasis only. No Jolt, no Clatter: the only
-    // change is a small lift of the high path on transients.
+    // CLEAN (ADR 0025): a real but gentle splash. Nothing at SPLASH 0; at
+    // SPLASH 1 a light crash under DRIVEN's that settles into the tail, and
+    // a Jolt peak at most a third of DRIVEN's.
     c1 = hitStats(x, 0, 1.0f);
-    Settings s;
-    s.att    = 0;
-    s.splash = 1.0f;
-    const Out on = render(s, x);
-    s.clatterOn = s.joltOn = false;
-    const Out off = render(s, x);
-    const Buf mOn = mono(on), mOff = mono(off);
-    Buf d(mOn.size());
-    for (size_t i = 0; i < d.size(); ++i) d[i] = mOn[i] - mOff[i];
-    const double lowShare = energy(band(d, 20.0f, 800.0f), 0, d.size()) / std::max(1e-30, energy(d, 0, d.size()));
-    const bool noJolt = std::all_of(on.jolt.begin(), on.jolt.end(), [](float v) { return v == 0.0f; });
+    const HitStats c0 = hitStats(x, 0, 0.0f);
+    // The lurch: Jolt envelope peak x the Loop delay offset at j = 1 (% of L).
+    const double cLurch = 100.0 * c1.joltPeak * rv::splash::kVoice[0].joltLoopFrac;
+    const double dLurch = 100.0 * d1.joltPeak * rv::splash::kVoice[1].joltLoopFrac;
     std::snprintf(msg, sizeof msg,
-                  "CLEAN SPLASH 1: mild HF emphasis only (crash %+.2f dB at 1-6 kHz, 0 .. +3; below 800 Hz %.1f %% of the "
-                  "change; Jolt %s)",
-                  c1.crashDb[0], 100.0 * lowShare, noJolt ? "never moves" : "MOVES");
-    check(c1.crashDb[0] > 0.0 && c1.crashDb[0] <= 3.0 && lowShare < 0.05 && noJolt, msg);
+                  "CLEAN SPLASH 1 gentle: Clatter %+.1f dB re the hit (below DRIVEN's %+.1f), crash %+.1f dB, settled %+.1f dB "
+                  "(within 1 dB); Jolt lurch %.3f %% of L (DRIVEN %.3f %%, <= 1/3); SPLASH 0 adds nothing",
+                  c1.clatterDb[0], d1.clatterDb[0], c1.crashDb[0], c1.settledDb[0], cLurch, dLurch);
+    check(c1.clatterDb[0] < d1.clatterDb[0] && c1.crashDb[0] > 0.0 && c1.crashDb[0] < d1.crashDb[0]
+              && std::fabs(c1.settledDb[0]) <= 1.0 && cLurch > 0.0 && cLurch <= dLurch / 3.0 && c0.splashE[0] == 0.0,
+          msg);
 }
 
 // ---- 1b. SPLASH audible at any sensible level (M8, backlog item 2) -----------------------
@@ -288,14 +285,19 @@ void splashAudible()
     const bool haveHits = load("02_hits.wav", hits);
     if (haveHits) hits.resize(size_t(3.0f * kFs)); // the -6 dBFS snare at 1 s
     bool ok = true;
-    for (int att : {1, 2}) {
-        const double want = att == 1 ? 3.0 : 6.0;
+    double below[3] = {0, 0, 0}; // CLEAN's crash per level, then checked under DRIVEN's
+    for (int att : {0, 1, 2}) {
+        const double want = att == 0 ? 1.5 : att == 1 ? 3.0 : 6.0;
+        int li = 0;
         std::printf("      %-6s crash SPLASH 1 (0.5) vs 0, 1-6 kHz first 150 ms:", kAttName[att]);
         for (float lvl : {-18.0f, -9.0f, -3.0f}) {
             const Buf x = rimshot(lvl, size_t(2.5f * kFs), 0.5f);
             const double c1 = crashDb(x, att, 1.0f, 0.5f), c5 = crashDb(x, att, 0.5f, 0.5f);
             std::printf("  rim %3.0f dBFS %+5.1f (%+4.1f)", lvl, c1, c5);
-            ok &= c1 >= want && (lvl < -12.0f || c5 > 0.5); // at noon a -18 dBFS hit may stay under the threshold
+            ok &= c1 >= want && (lvl < -12.0f || c5 > (att == 0 ? 0.25 : 0.5)); // at noon a -18 dBFS hit may stay under the threshold
+            if (att == 0) below[li] = c1;
+            if (att == 1) ok &= below[li] < c1; // CLEAN gentler than DRIVEN at the same hit
+            ++li;
         }
         if (haveHits) {
             const double c1 = crashDb(hits, att, 1.0f, 1.0f);
@@ -304,8 +306,8 @@ void splashAudible()
         }
         std::printf("\n");
     }
-    check(ok, "SPLASH 1 audible on a rimshot at -18 / -9 / -3 dBFS and the -6 dBFS snare: crash >= +3 dB (DRIVEN), "
-              ">= +6 dB (KICKED); SPLASH 0.5 already adds > +0.5 dB from -9 dBFS");
+    check(ok, "SPLASH 1 audible on a rimshot at -18 / -9 / -3 dBFS and the -6 dBFS snare: crash >= +1.5 dB (CLEAN, below "
+              "DRIVEN's at each level), >= +3 dB (DRIVEN), >= +6 dB (KICKED); SPLASH 0.5 already adds from -9 dBFS");
 }
 
 // ---- 1c. Ghost notes between louder hits barely trigger (M8) -------------------------------
@@ -314,7 +316,7 @@ void splashAudible()
 // program level, so the ghosts barely trigger while the backbeats crash.
 // Clatter (Clatter-only render - no-Splash render, Jolt off) in 1-6 kHz,
 // first 150 ms: ghost re its own bright part <= -15 dB (the M7 criterion),
-// and < 25 % of a backbeat's Clatter energy. DRIVEN and KICKED, SPLASH 1.
+// and < 25 % of a backbeat's Clatter energy. Every ATTITUDE, SPLASH 1.
 void ghostGroove()
 {
     const size_t len = size_t(5.0f * kFs);
@@ -340,7 +342,7 @@ void ghostGroove()
         for (size_t i = 0; i < ghost.size(); ++i) x[g + i] += ghost[i];
     }
     bool ok = true;
-    for (int att : {1, 2}) {
+    for (int att : {0, 1, 2}) {
         Settings s;
         s.att    = att;
         s.splash = 1.0f;

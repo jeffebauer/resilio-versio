@@ -54,8 +54,8 @@
 //   Tilt (so TONE does not change SPLASH sensitivity). Its Clatter goes into
 //   every Spring's high path, and (M8) a share goes straight to the wet
 //   after the pickups, mid plus a 1.3 ms-delayed copy in the side (wide,
-//   mono-safe); in CLEAN the high-path input is also lifted a little on
-//   transients (SPLASH = mild HF emphasis only). Hit is level-adaptive
+//   mono-safe). CLEAN, DRIVEN and KICKED differ only in how big the splash
+//   is (ADR 0025: CLEAN gentle, DRIVEN clear, KICKED unmistakable). Hit is level-adaptive
 //   (judged against a slow program level, SplashVoicing.h). Its Jolt moves
 //   each Spring's L per sample (Spring B the other way) and adds to each
 //   Spring's allpass a on the control grid (clamped |a| <= 0.85).
@@ -193,10 +193,10 @@ public:
     const std::array<float, 3>& attitudeWeights() const { return attW_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
     // Test hook (not a panel control): false = the Splash still runs, but its
-    // Clatter, Jolt and CLEAN HF emphasis are not applied, so a test can
+    // Clatter and Jolt are not applied, so a test can
     // measure the Splash's share of the output by difference. Default true.
     void setSplashEnabled(bool on) { splashOn_ = joltOn_ = on; }
-    // Finer: Clatter + HF emphasis, and the Jolt (L and a), separately.
+    // Finer: the Clatter, and the Jolt (L and a), separately.
     void setSplashParts(bool clatter, bool jolt)
     {
         splashOn_ = clatter;
@@ -280,7 +280,6 @@ private:
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
     dsp::Wobble                        transport_; // WOBBLE on the first echoes: every pickup, shared
     bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
-    float hfGainFrom_ = 1.0f, hfGainTo_ = 1.0f; // CLEAN HF emphasis, ramped across each control tick
     float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level
     // M8 excitation trim (DriveVoicing.h "Excitation trim"): band-weighted and
     // full power of the driven input, slow followers, trim ramped per tick.

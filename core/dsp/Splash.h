@@ -50,29 +50,25 @@ public:
     {
         const float ref = threshold_ > rel_ * prog_ ? threshold_ : rel_ * prog_;
         const float h   = splash::hitCurve(dMax_, ref);
-        hitAbs_ = splash::hitCurve(dMax_, absThreshold_);
         prog_ += (fast_ > prog_ ? progAtt_ : progRel_) * (fast_ - prog_);
         lastD_ = dMax_;
         dMax_  = 0.0f;
         return h;
     }
-    // Absolute Hit of the last take() (M7 detector, CLEAN's HF emphasis).
-    float lastAbsoluteHit() const { return hitAbs_; }
     float lastDifference() const { return lastD_; } // d behind the last take()
     float programLevel() const { return prog_; }    // P, for tests
-    void setThresholds(float t, float rel, float absT)
+    void setThresholds(float t, float rel)
     {
-        threshold_    = t;
-        rel_          = rel;
-        absThreshold_ = absT;
+        threshold_ = t;
+        rel_       = rel;
     }
 
 private:
     OnePoleLowpass hpLp_;
     float fastAtt_ = 1.0f, fastRel_ = 1.0f, slowAtt_ = 1.0f, slowRel_ = 1.0f;
     float progAtt_ = 1.0f, progRel_ = 1.0f; // per control tick
-    float fast_ = 0.0f, slow_ = 0.0f, dMax_ = 0.0f, lastD_ = 0.0f, prog_ = 0.0f, hitAbs_ = 0.0f;
-    float threshold_ = 0.2f, rel_ = 1.0f, absThreshold_ = 0.2f;
+    float fast_ = 0.0f, slow_ = 0.0f, dMax_ = 0.0f, lastD_ = 0.0f, prog_ = 0.0f;
+    float threshold_ = 0.2f, rel_ = 1.0f;
 };
 
 // Band-passed (1–6 kHz) seeded noise with an exponential burst envelope
@@ -169,7 +165,6 @@ public:
     // Control-rate outputs (valid after process()).
     float hit() const { return hit_; }
     float allpassDelta() const { return jolt_.allpassDelta(); }
-    float highPathGain() const { return 1.0f + hfEnv_ * splash_ * voice_.hfEmphasis; } // CLEAN HF emphasis
     float joltEnvelope() const { return jolt_.envelope(); }
     int   impactCount() const { return impacts_; } // impacts fired since reset, rattle included (tests)
     int   strokeCount() const { return strokes_; } // primary impacts (one per stroke / strike)
@@ -193,7 +188,6 @@ private:
 
     int   k_ = 0; // position in the control grid
     float hit_ = 0.0f;
-    float hfEnv_ = 0.0f, hfCoeff_ = 0.0f;
     int   sinceStroke_ = 1 << 30, minStroke_ = 0; // samples
 
     // Impact sequencer: one pending impact (primary or rattle).

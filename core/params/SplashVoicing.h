@@ -69,12 +69,6 @@ constexpr float kRelThresholdSplash1 = 1.5f;
 inline float relThreshold(float splash) { return map::expLerp(kRelThresholdSplash0, kRelThresholdSplash1, splash); }
 constexpr float kProgAttackMs  = 100.0f;
 constexpr float kProgReleaseMs = 1500.0f;
-// CLEAN's HF emphasis keeps the M7 absolute detector (SPLASH in CLEAN is
-// unchanged pending the owner's decision, backlog item 6): Hit_abs =
-// curve(d / T_abs), T_abs = 0.30 (SPLASH 0) .. 0.10 (SPLASH 1).
-constexpr float kAbsThresholdSplash0 = 0.30f;
-constexpr float kAbsThresholdSplash1 = 0.10f;
-inline float absThreshold(float splash) { return map::expLerp(kAbsThresholdSplash0, kAbsThresholdSplash1, splash); }
 
 // Hit = r³ / (1 + r³), r = d / R. A knee: a hit at half the reference gives
 // 0.11, at the reference 0.5, at twice 0.89. Multiplies only.
@@ -182,12 +176,6 @@ constexpr float kTankLevelSmoothMs = 50.0f;
 // 0.55 × 1.07 + 0.12 = 0.71, so the clamp never bites there).
 constexpr float kMaxAllpassMagnitude = 0.85f;
 
-// ---- CLEAN: SPLASH = mild HF emphasis only (SPEC §4.5 table) -------------------
-// High path input gain = 1 + hitEnv × SPLASH × hfEmphasis, hitEnv = Hit held
-// with a kHfEmphasisReleaseMs release. CLEAN 0.41 = +3 dB on transients at
-// SPLASH max, nothing at rest.
-constexpr float kHfEmphasisReleaseMs = 40.0f;
-
 // ---- Per-ATTITUDE table (SPEC §4.5) -----------------------------------------------
 // Blended by the ATTITUDE Morph weights exactly like drive::Voice.
 struct Voice {
@@ -202,15 +190,21 @@ struct Voice {
     float joltLoopFrac;   // Loop delay offset at j = 1, fraction of L
     float joltAllpass;    // |Δa| at j = 1
     float rattleDepth;    // KICKED rattle, fraction of L at full rattle
-    float hfEmphasis;     // CLEAN HF emphasis (see above)
 };
 
 inline constexpr std::array<Voice, 3> kVoice{{
-    //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle   hf
-    {  0.00f, 0.00f,  5.0f, 10.0f, 0.0f, 0.00f, 0.00f,  60.0f, 0.000f, 0.00f, 0.0000f, 0.41f}, // CLEAN
-    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f, 0.00f}, // DRIVEN
-    {  0.25f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f, 0.00f}, // KICKED
+    //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
+    {  0.00f, 0.35f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
+    {  0.18f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
+    {  0.25f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
 }};
+
+// CLEAN (ADR 0025, replaces SPEC §4.5's "mild HF emphasis only", which
+// measured as no change: the knob's only dead range): a real but gentle
+// splash, a polite tank getting nudged. A light, short Clatter with no
+// rattle, and a tiny Jolt (Loop and allpass lurch a third of DRIVEN's).
+// Nothing at SPLASH 0: CLEAN stays hi-fi unless asked. Same level-adaptive
+// detector as DRIVEN / KICKED, so ghost notes barely trigger here too.
 
 // DRIVEN's |Δa| was 0.05 in the stand-alone build; halved at integration.
 // The Δa is common to all Springs, and at 0.05 it pulled their responses
@@ -240,7 +234,6 @@ inline Voice blendVoice(const std::array<float, 3>& w)
     mix(&Voice::joltLoopFrac);
     mix(&Voice::joltAllpass);
     mix(&Voice::rattleDepth);
-    mix(&Voice::hfEmphasis);
     return v;
 }
 

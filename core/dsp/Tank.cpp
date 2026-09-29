@@ -151,7 +151,6 @@ void Tank::reset()
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
-    hfGainFrom_ = hfGainTo_ = 1.0f;
     levelAcc_ = levelMs_ = 0.0f;
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
@@ -251,10 +250,6 @@ void Tank::controlTick(bool snap)
         excTrimFrom_ = snap ? trim : excTrimTo_;
         excTrimTo_   = trim;
     }
-    // CLEAN HF emphasis: ramp from the last tick's gain to the new one.
-    const float hfGain = splashOn_ ? splash_.highPathGain() : 1.0f;
-    hfGainFrom_ = snap ? hfGain : hfGainTo_;
-    hfGainTo_   = hfGain;
     // Jolt on a (control rate): after the detune, scaled per Spring like the
     // Loop-delay Jolt (splash::kJoltSpringScale, M8), clamped below.
     const float joltA = joltOn_ ? splash_.allpassDelta() : 0.0f;
@@ -373,13 +368,11 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
         // Spring inputs: TONE's tilt, plus the Kick's high-passed Loop feed
         // (post-drive); the high path also gets the Clatter (the same for every
-        // Spring: their detuned high paths decorrelate it), and in CLEAN a
-        // little transient lift (ramped across the tick: no zipper).
-        const float hfStep = (hfGainTo_ - hfGainFrom_) * (1.0f / float(kControlInterval));
+        // Spring: their detuned high paths decorrelate it).
         const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
         for (int i = 0; i < n; ++i) {
             mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
-            high[i] = (mono[i] + clatter[i]) * (hfGainFrom_ + hfStep * float(tick_ + i));
+            high[i] = mono[i] + clatter[i];
         }
         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
         for (size_t s = 0; s < springs_.size(); ++s) {
