@@ -1,46 +1,50 @@
 # Handoff
 
-**Written:** 29 Sep 2026, end of session 2. Start the next one with `/resilio-start`. The owner plans to test the plugin, then start the **Versio flashing tasks** (M0 hardware check, TASKS task 3).
+**Written:** 29 Sep 2026, end of session 3 (a long hardware night). Start the next one with `/resilio-start`. The owner plans, in the morning: the SPLASH voicings listening page, then M3 run 11 on the Versio.
 
 ## State
 
 | Milestone | State |
 |---|---|
-| M0 toolchains | Built. **Owner hardware check next** (`docs/m0-hardware-check.md`, flash `dist/resilio_versio_m0_test.bin`; its LED_0 blue = K2, now TENSION) |
-| M1 one Spring + Renderer | Built. **Wellspring recorded and analysed** (T60 ~5 s, repeat ~83 ms, highs 5.7 ms later, fC ~4.5 kHz). Next: DECAY matched to the Wellspring, M1 A/B page |
-| M2 plugin shell | Built. **Owner Ableton check pending** (`docs/m2-ableton-check.md`, updated for TENSION) |
-| M3 hardware profiling | Firmware ready (`MODE=profile`); blocked on M0. Corner lines now read `S3 D1.0 TN0.0 TO1.0` (TENSION 0 = loosest = worst case) |
+| M0 toolchains + hardware | **Passed** on the owner's Versio (Daisy Seed 2). Found: the Versio's analog path inverts polarity and is +1.17 dB hot; the release build undoes both (`kOutputTrim` -0.874). Knob order measured: pots P1–P7 = libDaisy knobs 0, 4, 2, 1, 5, 3, 6 |
+| M1 one Spring + Renderer | Built. **A/B vs the Wellspring built** (`renders/references/wellspring/ab/index.html`, TASKS 4b): Wellspring tail 3.5 s (combined-click method), matched by DECAY 0.70. Owner listen pending |
+| M2 plugin shell | Built. Owner Ableton check pending (TASKS 4) |
+| M3 hardware profiling | **In progress, nearly there.** Worst case 83 → ~63 % average (target 65 %), peak 100 → ~67 % (run 9). Runs 10–11 not measured yet. See `firmware/README.md` "M3 results", ADR 0030 |
 | M4–M7 | Built |
-| M8 tuning | TENSION (ADR 0026 + amendment: up = tighter), CLEAN splash (0025), SPLASH round 2 "heavier clang", TONE bright-side low cut, per-Spring damping/decay spread (0027): all **installed**. Owner listening (TASKS 8–10) feeds round 2 |
+| M8 tuning | Knob layout (ADR 0028), earlier first echo (ADR 0029) done. **SPLASH round 3** in progress: prototype voicings rendered, owner to pick (TASKS 3d) |
 | M9 polish | Not started |
 
-- `main` HEAD: see `git log -1` (this handoff's commit). Last code commit **`ae844da`** = **installed plugin** (`dist/installed_plugin.txt`, 29 Sep 19:13). Everything after it is docs.
-- Gates at `ae844da` (re-run at wrap): **15/15 suites pass**. Firmware release 105,808 B (80 %), m0test 85,976 B (65 %), profile 116,196 B (88 %). M6 grid: 270 ringing cells 0 Ringing (worst 14.6), Howl 54/54 `howl_ok`.
-- SPEC v1.0.14. New ADR 0027. ADR 0009 amended (recordings stay out of git), ADR 0026 amended (TENSION direction).
-- Reference recordings: `test_audio/reference/` holds 12 Wellspring + 13 Magneto WAVs **on the owner's Mac only** (gitignored). Provenance and settings: `test_audio/reference/NOTES.md`. Results: `docs/reference-report.md`.
+- `main` HEAD: this handoff's commit. Code HEAD before it: `fca8d6a` (ADR 0029) plus docs.
+- **Installed plugin: `ae844da`** (29 Sep 19:13, `dist/installed_plugin.txt`). `main` has moved on: ADR 0029's earlier first echo, the Jolt fix and the M3 changes are not in Ableton. Next install after the SPLASH pick.
+- **Gates at wrap:** **15/15 suites pass** (ctest log read, not the exit code). M6 grid after ADR 0029: 270 cells, 0 Ringing (worst 14.7, limit 15, the known KICKED/1 Spring/tight/TONE 1/DECAY 0.75 corner), Howl 54/54. Firmware: release 110,008 B (83 %), m0test 85,976 B (65 %), profile 124,996 B (**95 %, warning**: the benchmark code, see "Will bite").
+- SPEC v1.0.17. New ADRs 0028 (knobs follow the printed panel), 0029 (earlier first echo), 0030 (fitting the CPU).
 
 ## In flight
-- **Nothing running.** No worktrees besides `main`.
-- Branch **`proto/tension`**: fully superseded by `main`. Safe to delete once the owner agrees.
-- `.idea/` in the repo root is the owner's IDE folder; leave it untracked.
+- **Nothing running.** No worktrees besides `main`. Branch `proto/tension` still superseded (owner hasn't said delete).
+- **SPLASH round 3 prototype** lives outside the build: `docs/prototypes/splash-voicings.patch` (apply to a copy of `core/`, build a renderer per `-DRV_SV=0..3`; header has the commands). Renders + listening page: `renders/splash_voicings/index.html` (gitignored; regenerate from the patch if lost). Findings: `docs/m8-tuning-backlog.md` "SPLASH round 3".
+- `dist/` holds every M3 profile binary from tonight (`_dtcm`, `_split`, …, `_run10`, `_run11`); only **`resilio_versio_m3_profile_run11.bin`** matters now. Gitignored, local only.
+- `renders/` new folders: `references/` (M1 A/B), `m3_stagger_ab/`, `m3_stagger_abc/`, `predelay_ab/`, `splash_check/`, `splash_voicings/`. All listened to except `splash_voicings`.
 
 ## Next steps (in order)
-1. **Support the M0 hardware check** (owner's next task, `docs/m0-hardware-check.md`). Help read serial output; never have USB and rack power connected at once. After M0 passes: M3 profiling (`firmware/README.md`), confirming the `CORNER …` lines are readable and the CPU worst case (desktop estimate ~65–70 %, target 65 %).
-2. **M1 A/B:** make `tools/ingest_references.py` measure take A's T60 by combining the six click tails (each single click only reaches ~40 dB above the −94 dBFS floor, so the per-click Schroeder fit fails). Then match DECAY to the Wellspring (B/C read 5.0–5.2 s) and build the A/B review page against `wellspring_A`/`B`/`E` (the ingest's matched-render path does this once A's T60 exists).
-3. **Owner's listening answers** (TASKS 5–10, 8b, 8c) → **M8 round 2**. Known candidates in `docs/m8-tuning-backlog.md` "Session 2 close": the WOBBLE ceiling vs the Magneto (owner decision), sharing WOBBLE's slow Drift across Springs (skank partial at WOBBLE 0.2), and re-running `tools/sweetspot.py` (its report predates TENSION, SPLASH round 2 and the TONE low cut).
-4. **Use the Magneto data:** MW (wow 0 / 0.6 / 3.5 / 8.4 / 7.7 cents at CCW / 9 / 12 / 3 / CW) for WOBBLE's constants once the owner answers the ceiling question; MD1–3 (crest 27 → 21 dB, green → red) as the DRIVEN tape reference (ADR 0020).
+1. **Owner's SPLASH picks** (they paste "Copy results for Claude" output into chat). Build the chosen voicing into the Core from the patch: SPLASH = "how hard the hits hit", derived from the input; Kick keeps its crash; Jolt stays. Then ADR 0031, SplashVoicing constants, rework the SPLASH tests (test_splash, test_drive's SPLASH checks, test_tank crash numbers), re-run the full suite and the M6 grid, and check CPU on the next profile run (the envelope + HF split are cheap, but measure). Then ask about DRIVE coupling (TASKS 3d; B and E showed DRIVE alone barely splashes in our model).
+2. **M3 run 11** (owner flashes `dist/resilio_versio_m3_profile_run11.bin`, USB only, streams in the Claude Terminal panel; read with `read_terminal` on its tab). Target: worst case (S3 D1.0 TN0.0) `max` ≤ 65 %. If still over: candidates in `firmware/README.md` "M3 results" (more reciprocal/division work, the output stage's 9 %, drive stages). Block 96 only with the owner's OK (ADR 0030). Then trim `m3_bench.cpp` out of the profile build (flash 95 %) and hand the owner the **release** firmware to flash and play (their knob layout, output fix): verify a passthrough take matches a cable (polarity and level) once.
+3. **Install the plugin** after SPLASH lands (`tools/install_plugin.sh <commit>`, TASKS "Plugin installed" line, rescan note).
+4. **Metrics.cpp T60** reads long on repeated stimuli (segment ends at the next event's -40 dBFS crossing, which includes a spring's build-up): fix, then re-check every gate that pins a T60 (tuning backlog, M1 section).
+5. Owner listening backlog (TASKS 4b, 5–10) feeds M8 round 2.
 
 ## Waiting on the owner (`docs/TASKS.md`)
-M0 hardware check (task 3), M2 Ableton check (task 4), listening tasks 5–10 on the new build (8b SPLASH C, 10 TENSION/DECAY and the ringing corners), the WOBBLE-ceiling decision (task 2), the ATTITUDE-flip Howl-exit question (task 8), the M7 questions (task 9), whether to delete `proto/tension`. Stereo-in stays "after M3".
+SPLASH voicings page (3d) and the DRIVE-coupling decision; M3 run 11 (3c); M2 Ableton check (4); M1 A/B listen (4b); listening tasks 5–10; WOBBLE ceiling (2); delete `proto/tension`?
 
 ## Will bite
-- **Thin margins:** M6 worst cell 14.6 dB vs 15 (KICKED, 1 Spring, tightest TENSION, TONE 1, DECAY 0.75, noise bursts; SPLASH's clang in the Loop nudges it). test_tank stab mono notch −4.4 vs −4.5 (after `kSide2` 0.43 → 0.40). CLEAN DRIVE mildness −15.5..−16.6 vs ≤ −15. Re-run the full suite and the M6 grid after any change to Springs, SPLASH, DRIVE or TONE.
-- **TENSION direction:** 1 = tight, 0 = loose (flipped mid-session). Older renders (`renders/tension/`) and backlog notes written before the flip use 0 = tight; they say so.
-- **Worst case is TENSION 0** (loosest: most stages, longest L). Tests that pin "worst" use `tension = 0`.
-- **Git:** `git apply --3way` stages what it applies; a docs commit swept in staged core files once this session (caught before pushing). Keep the main checkout on `main`: the owner reads docs from it (CLAUDE.md Git rule).
-- **Ableton sessions:** unwarped clips store start markers in **seconds**; the `01_clicks` clips had a stray 0.005 s start (compensated on copy). Recordings land ~10 samples early (TRS); ADAT/OPTX2 is ~94 samples later than TRS (own loopback per path). A loaded plugin keeps the old build after an install: restart Live, rescan, fresh instance.
-- **Disk:** the Mac ran out of space once (renders). `renders/` was cleaned 31 → ~3 GB; keep big sweeps in scratch and delete their WAVs after reading the sidecars.
-- **Environment:** GitHub routing drops on this network (retry push later). Never run `auval -a` or touch CoreAudio (CLAUDE.md).
+- **ctest exit codes lie through pipes.** Tonight a piped background run "exited 0" with 2 suites failing. Log to a file and gate on `100% tests passed` (CLAUDE.md Hard rules).
+- **Test windows that assume the pickup position:** the Tank-level chirp tests now use `modes::kPickupArrival` (ADR 0029). Any other test that windows "the first echo" by a fixed multiple of L will break the same way if the pickup moves again.
+- **Thin margins:** M6 worst cell 14.7 vs 15 (same corner as before). SPLASH round 3 changes what goes into the Loops: re-run the grid.
+- **Firmware vs desktop numerics:** firmware uses `-ffp-contract=off`, the desktop fuses; outputs differ ~90 dB down (recirculating tails). Bit-exact checks must compare like with like: build the old and new `core/` with the same flags (tonight: a small harness driving `rv::Tank` with parameter moves and Kicks, float32 output compared byte for byte, once with `-ffp-contract=off`).
+- **M7 performance intuition was wrong twice tonight:** reordering the Chirp loop stage-by-stage was bit-exact but slower; measure on the chip (`m3_bench.cpp` shapes print as a BENCH line) before committing to a shape. Profile flash is at 95 %: drop the bench (or the SPLIT/PEAK code) before adding more.
+- **Serial on the Versio:** USB CDC `TransmitInternal` drops a second back-to-back send; build one buffer per report. On USB power the knobs read 1000 (no rack rails): knob checks happen on rack power via LEDs. Never USB + rack power together.
+- **Owner-facing review pages:** columns per group, colour-coded headers, settings as chips, synced switching, picks + notes + "Copy results" (memory `review-pages-columns`). The older `make_review.py` pages were hard to use; update that tool when next touched.
+- **Preview pane can't play local audio** (it snapshots `file://` pages as `data:`); verify file paths from the shell instead.
+- **GitHub routing drops** on this network happen; retry push later.
 
 ## Where to look
-`docs/TASKS.md` · `docs/m0-hardware-check.md` · `firmware/README.md` · `docs/m8-tuning-backlog.md` ("Session 2 close") · `docs/reference-report.md` + `test_audio/reference/NOTES.md` · `docs/adr/0026`, `0027`
+`docs/TASKS.md` (3c, 3d) · `firmware/README.md` "M3 results" · `docs/m8-tuning-backlog.md` "SPLASH round 3" · `docs/prototypes/splash-voicings.patch` · `docs/adr/0028`–`0030` · `core/dsp/Splash.cpp` + `core/params/SplashVoicing.h` (where round 3 lands)

@@ -2,11 +2,12 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 · **Milestones:** M0 **passed** (release firmware now corrects the Versio's flipped polarity and +1.2 dB) · Knob layout set to your panel (task 3b) · M1: A/B page against the Wellspring ready (task 4b) · M2 needs your Ableton check · M3: worst case 63 % average (target 65 %), peaks 75 % still to fix (task 3c) · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 (session 3 wrap) · **Milestones:** M0 **passed** · M1: A/B vs the Wellspring ready (4b) · M2 needs your Ableton check · M3: worst case **63 % average** (target 65 %), peaks ~67 %; run 11 to measure (3c) · M8: SPLASH round 3 voicings to judge (3d) · Knob layout set to your panel (3b)
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
-**Next:** the listening tasks (8–10) are ready on the new build.
+**Next install would bring:** the earlier first echo (ADR 0029), the jolt fix, and the SPLASH choice once made. Not installed yet: `main` has moved past `ae844da`.
+**Next:** SPLASH voicings page (3d), then run 11 on the Versio (3c).
 
 ## To do (suggested order)
 
@@ -58,7 +59,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Run 9 (29 Sep): springs take changes in turn (your pick). Peaks 75 → ~67 %; close to the target
 - [x] Listened (29 Sep): a bit more undulation on KICKED hits with the stagger. Cause: SPLASH's jolt reached springs B and C a tick or two late. Fixed: the jolt now reaches all springs together; only the heavy recalculation takes turns (now within 112–118 dB of the original sound)
 - [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
-- [ ] Run 10: flash **`dist/resilio_versio_m3_profile_run10.bin`** (USB only), stream ~2 minutes. The fix above, plus fewer slow divisions in the drive stages
+- [ ] **Run 11:** flash **`dist/resilio_versio_m3_profile_run11.bin`** (USB only; skip run 10, which predates the earlier first echo), stream ~2 minutes. Everything from tonight: jolt fix, fewer slow divisions, earlier first echo
 
 ### 3d. Slapback gap and SPLASH (29 Sep)
 - [x] The gap between dry and reverb felt like slapback at low MIX. Decided: **earlier first echo** at every TENSION, same echo spacing ([ADR 0029](adr/0029-earlier-first-echo.md)). Loose tank now 32 ms, like your Wellspring (was 45). Listened: `renders/predelay_ab/`, most noticeable at higher TENSION
@@ -154,12 +155,18 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **Possible follow-up:** on the skank with WOBBLE around 9 o'clock, one partial on a tight tank can still hang on after the chord (ADR 0027 "Open"); WOBBLE's per-spring drift is the suspect
-- Round 2 after your round-1 listen (8c) and the TENSION listen. Known: worst-case CPU is estimated at ~65–66% vs a 65% target (TENSION adds ~2%); confirm on hardware in M3 before trimming
-- M8 gain staging: loud held chords can push the wet up to the safety limiter (smooth, but the wet runs hot on resonant material; ties to M7 question "bright vs dark material")
-- M3 profiling: firmware is ready ([firmware/README.md](../firmware/README.md)); flashing waits for your M0 check
+- **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
+- **SPLASH round 3:** build your pick from `renders/splash_voicings/` into the Core, with an ADR, tests and the Kick keeping its crash
+- **Metrics.cpp T60:** reads long on repeated stimuli (tuning backlog, M1 section); fix and re-check the gates that pin a T60
+- **Possible follow-up:** on the skank with WOBBLE around 9 o'clock, one partial on a tight tank can still hang on after the chord (ADR 0027 "Open")
+- M8 gain staging: loud held chords can push the wet up to the safety limiter (ties to the M7 question "bright vs dark material")
 
 ## Done
+
+- 29 Sep 2026: **Earlier first echo** (ADR 0029): loose tank's gap 45 → 32 ms, like your Wellspring; echo spacing unchanged
+- 29 Sep 2026: **M3 CPU**: worst case 83 % → 63 % average, 100 % → ~67 % peak, sound unchanged (faster memory for the delay lines, no fused multiply-add, pipelined spring stages, cached design maths, springs recalculating in turn with the jolt kept together, fewer divisions)
+- 29 Sep 2026: **Knob layout** set to your printed Versio panel (ADR 0028)
+- 29 Sep 2026: **M1 A/B** against the Wellspring built (tail 3.5 s; the old "5 s" was a measuring error)
 
 - 29 Sep 2026: **M0 passed** on the Versio: controls, LEDs, CV, gate and audio all work. The Versio's own circuit flips the signal and adds 1.2 dB; the release firmware now undoes both, so MIX 0 matches a cable
 
