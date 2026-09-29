@@ -908,7 +908,7 @@ void aliasing()
             s.att = 1;
             s.drive = 1.0f;
             s.decay = 0.3f;
-            s.tension = 1.0f;
+            s.tension = 0.0f; // loosest tank
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
@@ -923,7 +923,7 @@ void aliasing()
             s.att = 2;
             s.drive = 1.0f;
             s.decay = 0.3f;
-            s.tension = 1.0f;
+            s.tension = 0.0f; // loosest tank
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
@@ -1203,7 +1203,7 @@ void stabilityGrid()
                         s.drive = dr;
                         s.decay = d;
                         s.springs = m;
-                        s.tension = 1.0f;
+                        s.tension = 0.0f; // loosest tank
                         const Stereo o = renderWith(s, in);
                         const float pk = std::max(peakAbs(o.l), peakAbs(o.r));
                         worstPeak = std::max(worstPeak, pk);
@@ -1231,7 +1231,7 @@ void stabilityGrid()
                     }
     std::snprintf(msg, sizeof msg,
                   "Stability ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x SPRINGS (%d cells, impulse + 1 s full-scale "
-                  "noise, TENSION 1): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
+                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
                   cells, worstPeak, bad);
     check(bad == 0, msg);
 
@@ -1411,7 +1411,7 @@ void performance()
 {
     // Same method as M1/M4 (test_spring, test_tank): desktop ns/sample x
     // (15..25 x slower per sample on a Cortex-M7 @ 480 MHz) x 0.48 cycles/ns.
-    // Worst-case knobs: DECAY / TENSION / TONE / DRIVE 1, MIX 0.5, noise in.
+    // Worst-case knobs: DECAY / TONE / DRIVE 1, TENSION 0 (loosest: most stages), MIX 0.5, noise in.
     // Best of 3 runs per cell (the desktop is shared with other processes).
     const size_t n = size_t(4.0f * kFs);
     const Buf in = noise(n, 0.3f, 5u);
@@ -1425,7 +1425,7 @@ void performance()
                 t.prepare(kFs, 48);
                 Settings s;
                 s.decay = 1.0f;
-                s.tension = 1.0f;
+                s.tension = 0.0f; // loosest tank
                 s.tone = 1.0f;
                 s.drive = 1.0f;
                 s.mix = 0.5f;

@@ -833,7 +833,7 @@ void performance()
     for (int m = 0; m < 3; ++m) {
         rv::Tank t;
         t.prepare(kFs, 48);
-        apply(t, Settings{1.0f, 1.0f, 1.0f, 0.5f, m});
+        apply(t, Settings{1.0f, 0.0f, 1.0f, 0.5f, m}); // DECAY/TONE 1, TENSION 0 (loosest)
         const auto t0 = std::chrono::steady_clock::now();
         for (size_t pos = 0; pos < n; pos += 48)
             t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
@@ -841,7 +841,7 @@ void performance()
         const double ns = std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
         int stages = 0;
         for (int s = 0; s < 3; ++s) stages += int(t.spring(s).activeStages());
-        std::printf("INFO  %s, DECAY/TENSION/TONE 1: %d stages total (cap %d/Spring, idle %d), %.1f ns/sample desktop, "
+        std::printf("INFO  %s, DECAY/TONE 1, TENSION 0: %d stages total (cap %d/Spring, idle %d), %.1f ns/sample desktop, "
                     "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget)\n",
                     kModeName[m], stages, rv::modes::kStageCap[size_t(m)], rv::modes::kIdleStages, ns, ns * 15 * 0.48,
                     ns * 25 * 0.48, ns * 15 * 0.48 / 100, ns * 25 * 0.48 / 100);

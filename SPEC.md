@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0019). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.13 — ADR 0026 amended (owner, by ear): TENSION turns up = tighter (CW tight, CCW loose); §3 and §4.4 flipped.
 - v1.0.12 — ADR 0026 implemented: K2 TENSION (§3), DECAY = T60 only (§3, §4.4 rewritten), M1/M4/M8/§5 criteria reworded from BOING to TENSION.
 - v1.0.11 — ADR 0026: TENSION replaces BOING ("which tank"), DECAY becomes tail length only; supersedes ADR 0012; implementation staged.
 - v1.0.10 — ADR 0025: CLEAN gets a real, gentler splash (light Clatter + tiny Jolt); §4.5 table updated.
@@ -93,7 +94,7 @@ Owner's own hardware (Wellspring, Teaching Machines: desktop stereo BBD delay + 
 |---|---|---|---|
 | K0 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | Range ~0.3–0.5 s → ~8–10 s, always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION low). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
 | K1 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
-| K2 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CCW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CW loose (long tank, big darker chirp, slow repeats). Turning it bends the live tail's pitch, like stretching the tank (ADR 0026) |
+| K2 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
 | K3 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
 | K4 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
 | K5 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
@@ -171,9 +172,9 @@ out_spring = DriveOut( C_lf + hf_level(tone) × C_hf )
 
 | TENSION | Loop delay L | fC (→ stretch K) | `a` | Stages | Effect |
 |---|---|---|---|---|---|
-| 0 tight | 33 ms | 4.6 kHz | 0.40 | 24 | short tank, small bright chirp (~5 ms), quick repeats (Space Echo) |
+| 0 loose | 110 ms | 2.7 kHz | 0.55 | 64 | long tank, big darker chirp (~37 ms), slow repeats (Swissecho, SNRA500) |
 | 0.5 | 69 ms | 3.3 kHz | 0.47 | 40 | the IR library's median tank (~15 ms chirp) |
-| 1 loose | 110 ms | 2.7 kHz | 0.55 | 64 | long tank, big darker chirp (~37 ms), slow repeats (Swissecho, SNRA500) |
+| 1 tight | 33 ms | 4.6 kHz | 0.40 | 24 | short tank, small bright chirp (~5 ms), quick repeats (Space Echo) |
 
 Log-linear between anchors for L and fC, linear for `a` and stages; SPRINGS modes cap the stage count (3 Springs: 52). DECAY sets the feedback g for T60 0.4 → 9 s (exponential), designed from each Spring's own round trip, so tail length doesn't depend on TENSION. Fractional-delay interpolation + slew limiting on L.
 
@@ -261,7 +262,7 @@ Measurable criterion (starting thresholds — tune/confirm in interview):
 ## 5. Performance budget
 
 - 48 kHz, block 48 initial. 480 MHz ÷ 48 kHz ≈ **10,000 cycles/sample**.
-- Target **≤ 65% CPU** worst case (3 springs, KICKED, max TENSION, max DRIVE).
+- Target **≤ 65% CPU** worst case (3 springs, KICKED, loosest TENSION (0), max DRIVE).
 - Main costs: allpass cascades, oversampled nonlinear stages. Mitigations:
   1. Delay lines + filter state in internal SRAM, not SDRAM.
   2. Decimated low-chirp path (×2/×4) per Parker 2011.
@@ -378,7 +379,7 @@ Shared definitions:
 ### M1 — Core: one Spring, CLEAN + Renderer
 - [A] Click render shows repeating dispersive chirps: spectrogram has chirps (highs later, ADR 0024) at a regular repeat time matching the configured L *(±5%)*.
 - [A] Stable at every DECAY × TENSION corner (grid incl. extremes): no NaN/Inf, no growth, tail decays at max DECAY (ADR 0001). T60 at min DECAY 0.3–0.5 s (ADR 0006), at max 8–10 s.
-- [A] TENSION 0 still shows a chirp (ADR 0007).
+- [A] TENSION 1 (tightest) still shows a chirp (ADR 0007).
 - [A] Deterministic: same input + params → bit-identical output.
 - [A] Metrics reported per render: peak, RMS, T60, resonance ratio, NaN/Inf count, clip count, click-detector hits.
 - [A] Review page generated for the M1 grid, next to the Wellspring Reference set.
@@ -403,7 +404,7 @@ Shared definitions:
 - [L] 1 → 2 → 3 sounds sparse/drippy → classic → dense/lush, clearly different in a blind test.
 - [A] Stereo: clearly wide (inter-channel correlation of the wet tail < 0.5 *(start)*). Mono-safe: mono fold-down (L+R) energy no more than 1.5 dB below the stereo (L²+R²) energy, i.e. no phase cancellation (definition: `docs/m4-contracts.md`), no comb-filter notches > 6 dB in the 200 Hz–5 kHz band.
 - [A] DECAY sweep min→max over 4 s on a held tail: no click-detector hits, no loudness jump > 3 dB in any 100 ms step. TENSION sweep likewise, with a smooth pitch bend (ADR 0026; was DECAY's, ADR 0012).
-- [L] TENSION sweep audibly goes tight/pingy → loose/boingy; DECAY sweep goes short → long without retuning the echoes.
+- [L] TENSION sweep audibly goes loose/boingy → tight/pingy; DECAY sweep goes short → long without retuning the echoes.
 
 ### M5 — Drive chain + TONE tilt
 - [L] ATTITUDE at DRIVE noon on a snare: CLEAN hi-fi, DRIVEN warm tape dub, KICKED gritty/trashed. Owner picks all three correctly in a blind test.

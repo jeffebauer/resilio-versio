@@ -519,7 +519,7 @@ void determinism()
 }
 
 // ---- 5. CPU (INFO) ---------------------------------------------------------------------------
-// SPEC §5 worst case (3 Springs, KICKED, TENSION/TONE/DRIVE max) with every M7
+// SPEC §5 worst case (3 Springs, KICKED, TONE/DRIVE max, TENSION loosest) with every M7
 // part busy: a hard noise hit and a Kick 12 times a second each (Clatter,
 // Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE 1; against the
 // same with SPLASH 0 / WOBBLE 0, no hits, no Kicks (steady noise). Daisy
@@ -540,7 +540,7 @@ void performance()
         t.prepare(kFs, 48);
         t.setParam(rv::ParamId::Mix, 0.5f);
         t.setParam(rv::ParamId::Decay, 0.85f);
-        t.setParam(rv::ParamId::Tension, 1.0f);
+        t.setParam(rv::ParamId::Tension, 0.0f); // loosest tank: most stages
         t.setParam(rv::ParamId::Tone, 1.0f);
         t.setParam(rv::ParamId::Drive, 1.0f);
         t.setParam(rv::ParamId::Attitude, 1.0f);
@@ -562,7 +562,7 @@ void performance()
         busy = std::min(busy, bench(hits, true));
         base = std::min(base, bench(steady, false));
     }
-    std::printf("INFO  CPU worst case, 3 Springs KICKED TENSION/TONE/DRIVE 1: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
+    std::printf("INFO  CPU worst case, 3 Springs KICKED TONE/DRIVE 1 TENSION 0: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
                 "12/s) %.1f ns/sample, est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k); M7 quiet (SPLASH 0, "
                 "WOBBLE 0, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
                 busy, busy * 15 * 0.48, busy * 25 * 0.48, busy * 15 * 0.48 / 100, busy * 25 * 0.48 / 100, base,

@@ -115,23 +115,23 @@ constexpr bool springActive(int mode, int s) { return s <= mode; }
 // mono-safe by construction, instead of from different arrival times.
 //
 // TENSION (ADR 0026): the pickup also lines up the Chirp chains. The detune
-// of a and fC gives each Spring its own chain delay: at TENSION 1 (64
+// of a and fC gives each Spring its own chain delay: on the loosest tank (64
 // stages) B's echo body arrives ~1 ms after A's, C's ~0.4 ms before
-// (TENSION 0, 24 stages: 0.2 / 0.1 ms). Two near-copies ~1 ms apart cancel
+// (tightest, 24 stages: 0.2 / 0.1 ms). Two near-copies ~1 ms apart cancel
 // broadly around 500 Hz in mono. Once the tail is long that washes out over
-// many round trips, but at DECAY 0 x TENSION 1 (a 110 ms tank, ~4 trips)
+// many round trips, but at DECAY 0 on the loosest tank (110 ms, ~4 trips)
 // the first echoes are most of what you hear, and the mono sum of 2 and 3
 // Springs lost -7 to -10 dB around 550-750 Hz. So each Spring's offset
 // includes (A's chain delay - its own) at kPickupAlignHz (Tank; recomputed
 // as TENSION and SPRINGS move, and glided, so it never clicks): B and C's
 // echo bodies land on A's at every TENSION, not only at the tight end.
 // 800 Hz: the middle of the band that combed (grid search: 250-1000 Hz all
-// fix TENSION 1; 800 keeps the most margin over DECAY 0-0.25 x TENSION
+// fix the loose end; 800 keeps the most margin over DECAY 0-0.25 x TENSION
 // 0-1 in steps of 1/8; above ~1 kHz, closer to fC, it gets worse again).
 // The trims were re-searched on top: B's +0.15 ms stays; C's moved from
 // -0.8 to -1.2 ms (with the alignment adding back 0.1-0.4 ms, C's net
 // offset is about what it was at long TENSION and 0.3 ms earlier when tight,
-// which keeps the 3-Spring mono sum full at DECAY 0 x TENSION 0).
+// which keeps the 3-Spring mono sum full at DECAY 0 on the tightest tank).
 inline constexpr std::array<float, kNumSprings> kPickupTap{{0.52f / 0.965f, 0.52f / 1.05f, 0.52f / 0.925f}};
 inline constexpr std::array<float, kNumSprings> kPickupOffsetSeconds{{0.0f, 0.00015f, -0.0012f}}; // A, B, C
 constexpr float kPickupAlignHz = 800.0f;

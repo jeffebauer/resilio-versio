@@ -40,7 +40,7 @@ constexpr float kMicroModNorm        = 1.35f;   // smoothed-random peaks -> ~+-1
 // fraction of L moves every resonance by the same few tenths of a Hz, so on
 // a tight tank it moves them a much smaller share of their spacing, and at
 // max DECAY (~270 round trips) one of them could outlive its neighbours
-// (M6 grid: 4 of 90 TENSION-0 cells at ringing_db 15-20). Below
+// (M6 grid: 4 of 90 tightest-tank cells at ringing_db 15-20). Below
 // kMicroModRefLoopSeconds the depth grows as 1/L, so the drift in samples
 // stays what it is at the reference tank.
 constexpr float kMicroModRefLoopSeconds = 0.069f; // TENSION noon's L

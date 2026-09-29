@@ -585,7 +585,7 @@ def analyse_file(path):
 
 # Mirrors core/params/Mappings.h + SpringModes.h (Spring A detune) + Spring.cpp.
 # Kept in sync by hand; the renders check (--renders) catches drift.
-# TENSION anchors (tight, noon, loose; ADR 0026): L and fC log-linear per half,
+# TENSION anchors written tight, noon, loose (TENSION 1, 0.5, 0; ADR 0026): L and fC log-linear per half,
 # a and the stage share linear per half. DECAY sets T60 only. HighsLater (ADR 0024).
 MAP = dict(t60=(0.4, 9.0), L=(0.033, 0.069, 0.110), fc=(4600.0, 3300.0, 2700.0), a=(0.40, 0.47, 0.55),
            M=(24, 64), m_frac_mid=0.40, damp=(1600.0, 9000.0))
@@ -608,11 +608,12 @@ def model_settings(decay, tension, tone=0.5, detune=True):
     """Spring A's settings at DECAY / TENSION / TONE. DECAY only sets T60, so
     it doesn't enter the round trip (kept in the signature for the grids)."""
     d = DETUNE_A if detune else dict(L=1.0, fc=1.0, a=1.0)
+    u = 1.0 - tension  # looseness: TENSION 1 = tight (MAP is written tight -> loose)
     return {
-        "L_s": anchor_exp(*MAP["L"], tension) * d["L"],
-        "fc_hz": anchor_exp(*MAP["fc"], tension) * d["fc"],
-        "a": anchor_lin(*MAP["a"], tension) * d["a"],
-        "M": MAP["M"][0] + int((MAP["M"][1] - MAP["M"][0]) * anchor_lin(0.0, MAP["m_frac_mid"], 1.0, tension) + 0.5),
+        "L_s": anchor_exp(*MAP["L"], u) * d["L"],
+        "fc_hz": anchor_exp(*MAP["fc"], u) * d["fc"],
+        "a": anchor_lin(*MAP["a"], u) * d["a"],
+        "M": MAP["M"][0] + int((MAP["M"][1] - MAP["M"][0]) * anchor_lin(0.0, MAP["m_frac_mid"], 1.0, u) + 0.5),
         "damp_hz": exp_lerp(*MAP["damp"], tone),
     }
 

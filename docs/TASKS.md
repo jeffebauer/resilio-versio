@@ -97,12 +97,13 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material than on bright, hissy material. OK, or should it even out?
 
 ### 10. Listen: TENSION + DECAY (≈20 min) · the build is installed
-- Open from Finder: `renders/tension/tension_clean/index.html` (and `tension_driven`, `tension_kicked`): TENSION 0 → 1 on hits, DECAY noon. Then `renders/tension/decay_clean/index.html` (and `_driven`, `_kicked`): DECAY 0 → 1 at TENSION noon. All at MIX 0.5, SPRINGS 2. Or just play the plugin
-- [ ] Does each TENSION position sound like **one real tank**, tight and pingy at the left and a proper dub tank (not cartoonish) at the right?
+- Open from Finder: `renders/tension/tension_clean/index.html` (and `tension_driven`, `tension_kicked`): TENSION 0 → 1 on hits, DECAY noon. *(These pages were made before the flip: on them TENSION 0 is tight. In the plugin now, turning TENSION **up** is tighter.)* Then `renders/tension/decay_clean/index.html` (and `_driven`, `_kicked`): DECAY 0 → 1 at TENSION noon. All at MIX 0.5, SPRINGS 2. Or just play the plugin
+- [ ] Does each TENSION position sound like **one real tank**, a proper dub tank (not cartoonish) fully down and tight and pingy fully up?
 - [ ] DECAY: does **only the length** change, with the echoes staying put?
-- [ ] Turn TENSION on a ringing tail: it bends the pitch like stretching the tank. Nice, or too much?
-- [ ] **Tight tank, short-to-medium tail** (TENSION fully left, DECAY 9–12 o'clock): does one note **ping** out of the end of the tail? The meters put it right at the edge of "Ringing"; your ears decide whether it needs fixing
-- [ ] **KICKED Howl on a tight tank** (TENSION left, DECAY max): it leans more toward one pitch, like a siren. Still a rough roar, or too tonal?
+- [x] Direction: **turning up = tighter** (29 Sep, your note; flipped)
+- [ ] Turn TENSION on a ringing tail: turning up raises the pitch like tightening a string. Nice, or too much?
+- [ ] **Tight tank, short-to-medium tail** (TENSION fully up, DECAY 9–12 o'clock): does one note **ping** out of the end of the tail? The meters put it right at the edge of "Ringing"; your ears decide whether it needs fixing
+- [ ] **KICKED Howl on a tight tank** (TENSION fully up, DECAY max): it leans more toward one pitch, like a siren. Still a rough roar, or too tonal?
 - [ ] Anything in the old BOING range you miss (e.g. a short tank with a huge chirp)?
 
 ## Later (no action now)

@@ -451,7 +451,7 @@ void loopEvenness()
                         // ~2 s and longer, where a band could audibly Ring; the
                         // M6 grid is DECAY 0.75 and 1). Below that it is
                         // reported: with a > 0 (highs later) the tightest slap
-                        // at max TENSION has its Chirp's top edge lasting ~1.5x
+                        // at the loosest TENSION has its Chirp's top edge lasting ~1.5x
                         // its neighbours (0.6 s vs 0.4 s), a "ping", not Ringing.
                         if (d < 0.5f) shortBump = std::max(shortBump, tBump);
                         if (pMax >= 1.0 || tRatio > 1.05 || pBump > 0.5 || (d >= 0.5f && tBump > 1.15)) ++bad;
@@ -510,7 +510,7 @@ void tankTails()
                 s.att = a;
                 s.springs = m;
                 s.decay = a == 2 ? 0.75f : 1.0f; // KICKED DECAY 1 is the Howl zone
-                s.tension = 1.0f;
+                s.tension = 0.0f; // loosest tank
                 rv::Tank t;
                 t.prepare(kFs, 48);
                 apply(t, s);
@@ -524,7 +524,7 @@ void tankTails()
                 }
             }
     std::snprintf(msg, sizeof msg,
-                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 1, WOBBLE 0): "
+                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 0 (loose), WOBBLE 0): "
                   "%d of %d flagged, worst ringing_db %.1f (%s; limit %.0f)",
                   flagged, n, worst, worstAt, rv::metrics::kRingingGrowthDb);
     check(flagged == 0, msg);

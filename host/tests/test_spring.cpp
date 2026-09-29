@@ -242,7 +242,7 @@ char msg[256];
 // ---- 1. Chirp present, in the direction map::kChirpDirection asks for ---------
 // LowsLater: in the first echo the high band (0.5-0.85 fC) arrives before
 // 200-500 Hz. HighsLater: the high band (0.8-0.97 fC: a rising Chirp's delay
-// piles up toward fC, and at TENSION 0 the whole ~3 ms Chirp lives there)
+// piles up toward fC, and at TENSION 1 (tight) the whole ~3 ms Chirp lives there)
 // arrives after it. `lag` is how much later the late band
 // arrives, so both directions share one check.
 void chirpHighsBeforeLows()
@@ -516,7 +516,7 @@ void performance()
     Buf l(n), r(n);
     rv::Tank t;
     t.prepare(fs, 48);
-    apply(t, Settings{1.0f, 1.0f, 1.0f, 0.5f});
+    apply(t, Settings{1.0f, 0.0f, 1.0f, 0.5f}); // DECAY/TONE 1, TENSION 0 (loosest)
     t.setParam(rv::ParamId::Springs, 0.0f); // 1-Spring mode (M4: 2 idle Springs still run; test_tank has all modes)
     const auto t0 = std::chrono::steady_clock::now();
     for (size_t pos = 0; pos < n; pos += 48)
@@ -524,7 +524,7 @@ void performance()
     const auto t1 = std::chrono::steady_clock::now();
     const double ns = std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
     // Daisy estimate: M7 @ 480 MHz assumed 15–25x slower per sample than this desktop.
-    std::printf("INFO  process() worst case (DECAY/TENSION/TONE 1): %.1f ns/sample desktop, "
+    std::printf("INFO  process() worst case (DECAY/TONE 1, TENSION 0): %.1f ns/sample desktop, "
                 "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget, 1-Spring mode)\n",
                 ns, ns * 15 * 0.48, ns * 25 * 0.48, ns * 15 * 0.48 / 100, ns * 25 * 0.48 / 100);
     std::printf("INFO  Tank memory: %zu bytes at 48 kHz (object %zu + pool), %zu bytes at 96 kHz\n",
@@ -538,22 +538,23 @@ void mappings()
     using namespace rv::map;
     bool ok = decayT60Seconds(0) >= 0.3f && decayT60Seconds(0) <= 0.5f && decayT60Seconds(1) >= 8.0f
            && decayT60Seconds(1) <= 10.0f;
-    // TENSION anchors (ADR 0026): tight 33 ms / 4.6 kHz / 0.40 / 24, noon
-    // 69 ms / 3.3 kHz / 0.47 / 40, loose 110 ms / 2.7 kHz / 0.55 / 64; each
-    // rises (fC falls) steadily from tight to loose.
-    ok &= std::fabs(tensionLoopDelaySeconds(0) - 0.033f) < 1e-4f && std::fabs(tensionLoopDelaySeconds(0.5f) - 0.069f) < 1e-4f
-          && std::fabs(tensionLoopDelaySeconds(1) - 0.110f) < 1e-4f;
-    ok &= std::fabs(tensionTransitionHz(0) - 4600.0f) < 1.0f && std::fabs(tensionTransitionHz(1) - 2700.0f) < 1.0f;
-    ok &= tensionStages(0) == kMinStages && tensionStages(0.5f) == 40 && tensionStages(1) == kMaxStages;
-    ok &= kChirpSign * tensionCoefficient(0) > 0.3f;
+    // TENSION anchors (ADR 0026): more tension = tighter. TENSION 1 tight
+    // 33 ms / 4.6 kHz / 0.40 / 24, noon 69 ms / 3.3 kHz / 0.47 / 40, TENSION 0
+    // loose 110 ms / 2.7 kHz / 0.55 / 64; turning up, L, K, |a| and M fall
+    // steadily (fC rises).
+    ok &= std::fabs(tensionLoopDelaySeconds(1) - 0.033f) < 1e-4f && std::fabs(tensionLoopDelaySeconds(0.5f) - 0.069f) < 1e-4f
+          && std::fabs(tensionLoopDelaySeconds(0) - 0.110f) < 1e-4f;
+    ok &= std::fabs(tensionTransitionHz(1) - 4600.0f) < 1.0f && std::fabs(tensionTransitionHz(0) - 2700.0f) < 1.0f;
+    ok &= tensionStages(1) == kMinStages && tensionStages(0.5f) == 40 && tensionStages(0) == kMaxStages;
+    ok &= kChirpSign * tensionCoefficient(1) > 0.3f;
     for (int i = 0; i < 20; ++i) {
         const float v0 = 0.05f * float(i), v1 = v0 + 0.05f;
-        ok &= tensionLoopDelaySeconds(v1) > tensionLoopDelaySeconds(v0)
-              && stretchK(tensionTransitionHz(v1), 48000) > stretchK(tensionTransitionHz(v0), 48000)
-              && kChirpSign * tensionCoefficient(v1) > kChirpSign * tensionCoefficient(v0) && tensionStages(v1) >= tensionStages(v0);
+        ok &= tensionLoopDelaySeconds(v1) < tensionLoopDelaySeconds(v0)
+              && stretchK(tensionTransitionHz(v1), 48000) < stretchK(tensionTransitionHz(v0), 48000)
+              && kChirpSign * tensionCoefficient(v1) < kChirpSign * tensionCoefficient(v0) && tensionStages(v1) <= tensionStages(v0);
     }
     ok &= mixGains(0).dry == 1.0f && mixGains(0).wet == 0.0f && mixGains(1).dry == 0.0f && mixGains(1).wet == 1.0f;
-    check(ok, "Mappings: T60 0.4-9 s; TENSION anchors (L 33/69/110 ms, fC 4.6-2.7 kHz, M 24/40/64), L, K, |a|, M rise steadily; exact MIX ends");
+    check(ok, "Mappings: T60 0.4-9 s; TENSION anchors (tight 1 .. loose 0: L 33/69/110 ms, fC 4.6-2.7 kHz, M 24/40/64), L, K, |a|, M fall steadily as TENSION rises; exact MIX ends");
 
     // Loop gain < 1 everywhere (ADR 0001).
     bool below = true;

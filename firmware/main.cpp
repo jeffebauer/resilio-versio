@@ -315,9 +315,9 @@ bool PrepareTank()
 // Full grid: SPRINGS 1/2/3 x DECAY {0,1} x TENSION {0,1} x TONE {0.5,1} = 24
 // corners, all at MIX 1 (fully wet, so the meter sees Tank cost, not dry
 // mix), ATTITUDE KICKED and DRIVE max on every corner (see block comment
-// above). The SPEC §5 worst case ("3 springs, KICKED, max TENSION, max
+// above). The SPEC §5 worst case ("3 springs, KICKED, loosest TENSION (0), max
 // DRIVE") is already inside this grid once DRIVE matters; until then it is
-// the springs=3/decay=1/tension=1 corners, flagged in the printed name.
+// the springs=3/decay=1/tension=0 corners, flagged in the printed name.
 struct Corner {
     int   springsPos; // 0/1/2 -> 1/2/3 Springs (Switch3 encoding)
     float decay, tension, tone;
@@ -353,7 +353,7 @@ void BuildCornerTable()
                     c.decay      = decay;
                     c.tension      = tension;
                     c.tone       = tone;
-                    const bool worst = springsPos == 2 && decay >= 1.0f && tension >= 1.0f;
+                    const bool worst = springsPos == 2 && decay >= 1.0f && tension <= 0.0f; // loosest tank: most stages
                     char*      p     = c.name;
                     const char* end  = c.name + sizeof(c.name);
                     *p++ = 'S';
