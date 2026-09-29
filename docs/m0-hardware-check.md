@@ -24,7 +24,7 @@ LED key:
 
 | LED | Shows |
 |---|---|
-| LED_0 | R = DECAY, G = TONE, B = BOING |
+| LED_0 | R = DECAY, G = TONE, B = TENSION (knob K2; called BOING when this test firmware was built) |
 | LED_1 | R = SPLASH, G = DRIVE, B = WOBBLE |
 | LED_2 | R = MIX, G = SPRINGS position, B = ATTITUDE position |
 | LED_3 | White = button held. Red flash = gate. Green = every knob reads fully off or fully on (within 2%) |
