@@ -1,18 +1,52 @@
 #!/usr/bin/env python3
-"""Build a self-contained review page for a Resilio Versio render batch.
+"""Build a self-contained listening page for a folder of Resilio Versio renders.
 
 Usage:
-    python3 tools/review/make_review.py <out-dir> [--reference DIR ...] [--title T]
+    python3 tools/review/make_review.py renders/<name> [--reference DIR ...] [--title T]
+        [--columns KEY] [--variants KEY] [--rows KEY[,KEY]] [--out FILE]
+        [--no-level-match] [--no-spectrograms] [--classic]
 
-Reads <out-dir>/manifest.json (written by rv_render --sweep, see
-docs/m1-contracts.md, Stream B) plus each render's sidecar JSON, and any
---reference directories of WAVs with sidecar JSONs next to them (e.g.
-test_audio/reference/, produced by `rv_render --analyze`). Writes
-<out-dir>/index.html: a single HTML file with everything inlined (CSS/JS),
-referencing the WAVs by relative path so it works opened directly from
-Finder over file://.
+The default page is laid out like the SPLASH voicings page the owner approved
+(renders/splash_voicings, Sep 2026):
+  - panels in columns per group (usually ATTITUDE), colour-coded headers;
+    rows are the material (hits, skank...) or whatever else changes;
+  - inside each panel the versions A, B, C... play in sync: choosing one switches
+    it at the same playback position, and "Switch every panel to" does it
+    for every panel at once;
+  - settings as readable chips (DECAY 0.6, TENSION noon), not raw JSON;
+  - "My pick" per panel, notes per column plus overall notes, and
+    "Copy results for Claude" (plain text) / "Download results";
+  - level-matched playback (on by default: every version plays at the
+    loudness of the quietest one in its panel), blind mode, loop, keys,
+    a small spectrogram of the selected version, flags (clips, ringing...);
+  - with --reference, a "Compare with" menu adds a reference recording to
+    every panel as version R.
+Picks and notes persist in the browser (localStorage) where it allows.
 
-stdlib-only: no third-party dependencies.
+What it reads from <dir> (first that applies):
+  1. <dir>/manifest.json (rv_render --sweep, docs/m1-contracts.md) + sidecars.
+  2. manifest.json files in subfolders, merged on one page: before/ + after/,
+     A/ B/ C/, or one sweep per ATTITUDE (renders/tension/decay_clean ...).
+  3. Plain WAVs (A/B prototypes): 02_hits_A_today.wav, clean/02_hits_B_x.wav,
+     02_hits_tension0_mix035_before.wav... A README.txt in the folder becomes
+     the page's intro, and lines like "A_today   what it is" describe versions.
+
+Layout is chosen automatically: ATTITUDE (else SPRINGS) as columns, the knob
+with the most positions (or the lettered versions) as A/B/C, the material as
+rows. Override with the names printed after "Layout:" (param keys like decay,
+tension, attitude, or stimulus / material / folder / sweep / value / variant;
+"none" for no columns):
+    make_review.py renders/m1_click_grid --columns decay --variants tension
+
+Output: <dir>/index.html by default (overwritten); --out NAME writes <dir>/NAME,
+--out path/to/file.html writes there (audio paths stay relative to it).
+Everything is inlined (CSS/JS/data), WAVs are referenced by relative path, so
+the page works opened from Finder over file://.
+
+--classic writes the older metrics page (per-render cards, full spectrograms,
+filters, A/B strip) from template.html; it needs <dir>/manifest.json.
+
+stdlib-only: no third-party dependencies. Tests: python3 tools/review/test_make_review.py
 """
 
 import argparse
@@ -138,7 +172,7 @@ def raw_values(key, renders):
     return list(seen.values())
 
 
-def build_renders(out_dir, manifest):
+def build_renders(out_dir, manifest, page_dir=None):
     renders = []
     for i, entry in enumerate(manifest.get("renders", [])):
         require_keys(entry, ["wav", "sidecar"], "manifest render entry #{}".format(i), out_dir / "manifest.json")
@@ -152,7 +186,7 @@ def build_renders(out_dir, manifest):
         render = {
             "id": "render-{}".format(i),
             "label": entry["wav"],
-            "wavRel": os.path.relpath(wav_path, out_dir),
+            "wavRel": os.path.relpath(wav_path, page_dir or out_dir),
             "params": params,
             "metrics": metrics,
             "spectrogram": sidecar.get("spectrogram"),
@@ -163,7 +197,7 @@ def build_renders(out_dir, manifest):
     return renders
 
 
-def build_references(out_dir, reference_dirs):
+def build_references(out_dir, reference_dirs, page_dir=None):
     references = []
     for ref_dir in reference_dirs:
         ref_dir = Path(ref_dir)
@@ -186,7 +220,7 @@ def build_references(out_dir, reference_dirs):
             references.append({
                 "id": "reference-{}".format(len(references)),
                 "label": wav_path.stem,
-                "wavRel": os.path.relpath(wav_path, out_dir),
+                "wavRel": os.path.relpath(wav_path, page_dir or out_dir),
                 "params": sidecar.get("params") or {},
                 "metrics": metrics,
                 "spectrogram": sidecar.get("spectrogram"),
@@ -232,32 +266,32 @@ def build_filter_params(renders):
     return filters
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("out_dir", type=Path, help="Directory containing manifest.json + sidecars; index.html is written here")
-    parser.add_argument("--reference", dest="reference_dirs", action="append", default=[],
-                         help="Directory of reference WAVs with sidecar JSONs next to them (repeatable)")
-    parser.add_argument("--title", default=None, help="Override the page title (default: sweep name)")
-    args = parser.parse_args()
+def resolve_out_path(out_dir, out):
+    if not out:
+        return out_dir / "index.html"
+    p = Path(out)
+    if len(p.parts) == 1:
+        return out_dir / p
+    return p
 
-    out_dir = args.out_dir
-    if not out_dir.is_dir():
-        die("out-dir not found or not a directory: {}".format(out_dir))
 
+def write_classic(out_dir, out_path, reference_dirs, title):
+    """The older metrics page (template.html): one card per render, filters, A/B strip."""
     manifest_path = out_dir / "manifest.json"
     manifest = load_json(manifest_path, "manifest.json")
     global IGNORE_FLAGS
     IGNORE_FLAGS = frozenset(manifest.get("ignore_flags") or [])
     require_keys(manifest, ["name", "created", "input", "renders"], "manifest.json", manifest_path)
 
-    renders = build_renders(out_dir, manifest)
-    references = build_references(out_dir, args.reference_dirs)
+    page_dir = out_path.parent
+    renders = build_renders(out_dir, manifest, page_dir)
+    references = build_references(out_dir, reference_dirs, page_dir)
 
     grid = detect_grid(renders)
     filter_params = build_filter_params(renders)
     renders_by_id = {r["id"]: r for r in renders}
 
-    title = args.title or manifest["name"]
+    title = title or manifest["name"]
 
     data = {
         "title": title,
@@ -285,7 +319,6 @@ def main():
     html = template.replace("__RV_TITLE__", title.replace("&", "&amp;").replace("<", "&lt;"))
     html = html.replace("__RV_DATA_JSON__", data_json)
 
-    out_path = out_dir / "index.html"
     out_path.write_text(html, encoding="utf-8")
 
     flagged_count = sum(1 for r in renders if r["flagged"])
@@ -299,6 +332,54 @@ def main():
         ))
     else:
         print("List view (0, 1, or >2 varying params detected)")
+
+
+def write_listen(out_dir, out_path, args):
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import listen
+    try:
+        items, source, name = listen.collect(out_dir, with_spec=not args.no_spectrograms)
+        refs = listen.load_references(out_path, args.reference_dirs, not args.no_spectrograms)
+        rows = [r.strip() for r in args.rows.split(",") if r.strip()] if args.rows is not None else None
+        data = listen.build_page_data(out_dir, out_path, items, refs, rows=rows, columns=args.columns,
+                                      variants=args.variants, title=args.title or (name and name.replace("_", " ")),
+                                      level_match=not args.no_level_match)
+    except listen.LayoutError as e:
+        die(str(e))
+    out_path.write_text(listen.render_html(data), encoding="utf-8")
+    print("Wrote {} (from {}: {})".format(out_path, {"manifest": "manifest.json", "manifests": "manifests in subfolders",
+                                                    "wavs": "WAV file names"}[source], listen.describe(data)))
+    ax = data["axes"]
+    print("Layout: --rows {} --columns {} --variants {}".format(ax["rows"] or "none", ax["columns"] or "none",
+                                                               ax["variants"] or "none"))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("out_dir", type=Path, help="Render folder (manifest.json + sidecars, subfolders of them, or plain WAVs)")
+    parser.add_argument("--reference", dest="reference_dirs", action="append", default=[],
+                        help="Directory of reference WAVs (sidecar JSONs optional) to compare against (repeatable)")
+    parser.add_argument("--title", default=None, help="Page title (default: folder name; classic: sweep name)")
+    parser.add_argument("--columns", default=None, help="What the colour-coded columns are (default: attitude, else springs, else automatic; 'none' for one column)")
+    parser.add_argument("--variants", default=None, help="What A/B/C inside a panel are (default: lettered versions, else the knob with the most positions)")
+    parser.add_argument("--rows", default=None, help="Comma-separated: what the rows are (default: material + whatever is left over; '' for none)")
+    parser.add_argument("--out", default=None, help="Output file name in <dir> or a path (default: <dir>/index.html)")
+    parser.add_argument("--no-level-match", action="store_true", help="Start with level-matching off (the page still has the toggle)")
+    parser.add_argument("--no-spectrograms", action="store_true", help="Leave out the small spectrograms (smaller page)")
+    parser.add_argument("--classic", action="store_true", help="Write the older metrics page (template.html) instead")
+    args = parser.parse_args()
+
+    out_dir = args.out_dir
+    if not out_dir.is_dir():
+        die("out-dir not found or not a directory: {}".format(out_dir))
+    out_path = resolve_out_path(out_dir, args.out)
+    if not out_path.parent.is_dir():
+        die("output folder not found: {}".format(out_path.parent))
+
+    if args.classic:
+        write_classic(out_dir, out_path, args.reference_dirs, args.title)
+    else:
+        write_listen(out_dir, out_path, args)
 
 
 if __name__ == "__main__":
