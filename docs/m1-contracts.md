@@ -27,7 +27,7 @@ public:
 - `process()` must accept any `numSamples` ≥ 1 and give **identical output regardless of block size** (Renderer determinism). It must be real-time safe: no allocation, no locks, no I/O.
 - The output is the full MIX'd signal (dry/wet equal-power per MIX). Tests and Renderer use `mix=1` for wet-only.
 - Delay-line memory: the Firmware later places it in SRAM/SDRAM. Keep buffers in plain members or a caller-supplied pool, and document the max bytes used at 48 kHz.
-- Internal-unit mappings (DECAY → T60 & L, BOING → a & M, etc.) live in `core/params/` next to ParamSpec, so every Host shares them.
+- Internal-unit mappings (DECAY → T60, TENSION → L, fC, a & M, etc.; BOING until ADR 0026) live in `core/params/` next to ParamSpec, so every Host shares them.
 
 ## Stream B — Renderer, metrics, sidecars (owns `host/render/**`, `host/common/**` except `Wav.h`, `host/tests/test_render*.cpp`, `host/tests/test_metrics*.cpp`)
 
@@ -41,19 +41,19 @@ rv_render --sweep sweep.json --out-dir DIR
 rv_render --analyze <in.wav> [--sidecar-out x.json]      # metrics + spectrogram for an existing WAV (e.g. Wellspring references)
 ```
 
-- **Preset JSON:** `{ "decay": 0.8, "boing": 0.3, "springs": "2", "attitude": "CLEAN" }`. Knobs are numbers 0–1. Switches accept a label (`ParamSpec::choices`) or a number 0 / 0.5 / 1.
+- **Preset JSON:** `{ "decay": 0.8, "tension": 0.3, "springs": "2", "attitude": "CLEAN" }`. Knobs are numbers 0–1. Switches accept a label (`ParamSpec::choices`) or a number 0 / 0.5 / 1.
 - **Automation JSON:** `{ "breakpoints": [ {"t": 0.0, "key": "decay", "value": 0.2}, {"t": 4.0, "key": "decay", "value": 1.0} ], "kicks": [1.5, 3.0] }`. Linear interpolation between breakpoints per key. Apply at sample accuracy by splitting blocks at breakpoints, or per block of ≤ 16 samples. Kicks go to `Tank::kick(offset)`.
-- **Sweep JSON:** `{ "name": "m1_grid", "input": "test_audio/stimulus/01_clicks.wav", "base": {preset}, "grid": { "decay": [0, 0.5, 1], "boing": [0, 0.5, 1] }, "tail_seconds": 12 }`. Cartesian product. Output files are named `<name>__decay0.50_boing1.00.wav`. Append `tail_seconds` of silence to the input so tails ring out. Writes `manifest.json` in the out dir: `{ "name", "created", "input", "renders": [ {"wav", "sidecar", "params": {...}} ] }`.
+- **Sweep JSON:** `{ "name": "m1_grid", "input": "test_audio/stimulus/01_clicks.wav", "base": {preset}, "grid": { "decay": [0, 0.5, 1], "tension": [0, 0.5, 1] }, "tail_seconds": 12 }`. Cartesian product. Output files are named `<name>__decay0.50_tension1.00.wav`. Append `tail_seconds` of silence to the input so tails ring out. Writes `manifest.json` in the out dir: `{ "name", "created", "input", "renders": [ {"wav", "sidecar", "params": {...}} ] }`.
 - A hand-written minimal JSON reader/writer lives in `host/common/` (no dependencies).
 
 ### Sidecar JSON (one per WAV, `<wav-stem>.json`, the contract with Stream C)
 
 ```json
 {
-  "wav": "m1_grid__decay1.00_boing0.00.wav",
+  "wav": "m1_grid__decay1.00_tension0.00.wav",
   "sample_rate": 48000,
   "duration_s": 61.0,
-  "params": { "decay": 1.0, "boing": 0.0, "springs": "1", "attitude": "CLEAN" },
+  "params": { "decay": 1.0, "tension": 0.0, "springs": "1", "attitude": "CLEAN" },
   "metrics": {
     "peak_dbfs": -3.1, "rms_dbfs": -24.0,
     "t60_s": 8.7,

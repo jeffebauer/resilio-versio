@@ -585,8 +585,10 @@ def analyse_file(path):
 
 # Mirrors core/params/Mappings.h + SpringModes.h (Spring A detune) + Spring.cpp.
 # Kept in sync by hand; the renders check (--renders) catches drift.
-MAP = dict(t60=(0.4, 9.0), L=(0.030, 0.100), fc=(4200.0, 2700.0), a=(0.40, 0.55), M=(24, 64),  # HighsLater (ADR 0024)
-           damp=(1600.0, 9000.0))
+# TENSION anchors (tight, noon, loose; ADR 0026): L and fC log-linear per half,
+# a and the stage share linear per half. DECAY sets T60 only. HighsLater (ADR 0024).
+MAP = dict(t60=(0.4, 9.0), L=(0.033, 0.069, 0.110), fc=(4600.0, 3300.0, 2700.0), a=(0.40, 0.47, 0.55),
+           M=(24, 64), m_frac_mid=0.40, damp=(1600.0, 9000.0))
 DETUNE_A = dict(L=0.965, fc=1.040, a=1.030)
 
 
@@ -594,13 +596,23 @@ def exp_lerp(lo, hi, v):
     return lo * math.exp(v * math.log(hi / lo))
 
 
-def model_settings(decay, boing, tone=0.5, detune=True):
+def anchor_exp(lo, mid, hi, v):
+    return exp_lerp(lo, mid, 2 * v) if v < 0.5 else exp_lerp(mid, hi, 2 * v - 1)
+
+
+def anchor_lin(lo, mid, hi, v):
+    return lo + (mid - lo) * 2 * v if v < 0.5 else mid + (hi - mid) * (2 * v - 1)
+
+
+def model_settings(decay, tension, tone=0.5, detune=True):
+    """Spring A's settings at DECAY / TENSION / TONE. DECAY only sets T60, so
+    it doesn't enter the round trip (kept in the signature for the grids)."""
     d = DETUNE_A if detune else dict(L=1.0, fc=1.0, a=1.0)
     return {
-        "L_s": exp_lerp(*MAP["L"], decay) * d["L"],
-        "fc_hz": exp_lerp(*MAP["fc"], decay) * d["fc"],
-        "a": (MAP["a"][0] + (MAP["a"][1] - MAP["a"][0]) * boing) * d["a"],
-        "M": MAP["M"][0] + int((MAP["M"][1] - MAP["M"][0]) * boing + 0.5),
+        "L_s": anchor_exp(*MAP["L"], tension) * d["L"],
+        "fc_hz": anchor_exp(*MAP["fc"], tension) * d["fc"],
+        "a": anchor_lin(*MAP["a"], tension) * d["a"],
+        "M": MAP["M"][0] + int((MAP["M"][1] - MAP["M"][0]) * anchor_lin(0.0, MAP["m_frac_mid"], 1.0, tension) + 0.5),
         "damp_hz": exp_lerp(*MAP["damp"], tone),
     }
 
@@ -634,8 +646,8 @@ def model_round_trip_s(s, sr, f):
     return p0 / (2 * math.pi * 2 * df)
 
 
-def model_prediction(decay, boing, sr=48000, detune=True):
-    s = model_settings(decay, boing, detune=detune)
+def model_prediction(decay, tension, sr=48000, detune=True):
+    s = model_settings(decay, tension, detune=detune)
     p = {f: model_round_trip_s(s, sr, f) for f in (F_LO, F_REPEAT, F_HI)}
     return {"repeat_ms": p[F_REPEAT] * 1000, "lows_later_ms": (p[F_LO] - p[F_HI]) * 1000, "fc_hz": s["fc_hz"],
             "L_ms": s["L_s"] * 1000, "M": s["M"], "a": s["a"], "K": sr / (2 * s["fc_hz"])}
@@ -771,16 +783,16 @@ def renders_check(pool, d):
     print("Own renders vs mapping prediction (Spring A, mono sum)")
     fails, out = 0, []
     for f, r in zip(files, rows):
-        m = re.search(r"decay(\d+\.\d+)_boing(\d+\.\d+)", f.name)
+        m = re.search(r"decay(\d+\.\d+)_tension(\d+\.\d+)", f.name)
         if not m:
             continue
         dcy, bng = float(m.group(1)), float(m.group(2))
         pred = model_prediction(dcy, bng)
-        tag = f"DECAY {dcy:.2f} BOING {bng:.2f}"
+        tag = f"DECAY {dcy:.2f} TENSION {bng:.2f}"
         fails += not check(f"{tag} repeat ms", r.get("repeat_ms"), pred["repeat_ms"], 0.04, 1.0)
         fails += not check(f"{tag} lows-later ms", r.get("lows_later_ms"), pred["lows_later_ms"], 0.15, 1.5)
         print(f"      fC measured {fmt(r.get('fc_hz'), 0)} (model {pred['fc_hz']:.0f}), quality {r.get('quality')}")
-        out.append({"decay": dcy, "boing": bng, "measured": {k: r.get(k) for k in
+        out.append({"decay": dcy, "tension": bng, "measured": {k: r.get(k) for k in
                     ("repeat_ms", "lows_later_ms", "fc_hz", "quality")}, "predicted": pred})
     print(("PASS" if fails == 0 else "FAIL") + f"  renders check ({fails} failures)")
     return fails, out
@@ -827,7 +839,7 @@ def main(argv):
                       f"{fmt(r.get('quality'), 2):>5}  {r['category']}")
             doc["irs"] = rows
     if out_json:
-        doc["model_grid"] = [{"decay": d, "boing": b, **model_prediction(d, b)}
+        doc["model_grid"] = [{"decay": d, "tension": b, **model_prediction(d, b)}
                              for d in (0.0, 0.25, 0.5, 0.75, 1.0) for b in (0.0, 0.5, 1.0)]
         Path(out_json).write_text(json.dumps(doc, indent=1) + "\n")
     return status

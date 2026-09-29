@@ -2,7 +2,7 @@
 
 Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 2026, plus measurements. Each item: what the owner heard, why, target, fix direction. The M8 sweet-spot report (`docs/m8-sweetspot.md`) adds numbers per knob.
 
-## 1. BOING changes decay length
+## 1. BOING changes decay length (closed: highs-later + TENSION, ADR 0024/0026)
 - **Heard:** at 0 the reverb rings longer; at 1 there's a slight pitch envelope (the chirp, intended) and it decays faster (not intended).
 - **Measured:** T60 at DECAY 0.5: 1.92 s (BOING 0) vs 1.72 s (BOING 1), about −10%; perceived shorter still because smeared echoes are less distinct.
 - **Target:** BOING changes the chirp only. T60 within ±5% across BOING at every DECAY.

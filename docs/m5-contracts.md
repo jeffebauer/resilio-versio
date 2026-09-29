@@ -15,7 +15,7 @@ Owner references for later listening (not needed to build): Wellspring take C (h
 - **DRIVE** curve per ADR 0014: clean-ish to ~25%, colour builds to ~85%, properly driven above. **Automatic gain compensation**: loudness within ±2 dB across DRIVE. Reverb clearly audible at DRIVE 0.
 - **TONE:** CCW warm dub dark with boing still audible; noon neutral; CW splashy, never harsh (ADR 0017). Tilt pre-tank + Loop damping; loudness within ±3 dB across TONE. Loop gain must stay below target at every frequency at every TONE (AntiRes layer 1, ADR 0010).
 - **Oversampling ×2 minimum** on nonlinear stages. Cheap polyphase halfband (IIR allpass-based preferred for low latency). Factor is one constant in `core/params/` so M3 profiling can change it. **Count the oversampler's latency inside the Loop** in the round-trip/g design (the spec review flagged this). Plugin latency stays 0, or is reported via `setLatencySamples` if a Tank-level stage adds latency (tell the lead: it's a plugin/ change).
-- **CPU:** report estimated Daisy cycles/sample per ATTITUDE × SPRINGS at worst case (same method as M1/M4). The 3-Spring KICKED max-DRIVE max-BOING case is the SPEC §5 worst case (≤ 65%).
+- **CPU:** report estimated Daisy cycles/sample per ATTITUDE × SPRINGS at worst case (same method as M1/M4). The 3-Spring KICKED max-DRIVE max-TENSION case (max-BOING before ADR 0026) is the SPEC §5 worst case (≤ 65%).
 - Determinism, block-size independence, Plugin == Renderer bit-identical, Kick timing, all existing tests: must keep passing.
 
 ## Tests (`host/tests/test_drive.cpp`)
