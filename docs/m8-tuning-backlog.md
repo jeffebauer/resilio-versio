@@ -84,3 +84,12 @@ From the owner's Ableton session: SPLASH sounded "like an open high hat triggere
 - **Exposed:** test_tank's stab mono-notch margin (−4.9 dB at 2 Springs, DECAY 0, tightest TENSION) is the Springs' own; round 1's direct noise masked it. With the resonance work.
 - **Cost:** flash +~2.3 KB (release 105,776 B, 80 %).
 
+## Session 2 close (29 Sep 2026): installed `ae844da`, open for round 2
+Installed: TENSION (ADR 0026, amended: up = tighter), SPLASH round 2 ("heavier clang"), TONE's bright-side low cut (~105 Hz at 3 o'clock → 300 Hz full CW, pre-tank), the per-Spring damping/decay spread (ADR 0027), CLEAN's gentle splash (ADR 0025).
+Open (measured, waiting on the owner's ears or round 2):
+- **WOBBLE ceiling vs the Magneto:** Magneto tape wow tops out ~8 cents on one echo (3.5 at noon); our WOBBLE first echo reaches ~36 cents at 1 (ADR 0008 "clearly out of tune"). Owner decision (TASKS task 2).
+- **WOBBLE Drift across Springs:** on 04_skank at WOBBLE 0.2, one partial just above a tight tank's first mode line-up (~363 Hz) hangs up to +14 dB after note-off; gone at WOBBLE 0 (ADR 0027 "Open"). Candidate: share the slow Drift across Springs at low WOBBLE.
+- **Thin margins:** M6 grid worst 14.6 dB (KICKED, 1 Spring, tightest, TONE 1, DECAY 0.75, bursts; limit 15); test_tank stab mono notch −4.4 dB (limit −4.5); DRIVEN aliasing −66.2 dB (limit −60, now read as the deciding product).
+- **Sweet-spot report stale:** `docs/m8-sweetspot.md` predates TENSION, SPLASH round 2 and the TONE low cut; re-run `tools/sweetspot.py` for round 2 (TENSION/DECAY were checked by hand: no dead zones).
+- **CPU:** desktop estimate ~2 % over `main` before TENSION; worst case ~65–70 % of the Daisy budget on a noisy desktop. Confirm in M3.
+

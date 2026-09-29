@@ -1,48 +1,46 @@
 # Handoff
 
-**Written:** 29 Sep 2026, end of the first (very long) session; finalised after the highs-later switch-on. Start the next one with `/resilio-start`.
+**Written:** 29 Sep 2026, end of session 2. Start the next one with `/resilio-start`. The owner plans to test the plugin, then start the **Versio flashing tasks** (M0 hardware check, TASKS task 3).
 
 ## State
 
 | Milestone | State |
 |---|---|
-| M0 toolchains | Built. **Owner hardware check pending** (`docs/m0-hardware-check.md`, flash `dist/resilio_versio_m0_test.bin`) |
-| M1 one Spring + Renderer | Built. Owner listen pending; Wellspring take A comparison pending (no recordings yet) |
-| M2 plugin shell | Built, automated tests pass. **Owner Ableton check pending** (`docs/m2-ableton-check.md`) |
-| M3 hardware profiling | Firmware ready (`MODE=profile`). Blocked on M0. Profile serial output is new code: confirm `CORNER` lines are readable |
-| M4 multi-spring stereo | Built; reworked in M8 round 1 (no flam) |
-| M5 drive + TONE | Built; DRIVE retuned (ADR 0022) and again in round 1 |
-| M6 anti-ringing | Built. Calibrated `ringing_db` metric (ADR 0023); adaptive suppressor not needed |
-| M7 SPLASH/KICK/WOBBLE | Built; SPLASH and WOBBLE reworked in round 1 |
-| M8 tuning | Round 1 merged; chirp switched to highs-later (`8f0a09c`, installed). Next: CLEAN splash, then TENSION |
-| M9 polish | Not started (panel template ready: `docs/panel/`) |
+| M0 toolchains | Built. **Owner hardware check next** (`docs/m0-hardware-check.md`, flash `dist/resilio_versio_m0_test.bin`; its LED_0 blue = K2, now TENSION) |
+| M1 one Spring + Renderer | Built. **Wellspring recorded and analysed** (T60 ~5 s, repeat ~83 ms, highs 5.7 ms later, fC ~4.5 kHz). Next: DECAY matched to the Wellspring, M1 A/B page |
+| M2 plugin shell | Built. **Owner Ableton check pending** (`docs/m2-ableton-check.md`, updated for TENSION) |
+| M3 hardware profiling | Firmware ready (`MODE=profile`); blocked on M0. Corner lines now read `S3 D1.0 TN0.0 TO1.0` (TENSION 0 = loosest = worst case) |
+| M4–M7 | Built |
+| M8 tuning | TENSION (ADR 0026 + amendment: up = tighter), CLEAN splash (0025), SPLASH round 2 "heavier clang", TONE bright-side low cut, per-Spring damping/decay spread (0027): all **installed**. Owner listening (TASKS 8–10) feeds round 2 |
+| M9 polish | Not started |
 
-- `main` HEAD and installed plugin: **`8f0a09c`** (highs-later chirp + round 1). `cat dist/installed_plugin.txt` to confirm.
-- Gates at `8f0a09c`: **15/15 suites pass** (incl. plugin_host_test). Firmware release 103,208 B (78 %), m0test 85,976 B (65 %), profile 113,596 B (86 %). M6 grid (HighsLater): 270 cells, worst `ringing_db` 9.1.
+- `main` HEAD: see `git log -1` (this handoff's commit). Last code commit **`ae844da`** = **installed plugin** (`dist/installed_plugin.txt`, 29 Sep 19:13). Everything after it is docs.
+- Gates at `ae844da` (re-run at wrap): **15/15 suites pass**. Firmware release 105,808 B (80 %), m0test 85,976 B (65 %), profile 116,196 B (88 %). M6 grid: 270 ringing cells 0 Ringing (worst 14.6), Howl 54/54 `howl_ok`.
+- SPEC v1.0.14. New ADR 0027. ADR 0009 amended (recordings stay out of git), ADR 0026 amended (TENSION direction).
+- Reference recordings: `test_audio/reference/` holds 12 Wellspring + 13 Magneto WAVs **on the owner's Mac only** (gitignored). Provenance and settings: `test_audio/reference/NOTES.md`. Results: `docs/reference-report.md`.
 
 ## In flight
-
-- **Nothing running.** The highs-later switch-on finished and is committed (`8f0a09c`) and installed.
-- **Branch `proto/tension`** (pushed): the TENSION prototype, kept on purpose for stage 1 of ADR 0026. Not merged.
+- **Nothing running.** No worktrees besides `main`.
+- Branch **`proto/tension`**: fully superseded by `main`. Safe to delete once the owner agrees.
+- `.idea/` in the repo root is the owner's IDE folder; leave it untracked.
 
 ## Next steps (in order)
-
-1. ~~Highs-later switch-on~~: done (`8f0a09c`, installed).
-2. **CLEAN gets a gentler splash** (ADR 0025): light Clatter + tiny Jolt, CLEAN < DRIVEN < KICKED; criteria in the ADR. Files: `core/params/SplashVoicing.h`, `core/dsp/Splash.*`, test_splash / test_m7_tank.
-3. **TENSION implementation**, stages 1–5 in ADR 0026 (port `proto/tension`, rename `boing` → `tension`, fix the 5 failing suites incl. two real tuning jobs, re-verify, docs).
-4. Then an owner listening pass and M8 round 2 from their notes (`docs/m8-tuning-backlog.md`).
+1. **Support the M0 hardware check** (owner's next task, `docs/m0-hardware-check.md`). Help read serial output; never have USB and rack power connected at once. After M0 passes: M3 profiling (`firmware/README.md`), confirming the `CORNER …` lines are readable and the CPU worst case (desktop estimate ~65–70 %, target 65 %).
+2. **M1 A/B:** make `tools/ingest_references.py` measure take A's T60 by combining the six click tails (each single click only reaches ~40 dB above the −94 dBFS floor, so the per-click Schroeder fit fails). Then match DECAY to the Wellspring (B/C read 5.0–5.2 s) and build the A/B review page against `wellspring_A`/`B`/`E` (the ingest's matched-render path does this once A's T60 exists).
+3. **Owner's listening answers** (TASKS 5–10, 8b, 8c) → **M8 round 2**. Known candidates in `docs/m8-tuning-backlog.md` "Session 2 close": the WOBBLE ceiling vs the Magneto (owner decision), sharing WOBBLE's slow Drift across Springs (skank partial at WOBBLE 0.2), and re-running `tools/sweetspot.py` (its report predates TENSION, SPLASH round 2 and the TONE low cut).
+4. **Use the Magneto data:** MW (wow 0 / 0.6 / 3.5 / 8.4 / 7.7 cents at CCW / 9 / 12 / 3 / CW) for WOBBLE's constants once the owner answers the ceiling question; MD1–3 (crest 27 → 21 dB, green → red) as the DRIVEN tape reference (ADR 0020).
 
 ## Waiting on the owner (`docs/TASKS.md`)
-Wellspring + Magneto recordings (→ `tools/ingest_references.py`), M0 hardware check, M2 Ableton check, listening tasks 5–9 and 8c (round 1), the ATTITUDE-flip Howl-exit question (task 8), the M7 questions (task 9), the licence (whenever), stereo-in (after M3).
+M0 hardware check (task 3), M2 Ableton check (task 4), listening tasks 5–10 on the new build (8b SPLASH C, 10 TENSION/DECAY and the ringing corners), the WOBBLE-ceiling decision (task 2), the ATTITUDE-flip Howl-exit question (task 8), the M7 questions (task 9), whether to delete `proto/tension`. Stereo-in stays "after M3".
 
 ## Will bite
-- **CPU:** worst case estimated at ~65–66 % vs a 65 % target (desktop estimate). Confirm in M3 before trimming.
-- **Thin margins that tipped before:** the ATTITUDE CLEAN→KICKED click check (now 6.8/10 after Morph 30→40 ms), CLEAN DRIVE mildness (−15.9 vs ≤ −15 dB). Re-check after any Drive change.
-- **Combining agents' work breaks margins:** always re-run the full suite on the merge, not only in each branch.
-- **Environment:** GitHub's main IPs sometimes time out on this network (push fails; retry later or use a VPN). The safety classifier has had outages (commands blocked; retry). Ableton scanning: a signature-broken bundle gets cached as failed; `touch` the binary so Ableton rescans it. Never write into signed bundles.
-- **Test inputs:** `ringing_db` and `steady_tone` don't apply to tonal inputs (held tones); `max_step_db_100ms` doesn't apply to rhythmic ones; the click detector false-fires on impulse inputs. Sweeps use `ignore_flags`.
-- **Chirp direction:** `docs/m8-sweetspot.md` and round-1 numbers in the backlog were measured in LowsLater; the backlog's "HighsLater re-tune" section has the current numbers. DRIVEN aliasing margin is only 1 dB (−61 vs −60).
-- **LowsLater** still compiles and its core tests pass, but it's no longer tuned. Don't flip back without re-tuning.
+- **Thin margins:** M6 worst cell 14.6 dB vs 15 (KICKED, 1 Spring, tightest TENSION, TONE 1, DECAY 0.75, noise bursts; SPLASH's clang in the Loop nudges it). test_tank stab mono notch −4.4 vs −4.5 (after `kSide2` 0.43 → 0.40). CLEAN DRIVE mildness −15.5..−16.6 vs ≤ −15. Re-run the full suite and the M6 grid after any change to Springs, SPLASH, DRIVE or TONE.
+- **TENSION direction:** 1 = tight, 0 = loose (flipped mid-session). Older renders (`renders/tension/`) and backlog notes written before the flip use 0 = tight; they say so.
+- **Worst case is TENSION 0** (loosest: most stages, longest L). Tests that pin "worst" use `tension = 0`.
+- **Git:** `git apply --3way` stages what it applies; a docs commit swept in staged core files once this session (caught before pushing). Keep the main checkout on `main`: the owner reads docs from it (CLAUDE.md Git rule).
+- **Ableton sessions:** unwarped clips store start markers in **seconds**; the `01_clicks` clips had a stray 0.005 s start (compensated on copy). Recordings land ~10 samples early (TRS); ADAT/OPTX2 is ~94 samples later than TRS (own loopback per path). A loaded plugin keeps the old build after an install: restart Live, rescan, fresh instance.
+- **Disk:** the Mac ran out of space once (renders). `renders/` was cleaned 31 → ~3 GB; keep big sweeps in scratch and delete their WAVs after reading the sidecars.
+- **Environment:** GitHub routing drops on this network (retry push later). Never run `auval -a` or touch CoreAudio (CLAUDE.md).
 
 ## Where to look
-`CLAUDE.md` · `docs/TASKS.md` · `docs/m8-tuning-backlog.md` · `docs/adr/0024`–`0026` · `core/params/Mappings.h` · `core/dsp/Tank.cpp`
+`docs/TASKS.md` · `docs/m0-hardware-check.md` · `firmware/README.md` · `docs/m8-tuning-backlog.md` ("Session 2 close") · `docs/reference-report.md` + `test_audio/reference/NOTES.md` · `docs/adr/0026`, `0027`

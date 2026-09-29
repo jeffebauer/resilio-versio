@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 2, evening) · **Milestones:** M0 needs your hardware check · M1: Wellspring recorded, Claude builds the A/B next · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
+**Last updated:** 29 Sep 2026 (session 2 wrap) · **Milestones:** M0 needs your hardware check · M1: Wellspring recorded, Claude builds the A/B next · M2 needs your Ableton check · M3 blocked on M0 · M4–M7 built · M8: TENSION (up = tighter), SPLASH "heavier clang", TONE low cut and the resonance fix are **installed**; your listen (tasks 8–10) feeds round 2
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -22,7 +22,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 2. Record the Magneto · **recorded 29 Sep**
 - **Doc:** [recording-recipe-magneto.md](recording-recipe-magneto.md) · why: [ADR 0020](adr/0020-magneto-benchmark.md)
-- [ ] Rack **off** → rear DIP **S2 = ON** (Dual Split). **Set it back to OFF** for normal use
+- [x] Rack **off** → rear DIP **S2 = ON** (Dual Split), and back to **OFF** afterwards (29 Sep)
 - Analysed: [reference-report.md](reference-report.md). Your ADAT hunch was right: that path is ~2 ms slower than the TRS jacks
 - [ ] **Decide:** the Magneto's tape wobble tops out at about **8 cents** on one echo (WOW & FLUTTER 3 o'clock to fully CW; 3.5 cents at noon). Our WOBBLE's first echo swings up to about **36 cents** at max, on purpose ("clearly out of tune", ADR 0008). Keep our wilder top end, or bring it closer to the Magneto? Try WOBBLE on held chords in the plugin
 - [x] **First, take 0 through the OPTX2 (ADAT loopback):** patch the OPTX2 output jack you'll use straight into the OPTX2 input jack you'll use, play `01_clicks` and record it as `magneto_0_adat_loopback.wav`. The ADAT path has its own latency and level, so the Wellspring's TRS loopback can't stand in for it. Note the ADAT channels in `NOTES.md` and keep them for every Magneto take
