@@ -76,6 +76,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - Your ear was right: next to your Wellspring, the Magneto and 45 Ableton spring IRs, ours has **10–20 dB more below 160 Hz**, and centres near 300 Hz where real tanks centre at 1–2 kHz. Details: [m8-tuning-backlog.md](m8-tuning-backlog.md) "Sonic signature vs real springs"
 - [ ] **Listen:** `renders/eq_preview/index.html`. **A** today, **B** a tank-like low cut, **C** low cut + the honky spring midrange, **W** Wellspring, **M** Magneto. Offline EQ only: it previews the balance before Claude changes the reverb. Which is closest to a real tank? Too thin anywhere?
 - This probably changes what "lows ring longer" (3e) should be: real tanks' lows ring long but quietly
+- [x] Listened (30 Sep): C closer; still less diffuse than the Wellspring, stereo flickers ear to ear, mids drop between skank hits. Measured: all three come from ours being too sparse (separate echoes instead of a wash). **The Wellspring is the reference** (its soft warmth over the Magneto's thinness). Decided: a faint hiss that **follows the tail only** (never at rest)
+- [ ] **Next listen (when Claude says it's ready):** `renders/proto_diffuse_tank/index.html`, step by step: A today, then the spring EQ, more pickups, smearing, both-sides stereo, brighter tail + darker attack, tank breath, with W (your Wellspring). Stop at the step that sounds right; each step's CPU cost is noted
 
 ### 4. M2 Ableton check (≈15 min)
 - **Doc:** [m2-ableton-check.md](m2-ableton-check.md) · MIDI clip: `test_audio/midi/kicks_16ths.mid`
