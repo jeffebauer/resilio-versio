@@ -21,6 +21,7 @@
 #include "dsp/Drive.h"
 #include "dsp/Oversampler.h"
 #include "dsp/Tank.h"
+#include "params/SpringModes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
 
@@ -1015,7 +1016,9 @@ void tone()
             Buf m(o.l.size());
             for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
             const float fC  = rv::map::tensionTransitionHz(tension);
-            const size_t end = size_t(1.5f * rv::map::tensionLoopDelaySeconds(tension) * kFs);
+            // First echo: from the pickups (kPickupArrival x L, ADR 0029) to
+            // just before the next round trip.
+            const size_t end = size_t((rv::modes::kPickupArrival + 0.98f) * rv::map::tensionLoopDelaySeconds(tension) * kFs);
             // High band per map::kChirpDirection, as test_spring.
             const float hiLo = rv::map::kHighsLater ? 0.8f : 0.5f, hiHi = rv::map::kHighsLater ? 0.97f : 0.85f;
             const double tHi = centroidSeconds(bandpass(m, hiLo * fC, hiHi * fC), end);

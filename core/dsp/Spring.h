@@ -119,6 +119,11 @@ public:
     static constexpr int   kHighStages         = 6;
     static constexpr float kHighAllpassCoeff   = 0.5f;   // mild diffusion, highs slightly later
     static constexpr float kHighDelayRatio     = 0.43f;  // L_hf = 0.43 L: faster echoes than the Loop
+    // The high path's output reads its delay line at this fraction of L_hf:
+    // its first echo comes at ~0.3 L, a little before the Loop's (ADR 0029;
+    // it used to be the full L_hf, 0.43 L), while its echoes still repeat
+    // every L_hf.
+    static constexpr float kHighPickup         = 0.70f;
     static constexpr float kHighT60Ratio       = 0.45f;  // HF tail dies faster: dark dub tail
     static constexpr float kHighPassRatio      = 0.8f;   // high path HPF at 0.8 fC
     static constexpr float kHighCeilingHz      = 9000.0f; // TONE ceiling (ADR 0017)

@@ -387,6 +387,15 @@ inline float Spring::processHigh(float in, float lhMod)
     int i1 = i0 - 1;
     if (i1 < 0) i1 += highSize_;
     const float fb = highBuf_[i0] + fr * (highBuf_[i1] - highBuf_[i0]);
+    // Pickup: the output reads earlier along the line than the feedback.
+    const float pm = kHighPickup * lhMod;
+    const int   pi = int(pm);
+    const float pf = pm - float(pi);
+    int p0 = highW_ - pi;
+    if (p0 < 0) p0 += highSize_;
+    int p1 = p0 - 1;
+    if (p1 < 0) p1 += highSize_;
+    const float out = highBuf_[p0] + pf * (highBuf_[p1] - highBuf_[p0]);
 
     float h = in + gHigh_ * fb;
     for (int j = 0; j < kHighStages; ++j) { // first-order allpass: y = a(x - y1) + x1
@@ -400,7 +409,7 @@ inline float Spring::processHigh(float in, float lhMod)
 
     highBuf_[highW_] = h;
     if (++highW_ == highSize_) highW_ = 0;
-    return fb;
+    return out;
 }
 
 void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples,

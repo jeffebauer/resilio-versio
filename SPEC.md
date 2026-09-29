@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0028). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0029). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.16 — ADR 0029 (owner): earlier first echo. Loop pickup 0.52 → 0.36 L, high path gets its own pickup at 0.70 L_hf; echo spacing unchanged. Loose tank's first sound 45 → 32 ms (Wellspring 32 ms).
 - v1.0.15 — ADR 0028: knobs follow the owner's printed Versio panel (§3 now by pot P1–P7: MIX, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE); M0 found libDaisy's knob indexes aren't in panel order. Release output corrects the Versio's polarity flip and +1.2 dB (M0).
 - v1.0.14 — ADR 0027: the Springs also differ in damping and tail length (§4.3); fixes mid-DECAY resonances between Springs after TENSION.
 - v1.0.13 — ADR 0026 amended (owner, by ear): TENSION turns up = tighter (CW tight, CCW loose); §3 and §4.4 flipped.

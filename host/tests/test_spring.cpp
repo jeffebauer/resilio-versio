@@ -7,6 +7,7 @@
 
 #include "dsp/Spring.h"
 #include "dsp/Tank.h"
+#include "params/SpringModes.h"
 #include "params/Mappings.h"
 
 #include <algorithm>
@@ -276,8 +277,11 @@ void chirpHighsBeforeLows()
         s.decay = decay;
         s.tension = tension;
         const Buf t = tankIR(fs, s, 0.5f);
-        const double tHiT = centroidSeconds(bandpass(t, fs, hiLo * fC, hiHi * fC), end, fs);
-        const double tLoT = centroidSeconds(bandpass(t, fs, 200.0f, 500.0f), end, fs);
+        // The Tank's pickups sit at kPickupArrival x L (ADR 0029), so its
+        // first echo ends just before kPickupArrival x L + L.
+        const size_t endT = size_t((rv::modes::kPickupArrival + 0.98f) * L);
+        const double tHiT = centroidSeconds(bandpass(t, fs, hiLo * fC, hiHi * fC), endT, fs);
+        const double tLoT = centroidSeconds(bandpass(t, fs, 200.0f, 500.0f), endT, fs);
         std::snprintf(msg, sizeof msg, "Chirp TENSION %.1f (Tank): highs at %.1f ms, lows at %.1f ms", tension,
                       tHiT * 1e3, tLoT * 1e3);
         check(dir * (tLoT - tHiT) > 0.001, msg);

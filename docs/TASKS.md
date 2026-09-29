@@ -59,6 +59,11 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Listened (29 Sep): a bit more undulation on KICKED hits with the stagger. Cause: SPLASH's jolt reached springs B and C a tick or two late. Fixed: the jolt now reaches all springs together; only the heavy recalculation takes turns (now within 112–118 dB of the original sound)
 - [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
 - [ ] Run 10: flash **`dist/resilio_versio_m3_profile_run10.bin`** (USB only), stream ~2 minutes. The fix above, plus fewer slow divisions in the drive stages
+
+### 3d. Slapback gap and SPLASH (29 Sep)
+- [x] The gap between dry and reverb felt like slapback at low MIX. Decided: **earlier first echo** at every TENSION, same echo spacing ([ADR 0029](adr/0029-earlier-first-echo.md)). Loose tank now 32 ms, like your Wellspring (was 45). Listened: `renders/predelay_ab/`, most noticeable at higher TENSION
+- [x] The snare-like layer is SPLASH's noise burst (gone at SPLASH 0). Direction: **derive the splash from the input**, like a real tank driven hard, not an added impulse. Claude builds voicings to A/B
+- [ ] **Decide:** should higher DRIVE make SPLASH bite sooner and harder (realistic, matched to your Wellspring takes B vs C), or keep them independent?
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)

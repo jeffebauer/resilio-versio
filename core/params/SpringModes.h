@@ -168,7 +168,15 @@ constexpr bool springActive(int mode, int s) { return s <= mode; }
 // -0.8 to -1.2 ms (with the alignment adding back 0.1-0.4 ms, C's net
 // offset is about what it was at long TENSION and 0.3 ms earlier when tight,
 // which keeps the 3-Spring mono sum full at DECAY 0 on the tightest tank).
-inline constexpr std::array<float, kNumSprings> kPickupTap{{0.52f / 0.965f, 0.52f / 1.05f, 0.52f / 0.925f}};
+// Where along L the first echo lands (all Springs together, see above).
+// ADR 0029: 0.36, was 0.52 (about half a round trip, as a real tank's far-end
+// pickup). With TENSION the loose tank stays long whatever DECAY does, and
+// its first echo came 45 ms after the dry hit (Wellspring: 32 ms), which
+// read as slapback at low MIX (owner). 0.36 moves every echo earlier by the
+// same amount and leaves the echo spacing (L) alone.
+inline constexpr float kPickupArrival = 0.36f;
+inline constexpr std::array<float, kNumSprings> kPickupTap{
+    {kPickupArrival / 0.965f, kPickupArrival / 1.05f, kPickupArrival / 0.925f}};
 inline constexpr std::array<float, kNumSprings> kPickupOffsetSeconds{{0.0f, 0.00015f, -0.0012f}}; // A, B, C
 constexpr float kPickupAlignHz = 800.0f;
 
