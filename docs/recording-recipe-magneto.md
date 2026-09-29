@@ -18,12 +18,18 @@ Same stimulus as the Wellspring (`python3 tools/make_stimulus.py`), plus `08_hel
 
 ## 2. Patch
 
+The Magneto is in the rack, so it's reached through the **BoredBrain OPTX2** modules over **ADAT**, not the interface's TRS jacks. Pick one ADAT output channel and one ADAT input channel and use the same two for every take (write them in `NOTES.md`):
+
 ```
-Spring takes:  interface OUT 1 ─► [to rack level] ─► Magneto RIGHT IN;   Magneto RIGHT OUT ─► interface IN 1
-Tape takes:    interface OUT 1 ─► [to rack level] ─► Magneto LEFT IN;    Magneto LEFT OUT  ─► interface IN 1
+Spring takes:  Ableton ─► ADAT out ch ─► OPTX2 output jack ─► Magneto RIGHT IN;   Magneto RIGHT OUT ─► OPTX2 input jack ─► ADAT in ch ─► Ableton
+Tape takes:    Ableton ─► ADAT out ch ─► OPTX2 output jack ─► Magneto LEFT IN;    Magneto LEFT OUT  ─► OPTX2 input jack ─► ADAT in ch ─► Ableton
 ```
 
-Record mono (IN 1), 48 kHz / 24-bit, same Ableton setup as the Wellspring recipe. Use the same interface gains for the whole session. Record take 0 (loopback) once if you haven't already this session.
+The OPTX2 already speaks eurorack levels, so there's no line-to-rack step.
+
+**Take 0, ADAT loopback (required, first):** a patch cable from that **OPTX2 output jack straight to that OPTX2 input jack**, then play `01_clicks` and record it, exactly like the Wellspring's take 0. It measures the ADAT/OPTX2 path's own latency and level, which will differ from the TRS path's. The analysis lines up every Magneto take with it, so don't reuse the Wellspring's loopback for these. Save as `magneto_0_adat_loopback.wav`. Redo it if you change the ADAT channels, the interface's sample rate or clock, or the OPTX2 settings.
+
+Record mono (the one ADAT input channel), 48 kHz / 24-bit, same Ableton setup as the Wellspring recipe. Keep the interface's clock source and every gain the same for the whole session.
 
 ## 3. Base settings
 

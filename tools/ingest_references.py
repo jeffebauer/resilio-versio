@@ -73,7 +73,7 @@ TAKE_STIMULUS = {
         "MD1": "02_hits.wav", "MD2": "02_hits.wav", "MD3": "02_hits.wav",
     },
 }
-CORE_TAKES = {"wellspring": ["0", "A", "B", "C", "D", "E"], "magneto": ["MA", "MB", "ME"]}
+CORE_TAKES = {"wellspring": ["0", "A", "B", "C", "D", "E"], "magneto": ["0", "MA", "MB", "ME"]}
 OPTIONAL_TAKES = {
     "wellspring": ["E2", "F", "G", "A-L", "A-R"],
     "magneto": ["MW0", "MW1", "MW2", "MW3", "MW4", "MD1", "MD2", "MD3"],
@@ -575,14 +575,15 @@ def ingest(ref_dir, out_root, notes_text=None, tmp_dir=None):
             "wow_flutter": {},
         }
 
-        # Take 0 latency: prefer this unit's own loopback, else fall back to
-        # the other unit's (one loopback per session covers both, ADR 0009/0020).
+        # Take 0 latency: this unit's own loopback only. The Wellspring is
+        # recorded through the interface's analog TRS jacks, the Magneto (a
+        # eurorack module) through BoredBrain OPTX2 over ADAT: different
+        # converters, different latency and level, so one unit's loopback
+        # must not align the other's takes.
         take0_path = takes_found.get("0")
-        if take0_path is None:
-            other = "magneto" if unit == "wellspring" else "wellspring"
-            take0_path = found.get(other, {}).get("0")
-            if take0_path is not None:
-                warnings.append(f"{unit}: no take 0 of its own, using {other}'s loopback")
+        if take0_path is None and found.get("magneto" if unit == "wellspring" else "wellspring", {}).get("0"):
+            warnings.append(f"{unit}: no take 0 of its own. The other unit's loopback is NOT used (TRS and ADAT "
+                            f"paths differ); record {unit}_0_... through {unit}'s own signal path")
         unit_lag = None
         if take0_path is not None:
             r = process_take(unit, "0", take0_path, unit_out, warnings)
@@ -802,6 +803,8 @@ def build_fake_references(fake_dir):
     testing the whole pipeline without real recordings:
     - take 0: the click stimulus itself, straight-delayed + attenuated in
       Python (a loopback cable adds no DSP, just interface latency + gain).
+      Wellspring's through the analog TRS path; Magneto's through the
+      OPTX2/ADAT path, with a different delay and gain.
     - take A / MA: our own Tank (build/rv_render) rendering the click
       stimulus, standing in for "the Wellspring/Magneto's own recording",
       then the same delay+gain applied (as if that render had been played
@@ -821,8 +824,12 @@ def build_fake_references(fake_dir):
 
     fake_dir = Path(fake_dir)
     fake_dir.mkdir(parents=True, exist_ok=True)
-    KNOWN_DELAY_SAMPLES = 137     # ~2.85 ms, a plausible interface round trip
+    KNOWN_DELAY_SAMPLES = 137     # ~2.85 ms, a plausible interface round trip (analog TRS)
     KNOWN_GAIN_DB = -3.0
+    # The Magneto goes through BoredBrain OPTX2 over ADAT: its own, longer
+    # round trip and level. Each unit must be aligned with its own loopback.
+    ADAT_DELAY_SAMPLES = 181      # ~3.77 ms
+    ADAT_GAIN_DB = -1.5
 
     def delay_gain(mono, sr, delay, gain_db):
         g = 10 ** (gain_db / 20)
@@ -833,6 +840,8 @@ def build_fake_references(fake_dir):
     stim0, sr = read_wav(STIMULUS_DIR / "01_clicks.wav")
     l0 = delay_gain(stim0[0], sr, KNOWN_DELAY_SAMPLES, KNOWN_GAIN_DB)
     write_wav(fake_dir / "wellspring_0_loopback.wav", [l0, [0.0] * len(l0)], sr)
+    m0 = delay_gain(stim0[0], sr, ADAT_DELAY_SAMPLES, ADAT_GAIN_DB)
+    write_wav(fake_dir / "magneto_0_adat_loopback.wav", [m0], sr)
 
     # take A: our Tank rendering the click stimulus, "recorded" with the same delay/gain
     tank_a = fake_dir / "_tank_A.wav"
@@ -888,10 +897,11 @@ def build_fake_references(fake_dir):
         chord_sig = [0.3 * min(1.0, i / fade, (n_chord - 1 - i) / fade) *
                      sum(math.sin(2 * math.pi * f * i / sr) for f in chord) / 3 for i in range(n_chord)]
         mono = [0.0] * sr + tone + [0.0] * sr + chord_sig + [0.0] * int(2 * sr)
-        rec = delay_gain(mono, sr, KNOWN_DELAY_SAMPLES, KNOWN_GAIN_DB)
+        rec = delay_gain(mono, sr, ADAT_DELAY_SAMPLES, ADAT_GAIN_DB)
         write_wav(fake_dir / f"magneto_{take}_wow.wav", [rec], sr)
 
     return {"delay_samples": KNOWN_DELAY_SAMPLES, "delay_ms": KNOWN_DELAY_SAMPLES / sr * 1000.0,
+            "adat_delay_ms": ADAT_DELAY_SAMPLES / sr * 1000.0,
             "gain_db": KNOWN_GAIN_DB, "wobble": known_wobble}
 
 
@@ -945,6 +955,12 @@ def selftest():
 
     print()
     m = summary["units"]["magneto"]
+    got_m = m.get("interface_latency_ms")
+    want_m = truth["adat_delay_ms"]
+    ok = got_m is not None and abs(got_m - want_m) <= 0.15
+    print(f"{'PASS' if ok else 'FAIL'}  Magneto (ADAT/OPTX2) uses its own loopback: {fmt(got_m,3)} ms, truth "
+          f"{want_m:.3f} ms (Wellspring's TRS path {want_lat:.3f} ms)")
+    fails += not ok
     for take, (depth, rate) in truth["wobble"].items():
         d = m["take_details"].get(take, {})
         if depth == 0.0:

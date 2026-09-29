@@ -12,7 +12,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ### 1. Record the Wellspring (≈45 min) · unblocks M1
 - **Doc:** [recording-recipe.md](recording-recipe.md) · Ableton settings: [ableton-setup.md](ableton-setup.md)
-- [ ] Take **0** (loopback) and take **A** (clicks) first. A alone lets Claude finish M1
+- [ ] Take **0** (TRS loopback: interface OUT 1 → IN 1) and take **A** (clicks) first. A alone lets Claude finish M1
 - [ ] Core: **B, C** (hot INPUT), **D, E, E2**
 - [ ] Optional: **F** (knocks; skip if weak), **G** (ringing, delay on)
 - [ ] Save as `test_audio/reference/wellspring_<take>_<desc>.wav`, one line per take in `test_audio/reference/NOTES.md`
@@ -21,6 +21,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### 2. Record the Magneto (≈30 min)
 - **Doc:** [recording-recipe-magneto.md](recording-recipe-magneto.md) · why: [ADR 0020](adr/0020-magneto-benchmark.md)
 - [ ] Rack **off** → rear DIP **S2 = ON** (Dual Split). Set it back to OFF afterwards
+- [ ] **First, take 0 through the OPTX2 (ADAT loopback):** patch the OPTX2 output jack you'll use straight into the OPTX2 input jack you'll use, play `01_clicks` and record it as `magneto_0_adat_loopback.wav`. The ADAT path has its own latency and level, so the Wellspring's TRS loopback can't stand in for it. Note the ADAT channels in `NOTES.md` and keep them for every Magneto take
 - [ ] Spring (Right in/out): **MA, MB, ME**
 - [ ] Tape (Left in/out): **MW0–MW4** (WOW & FLUTTER × 5, `08_held_tones.wav`), **MD1–MD3** (REC LVL green/amber/red)
 - [ ] Save as `test_audio/reference/magneto_<take>_<desc>.wav`, with notes in the same `NOTES.md`

@@ -48,7 +48,7 @@ Leave the Wellspring's LINE R input unplugged. Both outputs are always recorded 
 
 Why L only: the Wellspring is **true stereo** (L input → left tank, R input → right tank). With R unplugged, its jack normals the L signal into R, so both tanks get an identical copy. Sending the same mono signal to both inputs from Ableton would do the same, but it needs two outputs at exactly matched levels. Our stimulus is mono, and Resilio Versio sums its input to mono before its Springs, so this compares like with like.
 
-Plus once per session, a **loopback take** (take 0) to measure your interface's latency and level: a cable from Interface OUT 1 straight to Interface IN 1.
+Plus once per session, a **loopback take** (take 0) to measure your interface's latency and level: a cable from Interface OUT 1 straight to Interface IN 1. This measures the **analog TRS path** the Wellspring uses. Anything recorded through the eurorack (the Magneto, later the Versio) goes through the BoredBrain OPTX2 and ADAT instead, which has its own latency and level, so it gets its own loopback take (see `recording-recipe-magneto.md`).
 
 ## 3. Ableton setup
 
