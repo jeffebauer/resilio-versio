@@ -36,7 +36,7 @@ in L,R ─ mono sum ─ DriveIn ─┬──────────────
                              └─ Splash (Hit detector)          │  └─ Spring C ─┘                       ▲
                                   │ Clatter ──► each Spring's high-path input                          │
                                   │ Jolt ────► each Spring: L offset (× kJoltSpringScale[i]), Δa       │
-   Tank::kick(offset) ─ KickVoice ├─ loopOut (HP120⁴(thump + burst)) ───┘ (post-drive Tank input)      │
+   Tank::kick(offset) ─ KickVoice ├─ loopOut (HP160⁴(thump + burst)) ───┘ (post-drive Tank input)      │
                                   ├─ directOut (thump) ────────────────────────────────────────────────┘ (wet mid, pre-DriveOut)
                                   └─ joltOffset() ─► Splash::strike(1, offset)
    Wobble[i] ─► Spring i: added to M6's Micro-mod floor offset on the Loop delay read
@@ -89,7 +89,7 @@ in L,R ─ mono sum ─ DriveIn ─┬──────────────
   containing it. Then `kick_.process(kickLoop, kickDirect, n)`.
 - **`kickLoop` is added after DriveIn and Tilt**, straight into the Springs'
   input (SPEC §4.6 "post-drive"). A knock on the tank bypasses the input
-  transducer and the EQ. The Loop feed is high-passed at 120 Hz, 4th order
+  transducer and the EQ. The Loop feed is high-passed at 160 Hz (120 before TENSION), 4th order
   (ADR 0016 "Kick-path high-pass on the part fed into the Loop").
 - **`kickDirect`** (the full thump) is added to the wet **mid** before DriveOut,
   × `kWetGain`: the pickup hears the tank body move, and the pickup gives

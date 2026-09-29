@@ -6,7 +6,7 @@
 //                   ─► burst: ~10 ms broadband noise (high-passed at 150 Hz)
 //                   ─► joltOffset(): "forces maximal SPLASH jolt" → Splash::strike()
 //
-//   loopOut   = HP120⁴(thump + burst) → Tank input, post-DriveIn/Tilt (SPEC §4.6 "post-drive")
+//   loopOut   = HP160⁴(thump + burst) → Tank input, post-DriveIn/Tilt (SPEC §4.6 "post-drive")
 //   directOut = thump                 → wet bus before DriveOut (the pickup hears the body move)
 //
 // Why two outputs (ADR 0016 "a Kick-path high-pass on the part fed into the
@@ -71,7 +71,7 @@ private:
     splash::KickParams params_{};
     std::array<Voice, kVoices> voices_{};
     int    nextVoice_ = 0;
-    std::array<Biquad, 2> loopHp_{}; // 4th order: ~-30 dB at 50 Hz
+    std::array<Biquad, 2> loopHp_{}; // 4th order at kKickLoopHpHz: ~-40 dB at 50 Hz
     OnePoleLowpass burstLp_; // burst high-pass = x − LP(x)
     Rng    rng_;
     uint32_t seed_ = 1;

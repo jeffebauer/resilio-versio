@@ -1007,7 +1007,7 @@ void tone()
             const float fC  = rv::map::tensionTransitionHz(tension);
             const size_t end = size_t(1.5f * rv::map::tensionLoopDelaySeconds(tension) * kFs);
             // High band per map::kChirpDirection, as test_spring.
-            const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
+            const float hiLo = rv::map::kHighsLater ? 0.8f : 0.5f, hiHi = rv::map::kHighsLater ? 0.97f : 0.85f;
             const double tHi = centroidSeconds(bandpass(m, hiLo * fC, hiHi * fC), end);
             const double tLo = centroidSeconds(bandpass(m, 200.0f, 500.0f), end);
             // Late band per map::kChirpDirection (lows for LowsLater).

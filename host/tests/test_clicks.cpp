@@ -12,11 +12,14 @@
 // SPRINGS and TENSION/TONE settings, CLEAN and DRIVEN (KICKED's LoopSat kept
 // the level under the limiter). The limiter now glides its gain and
 // catches the overshoot with a curvature-free soft knee (Tank.cpp).
+// Since TENSION (ADR 0026) the Loop's L and fC come from TENSION, not
+// DECAY, so the scan walks TENSION (DECAY only sets how long the chord's
+// modes build up).
 //
 // Checks (all MIX 1, SPLASH 0, WOBBLE 0, 2 s tail):
 //   1. held A minor chord (08_held_tones.wav's, at -9 dBFS since M8's
-//      excitation trim) at DECAY 0.40 ..
-//      0.70 in 0.01 steps, SPRINGS 2, CLEAN, DRIVE 0: click_count 0 each;
+//      excitation trim) at TENSION 0.35 .. 0.65 in 0.01 steps, DECAY
+//      kScanDecay, SPRINGS 2, CLEAN, DRIVE 0: click_count 0 each;
 //   2. spot checks at DECAY 0.50 (the default) over SPRINGS 1/2/3 and
 //      ATTITUDE x DRIVE: click_count 0;
 //   3. the limiter itself, pushed hard (chord at -3 dBFS): peaks never
@@ -69,12 +72,12 @@ struct Result {
     long  flatRuns = 0; // runs of >= 3 samples held within 1e-6 of the threshold
 };
 
-Result render(const Buf& in, float decay, int springs, float attitude, float drive)
+Result render(const Buf& in, float decay, int springs, float attitude, float drive, float tension = 0.5f)
 {
     rv::Tank t;
     t.prepare(kFs, 48);
     t.setParam(rv::ParamId::Decay, decay);
-    t.setParam(rv::ParamId::Tension, 0.5f);
+    t.setParam(rv::ParamId::Tension, tension);
     t.setParam(rv::ParamId::Tone, 0.5f);
     t.setParam(rv::ParamId::Splash, 0.0f);
     t.setParam(rv::ParamId::Wobble, 0.0f);
@@ -101,7 +104,10 @@ Result render(const Buf& in, float decay, int springs, float attitude, float dri
     return res;
 }
 
-void decayScan()
+// A 2.6 s tail: long enough for the chord's modes to build up to the limiter.
+constexpr float kScanDecay = 0.6f;
+
+void tensionScan()
 {
     // -9 dBFS: since M8 the Tank trims in-band input by the excitation trim
     // (DriveVoicing.h; ~-3 dB on this chord), so at -12 dBFS the chord no
@@ -110,19 +116,19 @@ void decayScan()
     long worst = 0, total = 0, limited = 0;
     float worstAt = 0.0f;
     for (int k = 0; k <= 30; ++k) {
-        const float  decay = 0.40f + 0.01f * float(k);
-        const Result r     = render(in, decay, 2, 0.0f, 0.0f);
+        const float  tension = 0.35f + 0.01f * float(k);
+        const Result r       = render(in, kScanDecay, 2, 0.0f, 0.0f, tension);
         total += r.clicks;
         if (r.peak > rv::Tank::kLimitKnee) ++limited;
-        if (r.clicks > worst) { worst = r.clicks; worstAt = decay; }
+        if (r.clicks > worst) { worst = r.clicks; worstAt = tension; }
     }
     std::snprintf(msg, sizeof msg,
-                  "held chord, DECAY 0.40..0.70 step 0.01, 2 Springs CLEAN: %ld click(s) total (worst %ld at %.2f); "
-                  "limiter engaged at %ld of 31",
-                  total, worst, double(worstAt), limited);
+                  "held chord, TENSION 0.35..0.65 step 0.01, DECAY %.2f, 2 Springs CLEAN: %ld click(s) total (worst %ld at "
+                  "%.2f); limiter engaged at %ld of 31",
+                  double(kScanDecay), total, worst, double(worstAt), limited);
     check(total == 0, msg);
     // The scan must actually exercise the limiter, or it proves nothing.
-    check(limited >= 5, "held chord scan drives the limiter (>= 5 DECAY settings above the knee)");
+    check(limited >= 5, "held chord scan drives the limiter (>= 5 TENSION settings above the knee)");
 }
 
 void spotChecks()
@@ -156,7 +162,7 @@ void limiterPushed()
 
 int main()
 {
-    decayScan();
+    tensionScan();
     spotChecks();
     limiterPushed();
     std::printf("%d failure(s)\n", failures);

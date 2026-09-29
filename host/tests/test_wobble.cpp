@@ -255,8 +255,9 @@ int main()
     }
 
     // ---- In the tail: what a held chord actually hears -------------------------
-    // Held 1 kHz tone through a Loop at DECAY 0 / noon / max (L and T60 from
-    // Mappings.h): p95 of the 10-cycle-averaged pitch of the wet tail.
+    // Held 1 kHz tone through a Loop at DECAY 0 / noon / max (T60 from
+    // Mappings.h; L = TENSION noon's 69 ms, the same at every DECAY since
+    // ADR 0026): p95 of the 10-cycle-averaged pitch of the wet tail.
     {
         bool drift = true, warble = true, trans = true;
         for (float d : {0.0f, 0.5f, 1.0f}) {
@@ -268,11 +269,15 @@ int main()
                         d, 1000.0f * L, t60, c[0], c[1], c[2], c[3]);
             drift &= c[0] < 5.0;
             trans &= c[1] > c[0] && c[1] < c[2];
-            warble &= c[3] >= (d == 0.0f ? 15.0 : 25.0);
+            // DECAY 0: a 0.4 s tail holds only ~6 trips of TENSION noon's
+            // 69 ms tank (ADR 0026), so the Loop alone adds less; the first
+            // echoes carry the transport's wobble on top (whole Tank: test_m7_tank,
+            // ~40 cents at DECAY 0).
+            warble &= c[3] >= (d == 0.0f ? 10.0 : 25.0);
         }
         check(drift, "tail Drift (WOBBLE 0.5): p95 < 5 cents at every DECAY: held chords stay in tune");
         check(trans, "tail transition (0.625) sits between Drift and Warble at every DECAY");
-        check(warble, "tail Warble (WOBBLE 1): p95 >= 25 cents at DECAY noon/max, >= 15 at DECAY 0: clearly out of tune");
+        check(warble, "tail Warble (WOBBLE 1): p95 >= 25 cents at DECAY noon/max, >= 10 at DECAY 0 (Loop only): clearly out of tune");
     }
 
     std::printf("%d failure(s)\n", failures);

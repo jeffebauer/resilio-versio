@@ -241,16 +241,17 @@ char msg[256];
 
 // ---- 1. Chirp present, in the direction map::kChirpDirection asks for ---------
 // LowsLater: in the first echo the high band (0.5-0.85 fC) arrives before
-// 200-500 Hz. HighsLater: the high band (0.65-0.95 fC: a rising Chirp's delay
-// piles up toward fC) arrives after it. `lag` is how much later the late band
+// 200-500 Hz. HighsLater: the high band (0.8-0.97 fC: a rising Chirp's delay
+// piles up toward fC, and at TENSION 0 the whole ~3 ms Chirp lives there)
+// arrives after it. `lag` is how much later the late band
 // arrives, so both directions share one check.
 void chirpHighsBeforeLows()
 {
     const float fs = 48000.0f, decay = 0.5f;
     const double dir = rv::map::kHighsLater ? -1.0 : 1.0; // +1: lows later
     const char* late = rv::map::kHighsLater ? "highs" : "lows";
-    const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
-    const float hiRef = rv::map::kHighsLater ? 0.8f : 0.67f; // prediction's reference in the high band
+    const float hiLo = rv::map::kHighsLater ? 0.8f : 0.5f, hiHi = rv::map::kHighsLater ? 0.97f : 0.85f;
+    const float hiRef = rv::map::kHighsLater ? 0.88f : 0.67f; // prediction's reference in the high band
     for (float tension : {0.0f, 0.5f, 1.0f}) {
         SpringRig rig(fs, decay, tension, 0.5f);
         const float L   = rig.spring.loopDelaySamples();

@@ -7,7 +7,7 @@
 //                                │          ▲   └ (x + Clatter) × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
 //                                │          │                                        │
 //                                └─ Splash ─┼─ Clatter; Jolt ─► each Spring's L, a  ─┤  Wobble[i] ─► Spring i's L
-//   kick() ─ KickVoice ─ loop feed (HP 120 Hz⁴)                                       │
+//   kick() ─ KickVoice ─ loop feed (HP 160 Hz⁴)                                       │
 //                      ├ direct thump ────────────────────────────────┐              │
 //                      └ forced Splash (Hit 1, SPLASH 1)              │              ▼
 //                                          SPRINGS mid/side mix ─ mid ┴ + ─┬─────────────┐   (per mode, 20 ms fade)

@@ -278,10 +278,15 @@ inline KickParams blendKick(const std::array<float, 3>& w)
 }
 constexpr float kThumpGlideMs = 15.0f;  // pitch glide 1/e time
 // The part of the Kick fed into the Loop is high-passed here (4th order:
-// two 2nd-order sections, ~−30 dB at the thump's 50 Hz) so
+// two 2nd-order sections, ~−40 dB at the thump's 50 Hz) so
 // the thump cannot ring in the tail (ADR 0016); the full thump goes straight
 // to the wet bus (the pickup hears the tank body move).
-constexpr float kKickLoopHpHz = 120.0f;
+// 120 → 160 Hz with TENSION (ADR 0026): at DECAY 1 the default tank is
+// 69 ms (was 100 ms), and the thump's residue above 120 Hz recirculated
+// into the < 100 Hz of the KICKED tail (test_kick 18.7 dB, needs 20; with
+// no thump in the Loop at all it is 39 dB). 160 Hz: 23.3 dB; the burst
+// and the forced Splash still ring the Springs.
+constexpr float kKickLoopHpHz = 160.0f;
 // Two gate/button edges closer than this are one Kick (bounce guard: a
 // 12/s gate train is 83 ms apart, far above it).
 constexpr float kKickMergeMs = 5.0f;
@@ -322,13 +327,19 @@ constexpr float kBurstHpHz   = 150.0f; // keeps the burst's own lows out
 // cents per pass at 1 Hz, L = 55 ms) is ~10–17 cents heard: not as far off
 // as it looks per pass. The zones below are set for the *heard* tail at
 // DECAY noon, and specified per pass (so WOBBLE does not depend on L).
+// (Those G values are from the DECAY-sized tank before TENSION; since ADR
+// 0026 L comes from TENSION, 69 ms at noon at every DECAY, so at DECAY max
+// the tail now holds more trips per second and multiplies a little more:
+// whole-Tank Drift at DECAY max went 5.9 cents with c(0.5) = 0.75.)
 //
 // Depth curve (ADR 0008, exponential-ish): c(w) = cMax (e^{k w} − 1)/(e^k − 1),
-// cMax = 12 cents per pass, k chosen so c(0.5) = 0.75: 1/(e^{k/2} + 1) =
-// 0.75/12 → k = 5.42. Per pass → heard in the tail at DECAY noon (×G):
-//   Drift      0 – 0.50:  0 → 0.75 cents → ≲ 5 cents (felt; slow drift under
-//                                          the pitch JND: held chords in tune)
-//   transition 0.50–0.75: 0.75 → 3.0 cents → 5 → ~15 cents (becoming audible)
+// cMax = 12 cents per pass, k chosen so c(0.5) = 0.6: 1/(e^{k/2} + 1) =
+// 0.6/12 → k = 5.89 (0.75 / 5.42 before TENSION). Per pass → heard in the
+// tail at DECAY noon (×G):
+//   Drift      0 – 0.50:  0 → 0.6 cents  → ≲ 5 cents at every DECAY (felt;
+//                                          slow drift under the pitch JND:
+//                                          held chords in tune)
+//   transition 0.50–0.75: 0.6 → 2.7 cents → 5 → ~15 cents (becoming audible)
 //   Warble     0.75–1.00: 3.0 → 12 cents  → ~15 → ~50 cents (worn tape: clearly
 //                                          out of tune on held chords)
 // As a fraction of L at WOBBLE 1 (D ≈ 41 samples at 48 kHz): 2.8 % at DECAY 0,
@@ -336,7 +347,7 @@ constexpr float kBurstHpHz   = 150.0f; // keeps the burst's own lows out
 // Placeholder cMax until the Magneto WOW & FLUTTER takes (ADR 0020) calibrate
 // it on 08_held_tones; per-DECAY numbers: docs/m7-integration.md.
 constexpr float kWobbleMaxCents  = 12.0f;
-constexpr float kWobbleCurve     = 5.42f;
+constexpr float kWobbleCurve     = 5.89f;
 constexpr float kDriftEnd        = 0.50f;
 constexpr float kWarbleStart     = 0.75f;
 inline float wobbleCents(float w)
