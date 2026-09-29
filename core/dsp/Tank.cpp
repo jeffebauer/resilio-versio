@@ -320,7 +320,15 @@ void Tank::controlTick(bool snap)
     const size_t turn = size_t(springTurn_);
     springTurn_ = (springTurn_ + 1) % int(kMaxSprings);
     for (size_t i = 0; i < springs_.size(); ++i) {
-        if (!snap && i != turn) continue;
+        const float a = std::clamp(base.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
+                                   -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
+        if (!snap && i != turn) {
+            // Off turn: only the Jolt's (and TENSION's) allpass coefficient,
+            // so a hit's pitch lurch reaches every Spring on the same tick
+            // (staggering it read as extra undulation on KICKED hits, owner).
+            springs_[i].setAllpassCoeff(a);
+            continue;
+        }
         // g is designed from each Spring's own round trip, so the L/fC/a
         // detune changes pitch/texture, not tail length; the damping and
         // decay detune (SpringModes.h) make each Spring fade its own way.
@@ -329,8 +337,7 @@ void Tank::controlTick(bool snap)
         s.transitionHz     *= modes::kDetune[i].transition;
         s.dampingHz        *= modes::kDetune[i].damping; // Spring.cpp clamps to 0.45 fs
         s.t60Seconds       *= modes::kDetune[i].decay;
-        s.allpassCoeff      = std::clamp(s.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
-                                         -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
+        s.allpassCoeff      = a;
         s.tapRatio          = modes::kPickupTap[i];
         s.stages            = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
         // Pickup: tapRatio lines the first echoes up along the delay line;

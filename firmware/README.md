@@ -238,3 +238,9 @@ Run 8 results (29 Sep 2026): **worst case average under target.**
 
 **Run 9** (`dist/resilio_versio_m3_profile_stagger.bin`, owner's choice over block 96): one Spring takes new settings per control tick (`Tank::controlTick`), so B and C follow a change up to two ticks (1.3 ms) after A. Not bit-exact: level and per-octave spectrum match within 0.05 dB (desktop renders, hits/skank/moves); KICKED waveforms differ 21–27 dB below the signal (the Jolt reaches B and C a little later), CLEAN 81 dB. A/B for the owner: `renders/m3_stagger_ab/`. Results: `PEAK ctl` 13.2 → 6.0; S1 loose 56.6 % / 61.7 %, S2 loose 62.1 % / 67.2 % (avg / max); tight 51.4 % / 56.5 %.
 
+Owner listen (29 Sep): a bit more undulation on KICKED hits with the run 9 stagger, clearest with built-up feedback. Cause: the Splash Jolt moves each Spring's allpass coefficient every tick, and staggering delayed it for B and C. Fix: every Spring takes the Jolt's coefficient each tick (`Spring::setAllpassCoeff`); only the full redesign (Loop gain and filters) takes turns. Static-settings renders now match the pre-stagger build 112–118 dB down (the run 9 version: 23–27 dB). Owner: A/B/C at moderate DRIVE (`renders/m3_stagger_abc/`) hard to tell apart.
+
+Also: the hot-path saturators (DriveIn, DriveOut, LoopSat) multiply by 1/k worked out at control rate instead of dividing by k per sample (14 divides per sample fewer); output difference 95–113 dB down.
+
+**Run 10** (`dist/resilio_versio_m3_profile_run10.bin`): both of the above. Release 109,944 B (83 %), profile 124,932 B (95 %: the benchmark code; trim before more profile features).
+

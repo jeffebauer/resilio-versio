@@ -56,7 +56,9 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Run 7 (29 Sep): the peaks come from the springs recalculating their settings; a faster spring loop found (a third cheaper)
 - [x] Run 8 (29 Sep): worst case **62.9 % average (under the 65 % target)**, peaks 75 %. The peaks are the springs recalculating all at once when a knob moves or a hit jolts them
 - [x] Run 9 (29 Sep): springs take changes in turn (your pick). Peaks 75 → ~67 %; close to the target
-- [ ] **Listen (≈5 min):** `renders/m3_stagger_ab/`, A = before, B = springs taking changes in turn (KICKED hits, KICKED skank, hits with knobs sweeping). Tone and level match; can you hear any difference? If yes, Claude switches to the 2 ms audio slice instead
+- [x] Listened (29 Sep): a bit more undulation on KICKED hits with the stagger. Cause: SPLASH's jolt reached springs B and C a tick or two late. Fixed: the jolt now reaches all springs together; only the heavy recalculation takes turns (now within 112–118 dB of the original sound)
+- [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
+- [ ] Run 10: flash **`dist/resilio_versio_m3_profile_run10.bin`** (USB only), stream ~2 minutes. The fix above, plus fewer slow divisions in the drive stages
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)

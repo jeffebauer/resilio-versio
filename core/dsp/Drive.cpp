@@ -99,9 +99,12 @@ void DriveIn::set(const DriveInSettings& s, bool snap, int interval)
         fluxPost_.s = sPost;
         fluxDb_     = v.fluxCutDb;
     }
-    kPos_  = v.transKPos;
-    kNeg_  = v.transKNeg;
-    tapeK_ = v.tapeK;
+    kPos_     = v.transKPos;
+    kNeg_     = v.transKNeg;
+    tapeK_    = v.tapeK;
+    invPos_   = 1.0f / kPos_;
+    invNeg_   = 1.0f / kNeg_;
+    invTapeK_ = 1.0f / tapeK_;
     // Measured squash (see "Automatic gain compensation"), at least 1 (never
     // turns a clean signal down) and at most preGain (never louder than the
     // signal would be with no pre-gain at all).
@@ -186,8 +189,10 @@ void DriveOut::set(const drive::Voice& v, float push, float fluxCutDb, float amo
     amount_ = amount;
     // Hardness steps a little per control tick while DRIVE moves: sat(k·x)/k
     // changes smoothly with k, so the steps are far below audibility.
-    kPos_ = v.outK * push;
-    kNeg_ = v.outK * (1.0f + v.outAsym) * push;
+    kPos_   = v.outK * push;
+    kNeg_   = v.outK * (1.0f + v.outAsym) * push;
+    invPos_ = 1.0f / kPos_;
+    invNeg_ = 1.0f / kNeg_;
     if (v.outLpHz != lpHz_) {
         lp_.setLowpass(std::min(v.outLpHz, 0.45f * sampleRate_), 0.7071f, sampleRate_);
         lpHz_ = v.outLpHz;

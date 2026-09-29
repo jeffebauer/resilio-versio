@@ -53,6 +53,13 @@ inline float asymClip(float x, float kPos, float kNeg)
     const float k = x >= 0.0f ? kPos : kNeg;
     return softClip(k * x) / k;
 }
+// The same with 1/k worked out beforehand (at control rate): a divide costs
+// ~14 cycles on the M7 and nothing overlaps it (M3). Differs from the plain
+// form in the last bit only.
+inline float asymClip(float x, float kPos, float kNeg, float invPos, float invNeg)
+{
+    return x >= 0.0f ? softClip(kPos * x) * invPos : softClip(kNeg * x) * invNeg;
+}
 
 // ---- First-order shelf (tape pre-/de-emphasis) -------------------------------
 // H(s) = (G s + wc) / (s + wc): gain 1 at DC, G far above wc. Bilinear with
@@ -165,11 +172,12 @@ public:
         x = hp_.process(x);
         x *= preGain_.next();
         envIn_.process(x * x + kEnvFloor);
-        const float kP = kPos_, kN = kNeg_, tk = tapeK_, amt = tapeAmt_.next();
+        const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, tk = tapeK_, itk = invTapeK_,
+                    amt = tapeAmt_.next();
         float y = os_.process(x, [&](float u) {
-            const float t = asymClip(fluxPre_.process(u), kP, kN);     // transducer (flux domain)
-            const float p = preEmph_.process(t);                        // tape
-            const float s = p + amt * (softClip(tk * p) / tk - p);
+            const float t = asymClip(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
+            const float p = preEmph_.process(t);                            // tape
+            const float s = p + amt * (softClip(tk * p) * itk - p);
             return fluxPost_.process(deEmph_.process(s));               // restore highs
         });
         envOut_.process(y * y + kEnvFloor);
@@ -191,6 +199,7 @@ private:
     Ramp preGain_, makeup_, tapeAmt_;
     OnePoleLowpass envIn_, envOut_; // automatic gain compensation
     float kPos_ = 1.0f, kNeg_ = 1.0f, tapeK_ = 1.0f;
+    float invPos_ = 1.0f, invNeg_ = 1.0f, invTapeK_ = 1.0f;
     // Last designed values (skip redesigns at rest).
     float emphDb_ = -1.0f, fluxDb_ = -1.0f, hpHz_ = -1.0f, lpHz_ = -1.0f, smearHz_ = -1.0f;
 };
@@ -278,11 +287,14 @@ public:
         amount_ = amount;
         kPos_   = kPos;
         kNeg_   = kNeg;
+        invPos_ = 1.0f / kPos; // set() runs per redesign, process() per sample
+        invNeg_ = 1.0f / kNeg;
     }
     float process(float x)
     {
-        const float a = amount_, kP = kPos_, kN = kNeg_;
-        const float y = os_.process(fluxPre_.process(x), [a, kP, kN](float u) { return u + a * (asymClip(u, kP, kN) - u); });
+        const float a = amount_, kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_;
+        const float y = os_.process(fluxPre_.process(x),
+                                    [a, kP, kN, iP, iN](float u) { return u + a * (asymClip(u, kP, kN, iP, iN) - u); });
         return fluxPost_.process(y);
     }
     // Latency (samples) at freqHz, counted in the Loop round trip (the
@@ -292,7 +304,7 @@ public:
 private:
     Oversampler os_;
     FirstOrder fluxPre_, fluxPost_;
-    float amount_ = 0.0f, kPos_ = 1.0f, kNeg_ = 1.0f;
+    float amount_ = 0.0f, kPos_ = 1.0f, kNeg_ = 1.0f, invPos_ = 1.0f, invNeg_ = 1.0f;
 };
 
 // ---- DriveOut: output pickup, one per output channel -------------------------------
@@ -336,14 +348,15 @@ public:
     float levelOut() const { return envOut_.y; }
     float process(float x)
     {
-        const float kP = kPos_, kN = kNeg_, a = amount_;
+        const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, a = amount_;
         x = lp_.process(x);
         envIn_.process(x * x + kEnvFloor);
         // Full saturation (DRIVEN, KICKED, CLEAN at DRIVE 1) skips the blend:
         // the plain curve is ~13 ns/sample cheaper on the desktop (M8 CPU).
         const float u0 = fluxPre_.process(x);
-        float y = fluxPost_.process(a >= 1.0f ? os_.process(u0, [kP, kN](float u) { return asymClip(u, kP, kN); })
-                                              : os_.process(u0, [kP, kN, a](float u) { return u + a * (asymClip(u, kP, kN) - u); }));
+        float y = fluxPost_.process(
+            a >= 1.0f ? os_.process(u0, [kP, kN, iP, iN](float u) { return asymClip(u, kP, kN, iP, iN); })
+                      : os_.process(u0, [kP, kN, iP, iN, a](float u) { return u + a * (asymClip(u, kP, kN, iP, iN) - u); }));
         envOut_.process(y * y + kEnvFloor);
         return makeup_.next() * hp_.process(y);
     }
@@ -359,6 +372,7 @@ private:
     // Keeps the level followers away from denormals in silence (-120 dBFS).
     static constexpr float kEnvFloor = 1.0e-12f;
     float kPos_ = 0.5f, kNeg_ = 0.5f, amount_ = 1.0f, lpHz_ = -1.0f, fluxDb_ = -1.0f;
+    float invPos_ = 2.0f, invNeg_ = 2.0f;
     void setFlux(float cutDb);
 };
 

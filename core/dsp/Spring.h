@@ -142,6 +142,11 @@ public:
 
     // Control rate. snap = jump straight to the settings (first block, reset).
     void setSettings(const SpringSettings& s, bool snap);
+    // Just the allpass coefficient, at once, without the Loop gain redesign
+    // (the Tank staggers full redesigns across Springs, but the Splash Jolt
+    // moves a on every tick and must reach all Springs together). The next
+    // setSettings() sees the change and redesigns as usual.
+    void setAllpassCoeff(float a) { a_ = a; }
 
     // n samples of mono in -> mono Spring out. Real-time safe.
     void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, nullptr, out, n); }
