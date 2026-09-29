@@ -72,6 +72,11 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Hanging note at WOBBLE ~9 o'clock:** open `renders/proto_wobble_hang/index.html` from Finder. **A** today, **B** "Springs drift together at low WOBBLE" (Claude's pick: the hang drops to the WOBBLE-0 level), **C** halfway. Listen for: does the chord now fade evenly? Does B lose any life at 9 o'clock, or sound narrower at noon? Pick, notes, **Copy results for Claude**
 - [ ] **Lows ring longer, like your Wellspring:** open `renders/proto_low_tail/index.html`. **A** today, **B** "lows linger" (snare tail 3.5 → 3.8 s, rims unchanged), **C** "lows linger, top fades sooner" (closer to the tank's rims; one ringing check slightly over its limit), **W** your Wellspring (DECAY 2 o'clock rows). Question: more like a real tank, or just muddier? Note: the Wellspring's lows ring long but quietly; ours are louder, so the same stretch risks mud
 
+### 3f. Low end vs real tanks (≈10 min, 30 Sep)
+- Your ear was right: next to your Wellspring, the Magneto and 45 Ableton spring IRs, ours has **10–20 dB more below 160 Hz**, and centres near 300 Hz where real tanks centre at 1–2 kHz. Details: [m8-tuning-backlog.md](m8-tuning-backlog.md) "Sonic signature vs real springs"
+- [ ] **Listen:** `renders/eq_preview/index.html`. **A** today, **B** a tank-like low cut, **C** low cut + the honky spring midrange, **W** Wellspring, **M** Magneto. Offline EQ only: it previews the balance before Claude changes the reverb. Which is closest to a real tank? Too thin anywhere?
+- This probably changes what "lows ring longer" (3e) should be: real tanks' lows ring long but quietly
+
 ### 4. M2 Ableton check (≈15 min)
 - **Doc:** [m2-ableton-check.md](m2-ableton-check.md) · MIDI clip: `test_audio/midi/kicks_16ths.mid`
 - [ ] **Rescan plug-ins first** and use a fresh instance (see the top of this page). The second knob is now TENSION, not BOING

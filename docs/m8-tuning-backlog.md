@@ -105,3 +105,22 @@ Owner: SPLASH's noise-knock burst reads as a snare-like layer on hits, "not inte
 - **Measured** (tail 20–400 ms after each hit vs SPLASH 0, 2–8 kHz): A (today) +8 to +13 dB on loud hits in DRIVEN/KICKED (tail +3 to +7 dB louder); C +3 to +7 dB on loud hits, +1 to +2 dB on quieter ones (amplitude-dependent, as asked); D similar to C; **B and E (DRIVE alone) barely brighten** (< 2 dB; B mostly grits and squashes loud hits, and CLEAN's transducer stays clean). So in this model, driving harder alone doesn't splash; the splash comes from the hit's own highs feeding the springs.
 - **Open (owner):** pick by ear; then whether DRIVE should make SPLASH bite sooner (realistic, matched to Wellspring takes B vs C) or stay independent.
 
+
+## Sonic signature vs real springs (30 Sep 2026)
+Owner, listening to `renders/proto_low_tail/`: "the biggest difference … is the amount of low end". Measured every source as a 1/3-octave response (wet ÷ stimulus band energy, 0 dB = 500 Hz–2 kHz mean): Wellspring (clicks, sweep, hits, skank), Magneto spring (same four), the 45 Ableton spring IRs, and ours at the Wellspring-matched settings (DECAY 0.70, TONE noon, 2 Springs, CLEAN and DRIVEN). Each unit's four stimuli agree within ~1 dB, so these are the units' own signatures. Scripts and full tables: `docs/prototypes/spring-signature/` (needs a venv with numpy, scipy, soundfile).
+
+| dB re mids | 63 Hz | 100 | 125 | 160 | 250 | peak | 4 kHz | −6 dB low corner |
+|---|---|---|---|---|---|---|---|---|
+| Wellspring | −23 | −15 | −10 | −8 | −4 | 1.6 kHz | −17 | 160 Hz |
+| Magneto | −28 | −23 | −19 | −15 | −8 | 1.25 kHz | −7 | 250 Hz |
+| IR library (median) | −16 | −12.5 | −11 | −8 | −5 | 2 kHz | −1 | 200 Hz (40 of 45 tanks: 125–400 Hz) |
+| **Ours CLEAN** | **−4** | **−1** | **0** | **+2** | **+2** | **315 Hz** | −12 | **50 Hz** |
+| Ours DRIVEN | −8.5 | −2.4 | −0.4 | +1.6 | +2 | 315 Hz | −12 | 63 Hz |
+
+- **Low end (the big one):** ours is 10 dB too loud at 125 Hz and 15–20 dB at 63–100 Hz next to every real tank. Real tanks roll off below ~160–250 Hz at ~10–12 dB/oct (a spring driver coil's low-frequency loss); ours is flat to ~80 Hz (DriveIn band-limit HP 45 / 85 / 130 Hz by ATTITUDE, output HP 35 Hz).
+- **Centre of gravity:** real tanks rise gently from 250 Hz to a peak at 1.25–2 kHz (the "honky" spring midrange), then fall steeply. Ours peaks near 315 Hz and slopes down from there: woolly rather than honky.
+- **Over time:** the Wellspring's tail keeps its 1–2 kHz centre from the first echo to the end. Ours starts broadband-bright (first 80 ms reach 8 kHz at −9 dB; Wellspring −36, Magneto −23: SPLASH 0.3 + the high path) and then goes dark.
+- **Band T60 relative to 500 Hz–1 kHz:** 2–4 kHz decays at 0.37× ours vs 0.65× Wellspring, 0.51× Magneto, 0.77× IR median; 4–8 kHz 0.16× vs 0.30–0.55×. The Loop damping (one-pole at ~3.8 kHz at TONE noon, `toneDampingHz`) takes too much of the upper mids each trip. 125 Hz–1 kHz T60s already match the real tanks. Real lows (63–125 Hz) ring long (W 4.5 s vs our 2.6 s) but quietly.
+- **Fit:** a 2nd-order high-pass at 160 Hz plus a broad (+8 dB, Q 0.5) lift centred at 2 kHz takes the 50 Hz–3 kHz rms error to the average of the three references from 10.3 dB to 2.1 dB. The high-pass alone (best at 250 Hz) gets to 3.5 dB.
+- **Preview (offline EQ on our renders, not a DSP change):** `renders/eq_preview/index.html`, A today / B low cut / C low cut + spring mids / W Wellspring / M Magneto, hits and skank, CLEAN and DRIVEN (TASKS 3f).
+- **Candidate changes, in order:** (1) tank-like input band-pass: DriveIn high-pass ~160 Hz 12 dB/oct in every ATTITUDE (ties to TONE's bright-side low cut, the excitation-trim weighting `kExcHpHz`, the Kick thud, DRIVE level compensation and the wet-level gates); (2) a broad spring-midrange lift ~1.5–2 kHz before the springs; (3) less Loop damping at TONE noon so 2–4 kHz rings ~0.6× the mids; (4) a steeper low-pass ~5–6 kHz on the attack (ties to SPLASH round 3); (5) then revisit "lows linger" (quiet but long lows are what real tanks do), which the `proto/low-tail` branch made longer without making them quieter.
