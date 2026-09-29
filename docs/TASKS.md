@@ -17,7 +17,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Optional: **F** (knocks), **G** + **G2** (ringing, parallel and ping-pong feedback), **A-L / A-R** (29 Sep)
 - [x] Copied and renamed by Claude; analysed: [reference-report.md](reference-report.md) (tail ~5 s, echoes ~83 ms apart, highs 5.7 ms later; G/G2 flagged as Ringing, as intended)
 - [x] Notes: take C's INPUT about 1:30–2 o'clock; E2's SPRINGS DRY/WET at noon (29 Sep)
-- [ ] **Decide:** the recordings stay **out of git** (CLAUDE.md: recordings of commercial units are never committed or published), though ADR 0009 said they'd be committed. OK to make that official (`.gitignore` + ADR 0009)?
+- [x] Recordings stay **out of git** (29 Sep, your call; `.gitignore` + [ADR 0009](adr/0009-wellspring-reference-recordings.md) amended). They live only on your Mac
 - Check every take: delay DRY/WET fully **dry**, MAGIC **zero**, SPRINGS fully **wet**
 
 ### 2. Record the Magneto (≈30 min)
@@ -111,7 +111,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## What to send Claude
 
-- **Recordings:** just say they're done. Claude commits and analyses them.
+- **Recordings:** just say they're done (and where the Ableton project is). Claude copies, renames and analyses them. The WAVs stay on your Mac, never in git
 - **Checks (M0, M2):** pass/fail per step. For anything odd, a line of description or a short recording in `test_audio/m0/` or `test_audio/m2/`.
 - **Listening:** plain-words answers to the questions above.
 

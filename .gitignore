@@ -1,7 +1,8 @@
 .DS_Store
 build/
 *.wav
-!test_audio/reference/*.wav
+# Reference recordings (test_audio/reference/*.wav) stay out of git: recordings of
+# commercial units are never committed or published (CLAUDE.md, ADR 0009 amendment).
 tools/review/sample/out/
 tools/review/sample/reference/
 renders/

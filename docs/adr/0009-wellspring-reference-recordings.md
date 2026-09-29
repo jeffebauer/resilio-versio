@@ -13,4 +13,8 @@
 - INPUT drives the unit into pleasing distortion: take C is a free driven-spring reference for M5.
 - The tanks are shock-mounted against outside vibration, so physical knocks may be weak. The Kick reference is optional.
 
-**Scope:** Reference only. Resilio Versio is not meant to clone the Wellspring. Stimulus WAVs are regenerated, not committed. Reference recordings are committed.
+**Scope:** Reference only. Resilio Versio is not meant to clone the Wellspring. Stimulus WAVs are regenerated, not committed. Reference recordings are **not** committed (amended 29 Sep 2026, below).
+
+## Amendment (29 Sep 2026, owner): recordings stay out of git
+Reference recordings of commercial units (Wellspring, Magneto) are never committed or published (CLAUDE.md hard rule). They live only in `test_audio/reference/` on the owner's machine; `.gitignore` ignores every WAV there. What *is* committed: `test_audio/reference/NOTES.md` (settings and provenance), the analysis tool, and the measured results in `docs/reference-report.md`. First session recorded 29 Sep 2026; none had been committed before this amendment.
+
