@@ -1,0 +1,98 @@
+# SPLASH voicing prototype (29 Sep 2026), not in the build. Against core/ at fca8d6a.
+# Build a renderer per voicing (RV_SV: 0 = today, 1 = B drive-led, 2 = C bright-led, 3 = D combined):
+#   cp -R core proto/core && (cd proto && patch -p0 < ../docs/prototypes/splash-voicings.patch)
+#   clang++ -std=c++17 -O2 -DRV_SV=2 -Iproto/core -Ihost/common -Ihost host/render/*.cpp host/common/*.cpp proto/core/dsp/*.cpp -o rv_render_2
+# Renders and settings: renders/splash_voicings/README.txt. Findings: docs/m8-tuning-backlog.md "SPLASH round 3".
+diff --color -ru core/dsp/Splash.cpp proto/core/dsp/Splash.cpp
+--- core/dsp/Splash.cpp	2026-09-29 18:49:58
++++ proto/core/dsp/Splash.cpp	2026-09-29 23:26:55
+@@ -177,7 +177,11 @@
+ void Splash::fire()
+ {
+     const float s = strength_;
++#if RV_SV
++    const float clat = forced_ ? voice_.clatterMax : 0.0f; // PROTOTYPE: no noise burst on hits (Kick keeps it)
++#else
+     const float clat = forced_ ? voice_.clatterMax : splash::clatterAmount(voice_, splash_);
++#endif
+     const float jolt = forced_ ? voice_.joltMax : splash::joltAmount(voice_, splash_);
+     const float decayMs = voice_.clatterDecayMinMs + (voice_.clatterDecayMaxMs - voice_.clatterDecayMinMs) * s;
+     // The crash follows the stroke's size (λ, SplashVoicing.h); a Kick has its own.
+diff --color -ru core/dsp/Tank.cpp proto/core/dsp/Tank.cpp
+--- core/dsp/Tank.cpp	2026-09-29 22:23:27
++++ proto/core/dsp/Tank.cpp	2026-09-29 23:29:53
+@@ -111,6 +111,11 @@
+     kick_.prepare(sampleRate, kKickSeed);
+     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
+     transport_.prepare(sampleRate, 0, kTransportSeed, dsp::Wobble::Role::Transport);
++    svA_  = 1.0f - std::exp(-1.0f / (0.0003f * sampleRate)); // fast env: 0.3 ms attack
++    svR_  = 1.0f - std::exp(-1.0f / (0.020f * sampleRate));  //           20 ms release
++    svSA_ = 1.0f - std::exp(-1.0f / (0.040f * sampleRate));  // slow env: 40 ms attack
++    svSR_ = 1.0f - std::exp(-1.0f / (0.400f * sampleRate));  //           400 ms release
++    svHc_ = 1.0f - std::exp(-2.0f * map::kPi * 2000.0f / sampleRate); // HF split at 2 kHz
+     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
+     for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
+     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
+@@ -380,9 +385,28 @@
+ 
+         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
+         // DriveIn (transducer -> tape) first: the Splash listens here.
++        float svE[kControlInterval];
++        const float svSplash = smoothed_[size_t(ParamId::Splash)];
++        // Per ATTITUDE (CLEAN, DRIVEN, KICKED) weights.
++#if RV_SV == 1
++        const float kB = attW_[0] * 2.0f + attW_[1] * 8.0f + attW_[2] * 15.0f; // drive-led
++#elif RV_SV == 3
++        const float kB = attW_[0] * 1.0f + attW_[1] * 5.0f + attW_[2] * 10.0f; // combined
++#else
++        const float kB = 0.0f;
++#endif
+         for (int i = 0; i < n; ++i) {
+             const float x = 0.5f * (inL[pos + i] + inR[pos + i]);
+-            driven[i] = driveIn_.process(x);
++            // Hit strength from the input: how sudden (fast vs slow envelope)
++            // times how loud (re -12 dBFS), scaled by SPLASH. 0 on steady or quiet.
++            const float ax = std::fabs(x);
++            svFast_ += (ax > svFast_ ? svA_ : svR_) * (ax - svFast_);
++            svSlow_ += (svFast_ > svSlow_ ? svSA_ : svSR_) * (svFast_ - svSlow_);
++            const float sudden = (svFast_ - svSlow_) / (svFast_ + 1.0e-6f);
++            const float loud   = std::min(1.0f, svFast_ * 4.0f);
++            svE[i] = std::clamp(svSplash * sudden * loud, 0.0f, 1.0f);
++            const float boost = 1.0f + kB * svE[i];
++            driven[i] = driveIn_.process(x * boost) / boost;
+             // Excitation trim followers on the raw input (what the dry path
+             // carries), full band and weighted like the whole chain's response.
+             float w = x - excHp_[0].process(x);
+@@ -414,8 +438,19 @@
+         // into the Loop (dispersed into the Chirp, decays with the tail) and
+         // the high path (fast echoes), splash::kClatterLoop / kClatterHigh.
+         const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
+-        for (int i = 0; i < n; ++i)
++#if RV_SV == 2
++        const float kC = 2.5f; // bright-led
++#elif RV_SV == 3
++        const float kC = attW_[0] * 3.0f + attW_[1] * 2.0f + attW_[2] * 1.5f;
++#else
++        const float kC = 0.0f;
++#endif
++        for (int i = 0; i < n; ++i) {
+             mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
++            // The hit's own highs, fed harder into the springs on the attack.
++            svHp_ += svHc_ * (mono[i] - svHp_);
++            mono[i] += kC * svE[i] * (mono[i] - svHp_);
++        }
+         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
+         prof::mark(prof::kTilt);
+         for (size_t s = 0; s < springs_.size(); ++s) {
+diff --color -ru core/dsp/Tank.h proto/core/dsp/Tank.h
+--- core/dsp/Tank.h	2026-09-29 22:13:18
++++ proto/core/dsp/Tank.h	2026-09-29 23:26:55
+@@ -256,6 +256,8 @@
+ 
+     // ATTITUDE Morph (see "ATTITUDE Morph").
+     std::array<float, 3> attW_{{0.0f, 1.0f, 0.0f}};
++    // PROTOTYPE (SPLASH voicings): input-derived hit envelope and HF split.
++    float svFast_ = 0.0f, svSlow_ = 0.0f, svHp_ = 0.0f, svA_ = 0.0f, svR_ = 0.0f, svSA_ = 0.0f, svSR_ = 0.0f, svHc_ = 0.0f;
+     float                morphStep_ = 0.0f; // weight change per control tick
+     // Last inputs of the gain-compensation model (recomputed only on change).
+     float                compDrive_ = -1.0f;
