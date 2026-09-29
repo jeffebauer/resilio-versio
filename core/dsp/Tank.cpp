@@ -168,6 +168,7 @@ void Tank::reset()
     limitGain_ = 1.0f;
     numPendingKicks_ = 0;
     tick_     = 0;
+    springTurn_ = 0;
     primed_   = false;
 }
 
@@ -311,7 +312,15 @@ void Tank::controlTick(bool snap)
     const float alignA = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
                                                    base.transitionHz * modes::kDetune[0].transition, activeStages,
                                                    sampleRate_);
+    // One Spring per tick takes its new settings (all three on a snap). A
+    // change reaches Springs B and C up to two ticks (1.3 ms) after A, well
+    // inside every parameter's glide; it spreads the Loop gain redesign
+    // (the costliest control work) so no audio block carries all three
+    // (M3: that burst lifted the peak CPU ~12 points above the average).
+    const size_t turn = size_t(springTurn_);
+    springTurn_ = (springTurn_ + 1) % int(kMaxSprings);
     for (size_t i = 0; i < springs_.size(); ++i) {
+        if (!snap && i != turn) continue;
         // g is designed from each Spring's own round trip, so the L/fC/a
         // detune changes pitch/texture, not tail length; the damping and
         // decay detune (SpringModes.h) make each Spring fade its own way.

@@ -55,6 +55,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Decided (29 Sep): idle springs keep running (seamless SPRINGS switching); the 2 ms audio slice only if still needed
 - [x] Run 7 (29 Sep): the peaks come from the springs recalculating their settings; a faster spring loop found (a third cheaper)
 - [x] Run 8 (29 Sep): worst case **62.9 % average (under the 65 % target)**, peaks 75 %. The peaks are the springs recalculating all at once when a knob moves or a hit jolts them
+- [x] Run 9 (29 Sep): springs take changes in turn (your pick). Peaks 75 → ~67 %; close to the target
+- [ ] **Listen (≈5 min):** `renders/m3_stagger_ab/`, A = before, B = springs taking changes in turn (KICKED hits, KICKED skank, hits with knobs sweeping). Tone and level match; can you hear any difference? If yes, Claude switches to the 2 ms audio slice instead
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
 
 ### 4. M2 Ableton check (≈15 min)

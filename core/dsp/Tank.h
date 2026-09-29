@@ -252,6 +252,7 @@ private:
     bool   ok_         = false;
     bool   primed_     = false;
     int    tick_       = 0;
+    int    springTurn_ = 0; // which Spring takes new settings this control tick (controlTick)
 
     // ATTITUDE Morph (see "ATTITUDE Morph").
     std::array<float, 3> attW_{{0.0f, 1.0f, 0.0f}};

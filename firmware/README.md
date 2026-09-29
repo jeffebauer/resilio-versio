@@ -236,3 +236,5 @@ Run 8 results (29 Sep 2026): **worst case average under target.**
 
 `max` is now `avg` + the control burst (~12 points): every other section peaks at its average. Next: stagger the three Springs' coefficient redesign over consecutive control ticks (not bit-exact: B and C take a change up to 2 ticks, ~1.3 ms, later); LoopSat divisions for margin; block 96 held in reserve.
 
+**Run 9** (`dist/resilio_versio_m3_profile_stagger.bin`, owner's choice over block 96): one Spring takes new settings per control tick (`Tank::controlTick`), so B and C follow a change up to two ticks (1.3 ms) after A. Not bit-exact: level and per-octave spectrum match within 0.05 dB (desktop renders, hits/skank/moves); KICKED waveforms differ 21–27 dB below the signal (the Jolt reaches B and C a little later), CLEAN 81 dB. A/B for the owner: `renders/m3_stagger_ab/`. Results: `PEAK ctl` 13.2 → 6.0; S1 loose 56.6 % / 61.7 %, S2 loose 62.1 % / 67.2 % (avg / max); tight 51.4 % / 56.5 %.
+
