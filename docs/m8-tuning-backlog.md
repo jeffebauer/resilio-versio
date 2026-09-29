@@ -58,3 +58,17 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 - **Cost:** the LoopSat shelves add ~10 ns/sample on the desktop (six first-order filters): test_drive's worst-case estimate (KICKED, 3 Springs) goes from ~6,390 to ~6,520 Daisy cycles (64 → 65 %, target 65 %; the upper end of the estimate). Flash: release 103,208 B (+352), profile 113,596 B (+360), of 131,072.
 - **LowsLater** still compiles and its 14 core tests pass (not re-tuned).
 - **Listening:** `renders/m8_hl/` (BOING, SPLASH, DRIVE sweeps × ATTITUDE; chirp BOING sweep, click + hits).
+
+## TENSION (29 Sep 2026, ADR 0026)
+K2 is TENSION (L, fC, a and M together: tight 33 ms / 4.6 kHz / 0.40 / 24, noon 69 ms / 3.3 kHz / 0.47 / 40, loose 110 ms / 2.7 kHz / 0.55 / 64); DECAY is T60 only. What the switch turned up:
+- **Loose tank + short tail (DECAY 0 × TENSION 1), mono notch −7 to −10 dB (real):** with ~4 trips the first echoes dominate, and the detuned Springs' Chirp chains put B's echo body ~1 ms after A's (500 Hz comb in mono). The pickups now also line up the chains (A's chain delay − own, at 800 Hz; glided); C's trim −0.8 → −1.2 ms. Worst notch over the grid −3.0 dB; correlation 0.42 → 0.36; first-arrival spread unchanged (≤ 5.1 ms). Thinnest spot between grid points: −4.2 dB (2 Springs, DECAY 0, TENSION 0.625; limit −4.5).
+- **DRIVEN aliasing at DRIVE 1 (real):** at TENSION 1 a 0 dBFS 5 kHz tone's tape fold-back to 1 kHz read −54 dB. DRIVEN pre-emphasis 5 → 3 dB: −66 dB. test_drive now prints the product that decides the check.
+- **CLEAN DRIVE bottom (real, thin):** pickup blend DRIVE^0.8 instead of linear: no silent run; ends unchanged.
+- **Kick low end at KICKED DECAY 1 (real):** the thump's residue recirculated in the (now 69 ms) tank. Kick Loop HP 120 → 160 Hz: 18.7 → 22.3 dB (≥ 20).
+- **WOBBLE Drift at DECAY max (real):** the tail multiplies more on the 69 ms tank. Drift per pass c(0.5) 0.75 → 0.6 cents: 5.9 → 4.0 (< 5). Warble unchanged (40–57 cents).
+- **Ringing on a tight tank at DECAY max (real):** Micro-mod depth grows as 1/L below 69 ms. M6 grid 270 cells, 0 Ringing, worst 9.6 dB.
+- **Test geometry (artefacts):** Chirp checks look at 0.8–0.97 fC (where TENSION 0's ~3 ms Chirp lives); the held-chord click scan walks TENSION; the sweep test covers TENSION and checks DECAY leaves L alone.
+- **Open, for the owner's ears:** (1) tight tanks (TENSION 0–0.2) at *mid* DECAY (0.3–0.5) read `ringing_db` 12–15 on clicks/bursts and up to 20 on 02_hits (outside the formal DECAY-max grid): listen for a ping sticking out of short tight tails. (2) The KICKED Howl on a tight tank leans more to one pitch (`steady_tone` on 12 of 18 TENSION-0 Howl cells; all pass ADR 0019's floor and movement). (3) Tight tank + max DECAY + KICKED Kick: the Howl's own lows read 16 dB (test_kick checks TENSION noon only).
+- **Cost:** desktop CPU estimate ~2 % above `main` on the same machine (control-rate pickup alignment + per-sample tap glide); confirm in M3. Firmware release 103,488 B (78 %).
+- **Sweet spots:** no dead zones or cliffs on TENSION or DECAY (KICKED DECAY 0.9→1 is the Howl zone, as designed).
+- **Listening:** `renders/tension/` (TENSION and DECAY sweeps × ATTITUDE on 02_hits, MIX 0.5).

@@ -1,6 +1,6 @@
 # 0026 — TENSION replaces BOING; DECAY becomes tail length only
 
-**Status:** Accepted, 29 Sep 2026. Supersedes ADR 0012 (DECAY bends pitch) and changes ADRs 0006 and 0007 as noted below. Implementation staged (see "Stages").
+**Status:** Accepted, 29 Sep 2026; **implemented 29 Sep 2026** (stages 1–5; what each stage turned up: `docs/m8-tuning-backlog.md` "TENSION"). Supersedes ADR 0012 (DECAY bends pitch) and changes ADRs 0006 and 0007 as noted below.
 
 **Decision:** Knob K2 becomes **TENSION**, "which tank". Echo spacing (Loop delay L), chirp size (allpass `a`, stage count M) and brightness (transition frequency fC) move together from **tight** (short tank, small chirp, quick repeats, brighter) to **loose** (long tank, big chirp, slow repeats, darker), anchored to the IR library (ADR 0021). **DECAY sets tail length (T60) only.** It no longer changes the tank's size or bends pitch; turning TENSION mid-tail does, like stretching the tank.
 
