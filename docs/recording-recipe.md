@@ -76,26 +76,25 @@ Don't change the interface input gain during the session. If the wet signal clip
 
 ## 5. Takes
 
-| Take | Stimulus | Change from "spring only" | Purpose |
-|---|---|---|---|
-| 0 | `01_clicks` | Loopback cable instead of the Wellspring | Interface latency + level |
-| A | `01_clicks` | none | Chirp spacing, dispersion, T60 |
-| B | `02_hits` | none | Priority sound (snare/rim) |
-| C | `02_hits` | The **only take with INPUT raised**: turn it up from the base position until the CLIP light flashes on the loudest snare (on purpose: this take overdrives the input). Note the position, check the recording doesn't clip in Ableton, and **turn INPUT back to the base position** afterwards (easiest: record C last). | Driven-spring reference for M5 DRIVE |
-| D | `03_sweep` | none. Don't touch anything during the take | Precise impulse + frequency response |
-| E | `04_skank` | none | Musical A/B material |
-| E2 | `04_skank` | **SPRINGS DRY/WET** where it sounds best to you for dub. Note the position | Hints at a good MIX taper |
-| F | `05_silence_for_kicks` | none. Knock the top of the case ~6 times, ~6 s apart: 2 soft, 2 medium, 2 firm, not violent. Let each ring out. | Kick reference. The tanks are shock-mounted to block outside vibration, so this may come out quiet or dull. **If it does, skip it**: we'll tune Kick against dub records (ADR 0016). |
-| G | `06_noise_bursts` | Optional, and the **only take with delay + MAGIC on**: delay DRY/WET up, FEEDBACK high, MAGIC up, delay mod **zero**, until the ringing tone appears. Keep any take where it shows up. | "Known bad" Ringing case to prove the AntiRes metric catches it (ADR 0010). Not a spring reference. |
-
-| A-L | `01_clicks` | **Dummy plug** (an unconnected cable) in the R input, so the normal breaks and **only the left tank** gets signal | One tank's own response |
-| A-R | `01_clicks` | Stimulus into **R only**, L input empty (the right tank only) | The other tank's own response. With A-L, shows how different the two physical tanks are: real-world data for Spring detuning and stereo width, and for a possible stereo-in mode |
+| Take | Export as | Stimulus | Change from "spring only" | Purpose |
+|---|---|---|---|---|
+| 0 | `wellspring_0_loopback.wav` | `01_clicks` | Loopback cable instead of the Wellspring | Interface latency + level |
+| A | `wellspring_A_clicks.wav` | `01_clicks` | none | Chirp spacing, dispersion, T60 |
+| B | `wellspring_B_hits.wav` | `02_hits` | none | Priority sound (snare/rim) |
+| C | `wellspring_C_hits_hot.wav` | `02_hits` | The **only take with INPUT raised**: turn it up from the base position until the CLIP light flashes on the loudest snare (on purpose: this take overdrives the input). Note the position, check the recording doesn't clip in Ableton, and **turn INPUT back to the base position** afterwards (easiest: record C last). | Driven-spring reference for M5 DRIVE |
+| D | `wellspring_D_sweep.wav` | `03_sweep` | none. Don't touch anything during the take | Precise impulse + frequency response |
+| E | `wellspring_E_skank.wav` | `04_skank` | none | Musical A/B material |
+| E2 | `wellspring_E2_skank_mix.wav` | `04_skank` | **SPRINGS DRY/WET** where it sounds best to you for dub. Note the position | Hints at a good MIX taper |
+| F | `wellspring_F_knocks.wav` | `05_silence_for_kicks` | none. Knock the top of the case ~6 times, ~6 s apart: 2 soft, 2 medium, 2 firm, not violent. Let each ring out. | Kick reference. The tanks are shock-mounted to block outside vibration, so this may come out quiet or dull. **If it does, skip it**: we'll tune Kick against dub records (ADR 0016). |
+| G | `wellspring_G_ringing.wav` | `06_noise_bursts` | Optional, and the **only take with delay + MAGIC on**: delay DRY/WET up, FEEDBACK high, MAGIC up, delay mod **zero**, until the ringing tone appears. Keep any take where it shows up. | "Known bad" Ringing case to prove the AntiRes metric catches it (ADR 0010). Not a spring reference. |
+| A-L | `wellspring_A-L_clicks_left.wav` | `01_clicks` | **Dummy plug** (an unconnected cable) in the R input, so the normal breaks and **only the left tank** gets signal | One tank's own response |
+| A-R | `wellspring_A-R_clicks_right.wav` | `01_clicks` | Stimulus into **R only**, L input empty (the right tank only) | The other tank's own response. With A-L, shows how different the two physical tanks are: real-world data for Spring detuning and stereo width, and for a possible stereo-in mode |
 
 A–E is the core spring set. C is the drive reference. F, G, A-L and A-R are optional.
 
 ## 6. Naming and notes
 
-Export each take as a stereo WAV named `test_audio/reference/wellspring_<take>_<short-desc>.wav`, e.g. `wellspring_A_clicks.wav`, `wellspring_C_hits_hot.wav`, `wellspring_0_loopback.wav`.
+Export each take as a stereo 48 kHz / 24-bit WAV into `test_audio/reference/`, named as in the takes table's **Export as** column (the pattern is `wellspring_<take>_<short-desc>.wav`; the analysis reads the take from the part between the first two underscores). Tip: name each recorded clip in Ableton the same way (without `.wav`) so the export name is already there.
 
 Add a line per take to `test_audio/reference/NOTES.md` with the INPUT position, the SPRINGS DRY/WET position for E2 (clock face is fine, e.g. "2 o'clock"), and anything you heard.
 

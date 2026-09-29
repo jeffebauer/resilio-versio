@@ -47,16 +47,17 @@ Record mono (the one ADAT input channel), 48 kHz / 24-bit, same Ableton setup as
 
 ## 4. Takes
 
-| Take | Path | Stimulus | Change from base | Purpose |
-|---|---|---|---|---|
-| MA | Spring (R) | `01_clicks` | none | Benchmark chirp + T60 |
-| MB | Spring (R) | `02_hits` | none | Priority sound |
-| ME | Spring (R) | `04_skank` | none | Musical A/B |
-| MW0–MW4 | Tape (L) | `08_held_tones` | WET up so one clean echo is at a similar level to the input. **WOW & FLUTTER** at 5 positions: **fully CCW, 9, 12, 3 o'clock, fully CW** | Measures pitch wobble in cents at each position → calibrates Drift / Warble (ADR 0008) |
-| MD1–MD3 | Tape (L) | `02_hits` | WET as above, WOW & FLUTTER CCW. **REC LVL** at **green, amber, red** (on the loudest snare) | Tape saturation reference for DRIVEN (M5) |
+| Take | Export as | Path | Stimulus | Change from base | Purpose |
+|---|---|---|---|---|---|
+| 0 | `magneto_0_adat_loopback.wav` | ADAT loopback (OPTX2 out → OPTX2 in, no Magneto) | `01_clicks` | see §2 | ADAT/OPTX2 latency + level |
+| MA | `magneto_MA_clicks.wav` | Spring (R) | `01_clicks` | none | Benchmark chirp + T60 |
+| MB | `magneto_MB_hits.wav` | Spring (R) | `02_hits` | none | Priority sound |
+| ME | `magneto_ME_skank.wav` | Spring (R) | `04_skank` | none | Musical A/B |
+| MW0–MW4 | `magneto_MW0_wow_ccw.wav`, `magneto_MW1_wow_9oclock.wav`, `magneto_MW2_wow_12oclock.wav`, `magneto_MW3_wow_3oclock.wav`, `magneto_MW4_wow_cw.wav` | Tape (L) | `08_held_tones` | WET up so one clean echo is at a similar level to the input. **WOW & FLUTTER** at 5 positions: **fully CCW, 9, 12, 3 o'clock, fully CW** | Measures pitch wobble in cents at each position → calibrates Drift / Warble (ADR 0008) |
+| MD1–MD3 | `magneto_MD1_reclvl_green.wav`, `magneto_MD2_reclvl_amber.wav`, `magneto_MD3_reclvl_red.wav` | Tape (L) | `02_hits` | WET as above, WOW & FLUTTER CCW. **REC LVL** at **green, amber, red** (on the loudest snare) | Tape saturation reference for DRIVEN (M5) |
 
 MA, MB, ME are the core. MW is the most valuable extra: it turns "subtle drift" and "worn-tape warble" into numbers.
 
 ## 5. Naming and notes
 
-`test_audio/reference/magneto_<take>_<desc>.wav`, e.g. `magneto_MA_clicks.wav`, `magneto_MW2_wow12oclock.wav`, `magneto_MD3_reclvl_red.wav`. Add a line per take to `test_audio/reference/NOTES.md`: knob positions for anything not at base, and what you heard.
+`test_audio/reference/`, named as in the takes table's **Export as** column (pattern `magneto_<take>_<desc>.wav`; name the Ableton clips the same way to make export easy). Add a line per take to `test_audio/reference/NOTES.md`: knob positions for anything not at base, and what you heard.
