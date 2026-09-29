@@ -155,6 +155,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
+- **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
+
 - **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
 - **SPLASH round 3:** build your pick from `renders/splash_voicings/` into the Core, with an ADR, tests and the Kick keeping its crash
 - **Metrics.cpp T60:** reads long on repeated stimuli (tuning backlog, M1 section); fix and re-check the gates that pin a T60
