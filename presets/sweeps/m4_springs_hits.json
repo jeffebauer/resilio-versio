@@ -4,7 +4,7 @@
   "base": {
     "mix": 1.0,
     "attitude": "CLEAN",
-    "boing": 0.5,
+    "tension": 0.5,
     "tone": 0.5
   },
   "grid": {

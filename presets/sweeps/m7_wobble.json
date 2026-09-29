@@ -1,7 +1,7 @@
 {
   "name": "m7_wobble",
   "input": "test_audio/stimulus/08_held_tones.wav",
-  "base": { "mix": 1.0, "attitude": "DRIVEN", "springs": "2", "decay": 0.5, "boing": 0.5, "tone": 0.5, "splash": 0.0 },
+  "base": { "mix": 1.0, "attitude": "DRIVEN", "springs": "2", "decay": 0.5, "tension": 0.5, "tone": 0.5, "splash": 0.0 },
   "grid": { "wobble": [0, 0.25, 0.5, 0.75, 1] },
   "tail_seconds": 4,
   "ignore_flags": ["max_step_db_100ms", "resonance_peak_db", "steady_tone", "ringing_db"]

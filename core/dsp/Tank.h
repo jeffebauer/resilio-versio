@@ -81,7 +81,7 @@
 //
 // SPRINGS switching (ADR 0003): all three Springs run all the time. A Spring
 // that is not heard in the current mode ("idle") still gets the input and
-// keeps a live tail, at the minimum stage count (24, the BOING floor), and
+// keeps a live tail, at the minimum stage count (24, the TENSION floor), and
 // simply has gain 0 in the output mix. A SPRINGS change is then only a
 // change of output mix, faded over kSpringsFadeSeconds (20 ms) from
 // wherever the gains are now, so it is click-free even when flipped mid-fade.
@@ -94,7 +94,7 @@
 // the SPEC §5 worst case anyway, so running idle Springs raises the average
 // load in 1/2-Spring mode but never the peak the budget is written for.
 // After a change, stage counts glide to the new mode (one stage per 8 ms, as
-// a BOING move), so an idle Spring's Chirp grows to full length over a few
+// a TENSION move), so an idle Spring's Chirp grows to full length over a few
 // hundred ms after it becomes audible.
 //
 // Every parameter is used from M7 on.

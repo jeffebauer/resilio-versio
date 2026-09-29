@@ -844,7 +844,7 @@ def build_fake_references(fake_dir):
     # and make T60 legitimately unmeasurable (schroederT60 returns null by
     # design when it can't reach -35 dB; see docs/reference-ingest.md).
     err = rv_render_set(str(STIMULUS_DIR / "01_clicks.wav"), str(tank_a),
-                         {"decay": 0.4, "boing": 0.5, "mix": 1.0, "attitude": ATTITUDE_NORM["CLEAN"]})
+                         {"decay": 0.4, "tension": 0.5, "mix": 1.0, "attitude": ATTITUDE_NORM["CLEAN"]})
     if err:
         raise RuntimeError(f"fake take A render failed: {err}")
     a_ch, a_sr = read_wav(tank_a)
@@ -855,7 +855,7 @@ def build_fake_references(fake_dir):
     # take C: driven hits, for the drive-colour proxy path
     tank_c = fake_dir / "_tank_C.wav"
     err = rv_render_set(str(STIMULUS_DIR / "02_hits.wav"), str(tank_c),
-                         {"decay": 0.55, "boing": 0.5, "mix": 1.0, "drive": 0.8,
+                         {"decay": 0.55, "tension": 0.5, "mix": 1.0, "drive": 0.8,
                           "attitude": ATTITUDE_NORM["DRIVEN"]})
     if err:
         raise RuntimeError(f"fake take C render failed: {err}")

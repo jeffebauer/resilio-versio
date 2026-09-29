@@ -4,7 +4,7 @@
   "base": {
     "decay": 0.5,
     "tone": 0.5,
-    "boing": 0.5,
+    "tension": 0.5,
     "splash": 0.3,
     "drive": 0.25,
     "mix": 0.5,

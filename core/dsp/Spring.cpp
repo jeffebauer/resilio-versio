@@ -259,7 +259,7 @@ inline void Spring::advanceGlides()
     lhCur_ = kHighDelayRatio * lCur_;
 
     // Stage count M glides one stage at a time: the stage at the edge is
-    // cross-faded in/out, so BOING never clicks. At rest mPos_ is a whole
+    // cross-faded in/out, so TENSION never clicks. At rest mPos_ is a whole
     // number, so no stage is ever left half-mixed (which would comb-filter).
     if (mPos_ != float(mTarget_)) {
         if (mPos_ < float(mTarget_)) mPos_ = std::min(float(mTarget_), mPos_ + mRate_);

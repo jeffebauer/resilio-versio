@@ -122,7 +122,7 @@ public:
         return j_ * loopFrac_ + r;
     }
     float envelope() const { return j_; }
-    // Add to a: pushes |a| up (more dispersion) whichever sign BOING uses
+    // Add to a: pushes |a| up (more dispersion) whichever sign the Chirp uses
     // (map::kChirpSign; for LowsLater this is exactly -j·allpass, as before).
     float allpassDelta() const { return (map::kChirpSign * j_) * allpass_; }
 

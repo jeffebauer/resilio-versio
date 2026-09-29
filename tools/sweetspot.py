@@ -665,7 +665,7 @@ def render_report(sweep_analyses, gain_results, out_path, review_base_rel="../re
     dead_zone_summary = []
     cliff_summary = []
 
-    for knob in ["decay", "tone", "boing", "splash", "drive", "wobble", "mix"]:
+    for knob in ["decay", "tone", "tension", "splash", "drive", "wobble", "mix"]:
         entries = by_knob.get(knob, [])
         if not entries:
             continue
@@ -758,7 +758,7 @@ def render_report(sweep_analyses, gain_results, out_path, review_base_rel="../re
     lines.append("")
     lines.append(
         "**Suggested normalisation approach (not implemented — read-only per M8 scope):** measure "
-        "the input's energy in the tank's excitation band (roughly the BOING/loop passband, "
+        "the input's energy in the tank's excitation band (roughly the Chirp/loop passband, "
         "~200 Hz–4 kHz per `core/params/Mappings.h` `kDampingMinHz`/`kDampingMaxHz` and "
         "`kTransitionMinHz`/`kTransitionMaxHz`) with a slow (~300 ms, matching `kAutoMakeupSeconds` "
         "in `core/params/DriveVoicing.h`) RMS follower, and apply a gentle inverse-gain trim to the "
@@ -780,7 +780,7 @@ def render_report(sweep_analyses, gain_results, out_path, review_base_rel="../re
     lines.append("| # | Action | Governing constant(s) |")
     lines.append("|---|---|---|")
     lines.append("| 1 | Bend DECAY's low end so short settings still feel different from each other (T60 curve is already exponential; consider a steeper low-end curve or floor) | `kT60MinSeconds`/`kT60MaxSeconds`, `decayT60Seconds()` in `core/params/Mappings.h` |")
-    lines.append("| 2 | Widen or re-center BOING's dispersion range if the CCW/CW ends read too similar | `kBoingCoeffMin`/`kBoingCoeffMax`, `boingCoefficient()` in `core/params/Mappings.h` |")
+    lines.append("| 2 | Widen or re-center TENSION's range if the tight/loose ends read too similar | TENSION anchors (`kLoopDelay*`, `kTransition*`, `kTensionCoeff*`, `kTensionStageFracMid`) in `core/params/Mappings.h` |")
     lines.append("| 3 | Re-shape SPLASH's hit-threshold curve if clatter/jolt onset is too sudden or too flat across the knob | `kHitThresholdSplash0`/`kHitThresholdSplash1`, `hitThreshold()`, `kClatterGain` in `core/params/SplashVoicing.h` |")
     lines.append("| 4 | Retune DRIVE's onset curve if the clean→driven transition is too abrupt (a cliff) or too gradual (a dead zone) around the ADR 0014 \"9 o'clock / 3 o'clock\" targets | `kDriveCurvePower`, `kPushSlope`/`kPushCentre`, `driveCurve()`/`pushCurve()` in `core/params/DriveVoicing.h` |")
     lines.append("| 5 | Normalise wet level vs program-material brightness (gain-staging finding above) | new slow RMS follower + trim, alongside `kAutoMakeupSeconds`/`kAutoMakeupMax` in `core/params/DriveVoicing.h` |")

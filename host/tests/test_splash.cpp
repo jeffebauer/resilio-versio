@@ -334,7 +334,7 @@ int main()
 
     // ---- Jolt: pitch lurch that settles within ~1 s -----------------------------------------
     {
-        const float L = map::decayLoopDelaySeconds(0.5f) * kFs;
+        const float L = map::tensionLoopDelaySeconds(0.5f) * kFs;
         const Buf hard = hit(-6, false, 2.0f, kFs);
         for (int a : {1, 2}) {
             const Run r = run(hard, a, 1.0f);

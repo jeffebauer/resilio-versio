@@ -3,7 +3,7 @@
   "input": "test_audio/stimulus/02_hits.wav",
   "base": {
     "decay": 0.5,
-    "boing": 0.5,
+    "tension": 0.5,
     "splash": 0.3,
     "drive": 0.25,
     "wobble": 0.2,

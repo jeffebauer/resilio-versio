@@ -13,7 +13,7 @@ namespace rv {
 enum class ParamId : uint8_t {
     Decay,
     Tone,
-    Boing,
+    Tension,
     Splash,
     Drive,
     Wobble,
@@ -49,7 +49,7 @@ struct ParamSpec {
 inline constexpr std::array<ParamSpec, static_cast<size_t>(ParamId::Count)> kParams{{
     {ParamId::Decay,    "decay",    "DECAY",    ParamKind::Knob,    0.5f, Smoothing::Gliding, 80.0f, {}},
     {ParamId::Tone,     "tone",     "TONE",     ParamKind::Knob,    0.5f, Smoothing::Snappy,   5.0f, {}},
-    {ParamId::Boing,    "boing",    "BOING",    ParamKind::Knob,    0.5f, Smoothing::Gliding, 60.0f, {}},
+    {ParamId::Tension,  "tension",  "TENSION",  ParamKind::Knob,    0.5f, Smoothing::Gliding, 60.0f, {}},
     {ParamId::Splash,   "splash",   "SPLASH",   ParamKind::Knob,    0.3f, Smoothing::Snappy,   5.0f, {}},
     {ParamId::Drive,    "drive",    "DRIVE",    ParamKind::Knob,    0.25f, Smoothing::Snappy,  5.0f, {}},
     {ParamId::Wobble,   "wobble",   "WOBBLE",   ParamKind::Knob,    0.2f, Smoothing::Gliding, 80.0f, {}},

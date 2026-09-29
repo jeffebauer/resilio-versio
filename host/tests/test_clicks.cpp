@@ -9,7 +9,7 @@
 // which is audible as a crackle. Where it happened depended only on whether
 // the chord tones sat on Loop modes (so on DECAY's L, fC), not on DRIVE,
 // SPLASH or WOBBLE: DECAY 0.44/0.50/0.54/0.58/0.62/0.69 at SPRINGS 2, all
-// SPRINGS and BOING/TONE settings, CLEAN and DRIVEN (KICKED's LoopSat kept
+// SPRINGS and TENSION/TONE settings, CLEAN and DRIVEN (KICKED's LoopSat kept
 // the level under the limiter). The limiter now glides its gain and
 // catches the overshoot with a curvature-free soft knee (Tank.cpp).
 //
@@ -74,7 +74,7 @@ Result render(const Buf& in, float decay, int springs, float attitude, float dri
     rv::Tank t;
     t.prepare(kFs, 48);
     t.setParam(rv::ParamId::Decay, decay);
-    t.setParam(rv::ParamId::Boing, 0.5f);
+    t.setParam(rv::ParamId::Tension, 0.5f);
     t.setParam(rv::ParamId::Tone, 0.5f);
     t.setParam(rv::ParamId::Splash, 0.0f);
     t.setParam(rv::ParamId::Wobble, 0.0f);

@@ -67,7 +67,7 @@ def clicks():
 
 
 def click_single():
-    """One click, then 12 s of silence. Short input for DECAY x BOING grids."""
+    """One click, then 12 s of silence. Short input for DECAY x TENSION grids."""
     return silence(1) + [db(-6), db(-6)] + silence(12)[2:]
 
 

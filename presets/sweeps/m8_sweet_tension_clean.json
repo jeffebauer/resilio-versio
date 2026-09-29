@@ -1,5 +1,5 @@
 {
-  "name": "m8_sweet_boing_clean",
+  "name": "m8_sweet_tension_clean",
   "input": "test_audio/stimulus/02_hits.wav",
   "base": {
     "decay": 0.5,
@@ -12,7 +12,7 @@
     "attitude": "CLEAN"
   },
   "grid": {
-    "boing": [
+    "tension": [
       0.0,
       0.1,
       0.2,

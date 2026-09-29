@@ -53,7 +53,7 @@ const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 float attValue(int a) { return rv::switchToNormalised(a); }
 
 struct Settings {
-    float decay = 0.6f, boing = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f;
+    float decay = 0.6f, tension = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f;
     int   att = 1, springs = 1;
     // M7: < 0 = leave the ParamSpec default (SPLASH 0.3, WOBBLE 0.2).
     float splash = -1.0f, wobble = -1.0f;
@@ -62,7 +62,7 @@ struct Settings {
 void apply(rv::Tank& t, const Settings& s)
 {
     t.setParam(rv::ParamId::Decay, s.decay);
-    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
     t.setParam(rv::ParamId::Drive, s.drive);
@@ -487,7 +487,7 @@ void driveSweep()
 // clearly audible. Also reported level-matched (the DRIVE b render scaled
 // by the gain that best matches DRIVE a): that part cannot be a loudness
 // cue, so it shows the change is character. Settings as ADR 0022: MIX 1,
-// SPRINGS 2, DECAY 0.6, BOING 0.5, TONE 0.5.
+// SPRINGS 2, DECAY 0.6, TENSION 0.5, TONE 0.5.
 bool readStimulus(const std::string& name, rv::wav::Audio& out)
 {
     std::string error;
@@ -573,7 +573,7 @@ void driveAudibility()
 
 // ---- 2c. DRIVE sweet spot: no dead patch (M8, docs/m8-sweetspot.md) ----------------------
 // The M8 sweet-spot report's test: DRIVE in 0.1 steps on 02_hits' first
-// 10 s (MIX 0.5, SPRINGS 2, DECAY / TONE / BOING noon, WOBBLE 0.2), mono
+// 10 s (MIX 0.5, SPRINGS 2, DECAY / TONE / TENSION noon, WOBBLE 0.2), mono
 // sum; a step is audible if the null between neighbours is >= -40 dB or
 // the RMS moves >= 0.5 dB. Dead patch = 3 or more silent steps in a row.
 // SPLASH 0 here, so only DRIVE's own sound counts (at SPLASH 0.3 the
@@ -902,7 +902,7 @@ void aliasing()
             s.att = 1;
             s.drive = 1.0f;
             s.decay = 0.3f;
-            s.boing = 1.0f;
+            s.tension = 1.0f;
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
@@ -917,7 +917,7 @@ void aliasing()
             s.att = 2;
             s.drive = 1.0f;
             s.decay = 0.3f;
-            s.boing = 1.0f;
+            s.tension = 1.0f;
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
@@ -992,10 +992,10 @@ void tone()
     // Chirp at full CCW, every ATTITUDE (same measure as test_spring: in the
     // first echo, the high band arrives before 200–500 Hz, or after it for HighsLater).
     for (int a = 0; a < 3; ++a)
-        for (float boing : {0.0f, 1.0f}) {
+        for (float tension : {0.0f, 1.0f}) {
             Settings s;
             s.decay = 0.5f;
-            s.boing = boing;
+            s.tension = tension;
             s.tone  = 0.0f;
             s.att   = a;
             s.springs = 0;
@@ -1004,16 +1004,16 @@ void tone()
             const Stereo o = renderWith(s, imp);
             Buf m(o.l.size());
             for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
-            const float fC  = rv::map::decayTransitionHz(0.5f);
-            const size_t end = size_t(1.5f * rv::map::decayLoopDelaySeconds(0.5f) * kFs);
+            const float fC  = rv::map::tensionTransitionHz(tension);
+            const size_t end = size_t(1.5f * rv::map::tensionLoopDelaySeconds(tension) * kFs);
             // High band per map::kChirpDirection, as test_spring.
             const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
             const double tHi = centroidSeconds(bandpass(m, hiLo * fC, hiHi * fC), end);
             const double tLo = centroidSeconds(bandpass(m, 200.0f, 500.0f), end);
             // Late band per map::kChirpDirection (lows for LowsLater).
             const double dir = rv::map::kHighsLater ? -1.0 : 1.0;
-            std::snprintf(msg, sizeof msg, "TONE 0 chirp, %s BOING %.0f: highs at %.1f ms, lows at %.1f ms (%s later)",
-                          kAttName[a], boing, tHi * 1e3, tLo * 1e3, rv::map::kHighsLater ? "highs" : "lows");
+            std::snprintf(msg, sizeof msg, "TONE 0 chirp, %s TENSION %.0f: highs at %.1f ms, lows at %.1f ms (%s later)",
+                          kAttName[a], tension, tHi * 1e3, tLo * 1e3, rv::map::kHighsLater ? "highs" : "lows");
             check(dir * (tLo - tHi) > 0.001, msg);
         }
 
@@ -1061,7 +1061,7 @@ void loopMagnitude()
                     s.att = a;
                     s.tone = tn;
                     s.decay = d;
-                    s.boing = b;
+                    s.tension = b;
                     s.springs = 2;
                     rv::Tank t;
                     t.prepare(kFs, 48);
@@ -1077,13 +1077,13 @@ void loopMagnitude()
                         if (peak >= 1.0) ++bad;
                         if (peak > worst) {
                             worst = peak;
-                            std::snprintf(worstAt, sizeof worstAt, "%s TONE %.1f DECAY %.2f BOING %.0f Spring %d",
+                            std::snprintf(worstAt, sizeof worstAt, "%s TONE %.1f DECAY %.2f TENSION %.0f Spring %d",
                                           kAttName[a], tn, d, b, sp);
                         }
                     }
                 }
     std::snprintf(msg, sizeof msg,
-                  "Loop gain < 1 at every frequency, per Spring, ATTITUDE x TONE x DECAY x BOING outside the Howl zone "
+                  "Loop gain < 1 at every frequency, per Spring, ATTITUDE x TONE x DECAY x TENSION outside the Howl zone "
                   "(%d cells, worst %.4f at %s)",
                   cells, worst, worstAt);
     check(bad == 0, msg);
@@ -1197,7 +1197,7 @@ void stabilityGrid()
                         s.drive = dr;
                         s.decay = d;
                         s.springs = m;
-                        s.boing = 1.0f;
+                        s.tension = 1.0f;
                         const Stereo o = renderWith(s, in);
                         const float pk = std::max(peakAbs(o.l), peakAbs(o.r));
                         worstPeak = std::max(worstPeak, pk);
@@ -1225,7 +1225,7 @@ void stabilityGrid()
                     }
     std::snprintf(msg, sizeof msg,
                   "Stability ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x SPRINGS (%d cells, impulse + 1 s full-scale "
-                  "noise, BOING 1): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
+                  "noise, TENSION 1): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
                   cells, worstPeak, bad);
     check(bad == 0, msg);
 
@@ -1405,7 +1405,7 @@ void performance()
 {
     // Same method as M1/M4 (test_spring, test_tank): desktop ns/sample x
     // (15..25 x slower per sample on a Cortex-M7 @ 480 MHz) x 0.48 cycles/ns.
-    // Worst-case knobs: DECAY / BOING / TONE / DRIVE 1, MIX 0.5, noise in.
+    // Worst-case knobs: DECAY / TENSION / TONE / DRIVE 1, MIX 0.5, noise in.
     // Best of 3 runs per cell (the desktop is shared with other processes).
     const size_t n = size_t(4.0f * kFs);
     const Buf in = noise(n, 0.3f, 5u);
@@ -1419,7 +1419,7 @@ void performance()
                 t.prepare(kFs, 48);
                 Settings s;
                 s.decay = 1.0f;
-                s.boing = 1.0f;
+                s.tension = 1.0f;
                 s.tone = 1.0f;
                 s.drive = 1.0f;
                 s.mix = 0.5f;

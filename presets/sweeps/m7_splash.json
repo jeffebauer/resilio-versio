@@ -1,7 +1,7 @@
 {
   "name": "m7_splash",
   "input": "test_audio/stimulus/02_hits.wav",
-  "base": { "mix": 1.0, "springs": "2", "decay": 0.6, "drive": 0.5, "boing": 0.5, "tone": 0.5, "wobble": 0.0 },
+  "base": { "mix": 1.0, "springs": "2", "decay": 0.6, "drive": 0.5, "tension": 0.5, "tone": 0.5, "wobble": 0.0 },
   "grid": { "attitude": [0, 0.5, 1], "splash": [0, 0.5, 1] },
   "tail_seconds": 8,
   "ignore_flags": ["max_step_db_100ms", "resonance_peak_db"]

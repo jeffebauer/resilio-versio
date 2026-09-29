@@ -115,11 +115,11 @@ Buf throughSpring(const Buf& loopFeed, const Buf& direct, float fs)
     std::vector<float> pool(rv::Spring::requiredFloats(fs));
     s.prepare(fs, pool.data(), 0x9E3779B9u);
     rv::SpringSettings st;
-    st.loopDelaySeconds = rv::map::decayLoopDelaySeconds(1.0f);
+    st.loopDelaySeconds = rv::map::tensionLoopDelaySeconds(0.5f);
     st.t60Seconds       = rv::map::decayT60Seconds(1.0f);
-    st.transitionHz     = rv::map::decayTransitionHz(1.0f);
-    st.allpassCoeff     = rv::map::boingCoefficient(0.5f);
-    st.stages           = rv::map::boingStages(0.5f);
+    st.transitionHz     = rv::map::tensionTransitionHz(0.5f);
+    st.allpassCoeff     = rv::map::tensionCoefficient(0.5f);
+    st.stages           = rv::map::tensionStages(0.5f);
     st.dampingHz        = rv::map::toneDampingHz(0.5f);
     st.highPathLevel    = rv::map::toneHighPathLevel(0.5f);
     st.loopSatAmount    = 1.0f;

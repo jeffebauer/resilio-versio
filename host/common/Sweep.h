@@ -4,7 +4,7 @@
 // Stream B).
 //
 // { "name": "m1_grid", "input": "...", "base": {preset}, "tail_seconds": 12,
-//   "grid": { "decay": [0, 0.5, 1], "boing": [0, 0.5, 1] },
+//   "grid": { "decay": [0, 0.5, 1], "tension": [0, 0.5, 1] },
 //   "ignore_flags": ["click_count"] }   // optional: metrics the review page shouldn't flag
 //   (e.g. click_count for impulse inputs, whose own echoes read as clicks)
 
@@ -39,7 +39,7 @@ using Combo = std::vector<std::pair<std::string, double>>; // one grid point, ax
 // varies slowest), deterministic.
 std::vector<Combo> cartesian(const std::vector<Axis>& grid);
 
-// "<name>__decay0.50_boing1.00" (no extension).
+// "<name>__decay0.50_tension1.00" (no extension).
 std::string fileBaseName(const std::string& name, const Combo& combo);
 
 } // namespace rv::sweep

@@ -48,9 +48,9 @@ constexpr float kMaxLoopDelayDetune  = 1.05f;
 constexpr float kMinTransitionDetune = 0.955f;
 
 // ---- Stage caps per mode (SPEC §5 mitigation 3, §7 M3 tradeoff order) -----
-// BOING maps to a stage count M between the floor (map::kMinStages = 24,
-// ADR 0007) and the mode's cap. The cap scales the whole BOING range rather
-// than clipping it, so BOING has no dead zone in any mode.
+// TENSION maps to a stage count M between the floor (map::kMinStages = 24,
+// ADR 0007) and the mode's cap. The cap scales the whole TENSION range rather
+// than clipping it, so TENSION has no dead zone in any mode.
 //
 // Idle Springs (not heard in this mode) keep running at the floor count so
 // they always hold a live tail, ready for a click-free SPRINGS change (see
@@ -60,7 +60,7 @@ constexpr float kMinTransitionDetune = 0.955f;
 //   1 Spring : 64 + 24 + 24 = 112
 //   2 Springs: 64 + 64 + 24 = 152
 //   3 Springs: 52 + 52 + 52 = 156  <- worst case
-// M1/M2 behaviour (one Spring, 64 stages at BOING 1) is unchanged.
+// One Spring: 64 stages at TENSION 1.
 constexpr int kIdleStages = map::kMinStages;
 inline constexpr std::array<int, kNumModes> kStageCap{{64, 64, 52}};
 
@@ -75,11 +75,12 @@ static_assert(modeTotalStages(0) <= modeTotalStages(2) && modeTotalStages(1) <= 
 static_assert(kStageCap[0] <= map::kMaxStages && kStageCap[1] <= map::kMaxStages && kStageCap[2] <= map::kMaxStages,
               "stage cap above the Spring's allocated maximum");
 
-// Stage count for BOING v under a cap: floor + (cap - floor)·v, rounded.
-// With cap = map::kMaxStages this is exactly map::boingStages(v).
-inline int boingStages(float v, int cap)
+// Stage count for TENSION v under a cap: floor + (cap - floor)·share(v),
+// rounded (share: map::tensionStageFraction). With cap = map::kMaxStages
+// this is exactly map::tensionStages(v).
+inline int tensionStages(float v, int cap)
 {
-    return map::kMinStages + static_cast<int>(static_cast<float>(cap - map::kMinStages) * v + 0.5f);
+    return map::kMinStages + static_cast<int>(static_cast<float>(cap - map::kMinStages) * map::tensionStageFraction(v) + 0.5f);
 }
 
 // Is Spring s heard in this mode? A in all, B in 2 and 3, C in 3 only.

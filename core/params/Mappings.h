@@ -22,77 +22,111 @@ constexpr float kPi = 3.14159265358979f;
 // expf is much smaller than powf in the Firmware's 128 KB flash.
 inline float expLerp(float lo, float hi, float v) { return lo * std::exp(v * std::log(hi / lo)); }
 
-// ---- DECAY (ADR 0001, 0006, 0012; SPEC §4.4) ------------------------------
+// ---- DECAY (ADR 0001, 0006, 0026; SPEC §4.4) ------------------------------
+// DECAY is tail length only (ADR 0026, superseding ADR 0012): it sets T60
+// and nothing else. The tank's size, Chirp and brightness belong to TENSION.
 
-// Target tail length. 0.4 s tight slap (ADR 0006: 0.3–0.5 s) -> 9 s (ADR 0001:
-// 8–10 s, always fades).
+// Target tail length. 0.4 s tight slap (ADR 0006: 0.3–0.5 s, with TENSION
+// low) -> 9 s (ADR 0001: 8–10 s, always fades).
 constexpr float kT60MinSeconds = 0.4f;
 constexpr float kT60MaxSeconds = 9.0f;
 inline float decayT60Seconds(float v) { return expLerp(kT60MinSeconds, kT60MaxSeconds, v); }
 
-// Loop delay L: the plain delay line inside the Loop. Short tank ~30 ms ->
-// long tank ~100 ms. The full round trip is L plus the allpass chain's group
-// delay, which depends on frequency (that is what makes the Chirp); see
-// Spring::roundTripSamples().
-constexpr float kLoopDelayMinSeconds = 0.030f;
-constexpr float kLoopDelayMaxSeconds = 0.100f;
-inline float decayLoopDelaySeconds(float v) { return expLerp(kLoopDelayMinSeconds, kLoopDelayMaxSeconds, v); }
+// ---- TENSION (ADR 0026; replaces BOING, keeps ADR 0007's floor) -----------
+// "Which tank is fitted". Tight (0) = short tank, small Chirp, quick repeats,
+// bright; loose (1) = long tank, big Chirp, slow repeats, darker. The Loop
+// delay L, the transition frequency fC (-> stretch K), the allpass
+// coefficient a and the stage count M all move together, so every position
+// is one plausible tank. Turning TENSION mid-tail bends the pitch, like
+// stretching the tank (DECAY no longer does, ADR 0026).
+//
+// Three anchors, each a region of the IR library (docs/ir-dispersion-study.md,
+// docs/tension-prototype.md), Spring A, highs-later Chirp (ADR 0024):
+//   tight  0   : L 33 ms, fC 4.6 kHz, a 0.40, M 24  -> short tanks
+//                (Space Echo 42 ms); ADR 0007's floor: 24 stages, ~5 ms Chirp
+//   noon   0.5 : L 69 ms, fC 3.3 kHz, a 0.47, M 40  -> the median tank
+//                (69 ms repeat, ~15 ms Chirp: Amazing Stereo, Amp Spring High)
+//   loose  1   : L 110 ms, fC 2.7 kHz, a 0.55, M 64 -> the long tanks
+//                (Swissecho 116 ms, big-Chirp Farfi / SNRA500 30-35 ms)
+// Between anchors: log-linear for L and fC (equal turns = equal ratios),
+// linear for a and M. Noon is not the geometric middle of the ends (60 ms),
+// so each half has its own curve; the kink at noon is a change of slope
+// only (no step).
+//
+// Loop delay L: the plain delay line inside the Loop. The full round trip is
+// L plus the allpass chain's group delay, which depends on frequency (that
+// is what makes the Chirp); see Spring::roundTripSamples().
+// kLoopDelayMaxSeconds also sizes the delay memory (Spring.cpp).
+constexpr float kLoopDelayMinSeconds        = 0.033f;
+constexpr float kTensionMidLoopDelaySeconds = 0.069f;
+constexpr float kLoopDelayMaxSeconds        = 0.110f;
 
 // Transition frequency fC: the Chirp lives below it. The stretched allpass
-// with stretch K repeats its behaviour every fs/K Hz, so its first
-// "descending chirp" band is 0 .. fs/(2K). We pick fC and derive K = fs/(2 fC),
-// so the Chirp band is the same in Hz at every sample rate. Larger tank
-// (DECAY CW) = lower fC = larger K (SPEC §4.4 "stretch K larger at CW").
-constexpr float kTransitionMaxHz = 4200.0f; // DECAY 0: K ≈ 5.7 at 48 kHz
-constexpr float kTransitionMinHz = 2700.0f; // DECAY 1: K ≈ 8.9 at 48 kHz
-inline float decayTransitionHz(float v) { return expLerp(kTransitionMaxHz, kTransitionMinHz, v); }
+// with stretch K repeats its behaviour every fs/K Hz, so its first Chirp
+// band is 0 .. fs/(2K). We pick fC and derive K = fs/(2 fC), so the Chirp
+// band is the same in Hz at every sample rate. Looser tank = lower fC =
+// larger K. kTransitionMinHz also sizes the allpass rings (Spring.cpp).
+constexpr float kTransitionMaxHz        = 4600.0f; // TENSION 0: K ≈ 5.2 at 48 kHz
+constexpr float kTensionMidTransitionHz = 3300.0f;
+constexpr float kTransitionMinHz        = 2700.0f; // TENSION 1: K ≈ 8.9 at 48 kHz
 inline float stretchK(float transitionHz, float sampleRate) { return sampleRate / (2.0f * transitionHz); }
 
-// ---- BOING (ADR 0007) ------------------------------------------------------
-
-// Chirp direction: the one switch (docs/TASKS.md task 7, owner decides by ear).
-// Allpass coefficient a of each stretched section H(z) = (a + z^-K)/(1 + a z^-K).
+// Chirp direction (ADR 0024, owner by ear). Allpass coefficient a of each
+// stretched section H(z) = (a + z^-K)/(1 + a z^-K).
 //   LowsLater  (a < 0): lows are delayed more than highs, so highs arrive
 //              first: a descending "peeew". The M1-M7 sound (SPEC §2.1).
 //   HighsLater (a > 0): the delay grows toward fC, so highs arrive later:
 //              a rising Chirp, as every real tank in the IR library does
 //              (docs/ir-dispersion-study.md; DAFx-11 fits a = +0.62).
-// Both keep the stage range (M 24..64). What follows the switch is constants
-// only, no code: a's sign and range here, the Jolt's sign (kChirpSign), a -1.1 dB
-// wet trim (SpringModes.h kModeTrim) and a faster limiter attack (Tank.h),
-// both for HighsLater's denser, unsmeared lows. |a| larger = steeper, longer
-// Chirp. The floor keeps a clear Chirp at BOING 0 (ADR 0007: never "no
-// dispersion"). The Loop gain design already checks T60 up to fC
+// TENSION is tuned for HighsLater only. LowsLater still compiles (same |a|,
+// negative) but is untuned: don't flip back without re-tuning. |a| larger =
+// steeper, longer Chirp. a stays <= 0.55: above that the Chirp piles up in
+// a narrow band just under fC instead of growing, so the extra size comes
+// from the stages. The Loop gain design already checks T60 up to fC
 // (Spring.cpp kDesignFcRatios), where a > 0 puts the longest round trip.
-//
-// HighsLater tuning (M8, docs/ir-dispersion-study.md "Tuned HighsLater"):
-// highs-later per trip, ridge method, Spring A at DECAY 0 / 0.5 / 1:
-// BOING 0 ≈ 5 / 7 / 8 ms, noon ≈ 12 / 16 / 19 ms, BOING 1 ≈ 23 / 30 / 37 ms,
-// growing steadily with BOING (real tanks: 2 · 15 · 59 ms, most 6-35).
-// a stays <= 0.55: above that the Chirp piles up in a narrow band just under
-// fC instead of growing (at DECAY 0 it even shrinks), so the extra size comes
-// from the stages. Real tanks use a ≈ 0.2-0.4 with 45-300 stages.
 enum class ChirpDirection { LowsLater, HighsLater };
 constexpr ChirpDirection kChirpDirection = ChirpDirection::HighsLater; // ADR 0024 (owner, by ear)
 constexpr bool           kHighsLater     = kChirpDirection == ChirpDirection::HighsLater;
 // Sign of a (and of the Splash Jolt's Δa, which pushes |a| up: more smear).
 constexpr float kChirpSign = kHighsLater ? 1.0f : -1.0f;
-
-constexpr float kBoingCoeffMin = kHighsLater ? 0.40f : -0.45f; // BOING 0: soft, washy, still a boing
-constexpr float kBoingCoeffMax = kHighsLater ? 0.55f : -0.72f; // BOING 1: exaggerated Chirp
-inline float boingCoefficient(float v) { return kBoingCoeffMin + (kBoingCoeffMax - kBoingCoeffMin) * v; }
+constexpr float kTensionCoeffMin = 0.40f; // |a| at TENSION 0: small Chirp, still a spring (ADR 0007)
+constexpr float kTensionCoeffMid = 0.47f;
+constexpr float kTensionCoeffMax = 0.55f; // TENSION 1: big Chirp
 
 // Number of active stretched sections M. Each section adds the same amount
 // of dispersion, so M scales Chirp length. Floor of 24 (ADR 0007).
 // M_max = 64 is sized for the Daisy budget (SPEC §5): ~12 cycles per section
 // per sample -> ~800 cycles/sample per Spring at 48 kHz, ~2.4k for three
 // Springs, about a quarter of the 10k cycles/sample budget. Decimating the
-// low-chirp path x2 (Parker 2011) would halve that; see Spring.h.
-constexpr int kMinStages = 24;
-constexpr int kMaxStages = 64;
-inline int boingStages(float v)
+// low-chirp path x2 (Parker 2011) would halve that; see Spring.h. Modes cap
+// it lower (SpringModes.h tensionStages).
+constexpr int   kMinStages          = 24;
+constexpr int   kMaxStages          = 64;
+constexpr float kTensionStageFracMid = 0.40f; // share of (cap - floor) at noon: 24 + 0.4·40 = 40 at cap 64
+
+inline float anchorExp(float lo, float mid, float hi, float v)
 {
-    return kMinStages + static_cast<int>(static_cast<float>(kMaxStages - kMinStages) * v + 0.5f);
+    return v < 0.5f ? expLerp(lo, mid, 2.0f * v) : expLerp(mid, hi, 2.0f * v - 1.0f);
+}
+inline float anchorLin(float lo, float mid, float hi, float v)
+{
+    return v < 0.5f ? lo + (mid - lo) * 2.0f * v : mid + (hi - mid) * (2.0f * v - 1.0f);
+}
+inline float tensionLoopDelaySeconds(float v)
+{
+    return anchorExp(kLoopDelayMinSeconds, kTensionMidLoopDelaySeconds, kLoopDelayMaxSeconds, v);
+}
+inline float tensionTransitionHz(float v) { return anchorExp(kTransitionMaxHz, kTensionMidTransitionHz, kTransitionMinHz, v); }
+inline float tensionCoefficient(float v)
+{
+    return kChirpSign * anchorLin(kTensionCoeffMin, kTensionCoeffMid, kTensionCoeffMax, v);
+}
+// 0..1 share of the stage range (floor .. cap), see modes::tensionStages.
+inline float tensionStageFraction(float v) { return anchorLin(0.0f, kTensionStageFracMid, 1.0f, v); }
+// Stage count at the full cap (kMaxStages).
+inline int tensionStages(float v)
+{
+    return kMinStages + static_cast<int>(static_cast<float>(kMaxStages - kMinStages) * tensionStageFraction(v) + 0.5f);
 }
 
 // ---- TONE (ADR 0017) -------------------------------------------------------

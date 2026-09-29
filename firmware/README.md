@@ -107,16 +107,16 @@ screen /dev/tty.usbmodem* 115200
 (To quit: `Ctrl-A`, then `K`, then `Y`.)
 
 Every ~3 seconds a new line appears, one per "corner" (a combination of
-SPRINGS / DECAY / BOING / TONE settings). Example line and what each field
+SPRINGS / DECAY / TENSION / TONE settings). Example line and what each field
 means:
 
 ```
-CORNER S3 D1.0 B1.0 T1.0 (SPEC worst case)  avg  42.3% max  58.1% min  39.0% | mem 103948 B | prepared yes | block 48 | fs 48000 Hz | ~4230 cyc/sample
+CORNER S3 D1.0 TN1.0 TO1.0 (SPEC worst case)  avg  42.3% max  58.1% min  39.0% | mem 103948 B | prepared yes | block 48 | fs 48000 Hz | ~4230 cyc/sample
 ```
 
-- `CORNER S3 D1.0 B1.0 T1.0` — 3 Springs, DECAY 1.0 (max), BOING 1.0 (max),
+- `CORNER S3 D1.0 TN1.0 TO1.0` — 3 Springs, DECAY 1.0 (max), TENSION 1.0 (loosest tank),
   TONE 1.0 (brightest). `(SPEC worst case)` marks the corner matching the
-  budget's named worst case (SPEC §5: 3 springs, max BOING, max DECAY).
+  budget's named worst case (SPEC §5: 3 springs, max TENSION, max DECAY).
 - `avg / max / min` — CPU load over that corner's ~3 s window, as a
   percentage of the audio block's time budget. **The number to watch is
   `max`; SPEC §5's target is ≤ 65%.**

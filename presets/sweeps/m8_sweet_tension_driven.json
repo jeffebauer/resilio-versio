@@ -1,5 +1,5 @@
 {
-  "name": "m8_sweet_boing_kicked",
+  "name": "m8_sweet_tension_driven",
   "input": "test_audio/stimulus/02_hits.wav",
   "base": {
     "decay": 0.5,
@@ -9,10 +9,10 @@
     "wobble": 0.2,
     "mix": 0.5,
     "springs": "2",
-    "attitude": "KICKED"
+    "attitude": "DRIVEN"
   },
   "grid": {
-    "boing": [
+    "tension": [
       0.0,
       0.1,
       0.2,

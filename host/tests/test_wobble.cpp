@@ -260,7 +260,7 @@ int main()
     {
         bool drift = true, warble = true, trans = true;
         for (float d : {0.0f, 0.5f, 1.0f}) {
-            const float L = map::decayLoopDelaySeconds(d), t60 = map::decayT60Seconds(d);
+            const float L = map::tensionLoopDelaySeconds(0.5f), t60 = map::decayT60Seconds(d);
             double c[4];
             const float wv[4] = {0.5f, 0.625f, 0.75f, 1.0f};
             for (int i = 0; i < 4; ++i) c[i] = tailP95Cents(generate(wv[i], 1, kFs, 30.0f), kFs, L, t60);

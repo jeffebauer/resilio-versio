@@ -95,21 +95,21 @@ void setParam(const ParamMap& byId, rv::ParamId id, float v)
     if (auto* p = byId[size_t(id)]) p->setValueNotifyingHost(v);
 }
 
-// A preset used by the parity and null-test checks: DECAY 0.8, BOING 0.2,
+// A preset used by the parity and null-test checks: DECAY 0.8, TENSION 0.2,
 // TONE 0.7, plus whatever MIX the caller wants. Everything else stays at its
 // ParamSpec default on both sides.
-void setPresetOnPlugin(const ParamMap& byId, float decay, float boing, float tone, float mix)
+void setPresetOnPlugin(const ParamMap& byId, float decay, float tension, float tone, float mix)
 {
     setParam(byId, rv::ParamId::Decay, decay);
-    setParam(byId, rv::ParamId::Boing, boing);
+    setParam(byId, rv::ParamId::Tension, tension);
     setParam(byId, rv::ParamId::Tone, tone);
     setParam(byId, rv::ParamId::Mix, mix);
 }
 
-void setPresetOnTank(rv::Tank& tank, float decay, float boing, float tone, float mix)
+void setPresetOnTank(rv::Tank& tank, float decay, float tension, float tone, float mix)
 {
     tank.setParam(rv::ParamId::Decay, decay);
-    tank.setParam(rv::ParamId::Boing, boing);
+    tank.setParam(rv::ParamId::Tension, tension);
     tank.setParam(rv::ParamId::Tone, tone);
     tank.setParam(rv::ParamId::Mix, mix);
 }
@@ -146,11 +146,11 @@ double maxAbsDiffDb(const std::vector<float>& a, const std::vector<float>& b)
 struct TankRender { std::vector<float> outL, outR; };
 
 TankRender renderTank(const std::vector<float>& in, const std::vector<int>& blocks,
-                       float decay, float boing, float tone, float mix, int kickAt = -1)
+                       float decay, float tension, float tone, float mix, int kickAt = -1)
 {
     rv::Tank tank;
     tank.prepare(48000.0f, 512);
-    setPresetOnTank(tank, decay, boing, tone, mix);
+    setPresetOnTank(tank, decay, tension, tone, mix);
     TankRender r;
     r.outL.assign(in.size(), 0.0f);
     r.outR.assign(in.size(), 0.0f);
@@ -168,7 +168,7 @@ TankRender renderTank(const std::vector<float>& in, const std::vector<int>& bloc
 // kickAt instead of an audio impulse.
 TankRender renderPlugin(juce::AudioPluginFormatManager& fm, const juce::String& path,
                          const std::vector<float>& in, const std::vector<int>& blocks,
-                         float decay, float boing, float tone, float mix,
+                         float decay, float tension, float tone, float mix,
                          int kickAt = -1, int midiNote = -1, int velocity = 64)
 {
     juce::String error;
@@ -176,7 +176,7 @@ TankRender renderPlugin(juce::AudioPluginFormatManager& fm, const juce::String& 
     TankRender r;
     if (!inst) { std::printf("FAIL  could not load plugin for render: %s\n", error.toStdString().c_str()); ++failures; return r; }
     inst->prepareToPlay(48000.0, 512);
-    setPresetOnPlugin(mapParams(*inst), decay, boing, tone, mix);
+    setPresetOnPlugin(mapParams(*inst), decay, tension, tone, mix);
 
     r.outL.assign(in.size(), 0.0f);
     r.outR.assign(in.size(), 0.0f);

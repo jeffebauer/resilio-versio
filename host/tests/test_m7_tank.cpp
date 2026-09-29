@@ -49,7 +49,7 @@ constexpr float kFs = 48000.0f;
 const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 struct Settings {
-    float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.0f, tone = 0.5f, boing = 0.5f;
+    float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.0f, tone = 0.5f, tension = 0.5f;
     int   att = 1, springs = 1;
     bool  clatterOn = true, joltOn = true; // Tank::setSplashParts
 };
@@ -69,7 +69,7 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Splash, s.splash);
     t.setParam(rv::ParamId::Wobble, s.wobble);
     t.setParam(rv::ParamId::Tone, s.tone);
-    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSplashParts(s.clatterOn, s.joltOn);
@@ -519,7 +519,7 @@ void determinism()
 }
 
 // ---- 5. CPU (INFO) ---------------------------------------------------------------------------
-// SPEC §5 worst case (3 Springs, KICKED, BOING/TONE/DRIVE max) with every M7
+// SPEC §5 worst case (3 Springs, KICKED, TENSION/TONE/DRIVE max) with every M7
 // part busy: a hard noise hit and a Kick 12 times a second each (Clatter,
 // Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE 1; against the
 // same with SPLASH 0 / WOBBLE 0, no hits, no Kicks (steady noise). Daisy
@@ -540,7 +540,7 @@ void performance()
         t.prepare(kFs, 48);
         t.setParam(rv::ParamId::Mix, 0.5f);
         t.setParam(rv::ParamId::Decay, 0.85f);
-        t.setParam(rv::ParamId::Boing, 1.0f);
+        t.setParam(rv::ParamId::Tension, 1.0f);
         t.setParam(rv::ParamId::Tone, 1.0f);
         t.setParam(rv::ParamId::Drive, 1.0f);
         t.setParam(rv::ParamId::Attitude, 1.0f);
@@ -562,7 +562,7 @@ void performance()
         busy = std::min(busy, bench(hits, true));
         base = std::min(base, bench(steady, false));
     }
-    std::printf("INFO  CPU worst case, 3 Springs KICKED BOING/TONE/DRIVE 1: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
+    std::printf("INFO  CPU worst case, 3 Springs KICKED TENSION/TONE/DRIVE 1: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
                 "12/s) %.1f ns/sample, est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k); M7 quiet (SPLASH 0, "
                 "WOBBLE 0, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
                 busy, busy * 15 * 0.48, busy * 25 * 0.48, busy * 15 * 0.48 / 100, busy * 25 * 0.48 / 100, base,

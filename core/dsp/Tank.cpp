@@ -180,7 +180,7 @@ void Tank::controlTick(bool snap)
         else smoothed_[i] += tickCoeff_[i] * (values_[i] - smoothed_[i]);
     }
     const float decay = smoothed_[size_t(ParamId::Decay)];
-    const float boing = smoothed_[size_t(ParamId::Boing)];
+    const float tension = smoothed_[size_t(ParamId::Tension)];
     const float tone  = smoothed_[size_t(ParamId::Tone)];
 
     // SPRINGS: a switch, so never smoothed here. A change starts a fade of
@@ -276,10 +276,12 @@ void Tank::controlTick(bool snap)
     }
 
     SpringSettings base;
-    base.loopDelaySeconds = map::decayLoopDelaySeconds(decay);
+    // TENSION picks the tank (L, fC, a and M together); DECAY sets T60 and
+    // nothing else (ADR 0026).
+    base.loopDelaySeconds = map::tensionLoopDelaySeconds(tension);
     base.t60Seconds       = map::decayT60Seconds(decay);
-    base.transitionHz     = map::decayTransitionHz(decay);
-    base.allpassCoeff     = map::boingCoefficient(boing);
+    base.transitionHz     = map::tensionTransitionHz(tension);
+    base.allpassCoeff     = map::tensionCoefficient(tension);
     base.dampingHz        = map::toneDampingHz(tone);
     base.highPathLevel    = map::toneHighPathLevel(tone);
     base.loopSatAmount    = voice.loopAmount;
@@ -298,7 +300,7 @@ void Tank::controlTick(bool snap)
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
     base.modDepth         = antires::kMicroModDepth + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
-    const int activeStages = modes::boingStages(boing, modes::kStageCap[size_t(mode_)]);
+    const int activeStages = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
     for (size_t i = 0; i < springs_.size(); ++i) {
         // Same T60 for every Spring (g is designed from each Spring's own
         // round trip), so detuning changes pitch/texture, not tail length.

@@ -5,7 +5,7 @@
     "mix": 1.0,
     "springs": "1",
     "attitude": "CLEAN",
-    "boing": 0.5
+    "tension": 0.5
   },
   "grid": {
     "decay": [

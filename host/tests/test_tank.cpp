@@ -50,14 +50,14 @@ const char* const kModeName[3] = {"1 Spring", "2 Springs", "3 Springs"};
 float springsValue(int mode) { return rv::switchToNormalised(mode); }
 
 struct Settings {
-    float decay = 0.6f, boing = 0.5f, tone = 0.5f, mix = 1.0f;
+    float decay = 0.6f, tension = 0.5f, tone = 0.5f, mix = 1.0f;
     int   mode  = 0;
 };
 
 void apply(rv::Tank& t, const Settings& s)
 {
     t.setParam(rv::ParamId::Decay, s.decay);
-    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
     t.setParam(rv::ParamId::Springs, springsValue(s.mode));
@@ -441,10 +441,10 @@ void levelMatch()
     const Buf in = hits(size_t(6.0f * kFs), &tailFrom);
     bool ok = true;
     for (float decay : {0.1f, 0.6f, 1.0f})
-        for (float boing : {0.0f, 1.0f}) {
+        for (float tension : {0.0f, 1.0f}) {
             double lev[3], mono[3];
             for (int m = 0; m < 3; ++m) {
-                const Stereo o = renderWith(Settings{decay, boing, 0.5f, 1.0f, m}, in);
+                const Stereo o = renderWith(Settings{decay, tension, 0.5f, 1.0f, m}, in);
                 lev[m] = db(0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size())));
                 Buf sum(o.l.size());
                 for (size_t i = 0; i < sum.size(); ++i) sum[i] = 0.5f * (o.l[i] + o.r[i]);
@@ -452,9 +452,9 @@ void levelMatch()
             }
             const double lo = std::min({lev[0], lev[1], lev[2]}), hi = std::max({lev[0], lev[1], lev[2]});
             std::snprintf(msg, sizeof msg,
-                          "Level DECAY %.1f BOING %.0f: stereo 1/2/3 Springs %.2f / %.2f / %.2f dB (spread %.2f), mono "
+                          "Level DECAY %.1f TENSION %.0f: stereo 1/2/3 Springs %.2f / %.2f / %.2f dB (spread %.2f), mono "
                           "downmix 2 and 3 vs 1: %+.2f, %+.2f dB (limit +-1.5)",
-                          decay, boing, lev[0], lev[1], lev[2], hi - lo, mono[1] - mono[0], mono[2] - mono[0]);
+                          decay, tension, lev[0], lev[1], lev[2], hi - lo, mono[1] - mono[0], mono[2] - mono[0]);
             bool good = true;
             for (const double* v : {lev, mono})
                 good &= std::fabs(v[1] - v[0]) <= 1.5 && std::fabs(v[2] - v[0]) <= 1.5 && std::fabs(v[2] - v[1]) <= 1.5;
@@ -468,7 +468,7 @@ void levelMatch()
 // Stimulus-like material (the integration renders that caught the M4 stereo
 // bugs used 02_hits and 04_skank): synthetic snare hits and chord stabs, plus
 // the real stimulus files when the source tree is next to the build dir.
-// DECAY 0 / 0.5 / 1 x BOING 0 / 0.5 / 1 x all three modes, Stream E segment.
+// DECAY 0 / 0.5 / 1 x TENSION 0 / 0.5 / 1 x all three modes, Stream E segment.
 // Limits: mono_notch >= -6 dB (SPEC §7 M4) for every mode, correlation < 0.5
 // for 2 and 3 Springs, mono_loss >= -1.5 dB. Also reported: the worst case,
 // which should keep a margin (>= -4.5 dB notch, <= 0.47 correlation).
@@ -499,9 +499,9 @@ void stereoWidthAndMono()
         char worstAt[3][48] = {};
         bool ok[3] = {true, true, true};
         for (float decay : {0.0f, 0.5f, 1.0f})
-            for (float boing : {0.0f, 0.5f, 1.0f})
+            for (float tension : {0.0f, 0.5f, 1.0f})
                 for (int m = 0; m < 3; ++m) {
-                    const Stereo o = renderWith(Settings{decay, boing, 0.5f, 1.0f, m}, st.in);
+                    const Stereo o = renderWith(Settings{decay, tension, 0.5f, 1.0f, m}, st.in);
                     size_t from = 0, to = 0;
                     eventSegment(o, &from, &to);
                     const double corr  = correlation(o.l, o.r, from, to);
@@ -509,19 +509,19 @@ void stereoWidthAndMono()
                     const double notch = monoNotchDb(o.l, o.r, from, to, nullptr);
                     const bool good    = (m == 0 || corr < 0.5) && loss >= -1.5 && notch >= -6.0;
                     if (!good)
-                        std::printf("      fail: %s %s DECAY %.1f BOING %.1f: corr %.2f, mono_loss %+.2f, notch %+.1f\n",
-                                    st.name, kModeName[m], decay, boing, corr, loss, notch);
+                        std::printf("      fail: %s %s DECAY %.1f TENSION %.1f: corr %.2f, mono_loss %+.2f, notch %+.1f\n",
+                                    st.name, kModeName[m], decay, tension, corr, loss, notch);
                     ok[m] &= good;
                     worstCorr[m] = std::max(worstCorr[m], corr);
                     worstLoss[m] = std::min(worstLoss[m], loss);
                     if (notch < worstNotch[m]) {
                         worstNotch[m] = notch;
-                        std::snprintf(worstAt[m], sizeof worstAt[m], "DECAY %.1f BOING %.1f", decay, boing);
+                        std::snprintf(worstAt[m], sizeof worstAt[m], "DECAY %.1f TENSION %.1f", decay, tension);
                     }
                 }
         for (int m = 0; m < 3; ++m) {
             std::snprintf(msg, sizeof msg,
-                          "Stereo %s, %s (DECAY x BOING {0,.5,1}²): max corr %.2f%s, min mono_loss %+.2f dB, deepest "
+                          "Stereo %s, %s (DECAY x TENSION {0,.5,1}²): max corr %.2f%s, min mono_loss %+.2f dB, deepest "
                           "mono_notch %+.1f dB (%s)",
                           st.name, kModeName[m], worstCorr[m], m == 0 ? " (no width target)" : "", worstLoss[m],
                           worstNotch[m], worstAt[m]);
@@ -560,7 +560,7 @@ void firstArrivals()
             Buf monoSum(n);
             for (size_t i = 0; i < n; ++i) monoSum[i] = o.l[i] + o.r[i];
             const Buf& mono = monoSum;
-            const size_t win = size_t(1.2f * rv::map::decayLoopDelaySeconds(decay) * kFs);
+            const size_t win = size_t(1.2f * rv::map::tensionLoopDelaySeconds(0.5f) * kFs);
             double first = 1e9, last = -1e9;
             for (const Buf* raw : {&o.l, &o.r, &mono}) {
                 const Buf lp = onePoleLp(onePoleLp(*raw, 1000.0f), 1000.0f);
@@ -718,13 +718,13 @@ void stabilityGrid()
                         ++cells;
                         if (!good) {
                             ++bad;
-                            std::printf("      grid fail: %s decay %.1f boing %.1f tone %.1f %s peak %.3f falls %d "
+                            std::printf("      grid fail: %s decay %.1f tension %.1f tone %.1f %s peak %.3f falls %d "
                                         "lower %d\n",
                                         kModeName[m], d, b, tn, input ? "noise" : "impulse", pk, falls, lower);
                         }
                     }
     std::snprintf(msg, sizeof msg,
-                  "Stability SPRINGS x DECAY x BOING x TONE (%d cells, impulse + 1 s full-scale noise): finite, peak < 1 "
+                  "Stability SPRINGS x DECAY x TENSION x TONE (%d cells, impulse + 1 s full-scale noise): finite, peak < 1 "
                   "(worst %.3f), decaying (%d bad)",
                   cells, worstPeak, bad);
     check(bad == 0, msg);
@@ -831,7 +831,7 @@ void performance()
         const double ns = std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
         int stages = 0;
         for (int s = 0; s < 3; ++s) stages += int(t.spring(s).activeStages());
-        std::printf("INFO  %s, DECAY/BOING/TONE 1: %d stages total (cap %d/Spring, idle %d), %.1f ns/sample desktop, "
+        std::printf("INFO  %s, DECAY/TENSION/TONE 1: %d stages total (cap %d/Spring, idle %d), %.1f ns/sample desktop, "
                     "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget)\n",
                     kModeName[m], stages, rv::modes::kStageCap[size_t(m)], rv::modes::kIdleStages, ns, ns * 15 * 0.48,
                     ns * 25 * 0.48, ns * 15 * 0.48 / 100, ns * 25 * 0.48 / 100);

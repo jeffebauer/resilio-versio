@@ -88,7 +88,7 @@ void BootPattern()
 //   ran the Tank at MIX 0, which is bit-identical; dropping it saves ~20 KB
 //   of flash for the diagnostic builds.)
 // - Controls -> LEDs, so every control can be checked without a computer:
-//     LED_0 R/G/B = K0 DECAY, K1 TONE, K2 BOING
+//     LED_0 R/G/B = K0 DECAY, K1 TONE, K2 TENSION
 //     LED_1 R/G/B = K3 SPLASH, K4 DRIVE, K5 WOBBLE
 //     LED_2 R = K6 MIX, G = SW0 SPRINGS position, B = SW1 ATTITUDE position
 //     LED_3 white while button held, red flash on each gate rising edge,
@@ -191,7 +191,7 @@ int main()
 // Hardware profiling build (SPEC §7 M3). Runs on USB power alone (no rack
 // power, so no real audio in and knob/CV readings would be floating/garbage):
 // knobs and switches are ignored entirely. Instead the firmware cycles
-// through a fixed table of setting "corners" (SPRINGS x DECAY x BOING x
+// through a fixed table of setting "corners" (SPRINGS x DECAY x TENSION x
 // TONE, SPEC §5 worst-case combo included), feeding the Tank a synthetic
 // click + low-level noise signal so the loops stay busy (denormal paths
 // exercised, not just decaying to silence between corners). CpuLoadMeter
@@ -312,22 +312,22 @@ bool PrepareTank()
 }
 
 // ---- Corner table (SPEC §5, §7 M3) -----------------------------------------
-// Full grid: SPRINGS 1/2/3 x DECAY {0,1} x BOING {0,1} x TONE {0.5,1} = 24
+// Full grid: SPRINGS 1/2/3 x DECAY {0,1} x TENSION {0,1} x TONE {0.5,1} = 24
 // corners, all at MIX 1 (fully wet, so the meter sees Tank cost, not dry
 // mix), ATTITUDE KICKED and DRIVE max on every corner (see block comment
-// above). The SPEC §5 worst case ("3 springs, KICKED, max BOING, max
+// above). The SPEC §5 worst case ("3 springs, KICKED, max TENSION, max
 // DRIVE") is already inside this grid once DRIVE matters; until then it is
-// the springs=3/decay=1/boing=1 corners, flagged in the printed name.
+// the springs=3/decay=1/tension=1 corners, flagged in the printed name.
 struct Corner {
     int   springsPos; // 0/1/2 -> 1/2/3 Springs (Switch3 encoding)
-    float decay, boing, tone;
+    float decay, tension, tone;
     char  name[40];
 };
 
 constexpr int kNumCorners = 3 * 2 * 2 * 2;
 Corner        gCorners[kNumCorners];
 
-// decay/boing only ever take 0.0/1.0 and tone only 0.5/1.0 here (see the
+// decay/tension only ever take 0.0/1.0 and tone only 0.5/1.0 here (see the
 // grid below), so corner names can use a fixed string table instead of
 // float-formatting each one (keeps this build off printf/snprintf
 // entirely - see the formatting helpers above).
@@ -341,28 +341,28 @@ const char* Decimal1Str(float v) // "0.0" / "0.5" / "1.0" only
 void BuildCornerTable()
 {
     const float decays[2] = {0.0f, 1.0f};
-    const float boings[2] = {0.0f, 1.0f};
+    const float tensions[2] = {0.0f, 1.0f};
     const float tones[2]  = {0.5f, 1.0f};
     int         idx       = 0;
     for (int springsPos = 0; springsPos < 3; ++springsPos) {
         for (float decay : decays) {
-            for (float boing : boings) {
+            for (float tension : tensions) {
                 for (float tone : tones) {
                     Corner& c   = gCorners[idx++];
                     c.springsPos = springsPos;
                     c.decay      = decay;
-                    c.boing      = boing;
+                    c.tension      = tension;
                     c.tone       = tone;
-                    const bool worst = springsPos == 2 && decay >= 1.0f && boing >= 1.0f;
+                    const bool worst = springsPos == 2 && decay >= 1.0f && tension >= 1.0f;
                     char*      p     = c.name;
                     const char* end  = c.name + sizeof(c.name);
                     *p++ = 'S';
                     AppendInt(p, end, springsPos + 1);
                     AppendStr(p, end, " D");
                     AppendStr(p, end, Decimal1Str(decay));
-                    AppendStr(p, end, " B");
-                    AppendStr(p, end, Decimal1Str(boing));
-                    AppendStr(p, end, " T");
+                    AppendStr(p, end, " TN");
+                    AppendStr(p, end, Decimal1Str(tension));
+                    AppendStr(p, end, " TO");
                     AppendStr(p, end, Decimal1Str(tone));
                     if (worst) AppendStr(p, end, " (SPEC worst case)");
                     *p = '\0';
@@ -377,7 +377,7 @@ void ApplyCorner(int idx)
     const Corner& c = gCorners[idx];
     tank.setParam(ParamId::Springs, rv::switchToNormalised(c.springsPos));
     tank.setParam(ParamId::Decay, c.decay);
-    tank.setParam(ParamId::Boing, c.boing);
+    tank.setParam(ParamId::Tension, c.tension);
     tank.setParam(ParamId::Tone, c.tone);
     tank.setParam(ParamId::Mix, 1.0f);
     tank.setParam(ParamId::Attitude, rv::switchToNormalised(2)); // KICKED
@@ -563,7 +563,7 @@ int SwitchPosition(int sw, bool invert)
 
 // K0..K6 -> ParamSpec, panel order (SPEC §3).
 constexpr rv::ParamId kKnobParams[DaisyVersio::KNOB_LAST] = {
-    rv::ParamId::Decay, rv::ParamId::Tone,   rv::ParamId::Boing,  rv::ParamId::Splash,
+    rv::ParamId::Decay, rv::ParamId::Tone,   rv::ParamId::Tension,  rv::ParamId::Splash,
     rv::ParamId::Drive, rv::ParamId::Wobble, rv::ParamId::Mix,
 };
 

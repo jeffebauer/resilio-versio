@@ -27,7 +27,7 @@ void automationInterpolatesLinearly()
         "breakpoints": [
             {"t": 0.0, "key": "decay", "value": 0.2},
             {"t": 4.0, "key": "decay", "value": 1.0},
-            {"t": 1.0, "key": "boing", "value": 0.5}
+            {"t": 1.0, "key": "tension", "value": 0.5}
         ],
         "kicks": [1.5, 3.0, 0.25]
     })";
@@ -80,7 +80,7 @@ void sweepParsesGridAndBase()
         "name": "m1_grid",
         "input": "test_audio/stimulus/01_clicks.wav",
         "base": {"attitude": "CLEAN"},
-        "grid": {"decay": [0, 0.5, 1], "boing": [0, 1]},
+        "grid": {"decay": [0, 0.5, 1], "tension": [0, 1]},
         "tail_seconds": 12
     })";
     rv::json::Value root;
@@ -93,7 +93,7 @@ void sweepParsesGridAndBase()
           "sweep: name/input/tail_seconds parsed");
     check(cfg.grid.size() == 2, "sweep: both grid axes parsed, insertion order preserved");
     check(cfg.grid[0].key == "decay" && cfg.grid[0].values.size() == 3, "sweep: 'decay' axis has 3 values");
-    check(cfg.grid[1].key == "boing" && cfg.grid[1].values.size() == 2, "sweep: 'boing' axis has 2 values");
+    check(cfg.grid[1].key == "tension" && cfg.grid[1].values.size() == 2, "sweep: 'tension' axis has 2 values");
 
     const auto combos = rv::sweep::cartesian(cfg.grid);
     check(combos.size() == 6, "sweep: cartesian product is 3x2 = 6 combinations");
@@ -107,9 +107,9 @@ void sweepParsesGridAndBase()
 
 void sweepNamingMatchesContract()
 {
-    rv::sweep::Combo combo{{"decay", 0.5}, {"boing", 1.0}};
+    rv::sweep::Combo combo{{"decay", 0.5}, {"tension", 1.0}};
     const std::string name = rv::sweep::fileBaseName("m1_grid", combo);
-    check(name == "m1_grid__decay0.50_boing1.00", "sweep: file name matches '<name>__decay0.50_boing1.00' scheme");
+    check(name == "m1_grid__decay0.50_tension1.00", "sweep: file name matches '<name>__decay0.50_tension1.00' scheme");
 }
 
 } // namespace

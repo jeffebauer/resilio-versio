@@ -11,7 +11,7 @@
 //              without the floor, and the whole Tank's wet output once each
 //              note has built up.
 //   evenness   Layer 1: per-trip Loop gain and T60 across frequency at every
-//              ATTITUDE x TONE x BOING x DECAY corner: below target everywhere,
+//              ATTITUDE x TONE x TENSION x DECAY corner: below target everywhere,
 //              and no band standing above its neighbours.
 //   tail       The Ringing metric on real Tank tails: passes as built, and
 //              flags the same tail with a slow mode injected (not toothless).
@@ -54,14 +54,14 @@ constexpr double kPi = 3.14159265358979323846;
 const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 struct Settings {
-    float decay = 1.0f, boing = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f, wobble = 0.0f;
+    float decay = 1.0f, tension = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f, wobble = 0.0f;
     int   att = 0, springs = 2;
 };
 
 void apply(rv::Tank& t, const Settings& s)
 {
     t.setParam(rv::ParamId::Decay, s.decay);
-    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
     t.setParam(rv::ParamId::Drive, s.drive);
@@ -248,11 +248,11 @@ void heldTonePitch()
             double p95[2] = {0, 0};
             for (int on = 0; on < 2; ++on) {
                 rv::SpringSettings ss;
-                ss.loopDelaySeconds = rv::map::decayLoopDelaySeconds(d) * rv::modes::kDetune[0].loopDelay;
+                ss.loopDelaySeconds = rv::map::tensionLoopDelaySeconds(b) * rv::modes::kDetune[0].loopDelay;
                 ss.t60Seconds       = rv::map::decayT60Seconds(d);
-                ss.transitionHz     = rv::map::decayTransitionHz(d) * rv::modes::kDetune[0].transition;
-                ss.allpassCoeff     = rv::map::boingCoefficient(b) * rv::modes::kDetune[0].allpassCoeff;
-                ss.stages           = rv::map::boingStages(b);
+                ss.transitionHz     = rv::map::tensionTransitionHz(b) * rv::modes::kDetune[0].transition;
+                ss.allpassCoeff     = rv::map::tensionCoefficient(b) * rv::modes::kDetune[0].allpassCoeff;
+                ss.stages           = rv::map::tensionStages(b);
                 ss.dampingHz        = rv::map::toneDampingHz(0.5f);
                 ss.highPathLevel    = rv::map::toneHighPathLevel(0.5f);
                 ss.tapRatio         = rv::modes::kPickupTap[0];
@@ -272,7 +272,7 @@ void heldTonePitch()
                     p95[on] = std::max(p95[on], q);
                 }
             }
-            std::printf("INFO    one Spring DECAY %.1f BOING %.0f: p95 %.2f cents without the floor, %.2f with\n", d, b,
+            std::printf("INFO    one Spring DECAY %.1f TENSION %.0f: p95 %.2f cents without the floor, %.2f with\n", d, b,
                         p95[0], p95[1]);
             worstAdd = std::max(worstAdd, p95[1] - p95[0]);
             worstWith = std::max(worstWith, p95[1]);
@@ -396,7 +396,7 @@ void loopEvenness()
                     s.att = a;
                     s.tone = tn;
                     s.decay = d;
-                    s.boing = b;
+                    s.tension = b;
                     s.springs = 2;
                     rv::Tank t;
                     t.prepare(kFs, 48);
@@ -412,7 +412,7 @@ void loopEvenness()
                         }
                         ++cells;
                         char at[128];
-                        std::snprintf(at, sizeof at, "%s TONE %.1f DECAY %.2f BOING %.1f Spring %d", kAttName[a], tn, d, b, sp);
+                        std::snprintf(at, sizeof at, "%s TONE %.1f DECAY %.2f TENSION %.1f Spring %d", kAttName[a], tn, d, b, sp);
                         double pMax = 0, pBump = -1e9, tMax = 0, tBump = -1e9;
                         for (size_t i = 0; i < freqs.size(); ++i) {
                             pMax = std::max(pMax, P[i]);
@@ -440,7 +440,7 @@ void loopEvenness()
                         {
                             float gFc = 1e9f;
                             for (float r : {0.6f, 0.75f, 0.85f, 0.92f, 1.0f}) {
-                                const float hz = r * float(rv::map::decayTransitionHz(d)) * rv::modes::kDetune[size_t(sp)].transition;
+                                const float hz = r * float(rv::map::tensionTransitionHz(b)) * rv::modes::kDetune[size_t(sp)].transition;
                                 gFc = std::min(gFc, std::exp(-3.0f * 2.302585093f * spr.roundTripSamples(hz)
                                                              / (float(target) * rv::Spring::kT60DesignScale * kFs))
                                                         / spr.loopMagnitude(hz));
@@ -451,7 +451,7 @@ void loopEvenness()
                         // ~2 s and longer, where a band could audibly Ring; the
                         // M6 grid is DECAY 0.75 and 1). Below that it is
                         // reported: with a > 0 (highs later) the tightest slap
-                        // at max BOING has its Chirp's top edge lasting ~1.5x
+                        // at max TENSION has its Chirp's top edge lasting ~1.5x
                         // its neighbours (0.6 s vs 0.4 s), a "ping", not Ringing.
                         if (d < 0.5f) shortBump = std::max(shortBump, tBump);
                         if (pMax >= 1.0 || tRatio > 1.05 || pBump > 0.5 || (d >= 0.5f && tBump > 1.15)) ++bad;
@@ -462,8 +462,8 @@ void loopEvenness()
                         if (tBump > worstT60Bump) { worstT60Bump = tBump; std::snprintf(atTB, sizeof atTB, "%s", at); }
                     }
                 }
-    std::printf("INFO  Loop evenness, %d Spring cells (BOING sign: a in [%.2f, %.2f]):\n", cells,
-                double(rv::map::kBoingCoeffMin), double(rv::map::kBoingCoeffMax));
+    std::printf("INFO  Loop evenness, %d Spring cells (TENSION: |a| in [%.2f, %.2f]):\n", cells,
+                double(rv::map::kTensionCoeffMin), double(rv::map::kTensionCoeffMax));
     std::printf("INFO    per-trip peak g|H| %.4f (%s)\n", worstP, atP);
     std::printf("INFO    per-trip bump over its 1/3-oct median %.3f dB (%s)\n", worstPBump, atPB);
     std::printf("INFO    longest T60(f) / (DECAY target x design scale %.2f) %.3f (%s)\n",
@@ -473,7 +473,7 @@ void loopEvenness()
     std::printf("INFO    cells where the design points under fC set g: %d of %d (%s)\n", fcBinds, cells,
                 rv::map::kHighsLater ? "a > 0: they may bind" : "0 expected while a < 0");
     std::snprintf(msg, sizeof msg,
-                  "Layer 1, even Loop gain: every Spring at every ATTITUDE x TONE x BOING x DECAY corner outside the Howl "
+                  "Layer 1, even Loop gain: every Spring at every ATTITUDE x TONE x TENSION x DECAY corner outside the Howl "
                   "zone has per-trip gain < 1 (worst %.3f), no per-trip bump > 0.5 dB over its 1/3 octave (worst %.2f), "
                   "no band ringing longer than designed (worst x%.3f, limit 1.05), no T60 bump > x1.15 from DECAY 0.5 up (worst x%.3f); "
                   "%d of %d cells out",
@@ -510,7 +510,7 @@ void tankTails()
                 s.att = a;
                 s.springs = m;
                 s.decay = a == 2 ? 0.75f : 1.0f; // KICKED DECAY 1 is the Howl zone
-                s.boing = 1.0f;
+                s.tension = 1.0f;
                 rv::Tank t;
                 t.prepare(kFs, 48);
                 apply(t, s);
@@ -524,7 +524,7 @@ void tankTails()
                 }
             }
     std::snprintf(msg, sizeof msg,
-                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, BOING 1, WOBBLE 0): "
+                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 1, WOBBLE 0): "
                   "%d of %d flagged, worst ringing_db %.1f (%s; limit %.0f)",
                   flagged, n, worst, worstAt, rv::metrics::kRingingGrowthDb);
     check(flagged == 0, msg);
@@ -561,7 +561,7 @@ void howlZone()
 {
     const size_t sec = size_t(kFs);
     for (int m = 0; m < 3; ++m) {
-        // DRIVE 0.5 (noon), BOING/TONE noon, click input: like the M6 grid.
+        // DRIVE 0.5 (noon), TENSION/TONE noon, click input: like the M6 grid.
         const size_t n = 16 * sec, pullAt = 10 * sec;
         const Buf in = click(16.0);
         rv::Tank t;

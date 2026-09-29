@@ -29,13 +29,13 @@ void check(bool ok, const char* what)
 using Buf = std::vector<float>;
 
 struct Settings {
-    float decay = 0.5f, boing = 0.5f, tone = 0.5f, mix = 1.0f;
+    float decay = 0.5f, tension = 0.5f, tone = 0.5f, mix = 1.0f;
 };
 
 void apply(rv::Tank& t, const Settings& s)
 {
     t.setParam(rv::ParamId::Decay, s.decay);
-    t.setParam(rv::ParamId::Boing, s.boing);
+    t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
 }
@@ -86,15 +86,15 @@ struct SpringRig {
     rv::Spring spring;
     rv::SpringSettings settings;
 
-    SpringRig(float fs, float decay, float boing, float tone)
+    SpringRig(float fs, float decay, float tension, float tone)
     {
         pool.assign(rv::Spring::requiredFloats(fs), 0.0f);
         spring.prepare(fs, pool.data(), 1u);
-        settings.loopDelaySeconds = rv::map::decayLoopDelaySeconds(decay);
+        settings.loopDelaySeconds = rv::map::tensionLoopDelaySeconds(tension);
         settings.t60Seconds       = rv::map::decayT60Seconds(decay);
-        settings.transitionHz     = rv::map::decayTransitionHz(decay);
-        settings.allpassCoeff     = rv::map::boingCoefficient(boing);
-        settings.stages           = rv::map::boingStages(boing);
+        settings.transitionHz     = rv::map::tensionTransitionHz(tension);
+        settings.allpassCoeff     = rv::map::tensionCoefficient(tension);
+        settings.stages           = rv::map::tensionStages(tension);
         settings.dampingHz        = rv::map::toneDampingHz(tone);
         settings.highPathLevel    = 0.0f;
         spring.setSettings(settings, true);
@@ -251,10 +251,10 @@ void chirpHighsBeforeLows()
     const char* late = rv::map::kHighsLater ? "highs" : "lows";
     const float hiLo = rv::map::kHighsLater ? 0.65f : 0.5f, hiHi = rv::map::kHighsLater ? 0.95f : 0.85f;
     const float hiRef = rv::map::kHighsLater ? 0.8f : 0.67f; // prediction's reference in the high band
-    for (float boing : {0.0f, 0.5f, 1.0f}) {
-        SpringRig rig(fs, decay, boing, 0.5f);
+    for (float tension : {0.0f, 0.5f, 1.0f}) {
+        SpringRig rig(fs, decay, tension, 0.5f);
         const float L   = rig.spring.loopDelaySamples();
-        const float fC  = rv::map::decayTransitionHz(decay);
+        const float fC  = rv::map::tensionTransitionHz(tension);
         const Buf   ir  = rig.ir(size_t(0.5f * fs));
         // First echo: from the pickup tap (L/2) until the second echo's
         // fastest part could arrive (L/2 + L).
@@ -265,19 +265,19 @@ void chirpHighsBeforeLows()
                                         - rig.spring.chainGroupDelaySamples(hiRef * fC)) / fs;
         const double lag = dir * (tLo - tHi);
         std::snprintf(msg, sizeof msg,
-                      "Chirp BOING %.1f (Spring): high band %.0f-%.0f Hz at %.1f ms, 200-500 Hz at %.1f ms "
+                      "Chirp TENSION %.1f (Spring): high band %.0f-%.0f Hz at %.1f ms, 200-500 Hz at %.1f ms "
                       "(%s later by %.1f ms, mapping predicts %.1f ms)",
-                      boing, hiLo * fC, hiHi * fC, tHi * 1e3, tLo * 1e3, late, lag * 1e3, predicted * 1e3);
+                      tension, hiLo * fC, hiHi * fC, tHi * 1e3, tLo * 1e3, late, lag * 1e3, predicted * 1e3);
         check(lag > 0.001 && lag > 0.4 * predicted, msg);
 
         // Same check through the whole Tank (high path, decorrelator, output stage).
         Settings s;
         s.decay = decay;
-        s.boing = boing;
+        s.tension = tension;
         const Buf t = tankIR(fs, s, 0.5f);
         const double tHiT = centroidSeconds(bandpass(t, fs, hiLo * fC, hiHi * fC), end, fs);
         const double tLoT = centroidSeconds(bandpass(t, fs, 200.0f, 500.0f), end, fs);
-        std::snprintf(msg, sizeof msg, "Chirp BOING %.1f (Tank): highs at %.1f ms, lows at %.1f ms", boing,
+        std::snprintf(msg, sizeof msg, "Chirp TENSION %.1f (Tank): highs at %.1f ms, lows at %.1f ms", tension,
                       tHiT * 1e3, tLoT * 1e3);
         check(dir * (tLoT - tHiT) > 0.001, msg);
     }
@@ -286,29 +286,42 @@ void chirpHighsBeforeLows()
 // ---- 2. Regular repeat at the round-trip time --------------------------------
 // "Expected" = L + chain group delay + filter delay at the band centre, from
 // the mapping (Spring::roundTripSamples). Band: 800–1250 Hz (centre 1 kHz).
-double measureRepeat(float fs, float decay, float boing, double* expected)
+double measureRepeat(float fs, float decay, float tension, double* expected)
 {
-    SpringRig rig(fs, decay, boing, 0.5f);
+    SpringRig rig(fs, decay, tension, 0.5f);
     const double rt = rig.spring.roundTripSamples(1000.0f) / fs;
     const Buf ir    = rig.ir(size_t((0.3 + 8 * rt) * fs));
     if (expected) *expected = rt;
     return repeatSeconds(ir, fs, 800.0f, 1250.0f, 0.6 * rt, 1.4 * rt);
 }
 
+// DECAY sets tail length only (ADR 0026): the repeat is TENSION's alone, the
+// same at every DECAY.
 void repeatMatchesRoundTrip()
 {
     const float fs = 48000.0f;
-    for (float decay : {0.0f, 0.5f, 1.0f}) {
-        for (float boing : {0.0f, 1.0f}) {
+    double byDecay[2][3] = {};
+    for (int di = 0; di < 3; ++di) {
+        const float decay = 0.5f * float(di);
+        for (int ti = 0; ti < 2; ++ti) {
+            const float tension = float(ti);
             double expected = 0;
-            const double got = measureRepeat(fs, decay, boing, &expected);
-            const double L = rv::map::decayLoopDelaySeconds(decay);
+            const double got = measureRepeat(fs, decay, tension, &expected);
+            byDecay[ti][di] = got;
+            const double L = rv::map::tensionLoopDelaySeconds(tension);
             std::snprintf(msg, sizeof msg,
-                          "Repeat DECAY %.1f BOING %.1f: %.2f ms measured, %.2f ms expected (L %.1f ms + chain/filters "
+                          "Repeat DECAY %.1f TENSION %.1f: %.2f ms measured, %.2f ms expected (L %.1f ms + chain/filters "
                           "%.2f ms @1 kHz)",
-                          decay, boing, got * 1e3, expected * 1e3, L * 1e3, (expected - L) * 1e3);
+                          decay, tension, got * 1e3, expected * 1e3, L * 1e3, (expected - L) * 1e3);
             check(std::fabs(got / expected - 1.0) < 0.05, msg);
         }
+    }
+    for (int ti = 0; ti < 2; ++ti) {
+        const double lo = std::min({byDecay[ti][0], byDecay[ti][1], byDecay[ti][2]});
+        const double hi = std::max({byDecay[ti][0], byDecay[ti][1], byDecay[ti][2]});
+        std::snprintf(msg, sizeof msg, "DECAY leaves the tank alone (ADR 0026): TENSION %d repeat %.2f .. %.2f ms over DECAY 0 / 0.5 / 1 "
+                      "(within 1 %%)", ti, lo * 1e3, hi * 1e3);
+        check(hi / lo - 1.0 < 0.01, msg);
     }
 }
 
@@ -372,13 +385,13 @@ void stabilityGrid()
                     const bool good = allFinite(l) && allFinite(r) && pk < 1.0f && falls && tailLower;
                     if (!good) {
                         ++bad;
-                        std::printf("      grid fail: decay %.1f boing %.1f tone %.1f %s peak %.3f falls %d lower %d\n",
+                        std::printf("      grid fail: decay %.1f tension %.1f tone %.1f %s peak %.3f falls %d lower %d\n",
                                     d, b, t, input ? "noise" : "impulse", pk, falls, tailLower);
                     }
                     ok &= good;
                 }
     std::snprintf(msg, sizeof msg,
-                  "Stability DECAY x BOING x TONE {0,.5,1}^3, impulse + 1 s noise: finite, peak < 1 (worst %.3f), "
+                  "Stability DECAY x TENSION x TONE {0,.5,1}^3, impulse + 1 s noise: finite, peak < 1 (worst %.3f), "
                   "decaying (%d bad)",
                   worstPeak, bad);
     check(ok, msg);
@@ -453,8 +466,8 @@ void sweepsDontClick()
     const size_t n = size_t(5.0f * fs), sweepFrom = size_t(0.5f * fs), sweepLen = size_t(4.0f * fs);
     const Buf in = noise(n, 0.1f, 3u);
     for (int which = 0; which < 3; ++which) {
-        const rv::ParamId id = which == 0 ? rv::ParamId::Decay : which == 1 ? rv::ParamId::Boing : rv::ParamId::Tone;
-        const char* name     = which == 0 ? "DECAY" : which == 1 ? "BOING" : "TONE";
+        const rv::ParamId id = which == 0 ? rv::ParamId::Decay : which == 1 ? rv::ParamId::Tension : rv::ParamId::Tone;
+        const char* name     = which == 0 ? "DECAY" : which == 1 ? "TENSION" : "TONE";
         double ratio[2]      = {0, 0};
         int clicks[2]        = {0, 0};
         for (int sweep = 0; sweep < 2; ++sweep) {
@@ -510,7 +523,7 @@ void performance()
     const auto t1 = std::chrono::steady_clock::now();
     const double ns = std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
     // Daisy estimate: M7 @ 480 MHz assumed 15–25x slower per sample than this desktop.
-    std::printf("INFO  process() worst case (DECAY/BOING/TONE 1): %.1f ns/sample desktop, "
+    std::printf("INFO  process() worst case (DECAY/TENSION/TONE 1): %.1f ns/sample desktop, "
                 "est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k budget, 1-Spring mode)\n",
                 ns, ns * 15 * 0.48, ns * 25 * 0.48, ns * 15 * 0.48 / 100, ns * 25 * 0.48 / 100);
     std::printf("INFO  Tank memory: %zu bytes at 48 kHz (object %zu + pool), %zu bytes at 96 kHz\n",
@@ -524,12 +537,22 @@ void mappings()
     using namespace rv::map;
     bool ok = decayT60Seconds(0) >= 0.3f && decayT60Seconds(0) <= 0.5f && decayT60Seconds(1) >= 8.0f
            && decayT60Seconds(1) <= 10.0f;
-    ok &= std::fabs(decayLoopDelaySeconds(0) - 0.030f) < 1e-4f && std::fabs(decayLoopDelaySeconds(1) - 0.100f) < 1e-4f;
-    ok &= stretchK(decayTransitionHz(1), 48000) > stretchK(decayTransitionHz(0), 48000);
-    ok &= boingStages(0) >= kMinStages && boingStages(1) == kMaxStages && kChirpSign * boingCoefficient(0) > 0.3f
-          && kChirpSign * boingCoefficient(1) > kChirpSign * boingCoefficient(0);
+    // TENSION anchors (ADR 0026): tight 33 ms / 4.6 kHz / 0.40 / 24, noon
+    // 69 ms / 3.3 kHz / 0.47 / 40, loose 110 ms / 2.7 kHz / 0.55 / 64; each
+    // rises (fC falls) steadily from tight to loose.
+    ok &= std::fabs(tensionLoopDelaySeconds(0) - 0.033f) < 1e-4f && std::fabs(tensionLoopDelaySeconds(0.5f) - 0.069f) < 1e-4f
+          && std::fabs(tensionLoopDelaySeconds(1) - 0.110f) < 1e-4f;
+    ok &= std::fabs(tensionTransitionHz(0) - 4600.0f) < 1.0f && std::fabs(tensionTransitionHz(1) - 2700.0f) < 1.0f;
+    ok &= tensionStages(0) == kMinStages && tensionStages(0.5f) == 40 && tensionStages(1) == kMaxStages;
+    ok &= kChirpSign * tensionCoefficient(0) > 0.3f;
+    for (int i = 0; i < 20; ++i) {
+        const float v0 = 0.05f * float(i), v1 = v0 + 0.05f;
+        ok &= tensionLoopDelaySeconds(v1) > tensionLoopDelaySeconds(v0)
+              && stretchK(tensionTransitionHz(v1), 48000) > stretchK(tensionTransitionHz(v0), 48000)
+              && kChirpSign * tensionCoefficient(v1) > kChirpSign * tensionCoefficient(v0) && tensionStages(v1) >= tensionStages(v0);
+    }
     ok &= mixGains(0).dry == 1.0f && mixGains(0).wet == 0.0f && mixGains(1).dry == 0.0f && mixGains(1).wet == 1.0f;
-    check(ok, "Mappings: T60 0.4-9 s, L 30-100 ms, K grows with DECAY, BOING floor, exact MIX ends");
+    check(ok, "Mappings: T60 0.4-9 s; TENSION anchors (L 33/69/110 ms, fC 4.6-2.7 kHz, M 24/40/64), L, K, |a|, M rise steadily; exact MIX ends");
 
     // Loop gain < 1 everywhere (ADR 0001).
     bool below = true;

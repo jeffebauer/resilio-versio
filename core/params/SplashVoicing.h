@@ -171,9 +171,9 @@ constexpr float kRattleEnergyGain = 2.0f;
 // has no tail rattle; the Kick's forced Splash rattles through the Jolt).
 constexpr float kTankLevelSmoothMs = 50.0f;
 // Hard ceiling on |a| after the Jolt is added, so a Jolt can never push the
-// allpass toward |a| = 1. Only bites at BOING max on the most-detuned Spring
-// (−0.72 × 1.07 − 0.12 = −0.89 → −0.85; HighsLater tops out at
-// 0.55 × 1.07 + 0.12 = 0.71, so the clamp never bites there).
+// allpass toward |a| = 1. With the tuned HighsLater Chirp |a| tops out at
+// 0.55 × 1.07 + 0.12 = 0.71 (TENSION 1, KICKED Jolt, most-detuned Spring),
+// so the clamp never bites; it guards any future retune of a.
 constexpr float kMaxAllpassMagnitude = 0.85f;
 
 // ---- Per-ATTITUDE table (SPEC §4.5) -----------------------------------------------
