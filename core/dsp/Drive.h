@@ -202,6 +202,7 @@ public:
     {
         split_.setCutoff(drive::kTiltPivotHz, sampleRate);
         ceiling_.setCutoff(std::min(drive::kTiltCeilingHz, 0.45f * sampleRate), sampleRate);
+        sampleRate_ = sampleRate;
         tone_ = -1.0f;
         reset();
     }
@@ -209,6 +210,7 @@ public:
     {
         split_.reset();
         ceiling_.reset();
+        lowCut_.reset();
     }
     void set(float tone, bool snap, int interval);
     float process(float x)
@@ -222,11 +224,13 @@ public:
         const float g = hi_.next();
         const float extra = (g - 1.0f) * (boost_ ? ceiling_.process(hi) : hi);
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
-        return lo * lo_.next() + hi + extra;
+        return lowCut_.process(lo * lo_.next() + hi + extra); // bright-side low cut (drive::toneLowCutHz)
     }
 
 private:
     OnePoleLowpass split_, ceiling_;
+    Biquad lowCut_;
+    float sampleRate_ = 48000.0f;
     Ramp lo_, hi_;
     bool boost_ = false;
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;

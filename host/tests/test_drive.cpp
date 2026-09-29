@@ -1023,10 +1023,11 @@ void tone()
             check(dir * (tLo - tHi) > 0.001, msg);
         }
 
-    // Level across TONE and energy above 10 kHz at CW vs noon, snare hits.
+    // Level across TONE, energy above 10 kHz at CW vs noon, and (owner, 29
+    // Sep) the bright side's low cut: energy below 150 Hz, snare hits.
     const Buf in = snareHits(size_t(7.0f * kFs), 0.5f);
     for (int a = 0; a < 3; ++a) {
-        double lev[5], hf[5];
+        double lev[5], hf[5], lf[5];
         for (int i = 0; i < 5; ++i) {
             Settings s;
             s.att  = a;
@@ -1037,6 +1038,9 @@ void tone()
             Buf hl = onePoleHp(onePoleHp(onePoleHp(onePoleHp(o.l, 10000.0f), 10000.0f), 10000.0f), 10000.0f);
             Buf hr = onePoleHp(onePoleHp(onePoleHp(onePoleHp(o.r, 10000.0f), 10000.0f), 10000.0f), 10000.0f);
             hf[i] = db(power(hl, 0, hl.size()) + power(hr, 0, hr.size()));
+            const Buf ll = onePoleLp(onePoleLp(onePoleLp(onePoleLp(o.l, 150.0f), 150.0f), 150.0f), 150.0f);
+            const Buf lr = onePoleLp(onePoleLp(onePoleLp(onePoleLp(o.r, 150.0f), 150.0f), 150.0f), 150.0f);
+            lf[i] = db(power(ll, 0, ll.size()) + power(lr, 0, lr.size()));
         }
         double maxDev = 0;
         for (int i = 0; i < 5; ++i) maxDev = std::max(maxDev, std::fabs(lev[i] - lev[2]));
@@ -1048,6 +1052,11 @@ void tone()
         std::snprintf(msg, sizeof msg, "TONE CW %s: energy > 10 kHz %+.1f dB vs noon (limit +6; CCW %+.1f dB)",
                       kAttName[a], hf[4] - hf[2], hf[0] - hf[2]);
         check(hf[4] - hf[2] <= 6.0 && hf[4] > hf[2], msg);
+        std::snprintf(msg, sizeof msg,
+                      "TONE CW %s thins the lows: energy < 150 Hz %+.1f dB at 3 o'clock, %+.1f dB at full CW vs noon "
+                      "(full CW <= -8, 3 o'clock between)",
+                      kAttName[a], lf[3] - lf[2], lf[4] - lf[2]);
+        check(lf[4] - lf[2] <= -8.0 && lf[3] < lf[2] && lf[3] > lf[4], msg);
     }
 }
 

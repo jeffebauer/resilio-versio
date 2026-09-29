@@ -127,6 +127,7 @@ void Tilt::set(float tone, bool snap, int interval)
         const float comp = drive::toneTiltCompDb(tone);
         loGain_ = drive::dbToGain((comp - 0.5f * t));
         hiGain_ = drive::dbToGain((comp + 0.5f * t));
+        lowCut_.setHighpass(drive::toneLowCutHz(tone), 0.7071f, sampleRate_);
         tone_   = tone;
     }
     const float lo = loGain_, hi = hiGain_;

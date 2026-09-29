@@ -319,6 +319,23 @@ inline float toneTiltDb(float v)
 {
     return v < 0.5f ? kTiltCcwDb * (1.0f - 2.0f * v) : kTiltCwDb * (2.0f * v - 1.0f);
 }
+// Bright-side low cut (owner, 29 Sep: "the brighter tone seems to boost the
+// highs, but doesn't seem to high pass much. It'd be good to filter some of
+// the lows"). The tilt alone only takes the lows down 2.5 dB at TONE 1, so
+// the CW half also sweeps a 2nd-order high-pass (Q 0.707) in front of the
+// springs: less low energy goes in, so the whole tank (tail included) thins
+// out, bright and splashy like a small dub tank. Off at noon and CCW
+// (kToneLowCutMinHz, below anything the DriveIn lets through), then up the
+// CW half on a log scale with a slightly early curve (u^0.7), so the
+// thinning builds evenly: ~3 o'clock ≈ 105 Hz, full CW kToneLowCutMaxHz.
+// Pre-tank, so the Kick's thud (direct to the wet bus) keeps its weight.
+constexpr float kToneLowCutMinHz = 20.0f;
+constexpr float kToneLowCutMaxHz = 300.0f;
+inline float toneLowCutHz(float v)
+{
+    return v <= 0.5f ? kToneLowCutMinHz
+                     : map::expLerp(kToneLowCutMinHz, kToneLowCutMaxHz, std::exp(0.7f * std::log(2.0f * v - 1.0f)));
+}
 // Tilt level compensation, dB per dB of tilt. A spring tank's loudness sits
 // mostly *below* the pivot (the Loop is dark and its low-mids ring longest),
 // so tilting toward the lows makes it louder: CCW gets pulled down. Keeps
