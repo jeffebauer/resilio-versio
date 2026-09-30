@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 29 Sep 2026 (session 3 wrap) · **Milestones:** M0 **passed** · M1: A/B vs the Wellspring ready (4b) · M2 needs your Ableton check · M3: worst case **63 % average** (target 65 %), peaks ~67 %; run 11 to measure (3c) · M8: SPLASH round 3 voicings to judge (3d) · Knob layout set to your panel (3b)
+**Last updated:** 30 Sep 2026 · **Milestones:** M0 **passed** · M1: A/B vs the Wellspring ready (4b) · M2 needs your Ableton check · M3: run 11 **62 % average, 68 % peak** (target 65 %); run 12 coming (3c) · **Real firmware ready to play (3g)** · M8: SPLASH round 3 voicings to judge (3d) · Knob layout set to your panel (3b)
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -66,7 +66,17 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] The snare-like layer is SPLASH's noise burst (gone at SPLASH 0). Direction: **derive the splash from the input**, like a real tank driven hard, not an added impulse. Claude builds voicings to A/B
 - [ ] **Listen (≈15 min):** open `renders/splash_voicings/index.html` from Finder. Columns = ATTITUDE, rows = hits / skank; the five voicings switch in sync. Mark **My pick** per panel, add notes per column, then **Copy results for Claude** and paste them into the chat. Per ATTITUDE folder, hits and skank: **A** today's noise burst, **B** hits push the transducer (grit), **C** hits feed their own highs into the springs (brighter drip), **D** both by ATTITUDE, **E** DRIVE alone. Level-matched. Which is closest to a real tank being hit hard? Anything to change?
 - [ ] **Then decide:** should higher DRIVE make SPLASH bite sooner and harder (realistic, matched to your Wellspring takes B vs C), or keep them independent?
-- Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play
+- Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play: **ready now, see 3g**
+
+### 3g. Play the real firmware on the Versio (≈20 min, 30 Sep)
+- Flash **`dist/resilio_versio_release_3a790f7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
+- It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031). SPLASH is still today's version (round 3 not built yet)
+- [ ] **LED order:** patch something into **In L only**. The **leftmost** LED should light (and the right pair shows the output). If a different one lights, tell Claude which (a one-line fix)
+- [ ] **Input red:** turn your source up until it starts to distort at the jack: does the input LED go red about there?
+- [ ] **Look:** does amber read as amber, and does the dimmest glow show without flicker?
+- [ ] **Output red:** it should light on a loud KICKED Howl and stay off in normal playing
+- [ ] **Passthrough vs a cable (once):** MIX fully left, record the output next to the same source through a plain cable. Same level and not flipped? (Claude checks the recording if you save it in `test_audio/m0/`)
+- [ ] Then just play it: how does it feel on the real panel?
 
 ### 3e. Two prototypes to listen to (≈10 min each, from the overnight agents, 30 Sep)
 - [ ] **Hanging note at WOBBLE ~9 o'clock:** open `renders/proto_wobble_hang/index.html` from Finder. **A** today, **B** "Springs drift together at low WOBBLE" (Claude's pick: the hang drops to the WOBBLE-0 level), **C** halfway. Listen for: does the chord now fade evenly? Does B lose any life at 9 o'clock, or sound narrower at noon? Pick, notes, **Copy results for Claude**
@@ -166,7 +176,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **Overnight results, waiting for your OK to merge** (each reviewed and re-tested by Claude: all test suites pass): tail-length measurement fix, LED meters (+ ADR 0031, SPEC v1.0.18), manual + presets drafts, new review-page tool. Prototypes stay unmerged until you listen (3e)
+- **M3 run 12** (no sound change): each spring's recalculation spread over two moments to bring the 68 % peaks under 65 % (your call, 30 Sep). Claude builds it; one more 10-minute run for you after
 - **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
 
 - **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
@@ -176,6 +186,9 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - M8 gain staging: loud held chords can push the wet up to the safety limiter (ties to the M7 question "bright vs dark material")
 
 ## Done
+
+- 30 Sep 2026: **merged** the overnight work: tail-length measurement fix, LED meters (ADR 0031, SPEC v1.0.18), manual + dub preset drafts (`docs/manual.md`, `docs/presets.md`), new listening pages. All 16 test suites pass. **Release firmware built** (`dist/resilio_versio_release_3a790f7.bin`, 84 % of flash)
+- 30 Sep 2026: **M3 run 11**: 62 % average, 68 % peak (target peak 65 %)
 
 - 29 Sep 2026: **Earlier first echo** (ADR 0029): loose tank's gap 45 → 32 ms, like your Wellspring; echo spacing unchanged
 - 29 Sep 2026: **M3 CPU**: worst case 83 % → 63 % average, 100 % → ~67 % peak, sound unchanged (faster memory for the delay lines, no fused multiply-add, pipelined spring stages, cached design maths, springs recalculating in turn with the jolt kept together, fewer divisions)
