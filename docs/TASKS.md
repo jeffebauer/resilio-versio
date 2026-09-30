@@ -74,9 +74,11 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **LED order:** patch something into **In L only**. The **leftmost** LED should light (and the right pair shows the output). If a different one lights, tell Claude which (a one-line fix)
 - [ ] **Input red:** turn your source up until it starts to distort at the jack: does the input LED go red about there?
 - [ ] **Look:** does amber read as amber, and does the dimmest glow show without flicker?
-- [ ] **Output red:** it should light on a loud KICKED Howl and stay off in normal playing
+- [x] **Output red:** lights on a KICKED Howl, off in normal playing (30 Sep)
 - [ ] **Passthrough vs a cable (once):** MIX fully left, record the output next to the same source through a plain cable. Same level and not flipped? (Claude checks the recording if you save it in `test_audio/m0/`)
-- [ ] Then just play it: how does it feel on the real panel?
+- [x] First play (30 Sep): **working!** Drum hits (Squid Salmple + Rample → Worng SoundStage II FX send → Resilio → return). Controls audible as expected. The input LEDs never left green (peaks below about −18 dB of full scale, line level rather than Eurorack level: the SoundStage runs quiet), so SPLASH was barely audible
+- [ ] **Try:** raise the SoundStage sends until the loudest hits just touch **amber** on the input LEDs (where SPLASH was tuned), then play with SPLASH again
+- [ ] Then play it more thoroughly: how does it feel on the real panel?
 
 ### 3e. Two prototypes to listen to (≈10 min each, from the overnight agents, 30 Sep)
 - [ ] **Hanging note at WOBBLE ~9 o'clock:** open `renders/proto_wobble_hang/index.html` from Finder. **A** today, **B** "Springs drift together at low WOBBLE" (Claude's pick: the hang drops to the WOBBLE-0 level), **C** halfway. Listen for: does the chord now fade evenly? Does B lose any life at 9 o'clock, or sound narrower at noon? Pick, notes, **Copy results for Claude**
