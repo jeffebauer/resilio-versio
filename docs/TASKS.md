@@ -100,12 +100,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Listened (30 Sep): **F (bright tail) is the favourite**; **G (breath) dropped**: on the skank the air sounds added on top, not part of the tail. Still different from the Wellspring: stereo width, a pitch sweep at the start of each repeat; the Wellspring is "sweeter". Measured: ours repeats on one regular beat (the Wellspring's repeats interleave), each repeat's highs lag further behind, bass isn't centred, the tail is peakier
 - [ ] **Next listen (Claude says when ready):** `renders/proto_sweet_tank/index.html`: A bright tail, then B no single beat, C no growing sweep, D tank-like stereo (centred bass, width blooming), maybe E light smear, with W
 
-- [ ] **Hardware recordings (≈15 min, through the OPTX, Ableton clip gain 0 dB):** save in `test_audio/hardware/` with a line per take in `NOTES.md` there. Knob words: "fully left/right" and noon are exact, so Claude can render the same settings and compare
-  - **H0 loopback:** OPTX out → OPTX in (the channels you use for the Versio): `01_clicks`, `09_pink_noise`
-  - **H1 dry:** Versio in the loop, **MIX fully left**: `01_clicks`, `09_pink_noise` (checks the output fix, and how hot the OPTX is inside the Versio)
-  - **H2 CLEAN:** MIX fully right; DECAY, TONE, TENSION **noon**; SPLASH, DRIVE, WOBBLE **fully left**; SPRINGS **centre**; ATTITUDE **left**: `01_clicks`, `02_hits`, `04_skank`
-  - **H3 KICKED:** as H2 with ATTITUDE **right**: `02_hits`, `04_skank`
-  - **H4 SPLASH:** as H2 with SPLASH **fully right**: `02_hits`
+- [x] **Hardware recordings H0–H4** (30 Sep, through the OPTX, firmware `e2ff5a7`; plus SPLASH skank): **the Versio plays the same reverb as the renders**: tone within ~1 dB, same stereo, SPLASH the same. Output polarity and level fix confirmed (−0.65 dB vs a straight loop). Tails ~10 % shorter on the hardware, most likely DECAY's physical noon reading a hair low. Details: [m8-tuning-backlog.md](m8-tuning-backlog.md) "Hardware vs desktop"
 
 ### 3h. Tight-tank ping (≈5 min, optional, 30 Sep)
 - The "ringing" our test flagged on a tight, bright KICKED tank is real but **inaudible** (75–85 dB under the tail): the drive inside the tank makes a faint overtone that lines up with one of the tank's own high notes. Fix found, **no CPU cost**: that drive fades out once the tail is too quiet to be bent by it
