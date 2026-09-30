@@ -184,7 +184,7 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, floa
     splash_    = splash;
     driveGain_ = driveGain;
     voice_     = splash::blendVoice(attitudeWeights);
-    envelope_.set(splash, voice_.clang, voice_.bite, driveGain);
+    envelope_.set(splash, voice_.clang, voice_.clangShort, voice_.bite, driveGain);
     detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }

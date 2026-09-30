@@ -79,18 +79,20 @@ private:
 // Hit envelope (ADR 0032, SplashVoicing.h "Hit envelope e"): per sample, on
 // the high-passed input after the INPUT gain. e = SPLASH × sudden × loud
 // (0..1, a hit's first ~10-25 ms), and short = how much of the hit is crack
-// (highs) rather than notes. clang = Voice::clang × e, bite = kBiteGain ×
-// Voice::bite × short × e. The Tank applies them.
+// (highs) rather than notes. clang = (Voice::clang + (Voice::clangShort −
+// Voice::clang) × short) × e, bite = kBiteGain × Voice::bite × short × e. The
+// Tank applies them.
 class HitEnvelope {
 public:
     void prepare(float sampleRate);
     void reset();
     // Control rate: SPLASH, the blended Voice's clang amount and bite weight,
     // and DRIVE's gain on both (splash::splashDriveGain).
-    void set(float splash, float clang, float biteWeight, float driveGain = 1.0f)
+    void set(float splash, float clang, float clangShort, float biteWeight, float driveGain = 1.0f)
     {
         splash_   = splash;
         clang_    = clang * driveGain;
+        clangShortDelta_ = (clangShort - clang) * driveGain;
         biteGain_ = splash::kBiteGain * driveGain * biteWeight;
     }
     // Control rate: the program level P (HitDetector::programLevel): the loud
@@ -118,7 +120,7 @@ public:
         sh = sh < 0.0f ? 0.0f : (sh > 1.0f ? 1.0f : sh);
         e_     = e;
         short_ = sh;
-        clang  = clang_ * e;
+        clang  = (clang_ + clangShortDelta_ * sh) * e;
         bite   = biteGain_ * sh * e;
     }
     float envelope() const { return e_; }  // e of the last sample (tests, meters)
@@ -128,7 +130,7 @@ private:
     float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
     float fa_ = 1.0f, fr_ = 1.0f, sa_ = 1.0f, sr_ = 1.0f, lpC_ = 1.0f;
     float fast_ = 0.0f, slow_ = 0.0f, hiFast_ = 0.0f, lp_ = 0.0f;
-    float splash_ = 0.0f, clang_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
+    float splash_ = 0.0f, clang_ = 0.0f, clangShortDelta_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
 };
 
 // Band-passed seeded sparse knocks (or noise) with an exponential burst

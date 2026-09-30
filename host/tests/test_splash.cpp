@@ -238,7 +238,7 @@ int main()
                     late[f] = std::max(late[f], sp.hit());
                     // As a share of full scale (the Clang and Bite amounts at e = 1).
                     for (size_t i = pos; i < pos + 48; ++i)
-                        lateE[f] = std::max({lateE[f], cl[i] / splash::kVoice[2].clang, bt[i] / splash::kBiteGain});
+                        lateE[f] = std::max({lateE[f], cl[i] / splash::kVoice[2].clangShort, bt[i] / splash::kBiteGain});
                 }
                 if (pos == size_t(0.3f * kFs)) atSettle = sp.strokeCount();
             }
@@ -305,9 +305,13 @@ int main()
     // DRIVEN / KICKED, SPLASH 1: the snare and the rim count as short (>= 0.8
     // where the envelope peaks: Bite / kBiteGain vs Clang / Voice::clang), the
     // chord stab next to none (< 5 % of the snare's Bite energy) but a Clang
-    // at least half the snare's; CLEAN gets no Bite at all.
+    // at least half the snare's, each read against its own full scale (chords
+    // Voice::clang, drums Voice::clangShort: KICKED's drums clang harder,
+    // ADR 0032); CLEAN gets no Bite at all. And KICKED's stab clangs at the
+    // chord strength: its Clang peak within 10 % of DRIVEN's stab.
     {
         bool ok = true;
+        float stabClang[3] = {0, 0, 0};
         for (int a : {0, 1, 2}) {
             const Run sn = run(hit(-6, false, 1.0f, kFs), a, 1.0f), rm = run(hit(-6, true, 1.0f, kFs), a, 1.0f),
                       st = run(stab(1.0f, kFs), a, 1.0f);
@@ -315,15 +319,17 @@ int main()
             const double eStab = db(energy(st.bite) / std::max(1e-30, energy(sn.bite)));
             std::printf("      %-6s SPLASH 1: Bite peak snare %.2f, rim %.2f, stab %.3f (energy %.1f dB re the snare's); Clang peak stab %.2f, snare %.2f\n",
                         kAttName[a], bs, br, bst, eStab, cst, peakOf(sn.clang));
+            stabClang[a] = cst;
             if (a == 0) ok &= bs == 0.0f && br == 0.0f && bst == 0.0f && cst >= 0.5f * peakOf(sn.clang);
             else
                 // Bite peak / kBiteGain vs Clang peak / clang = how short (0..1) at e's peak.
-                ok &= bs / splash::kBiteGain >= 0.8f * peakOf(sn.clang) / splash::kVoice[size_t(a)].clang
-                   && br / splash::kBiteGain >= 0.8f * peakOf(rm.clang) / splash::kVoice[size_t(a)].clang && eStab < -13.0
-                   && cst >= 0.5f * peakOf(sn.clang);
+                ok &= bs / splash::kBiteGain >= 0.8f * peakOf(sn.clang) / splash::kVoice[size_t(a)].clangShort
+                   && br / splash::kBiteGain >= 0.8f * peakOf(rm.clang) / splash::kVoice[size_t(a)].clangShort && eStab < -13.0
+                   && cst / splash::kVoice[size_t(a)].clang >= 0.5f * peakOf(sn.clang) / splash::kVoice[size_t(a)].clangShort;
         }
+        ok &= std::fabs(stabClang[2] - stabClang[1]) <= 0.1f * stabClang[1];
         check(ok, "Bite on short hits only: snare and rim count as short (>= 0.8 at the envelope's peak), a chord stab gets < 5 % of the snare's Bite energy but "
-                  "half its Clang or more; CLEAN never bites (SPLASH 1)");
+                  "half its Clang or more (each re its own full scale); KICKED's stab clangs like DRIVEN's (C2); CLEAN never bites (SPLASH 1)");
     }
 
     // ---- Per-ATTITUDE behaviour ------------------------------------------------------

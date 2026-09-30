@@ -135,11 +135,14 @@ constexpr float kLoudRel          = 3.0f;
 // split) fed harder while it lasts:
 //   springs in += Clang amount × (x − LP(x))
 // so the splash is the hit's own sound, chirped and coloured by the tank and
-// dying with the tail: brightness, no grit. Voice::clang 5 = round 4's C2
-// (CLEAN, DRIVEN); KICKED 12 (round 4's C3 strength): owner, 30 Sep, "a more
-// even spread of intensity", KICKED clearly the most intense, and with the
-// Bite taking more back, KICKED's dark transducer (5 kHz) left its rimshots
-// little crash at C2.
+// dying with the tail: brightness, no grit. Voice::clang 5 = round 4's C2,
+// in every ATTITUDE for chord-like hits. KICKED's drum-like hits get more,
+// Voice::clangShort 12 (round 4's C3 strength), blended by "short" (below):
+// owner, 30 Sep, "a more even spread of intensity", KICKED clearly the most
+// intense, and with the Bite taking more back, KICKED's dark transducer
+// (5 kHz) left its rimshots little crash at C2. On chords C3 read "hotter
+// and brighter than before" (KICKED skank, owner's second listen), so there
+// it stays C2. CLEAN and DRIVEN: 5 for both.
 constexpr float kClangHz = 2000.0f;
 //
 // Bite: a short, cracking hit is pushed harder into DriveIn (transducer +
@@ -338,7 +341,8 @@ constexpr float kMaxAllpassMagnitude = 0.85f;
 // ---- Per-ATTITUDE table (SPEC §4.5) -----------------------------------------------
 // Blended by the ATTITUDE Morph weights exactly like drive::Voice.
 struct Voice {
-    float clang;          // Clang: highs fed into the springs at e = 1 (ADR 0032)
+    float clang;          // Clang: highs fed into the springs at e = 1 (ADR 0032), chord-like hits (short 0)
+    float clangShort;     // the same for drum-like hits (short 1); blended by "short" in between
     float bite;           // Bite weight 0..1: short hits bite (kBiteGain) instead of clanging (DRIVEN, KICKED)
     float clatterMax;     // the Kick's crash (Clatter amount of its forced strike)
     float clatterDecayMinMs; // burst decay (1/e) for a weak impact
@@ -353,10 +357,10 @@ struct Voice {
 };
 
 inline constexpr std::array<Voice, 3> kVoice{{
-    //  clang  bite  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
-    {  5.0f, 0.0f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
-    {  5.0f, 1.0f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
-    { 12.0f, 1.0f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
+    //  clang  clSh   bite  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
+    {  5.0f,  5.0f, 0.0f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
+    {  5.0f,  5.0f, 1.0f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
+    {  5.0f, 12.0f, 1.0f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
 }};
 
 // SPLASH 0 has no Clang, no Bite and no Clatter in any ATTITUDE (M8 round 2
@@ -387,6 +391,7 @@ inline Voice blendVoice(const std::array<float, 3>& w)
         v.*m = w[0] * (kVoice[0].*m) + w[1] * (kVoice[1].*m) + w[2] * (kVoice[2].*m);
     };
     mix(&Voice::clang);
+    mix(&Voice::clangShort);
     mix(&Voice::bite);
     mix(&Voice::clatterMax);
     mix(&Voice::clatterDecayMinMs);
