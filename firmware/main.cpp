@@ -604,16 +604,6 @@ int main()
                 AppendFixed1(p, end, b.fmaLatency, 5);
                 AppendStr(p, end, " throughput");
                 AppendFixed1(p, end, b.fmaThroughput, 5);
-                AppendStr(p, end, " | section cycles: fused");
-                AppendFixed1(p, end, b.fused, 5);
-                AppendStr(p, end, " split");
-                AppendFixed1(p, end, b.split, 5);
-                AppendStr(p, end, " split3");
-                AppendFixed1(p, end, b.split3, 5);
-                AppendStr(p, end, " pipe");
-                AppendFixed1(p, end, b.pipe, 5);
-                AppendStr(p, end, " fused3");
-                AppendFixed1(p, end, b.fused3, 5);
                 AppendStr(p, end, "\r\n");
             }
             TransmitLine(buf, size_t(p - buf));
