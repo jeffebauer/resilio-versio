@@ -32,7 +32,7 @@ for att in ["CLEAN", "DRIVEN"]:
         for k, y in variants.items():
             y = y / max(1.0, np.abs(y).max() / 0.98)
             sf.write(f"{d}/{stim}_{k}.wav", y.astype(np.float32), FS, subtype="FLOAT")
-        shutil.copyfile(f"{REF}/{w}", f"{d}/{stim}_W_wellspring.wav")
+        shutil.copyfile(f"{REF}/{"wellspring_C_hits_hot.wav" if (att == "DRIVEN" and stim == "02_hits") else w}", f"{d}/{stim}_W_wellspring.wav")
         shutil.copyfile(f"{REF}/{m}", f"{d}/{stim}_M_magneto.wav")
 
 open(f"{OUT}/README.txt", "w").write(
