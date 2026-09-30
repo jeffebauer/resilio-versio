@@ -717,6 +717,199 @@ constexpr size_t kMeterLed[kNumMeters] = {
 volatile float gPeak[kNumMeters] = {};
 volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
 
+// ---- LED PWM by timer + DMA (30 Sep 2026 fix, "LEDs flicker rather than dim")
+// libDaisy's software PWM needs UpdateLeds() called at its sample rate
+// (1 kHz by default, not settable through DaisyVersio), and the pins then
+// only get ~8 uneven steps per 120 Hz period: dim values alias into sparse
+// 1 ms flashes. Calling it faster from the main loop doesn't help: the audio
+// callback runs in the SAI DMA interrupt (priority 0, nothing can pre-empt
+// it) for ~60 % of every 1 ms block, freezing any CPU-driven PWM.
+//
+// So the CPU only writes a table per GPIO port (rvled::fillPwmWords(), one
+// 32-bit BSRR word per PWM step, ~1 kHz from the main loop, only when a
+// value changed), and DMA copies it to the port's BSRR register on every
+// tick of TIM5: 512 steps per period at ~1 kHz, untouched by the CPU load.
+// The 12 LED pins sit on 5 ports (A, B, C, D, G) -> 5 DMA streams, each
+// paced by its own TIM5 request (update + the 4 compare channels, which only
+// raise DMA requests; no timer pins are used). Streams: DMA2 5/6/7 (unused
+// by libDaisy) and DMA2 0/1 (libDaisy's DAC streams; the Versio has no DAC).
+// No DMA interrupts are enabled, and the audio's own DMA (SAI, ADC) is on
+// DMA1, so the audio callback is untouched: its only new neighbour is the
+// main loop's table writes. If a stream doesn't start moving, or stops later
+// (a bus error clears its enable bit), the loop falls back to libDaisy's
+// PWM: flickery, but lit.
+//
+// Tables live in SRAM1 (.sram1_bss), which libDaisy's MPU setup makes
+// non-cacheable for its first 32 KB (sys/system.cpp), so the DMA reads what
+// the CPU wrote without cache maintenance, and table writes don't evict the
+// audio code's cached data.
+constexpr float kPwmHz      = 1000.0f; // PWM periods per second
+constexpr int   kNumLeds    = DaisyVersio::LED_LAST;
+constexpr int   kMaxPorts   = 5;
+constexpr int   kPinsPerLed = 3; // r, g, b
+
+// DaisyVersio's LED pins (libs/libDaisy/src/daisy_versio.cpp, PIN_LEDn_R/G/B;
+// not exported), per libDaisy LED index, in r, g, b order.
+constexpr Pin kLedPin[kNumLeds][kPinsPerLed] = {
+    {seed::D10, seed::D3, seed::D4},
+    {seed::D12, seed::D13, seed::D11},
+    {seed::D25, seed::D26, seed::D14},
+    {seed::D29, seed::D27, seed::D15},
+};
+
+DMA_Stream_TypeDef* const kPwmStream[kMaxPorts] = {DMA2_Stream5, DMA2_Stream6, DMA2_Stream7, DMA2_Stream0,
+                                                   DMA2_Stream1};
+constexpr uint32_t kPwmRequest[kMaxPorts] = {DMA_REQUEST_TIM5_UP, DMA_REQUEST_TIM5_CH1, DMA_REQUEST_TIM5_CH2,
+                                             DMA_REQUEST_TIM5_CH3, DMA_REQUEST_TIM5_CH4};
+
+DMA_BUFFER_MEM_SECTION uint32_t gPwmWords[kMaxPorts][rvled::kPwmSteps];
+
+class LedPwm {
+public:
+    // After hw.Init(); returns false (and leaves libDaisy's PWM in charge) if
+    // anything is off.
+    bool start()
+    {
+        // Group the 12 pins by port.
+        for (int led = 0; led < kNumLeds; ++led) {
+            for (int c = 0; c < kPinsPerLed; ++c) {
+                const Pin pin = kLedPin[led][c];
+                int       port = 0;
+                while (port < numPorts_ && ports_[port].id != pin.port) ++port;
+                if (port == numPorts_) {
+                    if (numPorts_ == kMaxPorts) return false;
+                    ports_[numPorts_++].id = pin.port;
+                }
+                Port& p = ports_[port];
+                p.pins[p.numPins]   = rvled::pwmPin(pin.pin, true); // active low
+                p.counts[p.numPins] = 0;
+                slot_[led][c]       = {port, p.numPins++};
+            }
+        }
+        // The tables must sit in the non-cacheable window (see above).
+        const uintptr_t lo = uintptr_t(&gPwmWords[0][0]), hi = lo + sizeof gPwmWords;
+        if (lo < 0x30000000u || hi > 0x30008000u) return false;
+        for (int p = 0; p < numPorts_; ++p)
+            rvled::fillPwmWords(gPwmWords[p], rvled::kPwmSteps, ports_[p].pins, ports_[p].counts, ports_[p].numPins);
+
+        // TIM5 (free: libDaisy's System uses TIM2), one update per PWM step.
+        // Its clock is 2x PCLK1 (240 MHz at 480 MHz boost; libDaisy's
+        // TimerHandle::GetFreq() uses the same rule), so ~469 ticks a step.
+        // The period goes in at Init, which loads it straight away.
+        const float ticks = float(System::GetPClk1Freq()) * 2.0f / (kPwmHz * float(rvled::kPwmSteps));
+        TimerHandle::Config tc;
+        tc.periph = TimerHandle::Config::Peripheral::TIM_5;
+        tc.dir    = TimerHandle::Config::CounterDir::UP;
+        tc.period = std::max(uint32_t(8), uint32_t(ticks + 0.5f)) - 1;
+        if (timer_.Init(tc) != TimerHandle::Result::OK) return false;
+        TIM5->CCR1 = 1; // compare events at distinct points of each step,
+        TIM5->CCR2 = 2; // each raising one stream's DMA request
+        TIM5->CCR3 = 3;
+        TIM5->CCR4 = 4;
+        TIM5->DIER |= TIM_DIER_UDE | TIM_DIER_CC1DE | TIM_DIER_CC2DE | TIM_DIER_CC3DE | TIM_DIER_CC4DE;
+
+        __HAL_RCC_DMA2_CLK_ENABLE();
+        for (int p = 0; p < numPorts_; ++p) {
+            DMA_HandleTypeDef& d = dma_[p];
+            d.Instance                 = kPwmStream[p];
+            d.Init.Request             = kPwmRequest[p];
+            d.Init.Direction           = DMA_MEMORY_TO_PERIPH;
+            d.Init.PeriphInc           = DMA_PINC_DISABLE;
+            d.Init.MemInc              = DMA_MINC_ENABLE;
+            d.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
+            d.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
+            d.Init.Mode                = DMA_CIRCULAR;
+            d.Init.Priority            = DMA_PRIORITY_LOW;
+            d.Init.FIFOMode            = DMA_FIFOMODE_DISABLE;
+            // GPIOA..GPIOK sit 0x400 apart in the same order as GPIOPort.
+            GPIO_TypeDef* gpio = reinterpret_cast<GPIO_TypeDef*>(GPIOA_BASE + 0x400u * uint32_t(ports_[p].id));
+            if (HAL_DMA_Init(&d) != HAL_OK
+                || HAL_DMA_Start(&d, uint32_t(gPwmWords[p]), uint32_t(&gpio->BSRR), rvled::kPwmSteps) != HAL_OK) {
+                stop();
+                return false;
+            }
+            ++numStarted_;
+        }
+        if (timer_.Start() != TimerHandle::Result::OK) {
+            stop();
+            return false;
+        }
+        // Every stream must be moving: ~100 us is ~50 steps, well short of
+        // one full 512-step lap, so a live stream's counter has changed.
+        uint32_t before[kMaxPorts];
+        for (int p = 0; p < numPorts_; ++p) before[p] = kPwmStream[p]->NDTR;
+        System::DelayUs(100);
+        for (int p = 0; p < numPorts_; ++p) {
+            if (kPwmStream[p]->NDTR == before[p]) {
+                stop();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Hand the pins back to libDaisy's PWM: timer and every stream off.
+    void stop()
+    {
+        TIM5->DIER &= ~(TIM_DIER_UDE | TIM_DIER_CC1DE | TIM_DIER_CC2DE | TIM_DIER_CC3DE | TIM_DIER_CC4DE);
+        timer_.Stop();
+        for (int p = 0; p < numStarted_; ++p) HAL_DMA_Abort(&dma_[p]);
+        numStarted_ = 0;
+    }
+
+    // False once any stream has stopped (the DMA clears EN on a bus error).
+    bool running() const
+    {
+        for (int p = 0; p < numPorts_; ++p)
+            if (!(kPwmStream[p]->CR & DMA_SxCR_EN)) return false;
+        return true;
+    }
+
+    // Drive values 0..1 (rvled "drive": cubed here), rebuilding only the
+    // tables whose counts changed.
+    void set(int led, const rvled::Rgb& c)
+    {
+        const float v[kPinsPerLed] = {c.r, c.g, c.b};
+        for (int k = 0; k < kPinsPerLed; ++k) {
+            const Slot s = slot_[led][k];
+            const int  n = rvled::pwmCount(v[k]);
+            if (ports_[s.port].counts[s.pin] != n) {
+                ports_[s.port].counts[s.pin] = n;
+                ports_[s.port].dirty         = true;
+            }
+        }
+    }
+
+    void flush()
+    {
+        for (int p = 0; p < numPorts_; ++p) {
+            if (!ports_[p].dirty) continue;
+            rvled::fillPwmWords(gPwmWords[p], rvled::kPwmSteps, ports_[p].pins, ports_[p].counts, ports_[p].numPins);
+            ports_[p].dirty = false;
+        }
+    }
+
+private:
+    struct Port {
+        GPIOPort      id      = PORTX;
+        int           numPins = 0;
+        bool          dirty   = false;
+        rvled::PwmPin pins[kNumLeds * kPinsPerLed];
+        int           counts[kNumLeds * kPinsPerLed] = {};
+    };
+    struct Slot {
+        int port = 0, pin = 0;
+    };
+    Port              ports_[kMaxPorts];
+    int               numPorts_   = 0;
+    int               numStarted_ = 0;
+    Slot              slot_[kNumLeds][kPinsPerLed];
+    TimerHandle       timer_;
+    DMA_HandleTypeDef dma_[kMaxPorts] = {};
+};
+
+LedPwm gLedPwm;
+
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size)
 {
     hw.ProcessAllControls();
@@ -773,6 +966,9 @@ int main()
     hw.StartAdc();
     hw.StartAudio(AudioCallback);
 
+    // Our own PWM from here on (see LedPwm); libDaisy's is only the fallback.
+    bool ledDma = gLedPwm.start();
+
     rvled::LevelMeter meters[kNumMeters];
     uint32_t          lastUs = System::GetUs();
     while (true) {
@@ -797,11 +993,19 @@ int main()
         meters[kOutL].update(peak[kOutL], limiting, dt);
         meters[kOutR].update(peak[kOutR], limiting, dt);
 
+        // The meters (and so dt) still update about once a millisecond; the
+        // PWM runs on its own (DMA) and needs no call per step.
+        if (ledDma && !gLedPwm.running()) {
+            gLedPwm.stop();
+            ledDma = false;
+        }
         for (int m = 0; m < kNumMeters; ++m) {
             const rvled::Rgb c = meters[m].colour();
-            hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
+            if (ledDma) gLedPwm.set(int(kMeterLed[m]), c);
+            else hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
         }
-        hw.UpdateLeds();
+        if (ledDma) gLedPwm.flush();
+        else hw.UpdateLeds();
         System::Delay(1);
     }
 }

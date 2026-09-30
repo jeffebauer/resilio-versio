@@ -2,6 +2,8 @@
 // is pure maths, tested here on desktop. Level -> colour, ballistics (fast
 // rise, ~0.3 s fall), red hold, and the red triggers: input near clip and
 // the Tank's output limiter (Tank::limiterGain(), read-only) pulling down.
+// Also the PWM tables the release firmware streams to the LED pins by DMA
+// (30 Sep 2026 fix for "LEDs flicker rather than dim").
 
 #include "../../firmware/LedMeter.h"
 
@@ -47,7 +49,7 @@ void colours()
     check(isOff(rvled::positionColour(0.0f)), "floor: LED off");
 
     const Rgb quiet = rvled::positionColour(rvled::levelToPosition(dbfs(-40.0f)));
-    std::snprintf(msg, sizeof msg, "-40 dBFS glows green (r %.3f g %.3f b %.3f; drive >= 0.35 so it shows after libDaisy's cube)",
+    std::snprintf(msg, sizeof msg, "-40 dBFS glows green (r %.3f g %.3f b %.3f; drive >= kMinGlow so it shows after the PWM's cube)",
                   double(quiet.r), double(quiet.g), double(quiet.b));
     check(quiet.r == 0.0f && quiet.b == 0.0f && quiet.g >= rvled::kMinGlow, msg);
 
@@ -198,6 +200,75 @@ void limiterFromTank()
     check(quiet.minGain == 1.0f && !quiet.red, msg);
 }
 
+void pwm()
+{
+    constexpr int N = rvled::kPwmSteps;
+    check(N >= 256, "PWM has at least 256 steps per period");
+    check(rvled::pwmCount(0.0f) == 0 && rvled::pwmCount(-1.0f) == 0, "drive 0 (or below) -> 0 steps on");
+    check(rvled::pwmCount(1.0f) == N && rvled::pwmCount(2.0f) == N, "drive 1 (or above) -> on all period");
+    check(rvled::pwmCount(0.5f) == int(0.125f * float(N) + 0.5f), "drive is cubed (0.5 -> 1/8 duty)");
+
+    // The quietest lit meter step: visibly on, clearly dim.
+    const Rgb   quietest = rvled::positionColour(rvled::kOffPosition + 1e-4f);
+    const int   q        = rvled::pwmCount(brightest(quietest));
+    const float duty     = float(q) / float(N);
+    std::snprintf(msg, sizeof msg, "quietest lit step: %d of %d steps (%.1f %% duty), between 1 %% and 5 %%", q, N,
+                  double(100.0f * duty));
+    check(duty >= 0.01f && duty <= 0.05f, msg);
+
+    // Smooth dimming: many distinct, never-decreasing duties across the meter.
+    int  distinct = 0, last = -1;
+    bool rising   = true;
+    for (int i = 0; i <= 4800; ++i) {
+        const float db = -48.0f + 48.0f * float(i) / 4800.0f;
+        const int   n  = rvled::pwmCount(brightest(rvled::positionColour(rvled::levelToPosition(dbfs(db)))));
+        rising &= n >= last;
+        if (n != last) ++distinct;
+        last = n;
+    }
+    std::snprintf(msg, sizeof msg,
+                  "meter -48..0 dBFS covers %d distinct brightness steps (>= 64), never dimming as level rises",
+                  distinct);
+    check(distinct >= 64 && rising, msg);
+
+    // Active-low pins: on = reset bit (high half of BSRR), off = set bit.
+    const rvled::PwmPin p5 = rvled::pwmPin(5, true);
+    check(p5.onBits == (1u << 21) && p5.offBits == (1u << 5), "active-low pin 5: on resets it, off sets it");
+    const rvled::PwmPin h5 = rvled::pwmPin(5, false);
+    check(h5.onBits == (1u << 5) && h5.offBits == (1u << 21), "active-high pin 5: the other way round");
+
+    // A port with six LED pins (like the Versio's port B), assorted duties.
+    const int     pinNo[6]  = {5, 8, 9, 6, 7, 14};
+    const int     counts[6] = {0, 1, 14, 256, N - 1, N};
+    rvled::PwmPin pins[6];
+    uint32_t      all = 0;
+    for (int k = 0; k < 6; ++k) {
+        pins[k] = rvled::pwmPin(pinNo[k], true);
+        all |= pins[k].onBits | pins[k].offBits;
+    }
+    std::vector<uint32_t> words(size_t(N), 0xdeadbeefu);
+    rvled::fillPwmWords(words.data(), N, pins, counts, 6);
+    bool exact = true, noStray = true;
+    for (int s = 0; s < N; ++s) {
+        const uint32_t w = words[size_t(s)];
+        noStray &= (w & ~all) == 0;
+        for (int k = 0; k < 6; ++k) {
+            const bool on = (w & pins[k].onBits) != 0, off = (w & pins[k].offBits) != 0;
+            exact &= on != off && on == (s < counts[k]);
+        }
+    }
+    check(exact, "PWM table: each pin on for exactly its first `count` steps, off after, every step drives it");
+    check(noStray, "PWM table: no bits for pins outside the port's LED pins");
+
+    // Rebuilding after a change leaves nothing of the old table.
+    const int counts2[6] = {N, 0, 3, 3, 400, 1};
+    rvled::fillPwmWords(words.data(), N, pins, counts2, 6);
+    bool exact2 = true;
+    for (int s = 0; s < N; ++s)
+        for (int k = 0; k < 6; ++k) exact2 &= ((words[size_t(s)] & pins[k].onBits) != 0) == (s < counts2[k]);
+    check(exact2, "PWM table rebuilt with new duties matches them exactly");
+}
+
 } // namespace
 
 int main()
@@ -207,6 +278,7 @@ int main()
     ballistics();
     redHold();
     limiterFromTank();
+    pwm();
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
