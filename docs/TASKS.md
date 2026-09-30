@@ -16,21 +16,16 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
-### 1. SPLASH round 4 · **ready** (≈15 min)
-- [ ] Open `renders/splash_round4/index.html` from Finder (columns CLEAN / DRIVEN / KICKED, rows hits / skank, MIX half-way). **A** burst (today) and **E** DRIVE alone for reference, then **T** "hits bite harder" (grit on the hits) and **C** "hits clang the springs" (brighter drip on top), each **gentle / clear / dramatic**, plus **TC** both. Deliberately not level-matched: how much harder the hits hit is the point. Pick per panel, notes, **Copy results for Claude**
-- [ ] **Decide with it:** should higher DRIVE make SPLASH bite sooner and harder (like your Wellspring's hot take C)? Today's findings say yes: DRIVE currently *reduces* splash
-- [ ] **Decide with it:** when you push DRIVE, should the tail get **louder** (like a real INPUT knob or a desk send, so an envelope into DRIVE's CV becomes a dub throw), or stay level-matched as today? Background: [dub-spring-reference.md](dub-spring-reference.md) §8
-- Heads-up: **T3, C2, C3 and TC** can touch the output limiter (they're loud on purpose); **ghost notes stay quiet** in every T/C version (A's burst fires on them). In CLEAN, T only gets louder (no grit to add); C still sparkles
-- Why this is first: your pick unblocks the next build (DRIVE becomes the INPUT knob, SPLASH comes from your own hits), and the next plugin install
+### 1. SPLASH + DRIVE build · Claude is building it (listen when ready)
+- Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
+- Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
+- [ ] Listen to the before/after page when Claude says it's ready, then the plugin install
 
 ### 2. One smooth arc · listen when Claude says it's ready (≈15 min)
 - [ ] Open `renders/proto_smooth_arc/index.html`. Built on A (bright tail): **B** one smooth arc per echo up to ~5.5 kHz (the Wellspring's high pitch bend, no kink, no plain clicks in the highs), **C** wider low mids in the tail, **D** light smear, **E** (option) repeats that don't stretch, **W** your Wellspring. Where do you stop?
 - Why: last round the Wellspring won every panel. The pictures showed its echoes are smooth arcs and ours kink at ~3.3 kHz ([spectrograms](prototypes/spring-signature/))
 
-### 3. Quick yeses (≈2 min)
-- [ ] **OK to merge** three finished, tested pieces? (a) the tail-length measurement now copes with recording hiss (your Wellspring clicks read 3.4 s, not 14 s); (b) docs cleanup (glossary knob names, firmware notes, SPEC DECAY range, README); (c) the send-level study notes
-
-### 4. Play the Versio
+### 3. Play the Versio
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - Tip while SPLASH is today's version: SPLASH **near max** and the SoundStage's **main Level** up until the loudest hits just touch **amber** on the input LEDs (today's SPLASH fades out on quiet sends; round 4 fixes that)
 - [ ] Optional, when convenient: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -61,7 +56,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
-- **After the merge OK:** regenerate the reference report with the corrected tail lengths
 - **Renderer bug:** `rv_render --set attitude=KICKED` silently renders CLEAN (a separate session is fixing it; use `--preset` meanwhile)
 - Small stale spots in docs and code comments (DRIVE-curve percentages, old SPEC sections): folded into the next code change that touches them
 
@@ -79,6 +73,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **SPLASH round 4 listened:** C2 on longer sounds and CLEAN hits, T2 on hits in DRIVEN/KICKED. Found by ear and measured: DRIVE shortens DRIVEN/KICKED tails (the saturator inside the loop). Decided: DRIVE = INPUT, partly louder, drives only in/out
+- 30 Sep 2026: **Merged** the tail-length fix for noisy recordings, the docs cleanup and the send-level study (all 16 test suites pass); reference report regenerated (your Wellspring clicks: 3.42 s)
 - 30 Sep 2026: **Tight-tank ping listened:** very subtle; C fine on hits, A slightly nicer on the skank (its faint inharmonic colour). Decided: keep the fix but gentler (fade starts at −30 dB, the most lenient setting that still passes the ringing check), shipped with the new SPLASH (without the burst, that corner rings audibly in the test)
 - 30 Sep 2026: **Sweet tank listened:** the Wellspring won every panel (wider, a smoother high pitch bend on clicks; B/C/D added wavers, E's smear helped). Measured and pictured: its echoes are smooth arcs to ~5.5 kHz, width in the 250–500 Hz tail; B's different spring lengths caused the wavers. Next: one-smooth-arc prototype
 - 30 Sep 2026: **SPLASH round 3 listened:** the burst isn't natural and B/C/D sound muted; E (DRIVE alone) sounds gritty and good. Next: round 4 at three strengths
