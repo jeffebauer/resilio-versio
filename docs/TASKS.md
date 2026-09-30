@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 30 Sep 2026 (reorganised: open items first, stale listening tasks retired)
+**Last updated:** 30 Sep 2026, evening (session 4 wrap; next session picks up the SPLASH/DRIVE merge)
 
 | Milestone | State |
 |---|---|
@@ -53,7 +53,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 
 ## Waiting on Claude (no action needed)
-- **Running:** one-smooth-arc prototype page
+- **Next session:** merge the approved SPLASH/DRIVE build (with the DRIVE grit stretched), release firmware, plugin install; bipolar WOBBLE page; the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
