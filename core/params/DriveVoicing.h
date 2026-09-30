@@ -279,15 +279,31 @@ inline float dbToGain(float db) { return std::exp(db * (2.302585093f / 20.0f)); 
 constexpr float kInputGainMaxDb = 24.0f;
 constexpr float kInputHeard     = 0.25f;
 inline float inputGainDb(float drive) { return kInputGainMaxDb * driveCurve(drive); }
+//
+// DRIVE's colour runs on a stretched knob (owner, 30 Sep 2026, after the
+// build pages: "drive80 still feels a bit hot for 80% given there's still
+// 20% more we can push it; 100% would yield distortion that wouldn't be
+// particularly useful"). Everything that sets how gritty DRIVE gets (the
+// saturators' pre-gain, the tape smear, the pickup push and blend, the wet
+// makeup) reads colourDrive(DRIVE): unchanged up to noon, then stretched so
+// DRIVE 1 has the grit DRIVE 0.92 had (0.8 plays like 0.75 did), as far as
+// ADR 0022 allows (KICKED still cranked at max). Curve shapes unchanged.
+// The INPUT gain G (the splash's sensitivity, quiet sends) and its heard
+// share (+6 dB) keep the real DRIVE.
+constexpr float kColourDriveTop = 0.92f;
+inline float colourDrive(float drive)
+{
+    return drive <= 0.5f ? drive : 0.5f + (drive - 0.5f) * ((kColourDriveTop - 0.5f) / 0.5f);
+}
 inline float drivePreGainDb(const Voice& vc, float drive)
 {
-    return vc.driveDbMin + (vc.driveDbMax - vc.driveDbMin) * driveCurve(drive);
+    return vc.driveDbMin + (vc.driveDbMax - vc.driveDbMin) * driveCurve(colourDrive(drive));
 }
 // HF smear cutoff: open at DRIVE 0, closes toward smearHzMax as DRIVE rises
 // (tape loses top end when pushed). Exponential so it sweeps evenly by ear.
 inline float smearHz(const Voice& vc, float drive)
 {
-    return map::expLerp(kSmearOpenHz, vc.smearHzMax, driveCurve(drive));
+    return map::expLerp(kSmearOpenHz, vc.smearHzMax, driveCurve(colourDrive(drive)));
 }
 //
 // 2. "Push" on the output pickup, the stage after the springs (ADR 0022:
@@ -329,11 +345,11 @@ struct Push {
 // Computed only when DRIVE or the ATTITUDE Morph moved (a few exp calls).
 inline Push push(const Voice& vc, float drive)
 {
-    const float c = pushCurve(drive);
+    const float c = pushCurve(colourDrive(drive));
     Push p;
     p.out    = dbToGain(vc.outDriveDb * c);
     p.outFluxDb = kOutFluxDb - vc.outFluxOpenDb * c;
-    p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * outAmountCurve(drive);
+    p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * outAmountCurve(colourDrive(drive));
     p.wet    = dbToGain(vc.wetMakeupDb * c * c);
     return p;
 }
