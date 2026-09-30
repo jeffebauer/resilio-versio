@@ -16,10 +16,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
-### 1. SPLASH + DRIVE build · Claude is building it (listen when ready)
+### 1. SPLASH + DRIVE build · **ready to listen** (≈15 min)
 - Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
-- [ ] Listen to the before/after page when Claude says it's ready, then the plugin install
+- [ ] **Listen:** `renders/splash_drive_build/index.html` (not level-matched). **A** = today, **B** = the new build; rows: hits, skank, a quiet send (−18 dBFS, DRIVE full), and a DRIVE sweep of the tail (A at DRIVE 0 / 1, B at 0 / ½ / 1)
+- [ ] **Decide while listening:** (1) drum hits come up ~+9 dB at full DRIVE in DRIVEN (≈3 dB more than CLEAN): the "hit it harder" feel, or take some back? (2) drums get clang **and** bite (round 4's TC): right? (3) SPLASH is gentle at DRIVE 0 on loud DAW material and full from ~noon; on quiet material with DRIVE up even soft isolated hits splash: natural? (4) DRIVEN's grit at noon is a little milder than today: enough?
+- [ ] **Then on the Versio:** run 13 CPU test `dist/resilio_versio_m3_profile_run13.bin` (USB, stream like run 12; expect ~65 % against the 70 % target); then Claude builds the release firmware and the plugin install
 
 ### 2. Fitted to your Wellspring · Claude is building it (listen when ready)
 - The smooth-arc page (30 Sep) was still far off: the Wellspring has a strong "pew" on clicks, little on skank, and is rounder and smoother. Measured: its pew is the top two octaves (2–5.5 kHz) arriving up to ~20 ms after the lows, which also makes each echo swell in (rounder); ours delivers them almost at once. Our tail is also 3–5 dB edgier at 2–3 kHz
