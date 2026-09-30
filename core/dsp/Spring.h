@@ -146,12 +146,22 @@ public:
     void reset();
 
     // Control rate. snap = jump straight to the settings (first block, reset).
-    void setSettings(const SpringSettings& s, bool snap);
+    // Returns true once the Spring has taken them. A TENSION move (fC, so
+    // the stretch K, the fC low-pass and the high path's HPF all change)
+    // makes the redesign too costly for one control tick (M3 run 12): the
+    // Spring then works out the new filters on this call, keeps playing the
+    // old ones, and installs everything together on the next call (returns
+    // false in between; the Tank calls again on the next tick). The audio
+    // never runs a half-updated Spring. Anything else (DECAY, TONE, the
+    // Jolt, the glides) redesigns in one call, as before.
+    bool setSettings(const SpringSettings& s, bool snap);
     // Just the allpass coefficient, at once, without the Loop gain redesign
     // (the Tank staggers full redesigns across Springs, but the Splash Jolt
     // moves a on every tick and must reach all Springs together). The next
     // setSettings() sees the change and redesigns as usual.
     void setAllpassCoeff(float a) { a_ = a; }
+    // True between the two calls of a TENSION redesign (setSettings).
+    bool redesignPending() const { return pending_; }
 
     // n samples of mono in -> mono Spring out. Real-time safe.
     void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, nullptr, out, n); }
@@ -202,10 +212,25 @@ private:
     void  advanceGlides();
     float processLow(float in, float lMod, float tapMod);
     float processHigh(float in, float lhMod);
-    void  updateCoefficients();
+    // The redesign in its three parts (M3 run 12). The Loop gain design
+    // evaluates the Loop at kNumPoints frequencies; everything there that
+    // depends only on fC or the damping cutoff is cached per point, so a
+    // move of anything else (the Jolt on every hit, DECAY, the L and stage
+    // glides) only redoes the per-point exp and a few divisions.
+    //   prepareTransition: fC moved: K, the fC low-pass, the high path HPF
+    //                      and the per-point values that follow fC, into
+    //                      staging (the audio keeps the old ones);
+    //   prepareDamping:    per-point damping delay and Loop magnitude
+    //                      (after fC or the damping cutoff moved), staged;
+    //   commitDesign:      installs the staged filters and designs g.
+    // Same arithmetic, in the same order, as the one-piece redesign before
+    // run 12: with the same settings arriving on the same tick, g and every
+    // coefficient come out bit-identical.
+    void  prepareTransition(float transitionHz);
+    void  prepareDamping(float dampingHz);
+    void  commitDesign();
     // roundTripSamples / loopMagnitude with cos(w) and the LoopSat latency
-    // already known (the design loop shares them, and caches them for the
-    // fixed design frequencies: prepare()).
+    // already known (analysis).
     float roundTripAt(float freqHz, float cosW, float loopSatLatency) const;
     float loopMagnitudeAt(float cosW) const;
     void  clearStage(int j);
@@ -232,8 +257,6 @@ private:
     float mPos_ = 0.0f, mRate_ = 0.0f;
     int   mTarget_ = 0, mActive_ = 0;
     float g_ = 0.0f;
-    static constexpr int kNumDesignHz = 8;
-    std::array<float, kNumDesignHz> designCos_{}, designLatency_{}; // at kDesignHz, per sample rate
     dsp::LoopSat loopSat_;
 
     // High path state.
@@ -252,6 +275,28 @@ private:
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
+
+    // ---- Loop gain design (control rate only; kept after the per-sample
+    // state so the hot members stay within short load offsets) ----
+    // Loop gain design points: the 8 fixed kDesignHz, then 5 fractions of
+    // fC (Spring.cpp). Per point: cos(w) and the LoopSat latency (fixed
+    // points: per sample rate, prepare(); fC points: per fC), the chain's
+    // cos(w K) (per fC), the damping's group delay and the Loop magnitude
+    // (per fC and damping cutoff).
+    static constexpr int kNumDesignHz = 8, kNumFcPoints = 5, kNumPoints = kNumDesignHz + kNumFcPoints;
+    std::array<float, kNumPoints> ptCos_{}, ptLatency_{}, ptCosK_{}, ptDampDelay_{}, ptMag_{};
+    float maxMag_ = 0.0f;   // largest Loop magnitude over the fixed points (Howl)
+    float lpfDelay_ = 0.0f; // fC low-pass group delay, samples
+    // Staging: the next filters, installed together by commitDesign().
+    float stagedK_ = 6.0f, stagedEta_ = 0.0f;
+    int   stagedN_ = 5;
+    dsp::Biquad         stagedLowpass_, stagedHighpass_;
+    dsp::OnePoleLowpass stagedDamping_;
+    // What the caches hold: fC (K, fC points), damping cutoff, and the fC
+    // the damping delays and magnitudes were worked out with.
+    float designFc_ = -1.0f, designDampHz_ = -1.0f, magFc_ = -1.0f;
+    bool  pending_ = false;  // prepareTransition() done, commitDesign() due on the next call
+    float lfoHzSet_ = -1.0f; // lfoE_ worked out for this lfoHz
 };
 
 } // namespace rv

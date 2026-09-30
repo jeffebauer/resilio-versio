@@ -173,10 +173,20 @@ inline MixGains mixGains(float v) { return {std::sqrt(1.0f - v), std::sqrt(v)}; 
 // First-order allpass A(z) = (a + z^-1)/(1 + a z^-1) has group delay
 // (1 - a²)/(1 + a² + 2a cos w). Stretching z^-1 -> z^-K multiplies it by K and
 // evaluates it at w*K. At DC this is K(1-a)/(1+a); at fC it is K(1+a)/(1-a).
-inline float stretchedAllpassGroupDelaySamples(float a, float K, float freqHz, float sampleRate)
+// Split in two so the Loop gain design can cache cos(wK), which depends
+// on fC only, and redo just the division when a moves (Spring.cpp).
+inline float stretchedAllpassCos(float K, float freqHz, float sampleRate)
 {
     const float theta = 2.0f * kPi * freqHz * K / sampleRate;
-    return K * (1.0f - a * a) / (1.0f + a * a + 2.0f * a * std::cos(theta));
+    return std::cos(theta);
+}
+inline float stretchedAllpassGroupDelayFromCos(float a, float K, float cosTheta)
+{
+    return K * (1.0f - a * a) / (1.0f + a * a + 2.0f * a * cosTheta);
+}
+inline float stretchedAllpassGroupDelaySamples(float a, float K, float freqHz, float sampleRate)
+{
+    return stretchedAllpassGroupDelayFromCos(a, K, stretchedAllpassCos(K, freqHz, sampleRate));
 }
 
 } // namespace rv::map

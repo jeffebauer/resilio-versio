@@ -572,6 +572,38 @@ void mappings()
     check(below, "Loop gain < 1 at every frequency (ADR 0001)");
 }
 
+// M3 run 12: a new fC (TENSION) takes two setSettings() calls. The first
+// keeps the old K, filters and g playing (only a goes in at once); the
+// second installs them all together, bit-identical to a one-call snap to
+// the same settings. Anything else (here DECAY) is one call.
+void splitRedesign()
+{
+    SpringRig moved(48000.0f, 0.5f, 0.2f, 0.5f);
+    rv::SpringSettings s = moved.settings;
+    s.transitionHz = rv::map::tensionTransitionHz(0.6f); // fC only: L and M stay, so the glides don't differ
+    s.allpassCoeff = 0.9f * moved.settings.allpassCoeff;
+    const float k0 = moved.spring.stretchK(), g0 = moved.spring.feedbackGain();
+
+    const bool first = moved.spring.setSettings(s, false);
+    const bool held  = !first && moved.spring.redesignPending() && moved.spring.stretchK() == k0
+                   && moved.spring.feedbackGain() == g0 && moved.spring.allpassCoeff() == s.allpassCoeff;
+    const bool second = moved.spring.setSettings(s, false);
+
+    SpringRig snapped(48000.0f, 0.5f, 0.2f, 0.5f);
+    snapped.spring.setSettings(s, true);
+    const bool same = second && !moved.spring.redesignPending() && moved.spring.stretchK() == snapped.spring.stretchK()
+                   && moved.spring.feedbackGain() == snapped.spring.feedbackGain()
+                   && moved.spring.highFeedbackGain() == snapped.spring.highFeedbackGain();
+    check(held && same, "TENSION redesign in two calls: old filters and g until the second, then bit-identical to a one-call design");
+
+    rv::SpringSettings d = s;
+    d.t60Seconds = rv::map::decayT60Seconds(0.8f);
+    const bool one = moved.spring.setSettings(d, false);
+    snapped.spring.setSettings(d, true);
+    check(one && moved.spring.feedbackGain() == snapped.spring.feedbackGain(),
+          "DECAY redesign in one call, bit-identical to a one-call design");
+}
+
 } // namespace
 
 int main()
@@ -585,6 +617,7 @@ int main()
     sampleRates();
     sweepsDontClick();
     performance();
+    splitRedesign();
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

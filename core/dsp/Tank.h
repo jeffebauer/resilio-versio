@@ -232,6 +232,8 @@ private:
 
     void bindPool(float* pool);
     void controlTick(bool snap);
+    void updateBaseSettings(float decay, float tension, float tone, const drive::Voice& voice);
+    void updateSpringSettings(size_t i);
     void releaseOwnedPool();
 
     float sampleRate_   = 48000.0f;
@@ -257,6 +259,7 @@ private:
     bool   primed_     = false;
     int    tick_       = 0;
     int    springTurn_ = 0; // which Spring takes new settings this control tick (controlTick)
+    int    gridTick_   = 0; // control ticks since reset, mod 3 (controlTick: heavy redesign steps)
 
     // ATTITUDE Morph (see "ATTITUDE Morph").
     std::array<float, 3> attW_{{0.0f, 1.0f, 0.0f}};
@@ -274,6 +277,8 @@ private:
     std::array<Diffuser, modes::kDecorrSeconds.size()> decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
+    float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
+    map::MixGains                       mixGains_{1.0f, 0.0f};
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
@@ -295,6 +300,26 @@ private:
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
     std::array<float, kClatterSideMax> clatBuf_{};
     int clatPos_ = 0, clatDelay_ = 62;
+
+    // ---- Control-rate caches (M3 run 12; after the per-sample state) ----
+    drive::Voice         voice_{};                        // blendVoice(attW_), on Morph moves only
+    std::array<float, 3> voiceW_{{-1.0f, -1.0f, -1.0f}};
+
+    // The Springs' settings without the Jolt: the shared part (updateBaseSettings,
+    // redone only when one of the key values below moved) and each Spring's
+    // (updateSpringSettings, on its turn after the shared part changed).
+    SpringSettings baseSet_{};
+    int            activeStages_ = map::kMinStages;
+    float          alignA_       = 0.0f;
+    float          baseAllpass_  = 0.0f;  // TENSION's allpass coefficient (before detune and Jolt), every tick
+    bool           baseDirty_    = true;  // baseSet_ is behind the key values below
+    uint32_t       baseGen_      = 0;     // bumped when a key value moves
+    std::array<SpringSettings, kMaxSprings> springSet_{};
+    std::array<uint32_t, kMaxSprings>       springGen_{};
+    std::array<float, kMaxSprings>          springTension_{}, springTone_{}; // key values springSet_ was worked out from
+    float keyDecay_ = -1.0f, keyTension_ = -1.0f, keyTone_ = -1.0f, keyDrive_ = -1.0f;
+    std::array<float, 3> keyW_{{-1.0f, -1.0f, -1.0f}};
+    int   keyMode_ = -1;
 };
 
 } // namespace rv

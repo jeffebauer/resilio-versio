@@ -88,10 +88,14 @@ void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
     // them out once (M3: the redesign of three Springs was a 17 %-of-a-block
     // burst).
     static_assert(kDesignHz.size() == size_t(kNumDesignHz), "Spring.h caches one value per design frequency");
+    static_assert(kDesignFcRatios.size() == size_t(kNumFcPoints), "Spring.h caches one value per fC point");
     for (size_t k = 0; k < kDesignHz.size(); ++k) {
-        designCos_[k]     = std::cos(2.0f * map::kPi * kDesignHz[k] / sampleRate_);
-        designLatency_[k] = dsp::LoopSat::latencySamples(kDesignHz[k], sampleRate_);
+        ptCos_[k]     = std::cos(2.0f * map::kPi * kDesignHz[k] / sampleRate_);
+        ptLatency_[k] = dsp::LoopSat::latencySamples(kDesignHz[k], sampleRate_);
     }
+    // Everything else in the caches is per fC / damping: work it out afresh.
+    designFc_ = designDampHz_ = magFc_ = lfoHzSet_ = -1.0f;
+    pending_  = false;
     modHold_ = std::max(1, int(antires::kMicroModHoldSeconds * sampleRate));
     modC_    = 1.0f - std::exp(-1.0f / (antires::kMicroModHoldSeconds * sampleRate));
 
@@ -125,8 +129,24 @@ void Spring::reset()
     tapOffset_ = tapOffsetTarget_;
 }
 
-void Spring::setSettings(const SpringSettings& s, bool snap)
+bool Spring::setSettings(const SpringSettings& s, bool snap)
 {
+    if (pending_ && !snap) {
+        // Second half of a TENSION redesign: install the filters staged on
+        // the last call together with everything else as it is now. fC
+        // stays the staged one; if TENSION has moved on since, the next
+        // call starts another round.
+        SpringSettings t = s;
+        t.transitionHz = designFc_;
+        settings_ = t;
+        lTarget_  = std::clamp(t.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
+        mTarget_  = std::clamp(t.stages, 1, kMaxStages);
+        prepareDamping(t.dampingHz);
+        commitDesign();
+        pending_ = false;
+        return true;
+    }
+
     // At rest (knobs still, glides finished) the coefficients can't change:
     // skip the redesign and save its transcendental maths.
     const bool same = s.loopDelaySeconds == settings_.loopDelaySeconds && s.t60Seconds == settings_.t60Seconds
@@ -137,7 +157,22 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
                    && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl
                    && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz;
-    if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return;
+    if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return true;
+
+    if (!snap && s.transitionHz != designFc_) {
+        // fC moved (TENSION): the costly half now, the rest next call. What
+        // only sets where a glide heads (L, the stage count, the pickup)
+        // and the allpass coefficient (like setAllpassCoeff(): the Jolt
+        // reaches every Spring on the same tick) go in at once; the
+        // filters and g, which must match each other, next call.
+        prepareTransition(s.transitionHz);
+        a_               = s.allpassCoeff;
+        lTarget_         = std::clamp(s.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
+        mTarget_         = std::clamp(s.stages, 1, kMaxStages);
+        tapOffsetTarget_ = s.tapOffsetSeconds * sampleRate_;
+        pending_         = true;
+        return false;
+    }
 
     settings_ = s;
     lTarget_  = std::clamp(s.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
@@ -148,26 +183,82 @@ void Spring::setSettings(const SpringSettings& s, bool snap)
         for (int j = mTarget_; j < kMaxStages; ++j) clearStage(j);
         mActive_ = mTarget_;
     }
-    updateCoefficients();
+    if (s.transitionHz != designFc_) prepareTransition(s.transitionHz); // snap
+    prepareDamping(s.dampingHz);
+    commitDesign();
     if (snap) tapOffset_ = tapOffsetTarget_;
+    pending_ = false;
+    return true;
 }
 
-void Spring::updateCoefficients()
+void Spring::prepareTransition(float transitionHz)
 {
-    const SpringSettings& s = settings_;
-
     // Stretch K = N + d: N whole samples in the ring plus a first-order Thiran
     // allpass for the fraction d in [0.5, 1.5). Thiran is itself an allpass, so
     // the section stays exactly allpass for any real K and K can glide.
-    k_   = std::clamp(map::stretchK(s.transitionHz, sampleRate_), 1.6f, float(ringMask_ - 2));
-    n_   = int(k_ - 0.5f);
-    const float d = k_ - float(n_);
-    eta_ = (1.0f - d) / (1.0f + d);
-    a_   = s.allpassCoeff;
+    stagedK_ = std::clamp(map::stretchK(transitionHz, sampleRate_), 1.6f, float(ringMask_ - 2));
+    stagedN_ = int(stagedK_ - 0.5f);
+    const float d = stagedK_ - float(stagedN_);
+    stagedEta_ = (1.0f - d) / (1.0f + d);
 
-    chirpLowpass_.setLowpass(s.transitionHz, 0.7071f, sampleRate_);
-    damping_.setCutoff(std::min(s.dampingHz, 0.45f * sampleRate_), sampleRate_);
-    highpass_.setHighpass(kHighPassRatio * s.transitionHz, 0.7071f, sampleRate_);
+    stagedLowpass_.setLowpass(transitionHz, 0.7071f, sampleRate_);
+    stagedHighpass_.setHighpass(kHighPassRatio * transitionHz, 0.7071f, sampleRate_);
+    // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
+    lpfDelay_ = 1.41421356f * sampleRate_ / (2.0f * map::kPi * transitionHz);
+
+    for (size_t j = 0; j < kDesignFcRatios.size(); ++j) {
+        const float hz = kDesignFcRatios[j] * transitionHz;
+        ptCos_[kNumDesignHz + j]     = std::cos(2.0f * map::kPi * hz / sampleRate_);
+        ptLatency_[kNumDesignHz + j] = dsp::LoopSat::latencySamples(hz, sampleRate_);
+        ptCosK_[kNumDesignHz + j]    = map::stretchedAllpassCos(stagedK_, hz, sampleRate_);
+    }
+    for (size_t k = 0; k < kDesignHz.size(); ++k) ptCosK_[k] = map::stretchedAllpassCos(stagedK_, kDesignHz[k], sampleRate_);
+    designFc_ = transitionHz;
+}
+
+void Spring::prepareDamping(float dampingHz)
+{
+    if (dampingHz == designDampHz_ && magFc_ == designFc_) return; // neither moved
+    if (dampingHz != designDampHz_) {
+        stagedDamping_.setCutoff(std::min(dampingHz, 0.45f * sampleRate_), sampleRate_);
+        designDampHz_ = dampingHz;
+    }
+    // Loop magnitude per trip, excluding g (as loopMagnitudeAt, with the
+    // staged filters), and the damping's group delay, at every point.
+    float maxMag = 0.0f;
+    for (int p = 0; p < kNumPoints; ++p) {
+        const float cw = ptCos_[size_t(p)];
+        ptDampDelay_[size_t(p)] = stagedDamping_.groupDelay(cw);
+        ptMag_[size_t(p)] = std::sqrt(dc_.magnitudeSquared(cw) * stagedLowpass_.magnitudeSquared(cw)
+                                      * stagedDamping_.magnitudeSquared(cw));
+        if (p < kNumDesignHz) maxMag = std::max(maxMag, ptMag_[size_t(p)]);
+    }
+    maxMag_ = maxMag;
+    magFc_  = designFc_;
+}
+
+namespace {
+void copyCoefficients(dsp::Biquad& to, const dsp::Biquad& from) // keeps the running state
+{
+    to.b0 = from.b0;
+    to.b1 = from.b1;
+    to.b2 = from.b2;
+    to.a1 = from.a1;
+    to.a2 = from.a2;
+}
+} // namespace
+
+void Spring::commitDesign()
+{
+    const SpringSettings& s = settings_;
+
+    k_   = stagedK_;
+    n_   = stagedN_;
+    eta_ = stagedEta_;
+    a_   = s.allpassCoeff;
+    copyCoefficients(chirpLowpass_, stagedLowpass_);
+    copyCoefficients(highpass_, stagedHighpass_);
+    damping_.c = stagedDamping_.c;
     highPathLevel_ = s.highPathLevel;
     tapRatio_      = std::clamp(s.tapRatio, 0.05f, 0.95f);
     tapOffsetTarget_ = s.tapOffsetSeconds * sampleRate_; // glides in advanceGlides()
@@ -175,29 +266,24 @@ void Spring::updateCoefficients()
     // Loop gain g from the target T60 and the *actual* round trip. A tail
     // loses 60 dB in T60 seconds; one trip takes RT seconds, so each trip may
     // lose 60 * RT / T60 dB in total. The filters already take |H(f)| of that,
-    // g supplies the rest. Take the smallest g over the design band so the
-    // slowest band hits T60 and no band rings longer.
+    // g supplies the rest. Take the smallest g over the design points
+    // (kDesignHz and kDesignFcRatios) so the slowest band hits T60 and no
+    // band rings longer. Round trip = L + chain + damping + fC low-pass +
+    // LoopSat oversampler latency (as roundTripSamples()).
     const float t60 = kT60DesignScale * s.t60Seconds;
-    float g = kMaxGain, maxMag = 0.0f;
-    for (size_t k = 0; k < kDesignHz.size(); ++k) {
-        const float rt = roundTripAt(kDesignHz[k], designCos_[k], designLatency_[k]);
-        const float m  = loopMagnitudeAt(designCos_[k]);
-        const float gf = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / m;
+    float g = kMaxGain;
+    for (size_t p = 0; p < size_t(kNumPoints); ++p) {
+        const float chain = mPos_ * map::stretchedAllpassGroupDelayFromCos(a_, k_, ptCosK_[p]);
+        const float rt    = lCur_ + chain + ptDampDelay_[p] + lpfDelay_ + ptLatency_[p];
+        const float gf    = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / ptMag_[p];
         g = std::min(g, gf);
-        maxMag = std::max(maxMag, m);
-    }
-    for (float r : kDesignFcRatios) {
-        const float hz = r * s.transitionHz;
-        const float cw = std::cos(2.0f * map::kPi * hz / sampleRate_);
-        g = std::min(g, std::exp(-3.0f * kLn10 * roundTripAt(hz, cw, dsp::LoopSat::latencySamples(hz, sampleRate_))
-                                 / (t60 * sampleRate_))
-                            / loopMagnitudeAt(cw));
     }
     g = std::max(0.0f, g);
 
     // Howl zone: lift the small-signal peak gain P = g·max|H| toward
     // kHowlPeakGain (> 1). The LoopSat's compression then holds the level.
     const float howl = std::clamp(s.howl, 0.0f, 1.0f);
+    const float maxMag = maxMag_;
     if (howl > 0.0f && maxMag > 0.0f) {
         const float p0 = g * maxMag;
         const float p  = p0 + (drive::kHowlPeakGain - p0) * std::sqrt(howl);
@@ -208,7 +294,10 @@ void Spring::updateCoefficients()
 
     modDepth_ = std::max(0.0f, s.modDepth) * antires::kMicroModNorm;
     lfoDepth_ = std::max(0.0f, s.lfoDepth);
-    lfoE_     = 2.0f * std::sin(map::kPi * std::max(0.0f, s.lfoHz) / sampleRate_); // magic-circle step
+    if (s.lfoHz != lfoHzSet_) { // fixed per Spring: one sin, not one per redesign
+        lfoE_     = 2.0f * std::sin(map::kPi * std::max(0.0f, s.lfoHz) / sampleRate_); // magic-circle step
+        lfoHzSet_ = s.lfoHz;
+    }
 
     // High path: no dispersion to speak of, simple T60 from its own trip.
     lhCur_ = kHighDelayRatio * lCur_;

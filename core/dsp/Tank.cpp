@@ -168,6 +168,7 @@ void Tank::reset()
     limitGain_ = 1.0f;
     numPendingKicks_ = 0;
     tick_     = 0;
+    gridTick_ = 0;
     springTurn_ = 0;
     primed_   = false;
 }
@@ -224,14 +225,18 @@ void Tank::controlTick(bool snap)
             for (size_t a = 0; a < 3; ++a) attW_[a] = f >= 1.0f ? target[a] : attW_[a] + f * (target[a] - attW_[a]);
         }
     }
-    const drive::Voice voice = dsp::blendVoice(attW_);
+    if (snap || attW_ != voiceW_) { // the blends only when the Morph moved
+        voice_  = dsp::blendVoice(attW_);
+        kick_.setAttitude(attW_);
+        voiceW_ = attW_;
+    }
+    const drive::Voice& voice = voice_;
     const float drive = smoothed_[size_t(ParamId::Drive)];
     const float splashAmt = smoothed_[size_t(ParamId::Splash)];
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
     splash_.set(attW_, splashAmt);
-    kick_.setAttitude(attW_);
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)]);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
     // Tank level for KICKED's energy-dependent rattle: smoothed RMS of the
@@ -281,7 +286,76 @@ void Tank::controlTick(bool snap)
         for (auto& d : driveOut_) d.setMakeup(autoGain * push_.wet, snap, kControlInterval);
     }
 
-    SpringSettings base;
+    // The Springs' settings (all but the Jolt on the allpass coefficient)
+    // follow DECAY, TENSION, TONE, DRIVE, the Morph and SPRINGS only. At rest
+    // nothing is worked out again (M3 run 12: their exp/log/cos were a fixed
+    // cost on every tick); after a move, only when a Spring takes new
+    // settings, on its turn (TENSION's allpass coefficient, which every
+    // Spring gets on every tick, at once: it's cheap).
+    if (snap || decay != keyDecay_ || tension != keyTension_ || tone != keyTone_ || drive != keyDrive_
+        || attW_ != keyW_ || mode_ != keyMode_) {
+        keyDecay_    = decay;
+        keyTension_  = tension;
+        keyTone_     = tone;
+        keyDrive_    = drive;
+        keyW_        = attW_;
+        keyMode_     = mode_;
+        baseAllpass_ = map::tensionCoefficient(tension);
+        baseDirty_   = true;
+        ++baseGen_;
+    }
+
+    // One Spring per tick takes its new settings (all three on a snap). A
+    // change reaches Springs B and C up to two ticks (1.3 ms) after A, up
+    // to ~6 ms while TENSION or TONE move (below): well inside every
+    // parameter's glide (TENSION 60 ms, DECAY 80 ms). It spreads the
+    // Loop gain redesign (the costliest control work) so no audio block
+    // carries all three (M3: that burst lifted the peak CPU ~12 points above
+    // the average). M3 run 12: a TENSION move takes a Spring two ticks
+    // (Spring::setSettings), and a Spring whose fC or damping moved (a heavy
+    // redesign step) waits out every third tick. Ticks come every 32
+    // samples, so at the Versio's 48-sample block every other block holds
+    // two ticks (grid ticks 3n and 3n + 1); skipping 3n + 1 keeps it to one
+    // heavy step per block. On the fixed tick grid, so any block size
+    // renders the same. The turn moves on once the Spring has its settings.
+    const bool   heavyOk = snap || gridTick_ != 1;
+    const size_t turn    = size_t(springTurn_);
+    bool turnDone = true;
+    for (size_t i = 0; i < springs_.size(); ++i) {
+        const float a = std::clamp(baseAllpass_ * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
+                                   -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
+        const bool waits = !heavyOk && i == turn
+                        && (springs_[i].redesignPending()
+                            || (springGen_[i] != baseGen_
+                                && (springTension_[i] != keyTension_ || springTone_[i] != keyTone_)));
+        if (!snap && (i != turn || waits)) {
+            // Off turn: only the Jolt's (and TENSION's) allpass coefficient,
+            // so a hit's pitch lurch reaches every Spring on the same tick
+            // (staggering it read as extra undulation on KICKED hits, owner).
+            springs_[i].setAllpassCoeff(a);
+            if (waits) turnDone = false;
+            continue;
+        }
+        if (springGen_[i] != baseGen_) {
+            if (baseDirty_) {
+                updateBaseSettings(keyDecay_, keyTension_, keyTone_, voice);
+                baseDirty_ = false;
+            }
+            updateSpringSettings(i);
+        }
+        SpringSettings s = springSet_[i];
+        s.allpassCoeff   = a;
+        const bool done  = springs_[i].setSettings(s, snap);
+        if (i == turn) turnDone = done;
+    }
+    if (turnDone) springTurn_ = (springTurn_ + 1) % int(kMaxSprings);
+    if (!snap) gridTick_ = (gridTick_ + 1) % 3;
+}
+
+void Tank::updateBaseSettings(float decay, float tension, float tone, const drive::Voice& voice)
+{
+    SpringSettings& base = baseSet_;
+    base = SpringSettings{};
     // TENSION picks the tank (L, fC, a and M together); DECAY sets T60 and
     // nothing else (ADR 0026).
     base.loopDelaySeconds = map::tensionLoopDelaySeconds(tension);
@@ -306,50 +380,38 @@ void Tank::controlTick(bool snap)
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
     base.modDepth         = antires::microModDepth(base.loopDelaySeconds) + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
-    const int activeStages = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
+    activeStages_ = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
     // line their first echoes up on it (1 Spring = A alone, unchanged).
-    const float alignA = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
-                                                   base.transitionHz * modes::kDetune[0].transition, activeStages,
-                                                   sampleRate_);
-    // One Spring per tick takes its new settings (all three on a snap). A
-    // change reaches Springs B and C up to two ticks (1.3 ms) after A, well
-    // inside every parameter's glide; it spreads the Loop gain redesign
-    // (the costliest control work) so no audio block carries all three
-    // (M3: that burst lifted the peak CPU ~12 points above the average).
-    const size_t turn = size_t(springTurn_);
-    springTurn_ = (springTurn_ + 1) % int(kMaxSprings);
-    for (size_t i = 0; i < springs_.size(); ++i) {
-        const float a = std::clamp(base.allpassCoeff * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
-                                   -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
-        if (!snap && i != turn) {
-            // Off turn: only the Jolt's (and TENSION's) allpass coefficient,
-            // so a hit's pitch lurch reaches every Spring on the same tick
-            // (staggering it read as extra undulation on KICKED hits, owner).
-            springs_[i].setAllpassCoeff(a);
-            continue;
-        }
-        // g is designed from each Spring's own round trip, so the L/fC/a
-        // detune changes pitch/texture, not tail length; the damping and
-        // decay detune (SpringModes.h) make each Spring fade its own way.
-        SpringSettings s = base;
-        s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
-        s.transitionHz     *= modes::kDetune[i].transition;
-        s.dampingHz        *= modes::kDetune[i].damping; // Spring.cpp clamps to 0.45 fs
-        s.t60Seconds       *= modes::kDetune[i].decay;
-        s.allpassCoeff      = a;
-        s.tapRatio          = modes::kPickupTap[i];
-        s.stages            = modes::springActive(mode_, int(i)) ? activeStages : modes::kIdleStages;
-        // Pickup: tapRatio lines the first echoes up along the delay line;
-        // the offset lines up the Chirp chains too (SpringModes.h "Pickup
-        // position"), plus a fixed trim. Uses a without the Jolt, so it
-        // moves with TENSION and SPRINGS only, and the Spring glides to it.
-        const float aNoJolt = base.allpassCoeff * modes::kDetune[i].allpassCoeff;
-        s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i]
-                           + (alignA - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
-        s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
-        springs_[i].setSettings(s, snap);
-    }
+    alignA_ = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
+                                        base.transitionHz * modes::kDetune[0].transition, activeStages_, sampleRate_);
+}
+
+void Tank::updateSpringSettings(size_t i)
+{
+    // g is designed from each Spring's own round trip, so the L/fC/a
+    // detune changes pitch/texture, not tail length; the damping and
+    // decay detune (SpringModes.h) make each Spring fade its own way.
+    SpringSettings s = baseSet_;
+    s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
+    s.transitionHz     *= modes::kDetune[i].transition;
+    s.dampingHz        *= modes::kDetune[i].damping; // Spring.cpp clamps to 0.45 fs
+    s.t60Seconds       *= modes::kDetune[i].decay;
+    s.tapRatio          = modes::kPickupTap[i];
+    s.stages            = modes::springActive(mode_, int(i)) ? activeStages_ : modes::kIdleStages;
+    // Pickup: tapRatio lines the first echoes up along the delay line;
+    // the offset lines up the Chirp chains too (SpringModes.h "Pickup
+    // position"), plus a fixed trim. Uses a without the Jolt, so it
+    // moves with TENSION and SPRINGS only, and the Spring glides to it.
+    // (allpassCoeff itself, with the Jolt, goes on every tick: controlTick.)
+    const float aNoJolt = baseSet_.allpassCoeff * modes::kDetune[i].allpassCoeff;
+    s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i]
+                       + (alignA_ - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
+    s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
+    springSet_[i]       = s;
+    springGen_[i]       = baseGen_;
+    springTension_[i]   = keyTension_;
+    springTone_[i]      = keyTone_;
 }
 
 void Tank::process(const float* inL, const float* inR, float* outL, float* outR, int numSamples)
@@ -511,7 +573,12 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             wl = softLimit(wl * limitGain_);
             wr = softLimit(wr * limitGain_);
 
-            const map::MixGains m = map::mixGains(mix_.process(values_[size_t(ParamId::Mix)]));
+            const float mixNow = mix_.process(values_[size_t(ParamId::Mix)]);
+            if (mixNow != mixAt_) { // two square roots, only while MIX moves
+                mixGains_ = map::mixGains(mixNow);
+                mixAt_    = mixNow;
+            }
+            const map::MixGains m = mixGains_;
             outL[pos + i] = m.dry * dryL + m.wet * wl;
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
