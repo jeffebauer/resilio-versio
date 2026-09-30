@@ -13,6 +13,8 @@
 
 **Owner choices:** idle Springs keep running at SPRINGS 1–2 (seamless SPRINGS switching; the worst case is 3 Springs anyway). Block 96 (+1 ms latency) held in reserve, only if the sound-neutral work falls short.
 
-**Result so far:** worst case 83 → ~63 % average, 100 → ~67 % peak (run 9, before the division change). Run 11 measures the final code.
+**Result:** worst case 83 → **60.7 % average**, 100 → **63.3 % peak** (run 12, 30 Sep 2026); highest peak at any corner 64.0 %. Run 11 (all of the above) measured 62.1 / 67.8 %; run 12 then split each Spring's redesign into parts (one heavy step per audio block) and moved control-tick work to only when its inputs change: bit-identical with static settings, a TENSION change reaches a Spring within ~6 ms (was 1.3 ms). The ≤ 65 % target is met; block 96 stays in reserve.
+
+**About the 65 % target (owner asked, 30 Sep):** SPEC §5 chose it as a safety margin at the start, not from a measurement. The margin covers what the profile run doesn't: the 24 corners are fixed settings with a synthetic signal (not every combination of Kicks, switch flips and fast CV), the release callback also reads the controls and feeds the LEDs, cache timing varies, and later features need room. Rules of thumb for embedded audio put a sensible peak ceiling around 65–80 %. Raising it (e.g. for the sweet-tank ingredients) is an owner decision with its own ADR.
 
 **Rejected:** running the Chirp chain stage by stage over 32-sample runs (bit-exact but slower on the M7: 80 → 87.5 %), "split" and three-Springs-interleaved loop shapes (on-chip bench: no better than pipelining).

@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: new tasks are added, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 30 Sep 2026 · **Milestones:** M0 **passed** · M1: A/B vs the Wellspring ready (4b) · M2 needs your Ableton check · M3: run 11 **62 % average, 68 % peak** (target 65 %); run 12 coming (3c) · **Real firmware ready to play (3g)** · M8: SPLASH round 3 voicings to judge (3d) · Knob layout set to your panel (3b)
+**Last updated:** 30 Sep 2026 · **Milestones:** M0 **passed** · M1: A/B vs the Wellspring ready (4b) · M2 needs your Ableton check · M3 **done**: 61 % average, 63 % peak (target 65 %, run 12) · **Real firmware ready to play (3g)** · M8: SPLASH round 3 voicings to judge (3d) · Knob layout set to your panel (3b)
 
 **Plugin installed in Ableton:** commit `ae844da`, installed 29 Sep 19:13. New: **TENSION turns up = tighter**, **SPLASH is the "heavier clang"** through the springs (no click at SPLASH 0), **TONE's bright side thins the lows**, and the **mid-DECAY resonances** are fixed (2 and 3 Springs are now slightly different from each other, like real springs).
 **To load it:** quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio already in your set with a fresh one (a loaded copy keeps running the old build). ⚠ Sets saved with the old BOING knob open with TENSION at noon; BOING automation doesn't carry over.
@@ -61,7 +61,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
 - [x] **Run 11** (30 Sep): worst case **62 % average, 68 % peak** (target peak 65 %). The steady load is comfortably under; the peaks are occasional moments when a spring recalculates its settings in the same instant as other housekeeping. About 3 points still to find (Claude's side), or accept it (your call, below)
 
-- [ ] **Run 12 (≈10 min, when convenient):** flash **`dist/resilio_versio_m3_profile_run12.bin`** (USB only), stream in the Terminal panel like run 11 (`screen /dev/tty.usbmodem* 115200`), ~2 minutes, then tell Claude. Target: worst-case peak ≤ 65 % (run 11: 68 %). Sound unchanged with knobs still; a TENSION move reaches the springs within ~6 ms (was 1.3 ms). Afterwards reflash the release firmware to keep playing
+- [x] **Run 12** (30 Sep): **target met**: worst case 60.7 % average, **63.3 % peak**; highest peak anywhere 64.0 % (all under 65 %). Sound unchanged; merged into `main`. You asked whether 65 % is arbitrary: partly (a safety margin chosen at the start), see [ADR 0030](adr/0030-fitting-the-versio-cpu.md)
 
 ### 3d. Slapback gap and SPLASH (29 Sep)
 - [x] The gap between dry and reverb felt like slapback at low MIX. Decided: **earlier first echo** at every TENSION, same echo spacing ([ADR 0029](adr/0029-earlier-first-echo.md)). Loose tank now 32 ms, like your Wellspring (was 45). Listened: `renders/predelay_ab/`, most noticeable at higher TENSION
@@ -193,7 +193,6 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **M3 run 12**: built and tested (all 16 suites), waiting for your run (3c). Not merged until the chip confirms it
 - **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
 
 - **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
