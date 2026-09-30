@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0031). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.21 — ADR 0034 (prototype, owner's idea): WOBBLE is bipolar. Noon still (±3 % dead zone); left = Drift, smooth random wow + flutter that never repeats; right = Warble, a sine LFO growing to the old top end. Every knob step audible; Springs share the Drift at low amounts. Supersedes ADR 0008's one-way zones (§3 P6, §4.7).
 - v1.0.20 — ADR 0030 amendment (owner): CPU target raised from ≤ 65 % to **≤ 70 % peak** worst case, with an on-module click/dropout check for every release. Run 12 measured 63.3 % peak, so ~7 points are available for new sound (SPLASH/DRIVE build, tank changes).
 - v1.0.19 — Docs only: §3 DECAY range now matches §4.4, ADR 0026 and the code (T60 0.4 → 9 s; §3 still said ~0.3–0.5 → ~8–10 s, the pre-tuning guess). M1's 0.3–0.5 s / 8–10 s acceptance windows are unchanged. The same note's "tight slap … TENSION low" predated ADR 0026's flip: now TENSION up.
 - v1.0.18 — ADR 0031 (owner): the LEDs are level meters, as on NE's own Versio firmware. Left pair In L / In R, right pair Out L / Out R; brightness follows level (dB), green → amber when hot, red = input near clip / output limiter pulling down. Replaces the input-clip / tank-energy / mode-colour plan (§3, §7 M9).
@@ -106,7 +107,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 | P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
 | P4 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
 | P5 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
-| P6 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
+| P6 | **WOBBLE** | Bipolar pitch movement of the tank delay (§4.7, ADR 0034): noon still; left = random wow + flutter; right = sine LFO | Noon ±3 % dead zone. Left: Drift, never repeating, grows to fully left. Right: Warble, grows to "clearly out of tune". Min floor always on (§4.10). CV adds to the pot: fully left + CV sweeps random → still → LFO |
 | P7 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
 
 ### Switches
@@ -212,7 +213,12 @@ Level scales with ATTITUDE. Debounce button; rising-edge on gate.
 
 ### 4.7 WOBBLE
 
-Slow modulation of L per spring, independent phases: sine LFO (0.1–2 Hz, scaled by knob) + smoothed random. Max depth ~0.5–1% of L (starting guess, likely too small for ADR 0008's top-quarter Warble; tune by ear). **Minimum floor always active** even at knob = 0 (§4.10).
+Modulation of each Spring's Loop delay L, plus one shared Transport generator on every pickup read (the first echoes waver too). Bipolar knob (ADR 0034, numbers in `core/params/WobbleVoicing.h`):
+- **Noon** (±3 % dead zone): no WOBBLE, only the Micro-mod floor.
+- **Left (Drift):** smooth random wow (Catmull-Rom random line, every segment its own random length: ~0.2–1.5 Hz) plus a smaller, faster random flutter (~5–12 Hz). Never repeats.
+- **Right (Warble):** a sine LFO, 0.6 → 1.4 Hz as it grows, its rate drifting ±6 % (0 = pure sine).
+- Depth in cents per pass (so WOBBLE sounds the same at every TENSION), curve s(a) = (e^{ka} − 1)/(e^k − 1) per side so every 0.1 of travel is a clear step; both end stops "clearly out of tune" (held tone ~35–65 cents through the whole Tank). Springs B and C follow Spring A (scaled by their L) at low amounts, independent from ~45 % of either side.
+- **Minimum floor always active**, WOBBLE at noon included (§4.10).
 
 ### 4.8 Output stage
 
@@ -440,7 +446,7 @@ Shared definitions:
 - [L] SPLASH 0 in DRIVEN still gives a faint natural splash on hard hits (not zero).
 - [L] Kick = tight thud + big crash (ADR 0016). [A] Energy < 100 Hz down ≥ 20 dB within 300 ms.
 - [H] Gate Kicks: every gate at up to 12/s (16ths at 180 bpm) gives exactly one Kick, onset within 1 ms of the gate edge. No double triggers.
-- [L] WOBBLE: lower half Drift (held chords in tune), top quarter Warble (clearly out of tune) (ADR 0008).
+- [L] WOBBLE: noon still, a touch left of noon (the default) keeps held chords in tune, every step away from noon is heard, both end stops clearly out of tune; left random (never same-same), right a steady sine (ADR 0034, was ADR 0008's one-way zones).
 - [A] WOBBLE pitch deviation (cents, on `08_held_tones`) sits in the range measured from the Magneto's WOW & FLUTTER series (takes MW0–MW4): Drift ≈ the 9 o'clock–noon takes, Warble ≈ the 3 o'clock–fully CW takes.
 - [A] MIX: CCW = dry only (null vs input), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
 - [A/H] Envelope on MIX CV (5 ms attack): throw lands with no audible lag (smoothing ≤ 5 ms, ADR 0015).
