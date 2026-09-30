@@ -6,7 +6,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target 65 %) |
+| M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target now **70 %**, your call 30 Sep: ~7 points for new sound) |
 | Real firmware on the Versio | **Playing.** Keep `dist/resilio_versio_release_e618e12.bin` on it (knob layout, output fix, LED meters without flicker) |
 | M8 sound | **In progress:** SPLASH round 4 and the "one smooth arc" tank are being built for you to hear |
 | M2 Ableton check | After the next plugin install |
@@ -21,11 +21,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [ ] Listen to the before/after page when Claude says it's ready, then the plugin install
 
-### 2. One smooth arc · listen when Claude says it's ready (≈15 min)
-- [ ] Open `renders/proto_smooth_arc/index.html`. Built on A (bright tail): **B** one smooth arc per echo up to ~5.5 kHz (the Wellspring's high pitch bend, no kink, no plain clicks in the highs), **C** wider low mids in the tail, **D** light smear, **E** (option) repeats that don't stretch, **W** your Wellspring. Where do you stop?
-- Why: last round the Wellspring won every panel. The pictures showed its echoes are smooth arcs and ours kink at ~3.3 kHz ([spectrograms](prototypes/spring-signature/))
+### 2. Fitted to your Wellspring · Claude is building it (listen when ready)
+- The smooth-arc page (30 Sep) was still far off: the Wellspring has a strong "pew" on clicks, little on skank, and is rounder and smoother. Measured: its pew is the top two octaves (2–5.5 kHz) arriving up to ~20 ms after the lows, which also makes each echo swell in (rounder); ours delivers them almost at once. Our tail is also 3–5 dB edgier at 2–3 kHz
+- Now: the Wellspring's sweep, echo attack and tail tone are measured from your click recording, our springs' high part gets its own sweep, and the settings are fitted to those targets automatically. Page: A (smooth arc D), B fitted sweep, C fitted sweep + tone, W
 
 ### 3. Play the Versio
+- **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - Tip while SPLASH is today's version: SPLASH **near max** and the SoundStage's **main Level** up until the loudest hits just touch **amber** on the input LEDs (today's SPLASH fades out on quiet sends; round 4 fixes that)
 - [ ] Optional, when convenient: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -35,7 +36,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **A fresh listening pass** in the plugin, answering the open design questions below where you have a view. (It replaces the old per-milestone listening pages, which judged builds that no longer exist)
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [ ] **WOBBLE ceiling:** the Magneto's tape wobble tops out at ~8 cents; ours reaches ~36 cents on the first echo and ~50–55 in the tail at max, on purpose ("clearly out of tune", ADR 0008). Keep the wilder top, or bring it closer?
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 it's silent. OK?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
@@ -44,12 +44,11 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **TENSION on a ringing tail** raises the pitch like tightening a string. Nice, or too much?
 - [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The "Big Knob" idea below would change this side)
 - [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material. OK, or even it out?
-- [ ] **Hanging note at WOBBLE ~9 o'clock (optional page):** `renders/proto_wobble_hang/index.html`. B makes the springs drift together at low WOBBLE so a chord fades evenly. Still wanted once the new tank lands? (It predates the smooth-arc work)
 
 ## Later
+- **Bipolar WOBBLE (your idea, 30 Sep; next prototype after the SPLASH/DRIVE build):** left of noon = smooth random wow + flutter (never repeats), noon = still (small dead zone for the hardware knob), right of noon = sine LFO strength up to today's wild top (you keep the extreme ceiling). Today the top end is 90 % one steady sine, which is why it can sound same-same. CPU ≈ +0.1–0.2 %. Touches ADR 0008, SPEC's WOBBLE row, WOBBLE tests; the random side includes your pick from the hanging-note page (springs drift together at low amounts), and each side must be clearly audible across its range (you found 9 o'clock and noon nearly the same today)
 - **Big Knob TONE:** TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump; cheap on CPU. After SPLASH and the tank work ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8)
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
-- **CPU headroom:** 63 % peak against a 65 % target leaves ~1 point. If the new tank needs more, raising the target (say 72 %) is your call, with an ADR ([ADR 0030](adr/0030-fitting-the-versio-cpu.md) explains the 65 %)
 
 ## Waiting on Claude (no action needed)
 - **Running:** one-smooth-arc prototype page
@@ -73,6 +72,10 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **Smooth arc listened:** still way off the Wellspring (its pew on clicks, rounder, smoother). Measured the cause (a 2–5.5 kHz sweep we lack); started fitting our tank to your recording
+- 30 Sep 2026: **CPU target raised to 70 % peak** (your call; ADR 0030 amendment, SPEC v1.0.20): room for the new sound, with a click check on the module for every release
+- 30 Sep 2026: **Hanging note at WOBBLE ~9 o'clock:** B ("springs drift together at low WOBBLE") in every panel. Folded into the bipolar WOBBLE prototype. Also noted: WOBBLE 9 o'clock vs noon sounds nearly the same (today's lower half is only 0–3 cents)
+- 30 Sep 2026: **WOBBLE ceiling:** keep the wilder top end (not the Magneto's ~8 cents). Asked how random it is: today it's sine + one smooth random line at a speed tied to the knob; at the top it's 90 % sine, hence "same-same"
 - 30 Sep 2026: **SPLASH round 4 listened:** C2 on longer sounds and CLEAN hits, T2 on hits in DRIVEN/KICKED. Found by ear and measured: DRIVE shortens DRIVEN/KICKED tails (the saturator inside the loop). Decided: DRIVE = INPUT, partly louder, drives only in/out
 - 30 Sep 2026: **Merged** the tail-length fix for noisy recordings, the docs cleanup and the send-level study (all 16 test suites pass); reference report regenerated (your Wellspring clicks: 3.42 s)
 - 30 Sep 2026: **Tight-tank ping listened:** very subtle; C fine on hits, A slightly nicer on the skank (its faint inharmonic colour). Decided: keep the fix but gentler (fade starts at −30 dB, the most lenient setting that still passes the ringing check), shipped with the new SPLASH (without the burst, that corner rings audibly in the test)

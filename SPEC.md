@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0031). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.20 — ADR 0030 amendment (owner): CPU target raised from ≤ 65 % to **≤ 70 % peak** worst case, with an on-module click/dropout check for every release. Run 12 measured 63.3 % peak, so ~7 points are available for new sound (SPLASH/DRIVE build, tank changes).
 - v1.0.19 — Docs only: §3 DECAY range now matches §4.4, ADR 0026 and the code (T60 0.4 → 9 s; §3 still said ~0.3–0.5 → ~8–10 s, the pre-tuning guess). M1's 0.3–0.5 s / 8–10 s acceptance windows are unchanged. The same note's "tight slap … TENSION low" predated ADR 0026's flip: now TENSION up.
 - v1.0.18 — ADR 0031 (owner): the LEDs are level meters, as on NE's own Versio firmware. Left pair In L / In R, right pair Out L / Out R; brightness follows level (dB), green → amber when hot, red = input near clip / output limiter pulling down. Replaces the input-clip / tank-energy / mode-colour plan (§3, §7 M9).
 - v1.0.17 — ADR 0030: how the Versio's CPU budget is met (DTCM pool, no fused multiply-add, pipelined Chirp sections, Springs redesigned in turn with the Jolt kept together, reciprocal saturators). Block 48 kept; idle Springs keep running. Worst case 83 → ~63 % average.
@@ -272,7 +273,7 @@ Measurable criterion (starting thresholds — tune/confirm in interview):
 ## 5. Performance budget
 
 - 48 kHz, block 48 initial. 480 MHz ÷ 48 kHz ≈ **10,000 cycles/sample**.
-- Target **≤ 65% CPU** worst case (3 springs, KICKED, loosest TENSION (0), max DRIVE).
+- Target **≤ 70% CPU peak** worst case (3 springs, KICKED, loosest TENSION (0), max DRIVE), measured by the M3 profile build; every release is also checked by ear on the module for clicks/dropouts at heavy settings (owner, 30 Sep 2026; was 65 %, ADR 0030).
 - Main costs: allpass cascades, oversampled nonlinear stages. Mitigations:
   1. Delay lines + filter state in internal SRAM, not SDRAM.
   2. Decimated low-chirp path (×2/×4) per Parker 2011.
