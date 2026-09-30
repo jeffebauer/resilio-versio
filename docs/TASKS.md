@@ -28,7 +28,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Flash `dist/resilio_versio_release_b3e5ac3.bin` and do the click check (§3)
 - [ ] Plugin install of `b3e5ac3`: tell Claude when Ableton is closed
 
-### 2. Fitted to your Wellspring · next round after the SPLASH/DRIVE merge
+### 1b. Pads clip the output · being fixed (cloud session)
+- [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
+- [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
+- [ ] **Start the cloud session** (claude.ai/code on the repo): "Follow docs/briefs/sustain-trim.md on main. Work on branch proto/sustain-trim and push it; don't merge to main." Then tell Claude, who renders the page with your real pad added
+
+ · next round after the SPLASH/DRIVE merge
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
@@ -51,7 +56,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
 - [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
 - [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The "Big Knob" idea below would change this side)
-- [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material. OK, or even it out?
+- [x] **Bright vs dark material:** answered by the pad (1 Oct): even it out on held sounds (§1b)
 
 ## Later
 - **Bipolar WOBBLE (your idea, 30 Sep; next prototype after the SPLASH/DRIVE build):** left of noon = smooth random wow + flutter (never repeats), noon = still (small dead zone for the hardware knob), right of noon = sine LFO strength up to today's wild top (you keep the extreme ceiling). Today the top end is 90 % one steady sine, which is why it can sound same-same. CPU ≈ +0.1–0.2 %. Touches ADR 0008, SPEC's WOBBLE row, WOBBLE tests; the random side includes your pick from the hanging-note page (springs drift together at low amounts), and each side must be clearly audible across its range (you found 9 o'clock and noon nearly the same today)
