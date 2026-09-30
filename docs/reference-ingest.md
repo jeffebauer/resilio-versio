@@ -57,13 +57,16 @@ exists is still processed, and the missing core takes are called out.
    DRY-WET should be rechecked.
 4. **T60, spectrogram, stereo metrics, ringing_db** via
    `build/rv_render --analyze` on the aligned WAV (the M1 sidecar contract).
-   T60 can legitimately come back `null` — `schroederT60()` only fits when
-   the decay reaches -35 dB before the next click, and this can be a near
-   thing when there's *any* low-level structure near the 8-second boundary
-   between clicks (a distant reflection, residual dispersion, noise). It
-   showed up in this tool's own `--selftest` fake data at one DECAY setting.
-   Treat it the way the contract does: "not measurable" for that take, not
-   an error, and the DECAY search below is prepared for it.
+   T60 can legitimately come back `null`: `schroederT60()` only fits when
+   the decay falls 35 dB before the end of its segment, which on a click
+   train is the quietest point before the next click (see below). That fails
+   when a tail is still ringing when the next click arrives, or when the
+   noise floor sits less than ~35 dB under the tail's start. Treat it the
+   way the contract does: "not measurable" for that take, not an error, and
+   the DECAY search below is prepared for it. (Before the 30 Sep 2026 fix,
+   short tails often came back `null` too, because the next click's
+   build-up kept the curve from reaching -35 dB: our clicks at DECAY 0 and
+   0.25 were `null` and now read 0.45 s and 0.89 s.)
 
    **History:** this single-segment T60 used to read **long** on repeated
    stimuli, for two reasons, both fixed on 30 Sep 2026 (see the contract).

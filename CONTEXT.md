@@ -8,8 +8,8 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Spring** | One simulated spring: low-chirp path + high path (SPEC §4.2). |
 | **Loop** | A Spring's feedback path (delay + allpass cascade + filters). Where energy recirculates. |
 | **Chirp / Boing** | Dispersive echo where the highs arrive **later** than the lows, so each echo sweeps up (as measured in every real tank, ADR 0024). Signature spring sound. Its size is set by TENSION. "Boing" names the sound only; the BOING knob was replaced by TENSION (ADR 0026). |
-| **Tension** | K2, "which tank is fitted": echo spacing (Loop delay), Chirp size and brightness together. More tension = tighter: up is tight (short, pingy, small bright Chirp), down is loose (long, boingy, big darker Chirp). Turning it bends the tail's pitch like tightening or slackening a string (ADR 0026). |
-| **Decay** | K0: tail length (T60) only. Doesn't change the tank or bend pitch (ADR 0026). |
+| **Tension** | P5 TENSION, "which tank is fitted": echo spacing (Loop delay), Chirp size and brightness together. More tension = tighter: up is tight (short, pingy, small bright Chirp), down is loose (long, boingy, big darker Chirp). Turning it bends the tail's pitch like tightening or slackening a string (ADR 0026). |
+| **Decay** | P2 DECAY: tail length (T60) only. Doesn't change the tank or bend pitch (ADR 0026). |
 | **Splash** | Bright, noisy wash on hard transients. Produced by Clatter + Jolt. Controlled by SPLASH. |
 | **Clatter** | Injected noise bursts simulating springs hitting each other/housing. Part of Splash. |
 | **Jolt** | Momentary lurch of Loop parameters on impact. Part of Splash. |

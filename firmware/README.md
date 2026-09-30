@@ -9,7 +9,7 @@ One `main.cpp` produces three different `.bin` files, picked with `MODE`:
 |---|---|---|---|
 | **m0test** | `make -C firmware MODE=m0test` | `build/resilio_versio_m0test.bin` | The hardware bring-up check (SPEC §7 M0): dry passthrough, every control shown on the LEDs and over USB serial. Unchanged behaviour from the build you've already been checking against — see `docs/m0-hardware-check.md`. |
 | **profile** | `make -C firmware MODE=profile` | `build/resilio_versio_profile.bin` | Hardware CPU profiling (SPEC §7 M3). No knobs, no audio in needed — runs on USB power alone off your desk. Cycles through 24 setting combinations automatically and prints CPU load for each over USB serial. |
-| **release** | `make -C firmware` (MODE defaults to `release`) | `build/resilio_versio.bin` | The actual instrument: knobs, switches, tap, gate, CV, all wired to the reverb. The LEDs are level meters (ADR 0031): left pair In L / In R, right pair Out L / Out R, green → amber with level, red on input clip or when the output limiter pulls down. The LEDs dim smoothly: the release firmware drives their PWM itself (TIM5 + DMA, 512 steps at ~1 kHz, see `LedPwm` in `main.cpp`) instead of libDaisy's software PWM, which flickered at dim levels. This is what eventually goes on the module for real use. No serial printing (keeps it small — see "why release doesn't print" below). |
+| **release** | `make -C firmware` (MODE defaults to `release`) | `build/resilio_versio.bin` | The actual instrument: knobs, switches, tap, gate, CV, all wired to the reverb. The LEDs are level meters (ADR 0031): left pair In L / In R, right pair Out L / Out R, green → amber with level, red on input clip or when the output limiter pulls down. The LEDs dim smoothly: the release firmware drives their PWM itself (TIM5 + DMA, 512 steps at ~1 kHz, see `LedPwm` in `main.cpp`) instead of libDaisy's software PWM, which flickered at dim levels. This is what eventually goes on the module for real use. No serial printing (keeps it small: see the flash budget under "How to build", ADR 0011). |
 
 **Important — this changes what `build/resilio_versio.bin` means.** Before this
 change, `firmware/build/resilio_versio.bin` *was* the M0 test firmware (that's
@@ -161,13 +161,26 @@ the 64 MB external SDRAM instead — everything else stays the same. The
 original way, since it must not change behaviour while the M0 check is still
 in progress.
 
-## Everything the release build ignores (for now)
+## What the release build wires up
 
-The release build wires up every control that Core currently listens to.
-Two knobs (SPLASH is used lightly, DRIVE and full ATTITUDE behaviour) and
-some SPEC-described character are still landing in Core in later milestones
-(M5–M7) — turning those knobs already sends the value through, it just
-won't audibly do everything the SPEC describes until Core catches up.
+Every control on the panel reaches the Tank; nothing is ignored. Per audio
+block (1 ms at 48 frames), `main.cpp`'s release section reads:
+
+- **P1–P7 + their CV** → MIX, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE
+  (ADR 0028; `kPotKnob` is the pot → libDaisy index table, `kPotParams` the
+  pot → function table).
+- **SW0 → SPRINGS, SW1 → ATTITUDE** (CLEAN / DRIVEN / KICKED).
+- **Button and gate → Kick**, on the rising edge, at the start of the block.
+- **Output trim**: undoes the Versio's polarity flip and +1.2 dB (M0), so
+  MIX 0 sounds like a patch cable.
+- **LEDs**: level meters (ADR 0031, `LedMeter.h`).
+
+DRIVE, SPLASH and full ATTITUDE behaviour are all in Core now (M5–M7), so
+each knob does on the module what it does in the Plugin (same Core, same
+ParamSpec). Tuning continues in M8 (`docs/m8-tuning-backlog.md`; SPLASH is
+being reworked). Not in the release build: USB serial (flash budget, see
+"How to build") and MIDI (the Plugin's
+MIDI-note Kick has no Versio equivalent; the gate does that job).
 
 ## M3 results
 

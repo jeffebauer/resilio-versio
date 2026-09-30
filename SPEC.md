@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0031). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.19 — Docs only: §3 DECAY range now matches §4.4, ADR 0026 and the code (T60 0.4 → 9 s; §3 still said ~0.3–0.5 → ~8–10 s, the pre-tuning guess). M1's 0.3–0.5 s / 8–10 s acceptance windows are unchanged. The same note's "tight slap … TENSION low" predated ADR 0026's flip: now TENSION up.
 - v1.0.18 — ADR 0031 (owner): the LEDs are level meters, as on NE's own Versio firmware. Left pair In L / In R, right pair Out L / Out R; brightness follows level (dB), green → amber when hot, red = input near clip / output limiter pulling down. Replaces the input-clip / tank-energy / mode-colour plan (§3, §7 M9).
 - v1.0.17 — ADR 0030: how the Versio's CPU budget is met (DTCM pool, no fused multiply-add, pipelined Chirp sections, Springs redesigned in turn with the Jolt kept together, reciprocal saturators). Block 48 kept; idle Springs keep running. Worst case 83 → ~63 % average.
 - v1.0.16 — ADR 0029 (owner): earlier first echo. Loop pickup 0.52 → 0.36 L, high path gets its own pickup at 0.70 L_hf; echo spacing unchanged. Loose tank's first sound 45 → 32 ms (Wellspring 32 ms).
@@ -100,7 +101,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 | Pot | Name | Function | Notes |
 |---|---|---|---|
 | P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
-| P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | Range ~0.3–0.5 s → ~8–10 s, always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION low). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
+| P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | T60 0.4 s → 9 s (exponential, §4.4), always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION up, i.e. tight). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
 | P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
 | P4 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
 | P5 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |

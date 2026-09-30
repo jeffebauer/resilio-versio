@@ -62,7 +62,7 @@ Owner listening to the M7 plugin build (commit `81f8124`) in Ableton, 28 Sep 202
 ## TENSION (29 Sep 2026, ADR 0026)
 *Direction flipped afterwards (ADR 0026 amendment): TENSION 1 is now tight. The notes below use the first build's direction, where 0 = tight and 1 = loose.*
 
-K2 is TENSION (L, fC, a and M together: tight 33 ms / 4.6 kHz / 0.40 / 24, noon 69 ms / 3.3 kHz / 0.47 / 40, loose 110 ms / 2.7 kHz / 0.55 / 64); DECAY is T60 only. What the switch turned up:
+K2 (then; pot P5, libDaisy knob 5, since ADR 0028) is TENSION (L, fC, a and M together: tight 33 ms / 4.6 kHz / 0.40 / 24, noon 69 ms / 3.3 kHz / 0.47 / 40, loose 110 ms / 2.7 kHz / 0.55 / 64); DECAY is T60 only. What the switch turned up:
 - **Loose tank + short tail (DECAY 0 × TENSION 1), mono notch −7 to −10 dB (real):** with ~4 trips the first echoes dominate, and the detuned Springs' Chirp chains put B's echo body ~1 ms after A's (500 Hz comb in mono). The pickups now also line up the chains (A's chain delay − own, at 800 Hz; glided); C's trim −0.8 → −1.2 ms. Worst notch over the grid −3.0 dB; correlation 0.42 → 0.36; first-arrival spread unchanged (≤ 5.1 ms). Thinnest spot between grid points: −4.2 dB (2 Springs, DECAY 0, TENSION 0.625; limit −4.5).
 - **DRIVEN aliasing at DRIVE 1 (real):** at TENSION 1 a 0 dBFS 5 kHz tone's tape fold-back to 1 kHz read −54 dB. DRIVEN pre-emphasis 5 → 3 dB: −66 dB. test_drive now prints the product that decides the check.
 - **CLEAN DRIVE bottom (real, thin):** pickup blend DRIVE^0.8 instead of linear: no silent run; ends unchanged.
