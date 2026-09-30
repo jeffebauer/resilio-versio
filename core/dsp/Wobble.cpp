@@ -29,12 +29,13 @@ void Wobble::reset()
     prev_ = cur_;
 }
 
-void Wobble::setAmount(float wobble)
+void Wobble::setAmount(float wobble, float depthScale)
 {
-    if (wobble == amount_) return;
-    amount_ = wobble;
-    depth_  = role_ == Role::Transport ? splash::wobbleEarlyDepthSamples(wobble, sampleRate_, rateScale_)
-                                       : splash::wobbleDepthSamples(wobble, sampleRate_, rateScale_);
+    if (wobble == amount_ && depthScale == depthScale_) return;
+    amount_     = wobble;
+    depthScale_ = depthScale;
+    depth_  = depthScale * (role_ == Role::Transport ? splash::wobbleEarlyDepthSamples(wobble, sampleRate_, rateScale_)
+                                                     : splash::wobbleDepthSamples(wobble, sampleRate_, rateScale_));
     rateHz_ = splash::wobbleRateHz(wobble) * rateScale_;
     sineW_  = splash::wobbleSineWeight(wobble);
     const float every = float(splash::kControlInterval) / sampleRate_;

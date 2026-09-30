@@ -9,3 +9,5 @@
 **Testable (M8):** on a rimshot/snare from −18 to −3 dBFS peak, SPLASH 0 vs 1 crash (1–6 kHz energy in the first 150 ms): CLEAN ≥ +1.5 dB (audible), below DRIVEN's at the same hit. The Jolt pitch lurch stays small, e.g. ≤ a third of DRIVEN's. Ghost notes in a groove still barely trigger (same −15 dB rule). CLEAN uses the same level-adaptive hit detection as DRIVEN/KICKED. The sweet-spot tool finds no SPLASH dead zone in CLEAN.
 
 **Why:** Owner decision after the dead-zone finding; keeps the wide-sweet-spot principle while CLEAN stays the polite, hi-fi voice.
+
+**Amended 30 Sep 2026 (ADR 0032):** the splash no longer comes from Clatter noise bursts. CLEAN gets the same Clang as DRIVEN and KICKED (the hit's own highs fed harder into the springs; the owner picked round 4's C2 for CLEAN), no Bite, and its tiny Jolt; it stays the gentle voice through the Bite and the Jolt, not a smaller splash. Nothing at SPLASH 0, as before. The M8 test bar is CLEAN ≥ +1.5 dB of crash (unchanged), no longer "below DRIVEN's at every level".

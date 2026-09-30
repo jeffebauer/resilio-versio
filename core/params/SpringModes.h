@@ -251,7 +251,7 @@ constexpr float kDecorr1 = 0.75f; // w, 1 Spring
 constexpr float kDecorr2 = 0.65f; // w, 2 Springs
 constexpr float kDecorr3 = 0.65f; // w, 3 Springs
 constexpr float kCentre3 = 0.40f; // c, 3 Springs
-constexpr float kSide2   = 0.40f; // k, 2 Springs (0.5 = hard pan). 0.43 -> 0.40 (29 Sep): mono-notch margin with SPLASH's clang in the Loops (stabs -4.8 dB at DECAY 0 x tightest TENSION)
+constexpr float kSide2   = 0.36f; // k, 2 Springs (0.5 = hard pan). 0.43 -> 0.40 (29 Sep): mono-notch margin with SPLASH's clang in the Loops (stabs -4.8 dB at DECAY 0 x tightest TENSION). 0.40 -> 0.36 (30 Sep, ADR 0032 / 0033): without the noise burst on hits (its streams were independent per Spring) the stab notch at 240 Hz read -4.9 dB (margin -4.5) and 2-Spring mono -1.51 dB re 1 Spring on DECAY 0.1 hits (limit 1.5); now -4.4 / -1.28, L/R correlation unchanged (0.38)
 constexpr float kSide3   = 0.45f; // k, 3 Springs
 // HighsLater Chirp (Mappings.h): the lows' round trip is ~20 ms shorter (the
 // allpass chain barely delays them), so with the same T60 they make more

@@ -44,7 +44,9 @@ public:
 
     // Control rate: smoothed WOBBLE Normalised value (Gliding tier, ADR 0015).
     // Re-maps (a few exp) only when it changed.
-    void setAmount(float wobble);
+    // depthScale: the Loop depth's DECAY trim (splash::wobbleDecayScale; 1
+    // for the transport). Worked out again only when either value moved.
+    void setAmount(float wobble, float depthScale = 1.0f);
 
     // One sample of Loop delay modulation, in samples (signed, |m| <= D).
     float next()
@@ -72,7 +74,7 @@ private:
     uint32_t seed_       = 1;
     Rng      rng_;
 
-    float amount_ = -1.0f;
+    float amount_ = -1.0f, depthScale_ = -1.0f;
     float depth_ = 0.0f, rateHz_ = 0.0f, sineW_ = 0.0f;
     float phaseStep_ = 0.0f, randStep_ = 0.0f;
 

@@ -506,7 +506,8 @@ void stereoWidthAndMono()
                     eventSegment(o, &from, &to);
                     const double corr  = correlation(o.l, o.r, from, to);
                     const double loss  = monoLossDb(o.l, o.r);
-                    const double notch = monoNotchDb(o.l, o.r, from, to, nullptr);
+                    double notchHz = 0;
+                    const double notch = monoNotchDb(o.l, o.r, from, to, &notchHz);
                     const bool good    = (m == 0 || corr < 0.5) && loss >= -1.5 && notch >= -6.0;
                     if (!good)
                         std::printf("      fail: %s %s DECAY %.1f TENSION %.1f: corr %.2f, mono_loss %+.2f, notch %+.1f\n",
@@ -516,7 +517,7 @@ void stereoWidthAndMono()
                     worstLoss[m] = std::min(worstLoss[m], loss);
                     if (notch < worstNotch[m]) {
                         worstNotch[m] = notch;
-                        std::snprintf(worstAt[m], sizeof worstAt[m], "DECAY %.1f TENSION %.1f", decay, tension);
+                        std::snprintf(worstAt[m], sizeof worstAt[m], "DECAY %.1f TENSION %.1f, %.0f Hz", decay, tension, notchHz);
                     }
                 }
         for (int m = 0; m < 3; ++m) {

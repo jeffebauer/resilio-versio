@@ -109,9 +109,15 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
+    clangLp_.setCutoff(splash::kClangHz, sampleRate);
+    dcNoon_ = drive::driveCurve(0.5f);
+    dcRef_  = drive::driveCurve(splash::kSplashRefDrive);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
     transport_.prepare(sampleRate, 0, kTransportSeed, dsp::Wobble::Role::Transport);
     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
+    // Power ratios from dB (10^(dB/10) = dbToGain(2 dB): exp, not powf, for the Firmware's flash).
+    satFloorMs_   = drive::dbToGain(2.0f * antires::kLoopSatQuietDb);
+    satInvSpanMs_ = 1.0f / (satFloorMs_ * (drive::dbToGain(2.0f * antires::kLoopSatFadeDb) - 1.0f));
     for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
     excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
@@ -153,6 +159,7 @@ void Tank::reset()
     tilt_.reset();
     for (auto& d : driveOut_) d.reset();
     splash_.reset();
+    clangLp_.reset();
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
@@ -160,7 +167,11 @@ void Tank::reset()
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
     excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
-    excTrimFrom_ = excTrimTo_ = 1.0f;
+    // Power-up (and reset): the trim starts turned all the way down, so the
+    // first sound can only come in too quiet, never too hot (the first chord
+    // of a skank peaked ~3 dB over the rest: its attack reached the Springs
+    // before the first control tick had heard it). One tick later it reads.
+    excTrimFrom_ = excTrimTo_ = drive::dbToGain(-drive::kExcMaxDb);
     clatBuf_.fill(0.0f);
     clatPos_ = 0;
     compDrive_ = -1.0f;
@@ -236,12 +247,17 @@ void Tank::controlTick(bool snap)
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
-    splash_.set(attW_, splashAmt);
-    for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)]);
+    splash_.set(attW_, splashAmt, splashDrive_); // splashDrive_: DRIVE's gain on the Clang / Bite (below, on DRIVE moves)
+    const float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
+    for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
-    // Tank level for KICKED's energy-dependent rattle: smoothed RMS of the
-    // wet mid over the last tick, scaled by SPLASH.
-    levelMs_ += levelCoeff_ * (levelAcc_ * (1.0f / float(kControlInterval)) - levelMs_);
+    // Tank level for KICKED's energy-dependent rattle (and the LoopSat fade
+    // below): smoothed RMS of the wet mid over the last tick, scaled by
+    // SPLASH. The mid is summed after DRIVE's heard gain (ADR 0033), so it is
+    // divided back out here: the level is the Springs' own, whatever DRIVE.
+    const float invHeard = 1.0f / driveInSettings_.heard;
+    const float tickMs = levelAcc_ * (invHeard * invHeard / float(kControlInterval)); // last tick, unsmoothed
+    levelMs_ += levelCoeff_ * (tickMs - levelMs_);
     levelAcc_ = 0.0f;
     splash_.setTankLevel(std::sqrt(levelMs_) * splashAmt);
     // Excitation trim (M8, DriveVoicing.h): slow band / full power of the
@@ -265,17 +281,30 @@ void Tank::controlTick(bool snap)
     // Loop-delay Jolt (splash::kJoltSpringScale, M8), clamped below.
     const float joltA = joltOn_ ? splash_.allpassDelta() : 0.0f;
 
-    // DriveIn settings and the DRIVE push on the later stages (ADR 0022):
-    // only recomputed when DRIVE or the Morph moved (they cost a few exp).
+    // DriveIn settings (the INPUT gain, ADR 0033) and the DRIVE push on the
+    // pickups (ADR 0022): only recomputed when DRIVE or the Morph moved
+    // (they cost a few exp).
     if (snap || drive != compDrive_ || attW_ != compW_) {
         driveInSettings_ = dsp::driveInSettings(voice, drive);
         push_      = drive::push(voice, drive);
+        splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
         compDrive_ = drive;
         compW_     = attW_;
     }
     driveIn_.set(driveInSettings_, snap, kControlInterval);
+    if (snap) {
+        heardGain_.snap(driveInSettings_.heard);
+        inputGain_.snap(driveInSettings_.inputGain);
+    } else {
+        heardGain_.aim(driveInSettings_.heard, kControlInterval);
+        inputGain_.aim(driveInSettings_.inputGain, kControlInterval);
+    }
     tilt_.set(tone, snap, kControlInterval);
-    for (auto& d : driveOut_) d.set(voice, push_.out, push_.outFluxDb, push_.outAmount);
+    // The pickups' hardness is divided by the level DRIVE adds (ADR 0033), so
+    // they bend the louder tail exactly as ADR 0022 voiced them: DRIVE's
+    // extra level passes the pickups as level, not as extra grit (CLEAN
+    // stays a tint; KICKED's squash doesn't run into the makeup's ceiling).
+    for (auto& d : driveOut_) d.set(voice, push_.out / driveInSettings_.heard, push_.outFluxDb, push_.outAmount);
     {
         // DriveOut automatic makeup, linked across L/R so the image never
         // shifts: sqrt(level in / level out) of both channels together
@@ -287,22 +316,37 @@ void Tank::controlTick(bool snap)
     }
 
     // The Springs' settings (all but the Jolt on the allpass coefficient)
-    // follow DECAY, TENSION, TONE, DRIVE, the Morph and SPRINGS only. At rest
+    // follow DECAY, TENSION, TONE, the Morph and SPRINGS only (not DRIVE since
+    // ADR 0033: it no longer pushes the LoopSat). At rest
     // nothing is worked out again (M3 run 12: their exp/log/cos were a fixed
     // cost on every tick); after a move, only when a Spring takes new
     // settings, on its turn (TENSION's allpass coefficient, which every
     // Spring gets on every tick, at once: it's cheap).
-    if (snap || decay != keyDecay_ || tension != keyTension_ || tone != keyTone_ || drive != keyDrive_
-        || attW_ != keyW_ || mode_ != keyMode_) {
+    if (snap || decay != keyDecay_ || tension != keyTension_ || tone != keyTone_ || attW_ != keyW_
+        || mode_ != keyMode_) {
         keyDecay_    = decay;
         keyTension_  = tension;
         keyTone_     = tone;
-        keyDrive_    = drive;
         keyW_        = attW_;
         keyMode_     = mode_;
         baseAllpass_ = map::tensionCoefficient(tension);
         baseDirty_   = true;
         ++baseGen_;
+    }
+
+    // AntiRes: LoopSat quiet-tail fade (AntiRes.h). How hard the LoopSat
+    // would bend the tail right now = the wet mid's power (the rattle's
+    // smoothed level, or the last tick's if louder: a hit into a quiet tank
+    // gets its saturation back at once) x the curve's hardness squared. It
+    // scales every Spring's LoopSat blend: full above the fade, none below
+    // its floor. A few multiplies per tick, nothing per sample. (The wet mid
+    // is measured before DRIVE's heard gain, so the fade doesn't move with
+    // DRIVE either, ADR 0033.)
+    {
+        const float kSat     = std::max(voice.loopKPos, voice.loopKNeg);
+        const float satLevel = std::max(levelMs_, tickMs) * kSat * kSat;
+        const float satGate  = std::clamp((satLevel - satFloorMs_) * satInvSpanMs_, 0.0f, 1.0f);
+        for (auto& sp : springs_) sp.setLoopSatGate(satGate);
     }
 
     // One Spring per tick takes its new settings (all three on a snap). A
@@ -365,16 +409,15 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     base.dampingHz        = map::toneDampingHz(tone);
     base.highPathLevel    = map::toneHighPathLevel(tone);
     base.loopSatAmount    = voice.loopAmount;
-    // DRIVE pushes the LoopSat too (ADR 0022): the same curve, harder as
-    // DRIVE rises (Voice::loopDriveDb). Its slope stays <= 1: Loop gain
-    // can only go down, never up. Not inside the Howl zone, though: there
-    // the LoopSat's hardness sets how loud the Howl settles (a harder curve
-    // holds it lower), so the push fades out across the zone and the Howl
-    // keeps its ADR 0019 voicing whatever DRIVE does. No jump at the edge.
+    // The LoopSat keeps its ATTITUDE's fixed, gentle hardness: DRIVE no
+    // longer pushes it (ADR 0033; ADR 0022's push squashed the tail on every
+    // round trip and made DRIVE shorten it). Its slope stays <= 1: Loop
+    // gain can only go down, never up. In the Howl zone that hardness sets
+    // how loud the Howl settles (ADR 0019), as before (the push used to fade
+    // out across the zone for that reason).
     const float howlAmt   = drive::howlZone(decay) * attW_[2];
-    const float loopPush  = drive::dbToGain(push_.loopDb * (1.0f - howlAmt));
-    base.loopSatKPos      = voice.loopKPos * loopPush;
-    base.loopSatKNeg      = voice.loopKNeg * loopPush;
+    base.loopSatKPos      = voice.loopKPos;
+    base.loopSatKNeg      = voice.loopKNeg;
     base.howl             = howlAmt;
     // AntiRes Micro-mod floor, always on (WOBBLE adds on top, per sample), plus
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
@@ -431,6 +474,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     }
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
+    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
@@ -441,10 +485,12 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
-        // DriveIn (transducer -> tape) first: the Splash listens here.
+        // The Splash listens first, to the input after the INPUT gain G and
+        // before any saturation (ADR 0032, 0033).
         for (int i = 0; i < n; ++i) {
             const float x = 0.5f * (inL[pos + i] + inR[pos + i]);
-            driven[i] = driveIn_.process(x);
+            xin[i] = x;
+            det[i] = x * inputGain_.next();
             // Excitation trim followers on the raw input (what the dry path
             // carries), full band and weighted like the whole chain's response.
             float w = x - excHp_[0].process(x);
@@ -453,7 +499,6 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             excAccBroad_ += x * x;
             excAccBand_ += w * w;
         }
-        prof::mark(prof::kDriveIn);
 
         // Kick: onsets on their exact sample (offsets clamp to the block).
         for (int k = 0; k < numPendingKicks_; ++k) {
@@ -464,20 +509,49 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
-        splash_.process(driven, clatter, clatterB, clatterC, jolt, n);
-        if (!splashOn_) // test hooks (Tank.h)
+        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
+        if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
+            std::fill(clang, clang + n, 0.0f);
+            std::fill(bite, bite + n, 0.0f);
+        }
         if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
         prof::mark(prof::kSplash);
 
-        // Spring inputs: TONE's tilt, plus the Kick's high-passed Loop feed
-        // (post-drive). Each Spring also gets its own Clatter stream (same
-        // burst envelope, independent noise: every spring clangs on its own),
-        // into the Loop (dispersed into the Chirp, decays with the tail) and
-        // the high path (fast echoes), splash::kClatterLoop / kClatterHigh.
+        // DriveIn (transducer -> tape). The Bite (ADR 0032, SplashVoicing.h):
+        // a short, cracking hit goes into the saturators harder, x (1 + b),
+        // and most of the push is taken back right after them
+        // (splash::kBiteTakeBack, three quarters since the owner's 30 Sep
+        // listen: "a bit hot/distorted"): grit on the hit, little level. Taken back inside DriveIn, before its
+        // makeup's output follower, so the makeup gives back only what the
+        // saturators squashed. b = 0 on everything else (and always in
+        // CLEAN): the plain path, bit for bit.
+        for (int i = 0; i < n; ++i) {
+            const float b = bite[i];
+            const float back = b > 0.0f ? splash::biteBack(1.0f + b) : 1.0f;
+            driven[i] = driveIn_.process(xin[i], 1.0f + b, back); // one call site: DriveIn inlines once
+        }
+        prof::mark(prof::kDriveIn);
+
+        // Spring inputs: TONE's tilt and the excitation trim; the Clang (ADR
+        // 0032): the hit's own highs, above splash::kClangHz, fed harder into
+        // the springs while it lasts, x + c (x - LP(x)); plus the Kick's
+        // high-passed Loop feed (post-drive, not clanged: a Kick has its own
+        // crash). Each Spring also gets its own Clatter stream (the Kick's
+        // crash: same burst envelope, independent noise, every spring clangs
+        // on its own), into the Loop (dispersed into the Chirp, decays with
+        // the tail) and the high path (fast echoes), splash::kClatterLoop /
+        // kClatterHigh.
+        // The Kick's Loop feed is divided by the level DRIVE adds on the
+        // Springs' output (heardGain_), so a Kick stays the same size at any
+        // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
         const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
-        for (int i = 0; i < n; ++i)
-            mono[i] = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i)) + kickLoop[i];
+        const float kickScale = 1.0f / driveInSettings_.heard;
+        for (int i = 0; i < n; ++i) {
+            const float x  = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i));
+            const float lo = clangLp_.process(x);
+            mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
+        }
         transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
         prof::mark(prof::kTilt);
         for (size_t s = 0; s < springs_.size(); ++s) {
@@ -495,8 +569,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
-            const float src[modes::kNumSources] = {kWetGain * wet[0][i], kWetGain * wet[1][i],
-                                                   kWetGain * wet[2][i]};
+            // DRIVE's heard share (ADR 0033): the tail comes back louder by
+            // G^kInputHeard. Here, on the Springs' output, rather than into
+            // them: the LoopSat, the AntiRes fade and the Howl see the same
+            // level at every DRIVE (the tail's length and colour don't move
+            // with DRIVE), and the pickups' hardness is divided by the same
+            // gain (controlTick), so they bend the louder tail as before.
+            const float wg = kWetGain * heardGain_.next();
+            const float src[modes::kNumSources] = {wg * wet[0][i], wg * wet[1][i], wg * wet[2][i]};
 
             if (fadePos_ < 1.0f) {
                 // SPRINGS fade, smoothstep-shaped t (3t² - 2t³): every gain

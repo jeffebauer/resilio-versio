@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0031). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0033). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.21 — ADR 0032 (owner, SPLASH round 4): SPLASH comes from the hit (the Clang: its highs fed harder into the springs, every ATTITUDE; the Bite: short hits pushed harder into DriveIn, DRIVEN/KICKED), no noise burst on hits (the Clatter is the Kick's crash). ADR 0033: DRIVE is the INPUT (one gain, 0 → +24 dB, heard by the Splash first; +6 dB louder tail at DRIVE 1; no DRIVE push on the LoopSat). §3 SPLASH and DRIVE rows, §4.5, §4.9 updated. Tight-tank LoopSat quiet-tail fade (AntiRes, floor −30 dB). First-hit fix: the excitation trim starts turned down. Owner's first listen: gentler Bite (×(1 + 2.5e), three quarters taken back), DRIVEN driven less (midway between CLEAN and KICKED), KICKED's Clang ×12.
 - v1.0.20 — ADR 0030 amendment (owner): CPU target raised from ≤ 65 % to **≤ 70 % peak** worst case, with an on-module click/dropout check for every release. Run 12 measured 63.3 % peak, so ~7 points are available for new sound (SPLASH/DRIVE build, tank changes).
 - v1.0.19 — Docs only: §3 DECAY range now matches §4.4, ADR 0026 and the code (T60 0.4 → 9 s; §3 still said ~0.3–0.5 → ~8–10 s, the pre-tuning guess). M1's 0.3–0.5 s / 8–10 s acceptance windows are unchanged. The same note's "tight slap … TENSION low" predated ADR 0026's flip: now TENSION up.
 - v1.0.18 — ADR 0031 (owner): the LEDs are level meters, as on NE's own Versio firmware. Left pair In L / In R, right pair Out L / Out R; brightness follows level (dB), green → amber when hot, red = input near clip / output limiter pulling down. Replaces the input-clip / tank-energy / mode-colour plan (§3, §7 M9).
@@ -104,10 +105,10 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 | P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
 | P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | T60 0.4 s → 9 s (exponential, §4.4), always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION up, i.e. tight). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
 | P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy (HF path up, tilt toward highs) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
-| P4 | **SPLASH** | Transient sensitivity of nonlinear clatter model (§4.5) | Behaviour scales with ATTITUDE |
+| P4 | **SPLASH** | How hard the hits hit: a loud, sudden hit's own highs fed harder into the springs (Clang), and in DRIVEN/KICKED a short hit pushed harder into the input transducer (Bite) (§4.5, ADR 0032) | Nothing is added on a hit; ghost notes in a groove stay quiet. SPLASH 0 = only the small Jolt floor (DRIVEN/KICKED) |
 | P5 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
 | P6 | **WOBBLE** | Macro: depth of slow random + LFO modulation of tank delay; rate rises gently with depth | Lower half Drift, top quarter Warble (ADR 0008). Min floor always on (§4.10) |
-| P7 | **DRIVE** | Input gain into drive chain (§4.9); also feeds transient detector | Auto level-compensated. Clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014) |
+| P7 | **DRIVE** | The INPUT: one gain, 0 → +24 dB, same in every ATTITUDE; the Splash hears the signal after it, before any saturation (§4.9, ADR 0033) | Level-compensated except a quarter of the gain: the tail grows ~+6 dB across the knob. Colour: clean-ish to ~9 o'clock, driven by ~3 o'clock (ADR 0014); intensity steps evenly CLEAN < DRIVEN < KICKED. Never shortens the tail or reduces the splash |
 
 ### Switches
 
@@ -191,23 +192,26 @@ Log-linear between anchors for L and fC, linear for `a` and stages; SPRINGS mode
 
 ### 4.5 SPLASH / ATTITUDE nonlinear model
 
-1. **Transient detector:** fast env (~1 ms attack) − slow env (~50 ms) on driven input → `hit` 0–1. SPLASH sets sensitivity.
-2. **Clatter injection:** on `hit`, bandpassed noise bursts (1–6 kHz, ~5–30 ms decay) into HIGH path, ∝ hit × SPLASH, few-ms timing jitter.
-3. **Coefficient jolt:** momentary modulation of `a` and L ∝ hit (decays ~50–200 ms) → chirp smear / pitch lurch.
-4. **Loop saturation:** per §4.9.
+SPLASH comes from the hit itself (ADR 0032): nothing is added on a hit.
 
-| Mode | Loop sat | Clatter | Jolt |
-|---|---|---|---|
-| CLEAN | off | gentle (ADR 0025) | tiny (ADR 0025) |
-| DRIVEN | gentle tape | moderate | small |
-| KICKED | hard, asymmetric | full | large + energy-dependent rattle |
+1. **Detectors,** on the mono input after the INPUT gain (DRIVE, §4.9), before any saturation, high-passed at 200 Hz. The Hit detector (fast − slow envelope, judged against the programme level) → `hit` 0–1 (control rate) for the Jolt. The hit envelope (round 4's detector) → e = SPLASH × sudden × loud, 0–1 per sample for the first ~10–25 ms of a loud hit, 0 on sustained sound; in a groove the loud reference rises with the programme level, so ghost notes stay quiet at any DRIVE.
+2. **Clang** (every ATTITUDE): the springs' input gets its own highs (above 2 kHz) fed harder, ×(1 + 5e) at the owner's "clear" strength.
+3. **Bite** (DRIVEN, KICKED): a short hit (its energy mostly above 2 kHz: drums, not chords) is pushed into DriveIn ×(1 + 4e) and half the push (in dB) taken back after: grit on the hit, a harder hit into the springs. Above DRIVE noon the Clang and the Bite grow with DRIVE (exactly as picked at 0.8), so DRIVE never reduces the splash.
+4. **Coefficient jolt:** momentary modulation of `a` and L ∝ hit (decays ~50–200 ms) → chirp smear / pitch lurch.
+5. **Loop saturation:** per §4.9. The Clatter (bandpassed knocks into every Spring's Loop and high path) is the Kick's crash only (§4.6, ADR 0016).
+
+| Mode | Loop sat | Clang | Bite | Jolt |
+|---|---|---|---|---|
+| CLEAN | off | yes (ADR 0025, 0032) | no | tiny (ADR 0025) |
+| DRIVEN | gentle tape | yes | short hits | small |
+| KICKED | hard, asymmetric | yes | short hits | large + energy-dependent rattle |
 
 ### 4.6 KICK (button + gate)
 
 Inject into tank input (post-drive):
 - Low thump: decaying sine ~40–80 Hz, ~20–40 ms
 - Broadband noise burst ~10 ms
-- Forces maximal SPLASH jolt
+- Forces maximal SPLASH jolt and the Clatter crash (the Kick is the only thing that still fires the Clatter, ADR 0032)
 Level scales with ATTITUDE. Debounce button; rising-edge on gate.
 
 ### 4.7 WOBBLE
@@ -240,7 +244,8 @@ ATTITUDE sets which stages engage and how hard:
 | KICKED | hard | on, hot | hard, asymmetric |
 
 Requirements:
-- **Automatic gain compensation** on DRIVE: perceived loudness roughly stable across knob range; DRIVE changes colour, not volume. (Directly addresses Springray "must drive hot to hear it" complaint.)
+- **DRIVE is the INPUT** (ADR 0033): one input gain G, 0 → +24 dB along the DRIVE curve, the same in every ATTITUDE. The Splash hears the input after G (§4.5); the saturators see G × the ATTITUDE's voicing offset (the pre-gain curve of ADR 0022). DRIVE drives the input (transducer, tape) and output (pickup) stages only: the Loop saturation keeps a fixed, gentle per-ATTITUDE hardness, so DRIVE never shortens the tail.
+- **Automatic gain compensation** on DRIVE, except a quarter of G (in dB), added on the Springs' output: the tail grows ~+6 dB across the knob (a gentle throw), the same in every ATTITUDE; colour, grit and a few dB, never a volume knob. (Directly addresses Springray "must drive hot to hear it" complaint.)
 - Reverb clearly audible at DRIVE = 0 with typical Eurorack levels.
 - **Oversample nonlinear stages ×2 (min)** to limit aliasing. Include in CPU budget (§5).
 - Optional research reference for tape modelling (verify before use): J. Chowdhury, "Real-time Physical Modelling for Analog Tape Machines," DAFx-19. Full hysteresis model likely too heavy for Daisy; use simplified version.

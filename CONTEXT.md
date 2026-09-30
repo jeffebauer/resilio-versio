@@ -10,13 +10,15 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Chirp / Boing** | Dispersive echo where the highs arrive **later** than the lows, so each echo sweeps up (as measured in every real tank, ADR 0024). Signature spring sound. Its size is set by TENSION. "Boing" names the sound only; the BOING knob was replaced by TENSION (ADR 0026). |
 | **Tension** | P5 TENSION, "which tank is fitted": echo spacing (Loop delay), Chirp size and brightness together. More tension = tighter: up is tight (short, pingy, small bright Chirp), down is loose (long, boingy, big darker Chirp). Turning it bends the tail's pitch like tightening or slackening a string (ADR 0026). |
 | **Decay** | P2 DECAY: tail length (T60) only. Doesn't change the tank or bend pitch (ADR 0026). |
-| **Splash** | Bright, noisy wash on hard transients. Produced by Clatter + Jolt. Controlled by SPLASH. |
-| **Clatter** | Injected noise bursts simulating springs hitting each other/housing. Part of Splash. |
+| **Splash** | What a hard hit does to the tank: it hits the springs harder. Produced by Clang + Bite + Jolt (ADR 0032). Controlled by SPLASH. |
+| **Clang** | A loud hit's own highs (above 2 kHz) fed harder into the springs while it lasts. Part of Splash, every ATTITUDE. |
+| **Bite** | A short, cracking hit (drums, not chords) pushed harder into the input transducer and tape, half of the push taken back: grit and a harder hit. Part of Splash, DRIVEN and KICKED. |
+| **Clatter** | Injected noise bursts simulating springs hitting each other/housing. The Kick's crash only (since ADR 0032; hits no longer fire it). |
 | **Jolt** | Momentary lurch of Loop parameters on impact. Part of Splash. |
-| **Hit** | Detected transient strength (0–1) from input. Drives Clatter + Jolt. |
+| **Hit** | Detected transient strength (0–1) from the input after the INPUT gain. Drives the Jolt; its sibling, the hit envelope e, drives the Clang and the Bite. |
 | **Kick** | Simulated physical strike on Tank (thump + crash). Triggered by button, Gate, or MIDI note. Fixed strength, scaled by Attitude. |
-| **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Clatter, Jolt, self-oscillation permission. |
-| **Drive chain** | Input transducer → tape → Loop saturation → output pickup (SPEC §4.9). |
+| **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Bite, Jolt, self-oscillation permission. |
+| **Drive chain** | Input transducer → tape → Loop saturation → output pickup (SPEC §4.9). DRIVE is the INPUT gain in front of it and drives the input and output stages only (ADR 0033). |
 | **Howl** | Controlled self-sustaining feedback. KICKED only, top ~10% of DECAY. Noisy/crashing, never a pure tone. |
 | **Ringing / Buildup** | Unwanted single frequency growing into sine-like tone in tail. Prevented by AntiRes system. (Heard on the Wellspring's BBD delay feedback, not its spring.) |
 | **AntiRes** | Layered anti-buildup system (SPEC §4.10). Adaptive suppressor layer is conditional (ADR 0010). |

@@ -129,7 +129,8 @@ drive::Voice blendVoice(const std::array<float, 3>& w);
 // square root of their ratio is how much the saturators took away. The
 // Tank updates it every control tick. So a hot hit is flattened (peaks
 // rounded, body brought up: compression) but the average level stays
-// where it was at DRIVE 0, for quiet and loud material alike. The two
+// where it was at DRIVE 0, for quiet and loud material alike (the level DRIVE
+// adds on purpose, ADR 0033, is the Tank's, on the Springs' output). The two
 // followers fall together between hits, so their ratio remembers the last
 // hit's squash: the next hit gets the right makeup straight away.
 //
@@ -146,14 +147,16 @@ drive::Voice blendVoice(const std::array<float, 3>& w);
 // CLEAN has no tape colour and the Morph in or out is seamless.
 struct DriveInSettings {
     drive::Voice voice{};
-    float preGain = 1.0f; // linear
-    float makeup  = 1.0f; // linear: ATTITUDE trim / preGain (the measured squash is added by DriveIn)
+    float inputGain = 1.0f; // the INPUT gain G (ADR 0033), linear: what the Splash hears (x · G)
+    float preGain = 1.0f;   // into the saturators, linear: G × the ATTITUDE's voicing offset
+    float heard   = 1.0f;   // G^kInputHeard, linear: the level DRIVE adds (the Tank applies it on the Springs' output)
+    float makeup  = 1.0f;   // linear: ATTITUDE trim / preGain (the measured squash is added by DriveIn)
     float smearHz = drive::kSmearOpenHz;
 };
 
-// DriveIn settings for Morph weights w and (smoothed) DRIVE: preGain from
-// the ADR 0014 curve, makeup = ATTITUDE trim / preGain. Used by the Tank;
-// public for tests.
+// DriveIn settings for Morph weights w and (smoothed) DRIVE: the INPUT gain
+// G and its heard share, preGain from the ADR 0014 curve, makeup = ATTITUDE
+// trim / preGain. Used by the Tank; public for tests.
 DriveInSettings driveInSettings(const drive::Voice& v, float drive);
 
 class DriveIn {
@@ -162,7 +165,13 @@ public:
     void reset();
     // Control rate. snap = jump (first tick / reset).
     void set(const DriveInSettings& s, bool snap, int interval);
-    float process(float x)
+    // push / back: the Splash's Bite (ADR 0032): the saturators get the
+    // signal x push, and back (<= 1) is taken off right after them, before
+    // the makeup's output follower, so the automatic makeup measures only
+    // what the saturators squashed (the bitten hit compared with how it
+    // would have come out unbitten) and gives back nothing more. 1 / 1 = the
+    // plain path, bit for bit.
+    float process(float x, float push = 1.0f, float back = 1.0f)
     {
         // Low-passes before the high-pass: same response, but the high-pass
         // (poles near z = 1, where float rounding noise gets amplified) then
@@ -172,9 +181,10 @@ public:
         x = hp_.process(x);
         x *= preGain_.next();
         envIn_.process(x * x + kEnvFloor);
+        x *= push;
         const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, tk = tapeK_, itk = invTapeK_,
                     amt = tapeAmt_.next();
-        float y = os_.process(x, [&](float u) {
+        float y = back * os_.process(x, [&](float u) {
             const float t = asymClip(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
             const float p = preEmph_.process(t);                            // tape
             const float s = p + amt * (softClip(tk * p) * itk - p);
@@ -260,7 +270,7 @@ private:
 // and round trip are exactly as designed, and CLEAN is untouched); a loud
 // Loop squashes on its body (lows, low mids) while the top of the Chirp
 // band and anything above fC saturate less. Why: at DRIVE 1 the pushed
-// curve (Voice::loopDriveDb) is hard enough that a loud high tone in the
+// curve (ADR 0022's LoopSat push, removed by ADR 0033) was hard enough that a loud high tone in the
 // Loop (a 0 dBFS 5 kHz sine leaks through the fC low-pass at ~-11 dB)
 // was squared off, and its 19th harmonic (95 kHz at the doubled rate)
 // folded back to 1 kHz, where the Loop rings: -69 dBFS, -53 dB re the
@@ -290,6 +300,9 @@ public:
         invPos_ = 1.0f / kPos; // set() runs per redesign, process() per sample
         invNeg_ = 1.0f / kNeg;
     }
+    // Blend only, hardness unchanged: the Tank's quiet-tail fade (AntiRes.h
+    // "LoopSat quiet-tail fade"), a per-tick change without a Loop redesign.
+    void setAmount(float amount) { amount_ = amount; }
     float process(float x)
     {
         const float a = amount_, kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_;
