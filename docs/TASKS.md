@@ -12,7 +12,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | After the next plugin install |
 | M9 polish | LEDs done; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`) |
 
-**Plugin in Ableton:** still `ae844da` (29 Sep). The next install waits for the new SPLASH and tank sound, so you get them together. After an install: quit and reopen Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
+**Plugin in Ableton:** `b3e5ac3` (installed 1 Oct: the new SPLASH + DRIVE as INPUT, same sound as the Versio's release; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
 
 ## Now (suggested order)
 
@@ -26,7 +26,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
 - [ ] Flash `dist/resilio_versio_release_b3e5ac3.bin` and do the click check (§3)
-- [ ] Plugin install of `b3e5ac3`: tell Claude when Ableton is closed
+- [x] Plugin `b3e5ac3` installed (1 Oct); rescan in Ableton, then the M2 Ableton check below
 
 ### 1b. Pads clip the output · being fixed (cloud session)
 - [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
@@ -64,7 +64,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 
 ## Waiting on Claude (no action needed)
-- **Now:** bipolar WOBBLE round 2 (gentler tops, vibrato on the right); then the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0). Plugin install of `b3e5ac3` when Ableton is closed
+- **Now:** bipolar WOBBLE round 2 (gentler tops, vibrato on the right); then the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
