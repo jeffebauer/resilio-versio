@@ -29,7 +29,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3. Quick yeses (≈2 min)
 - [ ] **OK to merge** three finished, tested pieces? (a) the tail-length measurement now copes with recording hiss (your Wellspring clicks read 3.4 s, not 14 s); (b) docs cleanup (glossary knob names, firmware notes, SPEC DECAY range, README); (c) the send-level study notes
-- [ ] **Tight-tank ping (optional, ≈5 min):** `renders/proto_tight_ringing/index.html`. The ringing our test flagged is real but inaudible (75–85 dB under the tail). Fix C costs no CPU. Only question: do KICKED's loud hits, grit and tail ends sound **unchanged** with C?
 
 ### 4. Play the Versio
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
@@ -59,7 +58,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Running:** one-smooth-arc prototype page
-- **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (3, optional page) addresses exactly that corner; it would ship with the new SPLASH
+- **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
 - **After the merge OK:** regenerate the reference report with the corrected tail lengths
@@ -80,6 +79,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **Tight-tank ping listened:** very subtle; C fine on hits, A slightly nicer on the skank (its faint inharmonic colour). Decided: keep the fix but gentler (fade starts at −30 dB, the most lenient setting that still passes the ringing check), shipped with the new SPLASH (without the burst, that corner rings audibly in the test)
 - 30 Sep 2026: **Sweet tank listened:** the Wellspring won every panel (wider, a smoother high pitch bend on clicks; B/C/D added wavers, E's smear helped). Measured and pictured: its echoes are smooth arcs to ~5.5 kHz, width in the 250–500 Hz tail; B's different spring lengths caused the wavers. Next: one-smooth-arc prototype
 - 30 Sep 2026: **SPLASH round 3 listened:** the burst isn't natural and B/C/D sound muted; E (DRIVE alone) sounds gritty and good. Next: round 4 at three strengths
 - 30 Sep 2026: **LED flicker fixed** (the LEDs now dim through the chip's DMA; smooth, no clicks), LED order confirmed (In R only lights only the In R LED; In L lights both because the jacks copy L to R). Merged: `dist/resilio_versio_release_e618e12.bin`
