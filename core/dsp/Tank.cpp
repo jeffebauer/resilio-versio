@@ -160,7 +160,11 @@ void Tank::reset()
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
     excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
-    excTrimFrom_ = excTrimTo_ = 1.0f;
+    // Power-up (and reset): the trim starts turned all the way down, so the
+    // first sound can only come in too quiet, never too hot (the first chord
+    // of a skank peaked ~3 dB over the rest: its attack reached the Springs
+    // before the first control tick had heard it). One tick later it reads.
+    excTrimFrom_ = excTrimTo_ = drive::dbToGain(-drive::kExcMaxDb);
     clatBuf_.fill(0.0f);
     clatPos_ = 0;
     compDrive_ = -1.0f;

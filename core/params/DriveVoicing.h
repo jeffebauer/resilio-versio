@@ -201,6 +201,16 @@ constexpr float kAutoMakeupMax     = 2.0f; // linear, +6 dB
 // Howl (which the Loop sets on its own). Below kExcGateDb (broad level,
 // silence, a tail ringing out) the trim holds, so it never drifts in a gap.
 // The Splash listens before it (Hit does not depend on the trim).
+// First-hit fix (owner, hardware, 30 Sep 2026: "the first stab showed the
+// output LEDs red"): the trim starts at -kExcMaxDb after power-up and reset.
+// It used to start at 0 dB, and a skank's first chord (which wants -3.2 dB)
+// reached the Springs untrimmed until the first control tick had heard it;
+// its attack, passed almost undispersed by the high path, peaked 3.2 dB over
+// every later chord (-3.8 vs -7.0 dBFS; CLEAN, MIX 1, DECAY noon). Starting
+// low, a first hit can only come in a little quiet (02_hits' first snare
+// 0.4 dB under the same hit later). The followers were never the slow part:
+// both start from silence, so their ratio is right from the first tick
+// (a fast-down / slow-up trim, the queued idea, measured no different).
 constexpr float kExcHpHz      = 58.0f;   // each of two: composite -3 dB at ~90 Hz
 constexpr float kExcLpHz      = 3700.0f; // each of two: composite -3 dB at ~2.4 kHz
 constexpr float kExcSeconds   = 0.3f;

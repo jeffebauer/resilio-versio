@@ -788,6 +788,64 @@ void wetLevelVsMaterial()
     }
 }
 
+// ---- 2e. First-hit level jump (owner, hardware, 30 Sep 2026) ---------------------------
+// 04_skank at the owner's H2 settings (CLEAN, MIX 1, DECAY / TONE / TENSION
+// noon, SPLASH / DRIVE / WOBBLE 0, 2 Springs), straight after power-up: the
+// first chord's wet peak must not sit over the later chords' (it did by
+// 3.2 dB: -3.8 vs -7.0 dBFS, the excitation trim starting at 0 dB). Limit
+// +1 dB over the loudest of chords 2-4 (the same Am chord at the same input
+// peak). Also after reset() (the Plugin's transport restart), and 02_hits'
+// first snare may come in at most 1 dB quieter than it would with a warm
+// trim (the price of starting low), never louder.
+void firstHit()
+{
+    rv::wav::Audio sk, hits;
+    if (!readStimulus("04_skank.wav", sk) || !readStimulus("02_hits.wav", hits)) {
+        check(false, "First-hit level: 04_skank.wav and 02_hits.wav found");
+        return;
+    }
+    Settings s;
+    s.att = 0;
+    s.decay = s.tension = s.tone = 0.5f;
+    s.mix = 1.0f;
+    s.splash = s.drive = s.wobble = 0.0f;
+    auto peakIn = [](const Stereo& o, double from, double len) {
+        float p = 0.0f;
+        for (size_t i = size_t(from * kFs); i < size_t((from + len) * kFs) && i < o.l.size(); ++i)
+            p = std::max({p, std::fabs(o.l[i]), std::fabs(o.r[i])});
+        return 20.0 * std::log10(double(p) + 1e-30);
+    };
+    rv::Tank t;
+    t.prepare(kFs, 48);
+    apply(t, s);
+    for (int pass = 0; pass < 2; ++pass) {
+        if (pass == 1) t.reset(); // a restart: must behave like power-up
+        const Stereo o = render(t, sk.channels[0], 48);
+        // Chords every 0.8 s from 1.4 s (tools/make_stimulus.py skank()).
+        const double c1 = peakIn(o, 1.4, 0.8);
+        const double later = std::max({peakIn(o, 2.2, 0.8), peakIn(o, 3.0, 0.8), peakIn(o, 3.8, 0.8)});
+        std::snprintf(msg, sizeof msg,
+                      "First-hit level, 04_skank %s: chord 1 peaks %.1f dBFS, chords 2-4 %.1f (limit +1 dB)",
+                      pass == 0 ? "after power-up" : "after reset()", c1, later);
+        check(c1 <= later + 1.0, msg);
+    }
+    // 02_hits: the first -6 dBFS snare vs the same snare after a warm-up
+    // (the file played once before), wet peak.
+    {
+        const Buf& h = hits.channels[0];
+        const Stereo cold = renderWith(s, h);
+        Buf twice(h.size() * 2);
+        std::copy(h.begin(), h.end(), twice.begin());
+        std::copy(h.begin(), h.end(), twice.begin() + std::ptrdiff_t(h.size()));
+        const Stereo warm = renderWith(s, twice);
+        const double first = peakIn(cold, 1.0, 1.0), again = peakIn(warm, double(h.size()) / kFs + 1.0, 1.0);
+        std::snprintf(msg, sizeof msg,
+                      "First-hit level, 02_hits: first snare %.1f dBFS after power-up vs %.1f warm (%+.1f dB; 0 .. -1)",
+                      first, again, first - again);
+        check(first <= again + 0.1 && first >= again - 1.0, msg);
+    }
+}
+
 // Level stays put on quiet sustained material too (ADR 0022: no loudness
 // cue): steady noise ~ -25 dBFS RMS, a pad-like input that the saturators
 // hardly squash, so a fixed makeup tuned on hits would make it louder.
@@ -1506,7 +1564,7 @@ int main(int argc, char** argv)
     };
     const T tests[] = {{"blocks", buildingBlocks}, {"loop", loopMagnitude},       {"attitude", attitudeLevels},
                        {"drive", driveSweep},      {"drive-audibility", driveAudibility},
-                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial},
+                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit},
                        {"drive-held", driveLevelHeld}, {"audible", audibleAtDriveZero}, {"alias", aliasing},
                        {"tone", tone},             {"morph", morphClickFree},     {"determinism", determinism},
                        {"howl", howl},             {"stability", stabilityGrid},  {"performance", performance}};
