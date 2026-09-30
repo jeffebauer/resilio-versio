@@ -122,6 +122,19 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
     excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
     excGate_  = drive::dbToGain(2.0f * drive::kExcGateDb); // a power
+    {
+        const float tick = float(kControlInterval) / sampleRate;
+        susFastCoeff_  = 1.0f - std::exp(-tick / drive::kSusFastSeconds);
+        susSlowCoeff_  = 1.0f - std::exp(-tick / drive::kSusSlowSeconds);
+        susPeakRelease_ = std::exp(-tick / drive::kSusSlowSeconds);
+        susUpCoeff_    = 1.0f - std::exp(-tick / drive::kSusUpSeconds);
+        susLetGoCoeff_ = 1.0f - std::exp(-tick / drive::kSusLetGoSeconds);
+        susDownCoeff_  = 1.0f - std::exp(-tick / drive::kSusDownSeconds);
+        susFillCoeff_  = 1.0f - std::exp(-tick * 13.8f / map::decayT60Seconds(0.5f)); // DECAY sets it (updateBaseSettings)
+        // Power ratios from dB, as above.
+        susHeldRatio_  = drive::dbToGain(-2.0f * drive::kSusHeldDropDb);
+        susTarget_     = drive::dbToGain(2.0f * drive::kSusTargetDb);
+    }
     clatDelay_ = std::clamp(int(splash::kClatterSideMs * 0.001f * sampleRate + 0.5f), 1, int(kClatterSideMax));
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
@@ -172,6 +185,9 @@ void Tank::reset()
     // of a skank peaked ~3 dB over the rest: its attack reached the Springs
     // before the first control tick had heard it). One tick later it reads.
     excTrimFrom_ = excTrimTo_ = drive::dbToGain(-drive::kExcMaxDb);
+    susFast_ = susWet_ = susFill_ = susFillIn_ = susFed_ = susHeld_ = susLn_ = susAim_ = susPeak_ = susPeakEnv_ = 0.0f;
+    susGain_ = 1.0f;
+    inTrimFrom_ = inTrimTo_ = excTrimTo_;
     clatBuf_.fill(0.0f);
     clatPos_ = 0;
     compDrive_ = -1.0f;
@@ -262,9 +278,11 @@ void Tank::controlTick(bool snap)
     splash_.setTankLevel(std::sqrt(levelMs_) * splashAmt);
     // Excitation trim (M8, DriveVoicing.h): slow band / full power of the
     // driven input -> input trim, held below the gate, ramped over the tick.
+    const float tickIn = excAccBroad_ * (1.0f / float(kControlInterval)); // raw input power, last tick
     {
         constexpr float kInv = 1.0f / float(kControlInterval);
-        excBroad_ += excCoeff_ * (excAccBroad_ * kInv - excBroad_);
+        excBroad_ += excCoeff_ * (tickIn - excBroad_);
+        susFast_ += susFastCoeff_ * (tickIn - susFast_);
         excBand_ += excCoeff_ * (excAccBand_ * kInv - excBand_);
         excAccBroad_ = excAccBand_ = 0.0f;
         constexpr float kMaxLog = drive::kExcMaxDb * (2.302585093f / 20.0f);
@@ -276,6 +294,54 @@ void Tank::controlTick(bool snap)
         }
         excTrimFrom_ = snap ? trim : excTrimTo_;
         excTrimTo_   = trim;
+    }
+    // Sustain trim (M8, DriveVoicing.h): while the input is held, ease the
+    // Springs' input down so the wet's peaks, where the limiter reads them,
+    // sit no higher than kSusTargetDb (at DRIVE 0; DRIVE's heard gain rides
+    // on top, ADR 0033); let go as soon as it isn't held.
+    // Feed-forward, so it can't hunt: the tank's build-up gain K for this
+    // sound = the wet's peak power over what went into the Springs (the raw
+    // input x the Sustain trim squared, lagged the way the tank fills:
+    // kSusSlowSeconds on both, plus the tank's own fill time on the input
+    // side). K doesn't move with the trim, only with the sound and the
+    // settings, so the trim that lands the peaks on the target is read off it.
+    {
+        // The wet's peak envelope: the last tick's peak, or the envelope
+        // released over kSusSlowSeconds (a tick is 0.7 ms, far shorter than
+        // a low note's cycle: the envelope holds its peaks between them).
+        susPeakEnv_ = std::max(susPeak_, susPeakEnv_ * susPeakRelease_);
+        susPeak_    = 0.0f;
+        // DRIVE's heard gain divided out (ADR 0033): the Springs' own level,
+        // so DRIVE's few extra dB stay a deliberate throw, not trimmed away.
+        const float pk2 = susPeakEnv_ * susPeakEnv_ * (invHeard * invHeard);
+        susFill_ += susFillCoeff_ * (susGain_ * susGain_ * tickIn - susFill_); // what the tank has been fed, as it fills
+        susFillIn_ += susFillCoeff_ * (tickIn - susFillIn_);           // the same, untrimmed
+        susFed_ += susSlowCoeff_ * (susFill_ - susFed_);
+        susWet_ += susSlowCoeff_ * (pk2 - susWet_);
+        const bool held = excBroad_ > excGate_ && susFast_ >= susHeldRatio_ * excBroad_;
+        susHeld_ = held && susOn_ ? susHeld_ + float(kControlInterval) / sampleRate_ : 0.0f;
+        if (susHeld_ >= drive::kSusOnsetSeconds) {
+            constexpr float kMaxLn = drive::kSusMaxDb * (2.302585093f / 20.0f);
+            // Peaks^2 with a trim t = K x t^2 x (the input, as the tank fills
+            // with it), K = wet / fed: t^2 = target^2 / (K x in). The input's
+            // fill-time level, not the slow one: on a swell the trim keeps up.
+            const float k    = susWet_ / std::max(susFed_, 1.0e-12f);
+            const float want = std::clamp(0.5f * std::log(susTarget_ / std::max(k * susFillIn_, 1.0e-12f)), -kMaxLn, 0.0f);
+            // Steady band: within +-kSusSteadyDb of where it should be, the
+            // trim stays put (K wanders a little as a held note drifts past
+            // the tank's modes; following it read as a slow wobble).
+            constexpr float kBand = drive::kSusSteadyDb * (2.302585093f / 20.0f);
+            if (want < susLn_ - kBand) susAim_ = want; // outside the band: aim at the target itself
+            else if (want > susLn_ + kBand) susAim_ = want;
+            susLn_ += (susAim_ < susLn_ ? susDownCoeff_ : susUpCoeff_) * (susAim_ - susLn_);
+        } else {
+            susLn_ -= susLetGoCoeff_ * susLn_;
+            if (susLn_ > -1.0e-6f) susLn_ = 0.0f; // let go all the way (and no denormals)
+            susAim_ = 0.0f;
+        }
+        susGain_    = susLn_ < 0.0f ? std::exp(susLn_) : 1.0f;
+        inTrimFrom_ = snap ? excTrimTo_ * susGain_ : inTrimTo_;
+        inTrimTo_   = excTrimTo_ * susGain_;
     }
     // Jolt on a (control rate): after the detune, scaled per Spring like the
     // Loop-delay Jolt (splash::kJoltSpringScale, M8), clamped below.
@@ -423,6 +489,16 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     // the Howl zone's movement (ADR 0019), both on the same L-modulation hook.
     base.modDepth         = antires::microModDepth(base.loopDelaySeconds) + antires::kHowlModDepth * base.howl;
     base.lfoDepth         = antires::kHowlLfoDepth * base.howl;
+    // Sustain trim: the tank's fill time (its power builds and dies with
+    // T60 / 13.8, 60 dB in T60), for the input side of K (DriveVoicing.h).
+    susFillCoeff_ = 1.0f - std::exp(-float(kControlInterval) * 13.8f / (sampleRate_ * base.t60Seconds));
+    // ... and it moves down at no more than twice the rate the tank fills: a
+    // long tail fills slowly, and its first echoes (which answer at once)
+    // would otherwise read as a full tank and trim a held sound too far,
+    // then let it back up over seconds (a slow swell at DECAY max).
+    susDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
+                                    / (sampleRate_ * std::max(drive::kSusDownSeconds,
+                                                              drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
     activeStages_ = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
     // line their first echoes up on it (1 Spring = A alone, unchanged).
@@ -545,10 +621,10 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // The Kick's Loop feed is divided by the level DRIVE adds on the
         // Springs' output (heardGain_), so a Kick stays the same size at any
         // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
-        const float excStep = (excTrimTo_ - excTrimFrom_) * (1.0f / float(kControlInterval));
+        const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
         for (int i = 0; i < n; ++i) {
-            const float x  = tilt_.process(driven[i]) * (excTrimFrom_ + excStep * float(tick_ + i));
+            const float x  = tilt_.process(driven[i]) * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
             mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
         }
@@ -646,6 +722,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // lets through is caught by a soft clip: identity up to the knee,
             // then a smooth curve that holds at the threshold T (softLimit).
             const float peak = std::max(std::fabs(wl), std::fabs(wr));
+            susPeak_ = std::max(susPeak_, peak); // Sustain trim: the peaks the limiter reads
             limitEnv_ = std::max(peak, limitEnv_ * limitRelease_);
             const float gainTarget = limitEnv_ > kLimitKnee ? kLimitKnee / limitEnv_ : 1.0f;
             if (gainTarget < limitGain_) limitGain_ += limitAttack_ * (gainTarget - limitGain_);

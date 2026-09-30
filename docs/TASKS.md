@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 1 Oct 2026 (session 5: SPLASH/DRIVE merged, release firmware ready; your bipolar WOBBLE notes in)
+**Last updated:** 1 Oct 2026 (session 5: SPLASH/DRIVE merged, release firmware ready; your bipolar WOBBLE notes in; Sustain trim prototype ready to listen)
 
 | Milestone | State |
 |---|---|
@@ -28,10 +28,11 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Flash `dist/resilio_versio_release_b3e5ac3.bin` and do the click check (§3)
 - [ ] Plugin install of `b3e5ac3`: tell Claude when Ableton is closed
 
-### 1b. Pads clip the output · being fixed (cloud session)
+### 1b. Pads clip the output · prototype ready to listen
 - [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
 - [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
-- [ ] **Start the cloud session** (claude.ai/code on the repo): "Follow docs/briefs/sustain-trim.md on main. Work on branch proto/sustain-trim and push it; don't merge to main." Then tell Claude, who renders the page with your real pad added
+- [x] **Cloud session done** (1 Oct): branch `proto/sustain-trim` (ADR 0034, proposed). While a sound is *held*, the tank measures how loud it's building and eases the springs' input down just enough to stay under the output limiter. Hits, skank and the Kick come out exactly as before; tails, DECAY and the Howl untouched. Desktop: the synthetic pad, drone and organ at −6 dBFS no longer touch the limiter at your settings (was up to 4–7 dB). Found: the harsh "driven" sound is the limiter's gain wobbling inside each low cycle, not its soft clip (a fix is proposed, not built)
+- [ ] **Listen:** tell Claude, who renders the page on the Mac with your real pad added (A = today, B = the trim; pad, drone, hits, skank; 2 and 3 Springs, TENSION 0.8). Listen for: is the pad still harsh? does B's pad or drone pump (swell and dip while held)? do hits and skank sound the same? is the held sound now too quiet in the reverb?
 
  · next round after the SPLASH/DRIVE merge
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register

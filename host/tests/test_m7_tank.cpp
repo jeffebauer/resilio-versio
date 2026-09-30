@@ -59,6 +59,7 @@ struct Settings {
     float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.0f, tone = 0.5f, tension = 0.5f;
     int   att = 1, springs = 1;
     bool  clatterOn = true, joltOn = true; // Tank::setSplashParts (clatterOn: the Splash's sound, Clang + Bite + Clatter)
+    bool  sustainOn = true;                // Tank::setSustainTrimEnabled
 };
 
 struct Out {
@@ -82,6 +83,7 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSplashParts(s.clatterOn, s.joltOn);
+    t.setSustainTrimEnabled(s.sustainOn);
     Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
@@ -526,6 +528,13 @@ void splashAtSendLevel()
 // frequency of the 700-1400 Hz band, 3-8.9 s, in cents re its median; p95
 // (peak) of |cents|. (After the tone stops the tail is several Loop modes
 // near 1 kHz beating, so a single pitch is not defined there.)
+// Measured with the Sustain trim off (M8, ADR 0034): this reads WOBBLE, and
+// the reading depends on the tank's level. The trim eases this held tone
+// 1-3 dB down at DECAY 1, and a quieter tank reads more cents here with or
+// without it: main (b3e5ac3) reads 4.2 cents at DECAY 1, WOBBLE 0.5 on this
+// tone and 5.5 on the same tone 6 dB quieter (the LoopSat's quiet-tail fade,
+// AntiRes.h, lets the Loop ring more freely). With the trim on it reads
+// 5.5-6 (printed as INFO below).
 struct Pitch {
     double p95 = 0, peak = 0;
 };
@@ -575,6 +584,7 @@ void wobbleOnHeldTones()
             s.springs = 0;
             s.splash  = 0.0f;
             s.wobble  = ws[i];
+            s.sustainOn = false;
             const Pitch p = pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs));
             c[di][i] = p.p95;
             std::printf("  W%.2f %5.1f (%5.1f)", ws[i], p.p95, p.peak);
@@ -593,6 +603,19 @@ void wobbleOnHeldTones()
     std::snprintf(msg, sizeof msg, "Drift (WOBBLE 0.5): p95 %.1f / %.1f / %.1f cents (< 5: held chords in tune)", c[0][2],
                   c[1][2], c[2][2]);
     check(driftOk, msg);
+    {
+        std::printf("INFO  Drift (WOBBLE 0.5) with the Sustain trim on:");
+        for (int di = 0; di < 3; ++di) {
+            Settings s;
+            s.drive   = rv::spec(rv::ParamId::Drive).defaultValue;
+            s.decay   = ds[di];
+            s.springs = 0;
+            s.splash  = 0.0f;
+            s.wobble  = 0.5f;
+            std::printf(" %.1f", pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs)).p95);
+        }
+        std::printf(" cents at DECAY 0 / 0.5 / 1 (a quieter tank reads more here, see above)\n");
+    }
     std::snprintf(msg, sizeof msg,
                   "Warble (WOBBLE 1): p95 %.1f / %.1f / %.1f cents (>= 10 at DECAY 0, >= 25 at noon and max: clearly out of "
                   "tune), rising through 0.5 -> 0.75 -> 1",

@@ -235,6 +235,65 @@ constexpr float kExcRefShare  = 0.4f;
 constexpr float kExcMaxDb     = 6.0f;
 constexpr float kExcGateDb    = -60.0f;
 
+// ---- Sustain trim (M8, owner, hardware, 1 Oct 2026; ADR 0034) ----------------
+// A held sound (pad, drone, organ) keeps adding to what the Tank is still
+// ringing with, so the springs end up louder than the source: a low-mid pad
+// at -6 dBFS peak drove the wet 1-4 dB over its own peak, into the output
+// limiter (red LEDs, "sounds overdriven ... as if I have the drive turned way
+// up"). The Excitation trim above can't help: it fixes which band the input
+// sits in, not how long it has been held. The owner picked "the tank tames
+// itself on held sounds": hits keep their punch, only pads and drones are
+// trimmed.
+//
+// How (all on the control grid: a handful of one-poles, one exp and one log
+// per tick; per sample only a max() on the peak the limiter already reads):
+// 1. Is the input held? The raw input's fast power (kSusFastSeconds) stays
+//    within kSusHeldDropDb of its slow power (the Excitation trim's
+//    kExcSeconds follower) for kSusOnsetSeconds. A snare, a rimshot or a
+//    skank chord falls away faster than that and never counts as held, so
+//    hits and stabs come out bit for bit as before.
+// 2. How loud will the tank get? The Tank measures its own build-up gain
+//    for this sound, K = the wet's peak power, where the limiter reads it
+//    (after the pickups and the shelf; DRIVE's heard gain divided out, so
+//    DRIVE's deliberate few dB, ADR 0033, ride on top), over what went into
+//    the Springs (the raw input x the Sustain trim squared, lagged the way
+//    the tank fills, T60 / 13.8), both over kSusSlowSeconds. K depends on
+//    the sound and the settings (TENSION's bump, SPRINGS, TONE, DECAY), not
+//    on the trim, so the trim that puts the peaks on kSusTargetDb is read
+//    straight off it: t^2 = target^2 / (K x input). Feed-forward: it cannot
+//    hunt the way a feedback compressor on the wet would.
+// While held, the trim eases the Springs' *input* down (after Tilt and the
+// Excitation trim, before the Loops; never the wet, the Kick's feed or the
+// Clatter), only the part of the held sound that would push the peaks past
+// the target: a held sound that stays under it is untouched. It moves down
+// over kSusDownSeconds (at long DECAYs no faster than kSusDownPerFill x the
+// tank's fill time), back up over kSusUpSeconds, and sits still while it is
+// within kSusSteadyDb of where it should be (K wanders a little as a held
+// note beats against the tank's modes; following that read as a wobble). As
+// soon as the input stops being held (it falls away or goes silent) the trim
+// lets go over kSusLetGoSeconds, so the next hit arrives at full strength.
+// A ringing tail is never touched (only new input is trimmed), so a tail
+// cannot pump, DECAY's tail length is unchanged, and the Howl (which feeds
+// itself) is as loud as before. At most kSusMaxDb.
+// Target: -7 dBFS peaks, 5.3 dB under the limiter's knee (0.82, -1.7 dBFS):
+// the pad, drone and organ at -6 dBFS peak then never reach the limiter at
+// the owner's settings (worst -1.9 dBFS: the organ's first 0.3 s, which is
+// let through like a hit). -6 let the drone's swell reach it (0.7 dB); lower
+// targets trim moderate held tones that never reach the limiter (test_drive's
+// wet-vs-material spread). Measurements: docs/m8-tuning-backlog.md
+// "Sustain trim".
+constexpr float kSusFastSeconds   = 0.02f;
+constexpr float kSusHeldDropDb    = 6.0f;
+constexpr float kSusOnsetSeconds  = 0.3f;
+constexpr float kSusSlowSeconds   = 0.3f;
+constexpr float kSusTargetDb      = -7.0f;
+constexpr float kSusDownSeconds   = 0.1f;
+constexpr float kSusDownPerFill   = 0.5f;
+constexpr float kSusSteadyDb      = 1.0f;
+constexpr float kSusUpSeconds     = 2.0f;
+constexpr float kSusLetGoSeconds  = 0.05f;
+constexpr float kSusMaxDb         = 12.0f;
+
 // Output pickup high-pass (also removes DC made by the asymmetric clip).
 constexpr float kOutHpHz = 35.0f;
 // DC blocker at the end of DriveIn (asymmetric saturators make DC).

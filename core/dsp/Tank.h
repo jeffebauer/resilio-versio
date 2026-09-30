@@ -32,6 +32,13 @@
 // bright material comes back about as loud as in-band material. It trims
 // only new input (never a ringing tail) and holds in silence.
 //
+// Sustain trim (M8, ADR 0034, DriveVoicing.h): while the input is held (a
+// pad, a drone; never a hit), the Tank reads its own build-up gain for the
+// sound (the wet's peaks, where the limiter reads them, over what went into
+// the Springs) and eases the Springs' input down just enough that the peaks
+// stay at -7 dBFS, under the limiter. Same place as the Excitation trim (one
+// ramp, the product of the two); lets go as soon as the sound isn't held.
+//
 // DRIVE (ADR 0014, 0022, 0033; curves in DriveVoicing.h) is the INPUT: one
 // input gain G (0 -> +24 dB) that the Splash hears first, then DriveIn's
 // saturators (G x the ATTITUDE's voicing offset), plus a "push" that makes
@@ -214,6 +221,12 @@ public:
     const dsp::Wobble&    transport() const { return transport_; }
     // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
     float excitationTrim() const { return excTrimTo_; }
+    // M8 Sustain trim now in effect (linear, 1 = none; DriveVoicing.h), for tests.
+    float sustainTrim() const { return susGain_; }
+    // Test hook (not a panel control): false = no Sustain trim (it stays at
+    // 1), so a test can measure something else on held sounds at the level
+    // they had before it (e.g. WOBBLE's pitch). Default true.
+    void setSustainTrimEnabled(bool on) { susOn_ = on; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -307,6 +320,16 @@ private:
     std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
     float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
     float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
+    // M8 Sustain trim (DriveVoicing.h "Sustain trim"): held detector, the
+    // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);
+    // the Springs' input trim ramped per tick is Excitation x Sustain
+    // (inTrimFrom_ -> inTrimTo_).
+    float susFast_ = 0.0f, susWet_ = 0.0f, susFill_ = 0.0f, susFillIn_ = 0.0f, susFed_ = 0.0f, susHeld_ = 0.0f, susLn_ = 0.0f, susAim_ = 0.0f, susGain_ = 1.0f;
+    float susPeak_ = 0.0f, susPeakEnv_ = 0.0f, susPeakRelease_ = 0.0f; // the wet's peak (limiter input): tick, envelope
+    float susFastCoeff_ = 0.0f, susSlowCoeff_ = 0.0f, susFillCoeff_ = 0.0f, susDownCoeff_ = 0.0f, susUpCoeff_ = 0.0f, susLetGoCoeff_ = 0.0f;
+    float susHeldRatio_ = 0.25f, susTarget_ = 1.0f;
+    bool  susOn_ = true; // test hook (setSustainTrimEnabled)
+    float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
     std::array<float, kClatterSideMax> clatBuf_{};
