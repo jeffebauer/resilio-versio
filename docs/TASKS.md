@@ -71,7 +71,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play: **ready now, see 3g**
 
 ### 3g. Play the real firmware on the Versio (≈20 min, 30 Sep)
-- Flash **`dist/resilio_versio_release_e2ff5a7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
+- Flash **`dist/resilio_versio_release_e618e12.bin`** (= the `ledfix` build you tested; `e2ff5a7` is the same without the LED fix) (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
 - It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031), and run 12's CPU trim (built from `e2ff5a7`; the older `3a790f7` build works too). SPLASH is still today's version (round 3 not built yet)
 - [x] In L only (30 Sep): **both** input LEDs light. Expected: the Versio's jacks copy In L to In R when R is unpatched
 - [x] **LED order** (30 Sep): In R only lights only the In R LED; In L lights both (the jacks copy L to R). Correct
