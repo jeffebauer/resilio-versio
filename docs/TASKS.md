@@ -32,7 +32,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
 - [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
 - [x] Built in the cloud (1 Oct): held sounds no longer reach the limiter at your settings (synthetic pad, drone, organ); hits, skank and the Kick identical to today; the Howl untouched
-- [ ] **Listen (≈10 min):** open `renders/proto_sustain_trim/index.html`. A = today, B = the trim, 2 and 3 Springs. Rows: your real pad (TENSION 0.8, and TENSION full + TONE fully left), a synthetic pad and drone, hits, skank. Is the overdriven harshness gone? Any pumping (the level dipping and swelling while the pad holds)? Do hits and skank sound the same? Note: at TENSION full + TONE fully left, your pad still touches the limiter on the right channel in B
+- [x] **Listened (1 Oct): B (the trim) in every panel**: hits, skank, synthetic pad and drone, and your real pad at both settings, 2 and 3 Springs
 - Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
 
  · next round after the SPLASH/DRIVE merge
