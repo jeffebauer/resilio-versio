@@ -608,13 +608,13 @@ int main()
             }
             TransmitLine(buf, size_t(p - buf));
 
-            if (r.max > 0.65f) everExceeded = true; // SPEC §5 target: <= 65% worst case
+            if (r.max > 0.70f) everExceeded = true; // SPEC §5 target: <= 70% peak worst case (ADR 0030 amendment)
         }
 
         // LED_0: progress through the corner table (brightness = index / count).
         const float v = float(gCurrentCorner) / float(kNumCorners - 1);
         hw.SetLed(DaisyVersio::LED_0, v, v, v);
-        // LED_3: red once any corner has exceeded the SPEC §5 65% target.
+        // LED_3: red once any corner has exceeded the SPEC §5 70% target.
         hw.SetLed(DaisyVersio::LED_3, everExceeded ? 1.0f : 0.0f, 0.0f, 0.0f);
         hw.UpdateLeds();
         System::Delay(20);

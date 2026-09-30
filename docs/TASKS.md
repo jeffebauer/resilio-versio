@@ -6,7 +6,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target 65 %) |
+| M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target now **70 %**, your call 30 Sep: ~7 points for new sound) |
 | Real firmware on the Versio | **Playing.** Keep `dist/resilio_versio_release_e618e12.bin` on it (knob layout, output fix, LED meters without flicker) |
 | M8 sound | **In progress:** SPLASH round 4 and the "one smooth arc" tank are being built for you to hear |
 | M2 Ableton check | After the next plugin install |
@@ -26,6 +26,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Why: last round the Wellspring won every panel. The pictures showed its echoes are smooth arcs and ours kink at ~3.3 kHz ([spectrograms](prototypes/spring-signature/))
 
 ### 3. Play the Versio
+- **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - Tip while SPLASH is today's version: SPLASH **near max** and the SoundStage's **main Level** up until the loudest hits just touch **amber** on the input LEDs (today's SPLASH fades out on quiet sends; round 4 fixes that)
 - [ ] Optional, when convenient: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -48,7 +49,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Bipolar WOBBLE (your idea, 30 Sep; next prototype after the SPLASH/DRIVE build):** left of noon = smooth random wow + flutter (never repeats), noon = still (small dead zone for the hardware knob), right of noon = sine LFO strength up to today's wild top (you keep the extreme ceiling). Today the top end is 90 % one steady sine, which is why it can sound same-same. CPU ≈ +0.1–0.2 %. Touches ADR 0008, SPEC's WOBBLE row, WOBBLE tests; the random side includes your pick from the hanging-note page (springs drift together at low amounts), and each side must be clearly audible across its range (you found 9 o'clock and noon nearly the same today)
 - **Big Knob TONE:** TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump; cheap on CPU. After SPLASH and the tank work ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8)
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
-- **CPU headroom:** 63 % peak against a 65 % target leaves ~1 point. If the new tank needs more, raising the target (say 72 %) is your call, with an ADR ([ADR 0030](adr/0030-fitting-the-versio-cpu.md) explains the 65 %)
 
 ## Waiting on Claude (no action needed)
 - **Running:** one-smooth-arc prototype page
@@ -72,6 +72,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **CPU target raised to 70 % peak** (your call; ADR 0030 amendment, SPEC v1.0.20): room for the new sound, with a click check on the module for every release
 - 30 Sep 2026: **Hanging note at WOBBLE ~9 o'clock:** B ("springs drift together at low WOBBLE") in every panel. Folded into the bipolar WOBBLE prototype. Also noted: WOBBLE 9 o'clock vs noon sounds nearly the same (today's lower half is only 0–3 cents)
 - 30 Sep 2026: **WOBBLE ceiling:** keep the wilder top end (not the Magneto's ~8 cents). Asked how random it is: today it's sine + one smooth random line at a speed tied to the knob; at the top it's 90 % sine, hence "same-same"
 - 30 Sep 2026: **SPLASH round 4 listened:** C2 on longer sounds and CLEAN hits, T2 on hits in DRIVEN/KICKED. Found by ear and measured: DRIVE shortens DRIVEN/KICKED tails (the saturator inside the loop). Decided: DRIVE = INPUT, partly louder, drives only in/out
