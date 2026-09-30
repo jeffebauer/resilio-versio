@@ -102,6 +102,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - The "ringing" our test flagged on a tight, bright KICKED tank is real but **inaudible** (75–85 dB under the tail): the drive inside the tank makes a faint overtone that lines up with one of the tank's own high notes. Fix found, **no CPU cost**: that drive fades out once the tail is too quiet to be bent by it
 - [ ] **Listen:** `renders/proto_tight_ringing/index.html`: **A** today, **B** level fade, **C** bend fade (Claude's pick). Only question: do KICKED's loud hits, grit and tail ends sound **unchanged** with C?
 
+### 3i. Dub signal-chain brief (30 Sep)
+- Your chat brief is now [dub-spring-reference.md](dub-spring-reference.md), with Claude's notes (§8). Agreed so far: gate stays KICK; Big Knob TONE (steeper low cut + bump on TONE's right side) is a strong, cheap idea for after SPLASH round 3 and the sweet tank; outer feedback loop and Howl in DRIVEN parked
+- [ ] **Decide in SPLASH round 3:** when you push DRIVE, should the tail get **louder** (like a real INPUT knob or a desk send, so an envelope into DRIVE's CV becomes a dub throw) or stay level-matched as today?
+
 ### 4. M2 Ableton check (≈15 min)
 - **Doc:** [m2-ableton-check.md](m2-ableton-check.md) · MIDI clip: `test_audio/midi/kicks_16ths.mid`
 - [ ] **Rescan plug-ins first** and use a fresh instance (see the top of this page). The second knob is now TENSION, not BOING
