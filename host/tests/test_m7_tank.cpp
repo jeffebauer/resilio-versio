@@ -528,7 +528,7 @@ void splashAtSendLevel()
 // frequency of the 700-1400 Hz band, 3-8.9 s, in cents re its median; p95
 // (peak) of |cents|. (After the tone stops the tail is several Loop modes
 // near 1 kHz beating, so a single pitch is not defined there.)
-// Measured with the Sustain trim off (M8, ADR 0034): this reads WOBBLE, and
+// Measured with the Sustain trim off (M8, ADR 0035): this reads WOBBLE, and
 // the reading depends on the tank's level. The trim eases this held tone
 // 1-3 dB down at DECAY 1, and a quieter tank reads more cents here with or
 // without it: main (b3e5ac3) reads 4.2 cents at DECAY 1, WOBBLE 0.5 on this

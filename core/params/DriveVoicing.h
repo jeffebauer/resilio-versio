@@ -235,7 +235,7 @@ constexpr float kExcRefShare  = 0.4f;
 constexpr float kExcMaxDb     = 6.0f;
 constexpr float kExcGateDb    = -60.0f;
 
-// ---- Sustain trim (M8, owner, hardware, 1 Oct 2026; ADR 0034) ----------------
+// ---- Sustain trim (M8, owner, hardware, 1 Oct 2026; ADR 0035) ----------------
 // A held sound (pad, drone, organ) keeps adding to what the Tank is still
 // ringing with, so the springs end up louder than the source: a low-mid pad
 // at -6 dBFS peak drove the wet 1-4 dB over its own peak, into the output

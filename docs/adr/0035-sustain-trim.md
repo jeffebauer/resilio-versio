@@ -1,4 +1,4 @@
-# 0034 — The tank tames itself on held sounds (Sustain trim)
+# 0035 — The tank tames itself on held sounds (Sustain trim)
 
 **Status:** Proposed, 1 Oct 2026 (prototype on branch `proto/sustain-trim`, waiting for the owner's listen). Numbers: `core/params/DriveVoicing.h` "Sustain trim"; measurements: `docs/m8-tuning-backlog.md` "Sustain trim". On acceptance: SPEC changelog line (§4.8 output stage, §4.9 gain staging).
 

@@ -1,4 +1,4 @@
-// Sustain trim tests (M8, ADR 0034, core/params/DriveVoicing.h "Sustain trim").
+// Sustain trim tests (M8, ADR 0035, core/params/DriveVoicing.h "Sustain trim").
 // Dependency-free: prints PASS/FAIL lines, returns nonzero on any failure.
 //
 // The owner's pad (1 Oct 2026, release b3e5ac3 on the Versio): a low-mid

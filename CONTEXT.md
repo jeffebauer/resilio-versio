@@ -25,7 +25,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Micro-mod floor** | Always-on tiny Loop delay modulation, active even at WOBBLE 0. Part of AntiRes. |
 | **Drift** | WOBBLE lower half: subtle, felt-not-heard pitch movement; held chords stay in tune (ADR 0008). |
 | **Warble** | WOBBLE top quarter: obvious worn-tape pitch wobble, clearly out of tune on held chords (ADR 0008). |
-| **Sustain trim** | Held sounds only (pads, drones, never hits): eases the Springs' input down just enough that the wet's peaks stay under the output limiter. Tails and the Howl untouched (ADR 0034, proposed). |
+| **Sustain trim** | Held sounds only (pads, drones, never hits): eases the Springs' input down just enough that the wet's peaks stay under the output limiter. Tails and the Howl untouched (ADR 0035, proposed). |
 | **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
 | **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |

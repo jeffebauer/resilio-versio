@@ -102,6 +102,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& s : shelfSplit_) s.setCutoff(kShelfHz, sampleRate);
     limitRelease_ = std::exp(-1.0f / (kLimitReleaseS * sampleRate));
     limitAttack_  = 1.0f - std::exp(-1.0f / (kLimitAttackS * sampleRate));
+    limitHoldSamples_ = int(kLimitHoldS * sampleRate);
     fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
     morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
     driveIn_.prepare(sampleRate);
@@ -192,6 +193,7 @@ void Tank::reset()
     clatPos_ = 0;
     compDrive_ = -1.0f;
     limitEnv_  = 0.0f;
+    limitHold_ = 0;
     limitGain_ = 1.0f;
     numPendingKicks_ = 0;
     tick_     = 0;
@@ -714,7 +716,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             wr = lr + kShelfGain * (wr - lr);
 
             // Safety limiter (stereo-linked). The envelope jumps to each new
-            // peak and releases slowly; the gain glides down to knee/envelope
+            // peak, holds 30 ms (Tank.h kLimitHoldS) and releases slowly; the gain glides down to knee/envelope
             // over ~1 ms and follows the (smooth) release straight back. An
             // instant gain would pin every rising peak flat at the threshold:
             // a corner in the waveform, i.e. a tick per new peak on held tones
@@ -723,7 +725,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // then a smooth curve that holds at the threshold T (softLimit).
             const float peak = std::max(std::fabs(wl), std::fabs(wr));
             susPeak_ = std::max(susPeak_, peak); // Sustain trim: the peaks the limiter reads
-            limitEnv_ = std::max(peak, limitEnv_ * limitRelease_);
+            if (peak >= limitEnv_ * kLimitHoldRefresh) {  // hold (kLimitHoldS)
+                limitEnv_  = std::max(peak, limitEnv_);
+                limitHold_ = limitHoldSamples_;
+            } else if (limitHold_ > 0) {
+                --limitHold_;
+            } else {
+                limitEnv_ = std::max(peak, limitEnv_ * limitRelease_);
+            }
             const float gainTarget = limitEnv_ > kLimitKnee ? kLimitKnee / limitEnv_ : 1.0f;
             if (gainTarget < limitGain_) limitGain_ += limitAttack_ * (gainTarget - limitGain_);
             else limitGain_ = gainTarget;

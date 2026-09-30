@@ -32,7 +32,7 @@
 // bright material comes back about as loud as in-band material. It trims
 // only new input (never a ringing tail) and holds in silence.
 //
-// Sustain trim (M8, ADR 0034, DriveVoicing.h): while the input is held (a
+// Sustain trim (M8, ADR 0035, DriveVoicing.h): while the input is held (a
 // pad, a drone; never a hit), the Tank reads its own build-up gain for the
 // sound (the wet's peaks, where the limiter reads them, over what went into
 // the Springs) and eases the Springs' input down just enough that the peaks
@@ -161,6 +161,15 @@ public:
     // ceiling (test_clicks "limiter pushed"); 0.5 ms keeps up, still click-free.
     static constexpr float kLimitAttackS    = map::kHighsLater ? 0.0005f : 0.001f;
     static constexpr float kLimitReleaseS   = 0.15f;
+    // Hold before release (owner, 1 Oct 2026: limiting on a bass pad "sounds
+    // overdriven, as if DRIVE is way up"). Without a hold the envelope sags
+    // ~0.9 dB between the peaks of a 65 Hz tone, so the gain rides each low
+    // cycle: intermodulation 26-32 dB under the wet, heard as drive. Held
+    // longer than a 40 Hz cycle, and refreshed by any peak within
+    // kLimitHoldRefresh of the envelope, the gain sits still on a steady
+    // tone (-45 to -53 dB) and still releases 30 ms after the loud part ends.
+    static constexpr float kLimitHoldS      = 0.030f;
+    static constexpr float kLimitHoldRefresh = 0.944f; // -0.5 dB
     static constexpr int   kMaxPendingKicks = 16;
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
 
@@ -300,6 +309,7 @@ private:
     float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
     map::MixGains                       mixGains_{1.0f, 0.0f};
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
+    int   limitHold_ = 0, limitHoldSamples_ = 0;
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;
