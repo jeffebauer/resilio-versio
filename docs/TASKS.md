@@ -71,8 +71,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - Afterwards: Claude hands you the real firmware (your knob layout, output fix) to flash and play: **ready now, see 3g**
 
 ### 3g. Play the real firmware on the Versio (≈20 min, 30 Sep)
-- Flash **`dist/resilio_versio_release_3a790f7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
-- It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031). SPLASH is still today's version (round 3 not built yet)
+- Flash **`dist/resilio_versio_release_e2ff5a7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
+- It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031), and run 12's CPU trim (built from `e2ff5a7`; the older `3a790f7` build works too). SPLASH is still today's version (round 3 not built yet)
 - [ ] **LED order:** patch something into **In L only**. The **leftmost** LED should light (and the right pair shows the output). If a different one lights, tell Claude which (a one-line fix)
 - [ ] **Input red:** turn your source up until it starts to distort at the jack: does the input LED go red about there?
 - [ ] **Look:** does amber read as amber, and does the dimmest glow show without flicker?
@@ -203,7 +203,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Done
 
-- 30 Sep 2026: **merged** the overnight work: tail-length measurement fix, LED meters (ADR 0031, SPEC v1.0.18), manual + dub preset drafts (`docs/manual.md`, `docs/presets.md`), new listening pages. All 16 test suites pass. **Release firmware built** (`dist/resilio_versio_release_3a790f7.bin`, 84 % of flash)
+- 30 Sep 2026: **merged** the overnight work: tail-length measurement fix, LED meters (ADR 0031, SPEC v1.0.18), manual + dub preset drafts (`docs/manual.md`, `docs/presets.md`), new listening pages. All 16 test suites pass. **Release firmware built** (`dist/resilio_versio_release_e2ff5a7.bin`, 84 % of flash)
 - 30 Sep 2026: **M3 run 11**: 62 % average, 68 % peak (target peak 65 %)
 
 - 29 Sep 2026: **Earlier first echo** (ADR 0029): loose tank's gap 45 → 32 ms, like your Wellspring; echo spacing unchanged
