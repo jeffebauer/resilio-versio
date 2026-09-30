@@ -40,11 +40,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
-- [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 it's silent. OK?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
-- [ ] **ATTITUDE flip while Howling at max DECAY:** calm into the long (~9 s) tail, or fade within 1–2 s (ADR 0018)?
 - [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
-- [ ] **TENSION on a ringing tail** raises the pitch like tightening a string. Nice, or too much?
 - [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The "Big Knob" idea below would change this side)
 - [ ] **Bright vs dark material:** the reverb comes back a few dB louder on dark, rumbly material. OK, or even it out?
 
@@ -75,6 +72,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **Design answers:** Kick at MIX fully down stays silent (it's part of the reverb); ATTITUDE flip while Howling at max DECAY calms into the long tail (already how it behaves; ADR 0018 wording corrected); TENSION bending the pitch of a ringing tail stays (you like it)
 - 30 Sep 2026: **Smooth arc listened:** still way off the Wellspring (its pew on clicks, rounder, smoother). Measured the cause (a 2–5.5 kHz sweep we lack); started fitting our tank to your recording
 - 30 Sep 2026: **CPU target raised to 70 % peak** (your call; ADR 0030 amendment, SPEC v1.0.20): room for the new sound, with a click check on the module for every release
 - 30 Sep 2026: **Hanging note at WOBBLE ~9 o'clock:** B ("springs drift together at low WOBBLE") in every panel. Folded into the bipolar WOBBLE prototype. Also noted: WOBBLE 9 o'clock vs noon sounds nearly the same (today's lower half is only 0–3 cents)
