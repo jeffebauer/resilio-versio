@@ -151,6 +151,12 @@ Buf snareHits(size_t n, float peak, int count = 4, float spacing = 1.5f)
 }
 
 double db(double p) { return 10.0 * std::log10(p + 1e-30); }
+
+// The level DRIVE adds on purpose (ADR 0033, "partly louder"): the INPUT
+// gain's heard share, dB. 0 at DRIVE 0, +6 dB at DRIVE 1, the same in every
+// ATTITUDE. The DRIVE loudness gates below allow +-2 dB around this curve
+// (the M5 / ADR 0022 +-2 dB, now around the intended rise instead of flat).
+double heardDb(float drive) { return rv::drive::kInputHeard * rv::drive::inputGainDb(drive); }
 double power(const Buf& x, size_t from, size_t to)
 {
     double s = 0;
@@ -415,52 +421,66 @@ void buildingBlocks()
 }
 
 // ---- 1. ATTITUDE loudness match -------------------------------------------------------
+// SPLASH 0 (the drive chain's own level, M5): since ADR 0032 SPLASH's Bite
+// pushes drum hits harder into DRIVEN / KICKED's transducer on purpose (a
+// few dB louder hits there than in CLEAN, which only clangs), printed as INFO
+// at the default SPLASH.
 void attitudeLevels()
 {
     const Buf in = snareHits(size_t(7.0f * kFs), 0.5f);
     for (float drive : {0.0f, 0.5f, 1.0f}) {
-        double lev[3];
+        double lev[3], dflt[3];
         for (int a = 0; a < 3; ++a) {
             Settings s;
             s.drive = drive;
             s.att   = a;
+            dflt[a] = loudness(renderWith(s, in));
+            s.splash = 0.0f;
             lev[a]  = loudness(renderWith(s, in));
         }
+        std::printf("INFO  ATTITUDE loudness, DRIVE %.1f, default SPLASH: CLEAN %.2f / DRIVEN %.2f / KICKED %.2f LUFS\n", drive,
+                    dflt[0], dflt[1], dflt[2]);
         const double lo = std::min({lev[0], lev[1], lev[2]}), hi = std::max({lev[0], lev[1], lev[2]});
         std::snprintf(msg, sizeof msg,
-                      "ATTITUDE loudness, DRIVE %.1f, -6 dBFS snare hits: CLEAN %.2f / DRIVEN %.2f / KICKED %.2f LUFS "
+                      "ATTITUDE loudness, DRIVE %.1f, -6 dBFS snare hits, SPLASH 0: CLEAN %.2f / DRIVEN %.2f / KICKED %.2f LUFS "
                       "(spread %.2f dB, limit +-2 -> 4)",
                       drive, lev[0], lev[1], lev[2], hi - lo);
         check(hi - lo <= 4.0 && std::fabs(lev[0] - lev[1]) <= 2.0 && std::fabs(lev[2] - lev[1]) <= 2.0, msg);
     }
 }
 
-// ---- 2. DRIVE sweep: level steady, THD rising -------------------------------------------
+// ---- 2. DRIVE sweep: level follows the intended rise, THD rising -----------------------
+// Loudness at SPLASH 0 (DRIVE's own level rule, ADR 0033), the default
+// SPLASH's reported: SPLASH's Bite and Clang grow with DRIVE (ADR 0032), so
+// with SPLASH up drum hits get louder with DRIVE than the rule on its own.
 void driveSweep()
 {
     const Buf in = snareHits(size_t(7.0f * kFs), 0.5f);
     const Buf tone = sine(size_t(1.5f * kFs), 250.0f, 0.5f);
     for (int a = 0; a < 3; ++a) {
-        double lev[11], th[11];
+        double lev[11], th[11], dflt1 = 0, dflt0 = 0;
         for (int i = 0; i <= 10; ++i) {
             Settings s;
             s.att   = a;
             s.drive = float(i) / 10.0f;
+            if (i == 0 || i == 10) (i == 0 ? dflt0 : dflt1) = loudness(renderWith(s, in));
+            s.splash = 0.0f;
             lev[i]  = loudness(renderWith(s, in));
             const Buf y = driveInRender(a, s.drive, tone);
             th[i] = thd(y, size_t(0.5f * kFs), size_t(kFs), 250.0f);
         }
-        double lo = 1e9, hi = -1e9, maxDev = 0;
+        double maxDev = 0;
         bool mono = true;
         for (int i = 0; i <= 10; ++i) {
-            lo = std::min(lo, lev[i]);
-            hi = std::max(hi, lev[i]);
-            maxDev = std::max(maxDev, std::fabs(lev[i] - lev[0]));
+            maxDev = std::max(maxDev, std::fabs(lev[i] - lev[0] - heardDb(float(i) / 10.0f)));
             if (i > 0) mono &= th[i] >= th[i - 1] * 0.98;
         }
+        std::printf("INFO  DRIVE 0->1 %s, default SPLASH: loudness %+.2f dB at DRIVE 1 re DRIVE 0\n", kAttName[a], dflt1 - dflt0);
         std::snprintf(msg, sizeof msg,
-                      "DRIVE 0->1 %s: loudness %.2f..%.2f LUFS (max %.2f dB from DRIVE 0, limit 2)", kAttName[a], lo, hi,
-                      maxDev);
+                      "DRIVE 0->1 %s, SPLASH 0: loudness %+.2f / %+.2f / %+.2f dB re DRIVE 0 at .5 / .8 / 1 (intended %+.1f / %+.1f / "
+                      "%+.1f, ADR 0033); max %.2f dB off the curve (limit 2)",
+                      kAttName[a], lev[5] - lev[0], lev[8] - lev[0], lev[10] - lev[0], heardDb(0.5f), heardDb(0.8f),
+                      heardDb(1.0f), maxDev);
         check(maxDev <= 2.0, msg);
         std::snprintf(msg, sizeof msg,
                       "DRIVE 0->1 %s: THD rises monotonically: %.2f / %.2f / %.2f / %.2f / %.2f / %.2f %% at DRIVE 0 / "
@@ -485,10 +505,14 @@ void driveSweep()
 // "Null difference" D(a, b) = energy of (out at DRIVE b - out at DRIVE a)
 // over energy of out at DRIVE a, both channels, whole render (hits + 4 s
 // tail), in dB. -20 dB = the change is a tenth of the signal's amplitude:
-// clearly audible. Also reported level-matched (the DRIVE b render scaled
-// by the gain that best matches DRIVE a): that part cannot be a loudness
-// cue, so it shows the change is character. Settings as ADR 0022: MIX 1,
-// SPRINGS 2, DECAY 0.6, TENSION 0.5, TONE 0.5 (SPLASH 0: DRIVE's own sound).
+// clearly audible. Level-matched = the DRIVE b render scaled by the gain
+// that best matches DRIVE a: that part cannot be a loudness cue, so it
+// shows the change is character. Since ADR 0033 DRIVE also raises the level
+// on purpose (+6 dB at 1), so the ADR 0022 bars apply to the level-matched
+// nulls (the raw ones are reported): DRIVEN / KICKED 0 vs .5 >= -20, KICKED
+// 0 vs 1 >= -6, CLEAN 0 vs 1 <= -15 (a tint). Loudness follows heardDb()
+// within 2 dB. Settings as ADR 0022: MIX 1, SPRINGS 2, DECAY 0.6, TENSION
+// 0.5, TONE 0.5 (SPLASH 0: DRIVE's own sound).
 bool readStimulus(const std::string& name, rv::wav::Audio& out)
 {
     std::string error;
@@ -549,29 +573,29 @@ void driveAudibility()
     for (int att = 0; att < 3; ++att) {
         const float drives[5] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
         Stereo o[5];
-        double lev[5], lo = 1e9, hi = -1e9;
+        double lev[5], dev = 0;
         for (int d = 0; d < 5; ++d) {
             o[d] = run(att, drives[d]);
             lev[d] = loudness(o[d]);
-            lo = std::min(lo, lev[d]);
-            hi = std::max(hi, lev[d]);
+            dev = std::max(dev, std::fabs(lev[d] - lev[0] - heardDb(drives[d])));
         }
         const double n25 = nullDb(o[0], o[1], false), n50 = nullDb(o[0], o[2], false), n100 = nullDb(o[0], o[4], false);
         const double m50 = nullDb(o[0], o[2], true), m100 = nullDb(o[0], o[4], true);
-        bool ok = hi - lo <= 2.0;
+        bool ok = dev <= 2.0;
         const char* want = "";
         if (att == 0) {
-            ok &= n100 <= -15.0; // CLEAN: a gentle tint, never a drive
-            want = "CLEAN stays mild: 0 vs 1 <= -15";
+            ok &= m100 <= -15.0; // CLEAN: a gentle tint, never a drive
+            want = "CLEAN stays mild: matched 0 vs 1 <= -15";
         } else {
-            ok &= n50 >= -20.0 && m50 >= -20.0; // clearly coloured by noon, and not by loudness
-            if (att == 2) ok &= n100 >= -6.0;   // cranked at max
-            want = att == 1 ? "0 vs .5 >= -20" : "0 vs .5 >= -20, 0 vs 1 >= -6";
+            ok &= m50 >= -20.0;               // clearly coloured by noon, and not by loudness
+            if (att == 2) ok &= m100 >= -6.0; // cranked at max
+            want = att == 1 ? "matched 0 vs .5 >= -20" : "matched 0 vs .5 >= -20, 0 vs 1 >= -6";
         }
         std::snprintf(msg, sizeof msg,
                       "DRIVE audibility %s, 02_hits (ADR 0022): null 0 vs .25 / .5 / 1 = %.1f / %.1f / %.1f dB "
-                      "(level-matched .5 / 1: %.1f / %.1f; %s); loudness across DRIVE %.2f dB (limit 2)",
-                      kAttName[att], n25, n50, n100, m50, m100, want, hi - lo);
+                      "(level-matched .5 / 1: %.1f / %.1f; %s); loudness %+.2f dB at DRIVE 1, max %.2f off the "
+                      "ADR 0033 curve (limit 2)",
+                      kAttName[att], n25, n50, n100, m50, m100, want, lev[4] - lev[0], dev);
         check(ok, msg);
     }
 }
@@ -846,28 +870,29 @@ void firstHit()
     }
 }
 
-// Level stays put on quiet sustained material too (ADR 0022: no loudness
-// cue): steady noise ~ -25 dBFS RMS, a pad-like input that the saturators
-// hardly squash, so a fixed makeup tuned on hits would make it louder.
+// Level follows the intended rise on quiet sustained material too (ADR 0022:
+// no loudness cue beyond ADR 0033's +6 dB): steady noise ~ -25 dBFS RMS, a
+// pad-like input that the saturators hardly squash, so a fixed makeup tuned
+// on hits would make it louder.
 void driveLevelHeld()
 {
     const Buf in = noise(size_t(3.0f * kFs), 0.1f, 3u);
     for (int a = 0; a < 3; ++a) {
-        double lev[6], lo = 1e9, hi = -1e9;
+        double lev[6], dev = 0;
         for (int i = 0; i <= 5; ++i) {
             Settings s;
             s.att = a;
             s.drive = float(i) / 5.0f;
             const Stereo o = renderWith(s, in);
             lev[i] = db(power(o.l, size_t(1.5f * kFs), size_t(2.9f * kFs)));
-            lo = std::min(lo, lev[i]);
-            hi = std::max(hi, lev[i]);
+            dev = std::max(dev, std::fabs(lev[i] - lev[0] - heardDb(s.drive)));
         }
         std::snprintf(msg, sizeof msg,
-                      "DRIVE 0->1 %s, steady noise at -25 dBFS RMS: level %.2f / %.2f / %.2f / %.2f / %.2f / %.2f dB "
-                      "(spread %.2f, limit 2)",
-                      kAttName[a], lev[0], lev[1], lev[2], lev[3], lev[4], lev[5], hi - lo);
-        check(hi - lo <= 2.0, msg);
+                      "DRIVE 0->1 %s, steady noise at -25 dBFS RMS: level %+.2f / %+.2f / %+.2f / %+.2f / %+.2f dB re "
+                      "DRIVE 0 at .2 / .4 / .6 / .8 / 1 (intended %+.1f at 1); max %.2f off the ADR 0033 curve (limit 2)",
+                      kAttName[a], lev[1] - lev[0], lev[2] - lev[0], lev[3] - lev[0], lev[4] - lev[0], lev[5] - lev[0],
+                      heardDb(1.0f), dev);
+        check(dev <= 2.0, msg);
     }
 }
 
@@ -902,12 +927,18 @@ void audibleAtDriveZero()
 // over the two limits (rel + 60, abs + 100) is largest. A loud relative
 // reading that sits far under -100 dBFS (noise floor at 15 kHz through a
 // dark band-limit) is not the one that matters.
+// The Tank's wet at DRIVE d comes back heardDb(d) louder on purpose (ADR
+// 0033: +6 dB at DRIVE 1, applied after every saturator), and so does
+// everything in it, the Tank's own float-rounding floor included (~-104
+// dBFS around 30-100 Hz with a 0 dBFS 11-12 kHz tone, at DRIVE 0 already:
+// not aliasing). So for the Tank's wet the absolute floor is read on the
+// DRIVE-0 scale: -100 dBFS + heardDb(DRIVE). The relative limit is unchanged.
 struct AliasResult {
     double worst = -300, atHz = 0, fromHz = 0, absDb = -300, excess = -1e9;
     bool ok = true;
 };
 
-void accumulate(AliasResult& r, const Buf& y, float f0)
+void accumulate(AliasResult& r, const Buf& y, float f0, double absFloorDb = -100.0)
 {
     double at = 0;
     const double rel = worstAliasDb(y, f0, &at);
@@ -920,9 +951,9 @@ void accumulate(AliasResult& r, const Buf& y, float f0)
     // Blackman-Harris coherent gain 0.35875, N/2 for a sine's peak bin.
     const double fundDbfs = db(fundPeak) - 20.0 * std::log10(0.35875 * double(N) / 2.0);
     const double absDb = fundDbfs + rel;
-    const bool good = rel <= -60.0 || absDb <= -100.0;
+    const bool good = rel <= -60.0 || absDb <= absFloorDb;
     r.ok &= good;
-    const double excess = std::min(rel + 60.0, absDb + 100.0);
+    const double excess = std::min(rel + 60.0, absDb - absFloorDb);
     if (excess > r.excess) {
         r.excess = excess;
         r.worst = rel;
@@ -975,9 +1006,9 @@ void aliasing()
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
-            accumulate(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l, f0);
+            accumulate(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l, f0, -100.0 + heardDb(s.drive));
         }
-        report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS", r);
+        report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS (abs floor -100 dBFS + the +6 dB DRIVE adds)", r);
     }
     for (float amp : {1.0f, 0.5f}) {
         AliasResult r;
@@ -991,7 +1022,7 @@ void aliasing()
             s.splash  = 0.0f;
             s.wobble  = 0.0f;
             const Stereo o = renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp));
-            accumulate(r, o.l, f0);
+            accumulate(r, o.l, f0, -100.0 + heardDb(s.drive));
         }
         report(amp == 1.0f ? "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS"
                            : "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at -6 dBFS",
@@ -1278,19 +1309,42 @@ void stabilityGrid()
                         s.decay = d;
                         s.springs = m;
                         s.tension = 0.0f; // loosest tank
-                        const Stereo o = renderWith(s, in);
+                        // Rendered here (not renderWith) to log the output
+                        // limiter's gain per 48-sample block.
+                        rv::Tank tank;
+                        tank.prepare(kFs, 48);
+                        apply(tank, s);
+                        Stereo o{Buf(in.size()), Buf(in.size())};
+                        std::vector<float> limGain(in.size() / 48 + 1, 1.0f);
+                        for (size_t pos = 0; pos < in.size(); pos += 48) {
+                            const int k = int(std::min<size_t>(48, in.size() - pos));
+                            tank.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, k);
+                            limGain[pos / 48] = tank.limiterGain();
+                        }
+                        // True if the limiter pulled anywhere in [from, to).
+                        auto limited = [&](size_t from, size_t to) {
+                            for (size_t b = from / 48; b <= std::min(to / 48, limGain.size() - 1); ++b)
+                                if (limGain[b] < 0.999f) return true;
+                            return false;
+                        };
                         const float pk = std::max(peakAbs(o.l), peakAbs(o.r));
                         worstPeak = std::max(worstPeak, pk);
                         bool good = allFinite(o.l) && allFinite(o.r) && pk < 1.0f;
                         if (!howl) {
                             // Energy after the input stops falls (+1 dB slack), and ends lower.
+                            // A window compared with one the output limiter was
+                            // still pulling down is skipped: the limiter letting
+                            // go reads as rising energy, not a Loop running away
+                            // (since ADR 0033 the wet is up to 6 dB louder at
+                            // DRIVE 1, so full-scale noise at DECAY 1 meets the
+                            // limiter). The "ends lower" check below still holds.
                             const size_t start = input == 0 ? sec / 2 : sec + sec / 2;
                             bool falls = true;
                             for (const Buf* ch : {&o.l, &o.r}) {
                                 double prev = power(*ch, start, start + sec / 2);
                                 for (size_t w = start + sec / 2; w + sec / 2 <= ch->size(); w += sec / 2) {
                                     const double e = power(*ch, w, w + sec / 2);
-                                    if (e > prev * 1.26 && e > 1e-16) falls = false;
+                                    if (e > prev * 1.26 && e > 1e-16 && !limited(w - sec / 2, w)) falls = false;
                                     prev = e;
                                 }
                             }
@@ -1554,6 +1608,65 @@ void performance()
 
 } // namespace
 
+// ---- 2f. DRIVE doesn't shorten the tail (ADR 0033) ---------------------------------------
+// Owner (30 Sep 2026): "the clean signal seems to decay longer than the
+// driven and kicked variants, which feels counter to driving the tanks
+// harder". Cause: ADR 0022's DRIVE push on the LoopSat, removed. Measure:
+// 02_hits (all six isolated hits), MIX 1, 2 Springs, DECAY 0.6, TENSION /
+// TONE noon, SPLASH 0, WOBBLE 0; mono sum band-passed 300 Hz-4 kHz; per hit,
+// the 100 ms RMS window starting 0.6 s after the hit, dB re the hit's
+// loudest 100 ms window in its first 0.2 s; mean over the hits. `main` before
+// ADR 0033: CLEAN -18.9 -> -18.7 dB, DRIVEN -19.0 -> -20.9, KICKED -19.2 ->
+// -22.6 from DRIVE 0 to 1 (and -27.3 -> -31.0 at 1 s). Gate: at DRIVE 1 no
+// ATTITUDE's tail sits more than 1 dB under its DRIVE-0 tail or under CLEAN's.
+void driveTail()
+{
+    rv::wav::Audio a;
+    if (!readStimulus("02_hits.wav", a)) {
+        check(false, "DRIVE tail (ADR 0033): 02_hits.wav found");
+        return;
+    }
+    const Buf& in = a.channels[0];
+    auto tailDb = [&](int att, float drive, double at) {
+        Settings s;
+        s.att = att;
+        s.drive = drive;
+        s.decay = 0.6f;
+        s.splash = 0.0f;
+        s.wobble = 0.0f;
+        const Stereo o = renderWith(s, in);
+        Buf m(o.l.size());
+        for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
+        m = bandpass(m, 300.0f, 4000.0f);
+        const size_t w = size_t(0.1f * kFs), step = size_t(0.005f * kFs);
+        double sum = 0;
+        int hits = 0;
+        for (double t0 : {1.0, 7.0, 13.0, 19.0, 25.0, 31.0}) {
+            const size_t o0 = size_t(t0 * kFs);
+            double peak = 0;
+            for (size_t p = o0; p < o0 + size_t(0.2f * kFs); p += step) peak = std::max(peak, power(m, p, p + w));
+            const size_t p6 = o0 + size_t(at * kFs);
+            sum += db(power(m, p6, p6 + w) / peak);
+            ++hits;
+        }
+        return sum / hits;
+    };
+    double t0[3], t1[3], s0[3], s1[3];
+    for (int att = 0; att < 3; ++att) {
+        t0[att] = tailDb(att, 0.0f, 0.6);
+        t1[att] = tailDb(att, 1.0f, 0.6);
+        s0[att] = tailDb(att, 0.0f, 1.0);
+        s1[att] = tailDb(att, 1.0f, 1.0);
+    }
+    for (int att = 0; att < 3; ++att) {
+        std::snprintf(msg, sizeof msg,
+                      "DRIVE doesn't shorten the tail, %s (ADR 0033): 0.6 s after a hit %.1f dB at DRIVE 0 -> %.1f at 1 "
+                      "(1 s: %.1f -> %.1f); CLEAN at DRIVE 1 %.1f (no more than 1 dB under either)",
+                      kAttName[att], t0[att], t1[att], s0[att], s1[att], t1[0]);
+        check(t1[att] >= t0[att] - 1.0 && t1[att] >= t1[0] - 1.0, msg);
+    }
+}
+
 int main(int argc, char** argv)
 {
     // Optional filter (development): run only tests whose name contains argv[1].
@@ -1564,7 +1677,7 @@ int main(int argc, char** argv)
     };
     const T tests[] = {{"blocks", buildingBlocks}, {"loop", loopMagnitude},       {"attitude", attitudeLevels},
                        {"drive", driveSweep},      {"drive-audibility", driveAudibility},
-                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit},
+                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit}, {"drive-tail", driveTail},
                        {"drive-held", driveLevelHeld}, {"audible", audibleAtDriveZero}, {"alias", aliasing},
                        {"tone", tone},             {"morph", morphClickFree},     {"determinism", determinism},
                        {"howl", howl},             {"stability", stabilityGrid},  {"performance", performance}};

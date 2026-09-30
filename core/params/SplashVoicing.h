@@ -1,7 +1,7 @@
 #pragma once
 // SPLASH / KICK / WOBBLE voicing (SPEC §3 K3/K5, button/gate, §4.5–4.7;
-// ADRs 0005, 0008, 0013, 0015, 0016, 0020; CONTEXT.md: Hit, Clatter, Jolt,
-// Splash, Kick, Drift, Warble, Micro-mod floor).
+// ADRs 0005, 0008, 0013, 0015, 0016, 0020, 0025, 0032; CONTEXT.md: Hit,
+// Clang, Bite, Clatter, Jolt, Splash, Kick, Drift, Warble, Micro-mod floor).
 //
 // One place for every number that shapes the M7 sound, so M8 tuning by ear
 // edits constants here, not DSP code (same role as DriveVoicing.h). Pure
@@ -10,7 +10,14 @@
 //
 // The DSP that uses these: dsp/Splash.h (HitDetector, Clatter, Jolt),
 // dsp/Kick.h (KickVoice), dsp/Wobble.h. How they hook into the Tank:
-// docs/m7-integration.md.
+// docs/m7-integration.md (M7) and Tank.h (since ADR 0032).
+//
+// SPLASH comes from the hit itself (ADR 0032, owner 30 Sep 2026): a loud
+// hit's own highs clang the springs harder (the Clang), and in DRIVEN /
+// KICKED a short, cracking hit also bites the input transducer harder (the
+// Bite). Nothing is added on a hit (the noise-burst Clatter is the Kick's
+// crash only); the Jolt stays. Everything listens to the input after the
+// INPUT gain (DRIVE, ADR 0033), before any saturation.
 
 #include "params/Mappings.h"
 
@@ -26,8 +33,10 @@ namespace rv::splash {
 constexpr int kControlInterval = 32;
 
 // ---- Hit detector (SPEC §4.5 step 1) ------------------------------------------
-// Two envelope followers on the driven (post-DriveIn) mono signal, first
-// high-passed at kDetectorHpHz: fast = peak follower on |x| (1 ms attack),
+// Two envelope followers on the mono input after the INPUT gain G (ADR 0033:
+// x · G, before any saturation; until then it was the post-DriveIn signal,
+// whose makeup took DRIVE's gain back out, so DRIVE could only dampen the
+// splash), first high-passed at kDetectorHpHz: fast = peak follower on |x| (1 ms attack),
 // slow = follower of the fast one (50 ms attack). Their difference
 // d = fast − slow is large only at the start of a transient (the slow one
 // has not caught up yet) and ~0 on sustained sound. Hit = curve(d / T),
@@ -59,8 +68,10 @@ constexpr float kSlowReleaseMs = 80.0f;
 //       Hit ≈ 0.1: it barely triggers (test_m7_tank ghostGroove: its
 //       Clatter −22..−28 dB under its own bright part, −41 dB under a
 //       backbeat's). A snare over a loud pad is judged against the pad.
-// Reference d values (DRIVEN, DRIVE 0.25, post-DriveIn): the −6 dBFS snare
-// of 02_hits d ≈ 0.15-0.22, −12 dBFS 0.07-0.11, −18 dBFS 0.04-0.055.
+// Reference d values (measured post-DriveIn at DRIVE 0.25, ≈ x · G at DRIVE
+// 0 now): the −6 dBFS snare of 02_hits d ≈ 0.15-0.22, −12 dBFS 0.07-0.11,
+// −18 dBFS 0.04-0.055. DRIVE raises them by G (+9.7 dB at noon, +24 at 1):
+// a −24 dBFS send at DRIVE ~0.8 gets the Hit a −6 dBFS hit gets at DRIVE 0.
 constexpr float kHitThresholdSplash0 = 0.30f;
 constexpr float kHitThresholdSplash1 = 0.015f;
 inline float hitThreshold(float splash) { return map::expLerp(kHitThresholdSplash0, kHitThresholdSplash1, splash); }
@@ -78,6 +89,100 @@ inline float hitCurve(float d, float threshold)
     return r3 / (1.0f + r3);
 }
 
+// ---- Hit envelope e: the Clang and the Bite (ADR 0032; SPLASH round 4) -----
+// A second, faster pair of followers on the same high-passed x · G, per
+// sample (round 4's detector, which the owner picked by ear):
+//   fast   = peak follower on |x| (kEnvFastAttackMs, kEnvFastReleaseMs)
+//   slow   = follower of fast (kEnvSlowAttackMs, kEnvSlowReleaseMs)
+//   sudden = (fast − slow) / fast        level-free, 0 on steady sound
+//   loud   = min(1, (fast / R)²),  R = max(kLoudRef, kLoudRel · P)
+//   e      = min(1, SPLASH × sudden × loud)
+// e lasts a hit's first ~10–25 ms, 0 on sustained sound, small on quiet
+// (ghost) hits. kLoudRef sits on the input after the INPUT gain (ADR 0033:
+// the floor scales with the gain), calibrated as the send-level study
+// asked: a −6 dBFS DAW-level hit (high-passed peak ~0.45) reaches it at
+// DRIVE 0 (a gentle splash there: e is up only at the very peak), and 12 /
+// 18 dB of INPUT (DRIVE ~0.65 / ~0.8) put a −18 / −24 dBFS mixer send
+// there. By DRIVE ~0.5 a DAW-level hit is fully loud through its attack,
+// as on the owner's round-4 page. P = the Hit detector's program level
+// (above): in a groove the loud reference rises with the backbeats
+// (kLoudRel × P), so a ghost note between them stays small at any DRIVE;
+// an isolated quiet hit after silence is judged against kLoudRef only, so
+// with DRIVE up it comes up to full (a tank with its INPUT cranked),
+// clanging with its own, quieter highs.
+constexpr float kEnvFastAttackMs  = 0.3f;
+constexpr float kEnvFastReleaseMs = 20.0f;
+constexpr float kEnvSlowAttackMs  = 40.0f;
+constexpr float kEnvSlowReleaseMs = 400.0f;
+constexpr float kLoudRef          = 0.45f;
+constexpr float kLoudRel          = 3.0f;
+//
+// The owner's round-4 picks (page at DRIVE 0.8), all at the "clear"
+// strength: CLEAN hits C2, DRIVEN and KICKED hits T2, the skank C2 in every
+// ATTITUDE; "C2 on longer sounds like the skank, and T2 on shorter
+// impulses". So every loud hit clangs, in every ATTITUDE, and in DRIVEN /
+// KICKED a short one also bites: with w = Voice::bite (0 CLEAN, 1 DRIVEN /
+// KICKED, blended by the Morph),
+//   Clang amount = Voice::clang × e
+//   Bite amount  = kBiteGain × w · short × e
+// A drum hit in DRIVEN / KICKED gets both (round 4's TC), a chord stab the
+// Clang and little Bite, CLEAN the Clang. (Tried and dropped: the Bite
+// replacing the Clang on drum hits, T2 alone as picked. Below DRIVE ~0.5 the
+// transducer is hardly driven, so the Bite alone makes little grit and
+// little splash: KICKED rimshots got +1.3 dB of crash at the default DRIVE.)
+//
+// Clang: the Springs' input gets its own highs (above kClangHz, a one-pole
+// split) fed harder while it lasts:
+//   springs in += Clang amount × (x − LP(x))
+// so the splash is the hit's own sound, chirped and coloured by the tank and
+// dying with the tail: brightness, no grit. Voice::clang 5 = round 4's C2.
+constexpr float kClangHz = 2000.0f;
+//
+// Bite: a short, cracking hit is pushed harder into DriveIn (transducer +
+// tape) and part of the push taken back after:
+//   DriveIn(x × (1 + Bite amount)) ÷ (1 + Bite amount)^kBiteTakeBack
+// so the hit gets grit and also reaches the springs harder (a harder hit on
+// a real tank). kBiteGain 4 = round 4's T2. CLEAN has none (its transducer
+// stays clean; round 4 measured T in CLEAN as only a louder hit).
+constexpr float kBiteGain     = 4.0f;
+constexpr float kBiteTakeBack = 0.5f; // sqrt: half the push (in dB) is heard
+//
+// DRIVE's top half (ADR 0032): past noon DRIVE saturates the input harder
+// and pushes the pickups, and both squash the drips with everything else
+// (on DAW-level hits and the skank, the splash measured +8 dB at noon and
+// +5 dB at DRIVE 1 in KICKED: "DRIVE dampens SPLASH" again, from noon up).
+// So above noon the Clang and the Bite grow with DRIVE, along driveCurve:
+//   gain = (1 + kSplashDriveBoost × u) / (1 + kSplashDriveBoost × u(0.8)),
+//   u = (driveCurve(DRIVE) − driveCurve(0.5)) / (1 − driveCurve(0.5)), >= 0
+// normalised to 1 at DRIVE 0.8, where the owner picked C2 / T2 (round 4's
+// page), so there they are exactly as picked: 0.64 up to noon, 1.28 at 1.
+// Then the splash never falls as DRIVE rises (test_m7_tank).
+constexpr float kSplashDriveBoost = 1.0f;
+constexpr float kSplashRefDrive   = 0.8f;
+// dc = drive::driveCurve(DRIVE), dcNoon = driveCurve(0.5), dcRef = driveCurve(kSplashRefDrive).
+inline float splashDriveGain(float dc, float dcNoon, float dcRef)
+{
+    const float u  = dc > dcNoon ? (dc - dcNoon) / (1.0f - dcNoon) : 0.0f;
+    const float u0 = (dcRef - dcNoon) / (1.0f - dcNoon);
+    return (1.0f + kSplashDriveBoost * u) / (1.0f + kSplashDriveBoost * u0);
+}
+//
+// "Short" (0..1): how much of the hit is crack rather than notes, the share
+// of its high-passed peak envelope above kClangHz (a peak follower on the
+// highs over the fast follower), mapped kShortLo -> 0 .. kShortHi -> 1.
+// Owner: "C2 on longer sounds like the skank, and T2 on shorter impulses".
+// Why this measure and not the decay or the crest: on the stimuli the owner
+// judged, a skank stab decays *faster* than the snare (its level 20-40 ms
+// after the onset -6 dB re the first 10 ms; the snare's -4 dB) and the
+// onset crest is the same (2.4 vs 2.5), so neither can tell them apart. What
+// does is what the hit is made of: a drum's crack is noise, mostly above
+// 2 kHz (share: snare 0.62-0.72, rim 0.53-0.58, a click 0.96), a chord's
+// attack is its notes (skank 0.21-0.27). So drum hits get the full bite,
+// chord stabs the clang and no bite; a bright guitar chop in between gets
+// part of it. Cheap: one follower and a multiply (the divide is sudden's).
+constexpr float kShortLo = 0.35f;
+constexpr float kShortHi = 0.55f;
+
 // Stroke detection (one primary impact per stroke): the detector re-arms
 // once Hit has fallen below kRearmRatio × the last stroke's peak and
 // kMinStrokeMs have passed; armed, a stroke starts when Hit rises above
@@ -90,7 +195,10 @@ constexpr float kRetriggerRatio = 2.0f;
 constexpr float kRearmRatio     = 0.5f;
 constexpr float kMinStrokeMs    = 20.0f;
 
-// ---- Clatter (SPEC §4.5 step 2) -------------------------------------------------
+// ---- Clatter (SPEC §4.5 step 2): the Kick's crash ----------------------------------
+// Since ADR 0032 the Clatter fires only on a Kick (thud + crash, ADR 0016):
+// on hits the splash comes from the hit itself (Clang, Bite above). The
+// history below is how the crash got its sound.
 // The crash: the springs themselves clanging. Each impact fires a burst of
 // sparse metallic knocks, band-passed 400 Hz – 5 kHz (2nd-order HP + 2nd-
 // order LP), into every Spring, mostly into its Loop. One independent
@@ -135,15 +243,10 @@ constexpr float kClatterLpHz  = 5000.0f;
 // hit to hit: with random clicks a −18 dBFS hit could draw a lucky handful
 // and crash within 5 dB of a −6 dBFS one.
 constexpr float kClatterSparse = 0.01f;
-// Burst peak at Hit 1, amount 1 (before the band-pass), for a hit of the
-// reference level. The crash follows the hit's size (M8): a burst's peak is
-// scaled by the stroke's level λ = d / kClatterLevelRef (d of the −6 dBFS
-// snare, so λ = 1 there), capped at kClatterLevelMax: with the level-
-// adaptive Hit, a hit that stands out gets the same crash *relative to
-// itself* at −18 or −3 dBFS (the owner's DAW levels vs the module's), and a
-// quiet hit can never get a crash louder than a hard one. A Kick's forced
-// strike: kKickClatterLevel. 3.2: KICKED's crash on the −6 dBFS snare
-// stays over test_m7_tank's +6 dB "unmistakable" bar (+6.2).
+// Burst peak at Hit 1, amount 1 (before the band-pass), times the Kick's
+// crash level kKickClatterLevel. (Until ADR 0032 hits fired it too, scaled
+// by the stroke's level; 3.2 put KICKED's crash on a −6 dBFS snare over
+// test_m7_tank's +6 dB "unmistakable" bar.)
 constexpr float kClatterGain     = 3.2f;
 // Shares of the burst into each Spring's Loop and high path, and straight
 // to the wet (0: kept as a knob; round 1 had 0.45, Splash A/B variant D 0.1).
@@ -156,8 +259,6 @@ constexpr float kClatterWet      = 0.0f;
 // burst; test_tank's L/R correlation margin on hits).
 constexpr float kClatterSideMs   = 1.3f;
 constexpr float kClatterSide     = 0.8f;
-constexpr float kClatterLevelRef = 0.22f;
-constexpr float kClatterLevelMax = 2.5f;
 // A Kick's forced strike: its crash level λ. With the round-1 direct share
 // the M7 value (1) put the Kick's crash so far over its thud that the
 // limiter ducked the thud (KICKED Kick low end, test_kick); 0.5 kept the
@@ -165,14 +266,16 @@ constexpr float kClatterLevelMax = 2.5f;
 // passes: thud + crash).
 constexpr float kKickClatterLevel = 0.5f;
 // The jitter counts from the Hit's peak (the countdown restarts while the
-// stroke is still growing, for at most kMaxRiseMs), so the burst takes the
-// stroke's full strength and level (M8; before, a short jitter could fire
-// on a hit's first millisecond with a fraction of its strength).
+// stroke is still growing, for at most kMaxRiseMs), so the impact (since
+// ADR 0032 a hit's Jolt) takes the stroke's full strength (M8; before, a
+// short jitter could fire on a hit's first millisecond with a fraction of
+// its strength).
 constexpr float kMaxRiseMs    = 2.0f;
 constexpr float kJitterMinMs  = 0.3f;
 constexpr float kJitterMaxMs  = 3.0f;
 // Secondary impacts ("rattle": springs bouncing against each other/the
-// housing) follow the first at seeded intervals, each weaker.
+// housing) follow the first at seeded intervals, each weaker. The Kick's
+// crash only (they ride on its Clatter).
 constexpr float kRattleIntervalMinMs = 7.0f;
 constexpr float kRattleIntervalMaxMs = 22.0f;
 constexpr float kRattleStrengthRatio = 0.6f;
@@ -213,11 +316,12 @@ constexpr float kMaxAllpassMagnitude = 0.85f;
 // ---- Per-ATTITUDE table (SPEC §4.5) -----------------------------------------------
 // Blended by the ATTITUDE Morph weights exactly like drive::Voice.
 struct Voice {
-    float clatterFloor;   // Clatter amount at SPLASH 0 (0 in every ATTITUDE: see below)
-    float clatterMax;     // at SPLASH 1
+    float clang;          // Clang: highs fed into the springs at e = 1 (ADR 0032)
+    float bite;           // Bite weight 0..1: short hits bite (kBiteGain) instead of clanging (DRIVEN, KICKED)
+    float clatterMax;     // the Kick's crash (Clatter amount of its forced strike)
     float clatterDecayMinMs; // burst decay (1/e) for a weak impact
     float clatterDecayMaxMs; // for a Hit-1 impact
-    float rattleImpacts;  // secondary impacts after a Hit-1 impact (∝ strength)
+    float rattleImpacts;  // secondary impacts after a Kick's crash
     float joltFloor;      // Jolt amount at SPLASH 0
     float joltMax;        // at SPLASH 1 (a Kick always uses this)
     float joltDecayMs;    // Jolt target decay (1/e)
@@ -227,27 +331,21 @@ struct Voice {
 };
 
 inline constexpr std::array<Voice, 3> kVoice{{
-    //  clat0  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
-    {  0.00f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
-    {  0.00f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
-    {  0.00f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
+    //  clang  bite  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
+    {  5.0f, 0.0f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
+    {  5.0f, 1.0f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
+    {  5.0f, 1.0f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
 }};
 
-// SPLASH 0 has no Clatter in any ATTITUDE (M8 round 2). DRIVEN / KICKED had
-// a "faint natural splash" floor (0.18 / 0.25): the owner heard it as a
-// transient click on hard hits at SPLASH 0 (Clatter peak ~13 dB under the
-// wet peak on a 0 dBFS snare, 1–6 kHz −14 / −11 dB re the hit, landing
-// 0.3–3 ms after the attack; nothing at all in CLEAN, which is why CLEAN
-// had no click). The Jolt floor stays: a slight pitch lurch, no transient.
-// CLEAN's clatterMax 0.35 → 0.45 with the move into the tank, so its crash
-// stays over the +1.5 dB "audible" bar.
+// SPLASH 0 has no Clang, no Bite and no Clatter in any ATTITUDE (M8 round 2
+// took the Clatter's "faint natural splash" floor out: the owner heard it as
+// a click on hard hits). The Jolt floor stays: a slight pitch lurch, no
+// transient.
 
-// CLEAN (ADR 0025, replaces SPEC §4.5's "mild HF emphasis only", which
-// measured as no change: the knob's only dead range): a real but gentle
-// splash, a polite tank getting nudged. A light, short Clatter with no
-// rattle, and a tiny Jolt (Loop and allpass lurch a third of DRIVEN's).
-// Nothing at SPLASH 0: CLEAN stays hi-fi unless asked. Same level-adaptive
-// detector as DRIVEN / KICKED, so ghost notes barely trigger here too.
+// CLEAN (ADR 0025; ADR 0032): a real splash on hard hits, the same Clang as
+// DRIVEN / KICKED (the owner picked round 4's C2 for CLEAN too) with no Bite
+// and a tiny Jolt (Loop and allpass lurch a third of DRIVEN's): the hit's
+// own sparkle, no grit. Nothing at SPLASH 0: CLEAN stays hi-fi unless asked.
 
 // DRIVEN's |Δa| was 0.05 in the stand-alone build; halved at integration.
 // The Δa is common to all Springs, and at 0.05 it pulled their responses
@@ -266,7 +364,8 @@ inline Voice blendVoice(const std::array<float, 3>& w)
     auto mix = [&](float Voice::*m) {
         v.*m = w[0] * (kVoice[0].*m) + w[1] * (kVoice[1].*m) + w[2] * (kVoice[2].*m);
     };
-    mix(&Voice::clatterFloor);
+    mix(&Voice::clang);
+    mix(&Voice::bite);
     mix(&Voice::clatterMax);
     mix(&Voice::clatterDecayMinMs);
     mix(&Voice::clatterDecayMaxMs);
@@ -280,17 +379,17 @@ inline Voice blendVoice(const std::array<float, 3>& w)
     return v;
 }
 
-// Clatter / Jolt amount for SPLASH v: floor at 0 (Clatter floors are all 0;
-// the Jolt keeps a small one), max at 1, linear between (the Hit curve is already
-// steep; a linear amount keeps the knob even).
-inline float clatterAmount(const Voice& vc, float splash) { return vc.clatterFloor + (vc.clatterMax - vc.clatterFloor) * splash; }
+// Jolt amount for SPLASH v: floor at 0, max at 1, linear between (the Hit
+// curve is already steep; a linear amount keeps the knob even). (SPLASH
+// scales the Clang and the Bite through e.)
 inline float joltAmount(const Voice& vc, float splash) { return vc.joltFloor + (vc.joltMax - vc.joltFloor) * splash; }
 
 // ---- KICK (SPEC §4.6, ADR 0005, 0013, 0016) --------------------------------------
 // A Kick = low thump (decaying sine with a downward pitch glide, like a
-// knuckle on the tank) + ~10 ms broadband burst + a forced maximal Splash
+// knuckle on the tank) + ~10 ms broadband burst + a forced maximal crash
 // (Clatter + Jolt at Hit 1, SPLASH 1: the "big crash"). Fixed strength,
-// scaled by ATTITUDE only.
+// scaled by ATTITUDE only. The Kick is the one thing that still fires the
+// Clatter (ADR 0032); it has no input of its own, so no Clang or Bite.
 struct KickParams {
     float thumpGain;     // thump peak
     float thumpStartHz;  // pitch at the strike
@@ -398,6 +497,21 @@ inline float wobbleCents(float w)
     if (w <= 0.0f) return 0.0f;
     return kWobbleMaxCents * (std::exp(kWobbleCurve * w) - 1.0f) / (std::exp(kWobbleCurve) - 1.0f);
 }
+// Long DECAYs (ADR 0033 re-check, 30 Sep 2026): above noon the tail
+// multiplies the Loop wobble more than the zones above were set for (a held
+// tone sits longer in the Loop), and whole-Tank Drift at DECAY 1, WOBBLE 0.5
+// read 6.6-6.8 cents p95 on 08_held_tones (CLEAN at any DRIVE, DRIVEN at
+// DRIVE 0), over ADR 0008's 5 for "held chords in tune". DRIVEN at the
+// default DRIVE read 3.9 only because ADR 0022's LoopSat push compressed the
+// held tone, and ADR 0033 removed that push. So above DECAY noon the Loop
+// depth eases down to kWobbleDecayMaxScale at DECAY 1 (the transport, heard
+// once, is not scaled). Warble at DECAY 1 stays clearly out of tune.
+constexpr float kWobbleDecayMaxScale = 0.65f;
+inline float wobbleDecayScale(float decay)
+{
+    return decay <= 0.5f ? 1.0f : map::expLerp(1.0f, kWobbleDecayMaxScale, std::fmin(1.0f, 2.0f * decay - 1.0f));
+}
+
 // Rate rises gently with depth (SPEC §3 K5): slow drift 0.12 Hz → wow 1.4 Hz.
 constexpr float kWobbleRateMinHz = 0.12f;
 constexpr float kWobbleRateMaxHz = 1.4f;

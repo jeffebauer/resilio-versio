@@ -59,9 +59,12 @@ struct Voice {
     float transKPos;   // saturator hardness, positive half
     float transKNeg;   // negative half (different = asymmetric)
     float fluxCutDb;   // HF cut into the saturator (restored after it): see kFluxHz
-    // DRIVE -> pre-gain into the chain, dB at DRIVE 0 and DRIVE 1 (driveCurve
-    // in between). Automatic gain compensation (Drive.h) undoes the level
-    // change, so these set colour, not loudness.
+    // DRIVE -> gain into the saturators, dB at DRIVE 0 and DRIVE 1 (driveCurve
+    // in between): the INPUT gain G (below, the same in every ATTITUDE) plus
+    // this ATTITUDE's voicing offset, i.e. how hot its transducer and tape
+    // run for a given INPUT (ADR 0033). Automatic gain compensation (Drive.h)
+    // takes all of it back, so these set colour; the loudness change is G's
+    // heard share (kInputHeard), the same in every ATTITUDE.
     float driveDbMin;
     float driveDbMax;
     // Tape (DriveIn, after the transducer)
@@ -73,16 +76,17 @@ struct Voice {
     float loopAmount;  // 0 = off (CLEAN), 1 = on
     float loopKPos;
     float loopKNeg;
-    // DRIVE also pushes the stages *after* the input (ADR 0022). Without
-    // this, the springs smear the input's distortion into a dark tail and
-    // most of it is lost: the colour has to be made where you hear it too.
-    //   loopDriveDb: how much harder the LoopSat bites at DRIVE 1 (its
-    //     hardness k is raised by this many dB along pushCurve). The
-    //     curve's slope never goes above 1 whatever k is, so this thickens
-    //     and compresses the tail but can never make the Loop run away.
-    //   outDriveDb: the same for the output pickup (DriveOut), which sits
-    //     after the springs: its grit is heard directly, not smeared.
-    float loopDriveDb;
+    // DRIVE also pushes the output pickup, the stage *after* the springs
+    // (ADR 0022: the springs smear the input's distortion into a dark tail,
+    // so the colour has to be made where you hear it too):
+    //   outDriveDb: how much harder the pickup (DriveOut) bites at DRIVE 1
+    //     (its hardness k is raised by this many dB along pushCurve). It
+    //     sits after the springs: its grit is heard directly, not smeared.
+    // The LoopSat is no longer pushed (ADR 0033, owner 30 Sep 2026): pushed,
+    // it squashed the tail on every round trip and the Loop's damping ate the
+    // harmonics it made, so DRIVE up made KICKED's tail *shorter* (-15.4 ->
+    // -19.4 dB at 0.6 s after a hit, DECAY 0.6), against "driving the tank
+    // harder". It keeps its DRIVE-0 hardness (loopKPos / loopKNeg).
     float outDriveDb;
     //   outFluxOpenDb (M8): the pickup's flux cut (kOutFluxDb: highs cut
     //     going into its saturator, restored after) shrinks by this many dB
@@ -105,10 +109,12 @@ struct Voice {
     float outK;        // soft-clip hardness at DRIVE 0 (light: only bends near full scale)
     float outAsym;     // negative-half hardness = outK * (1 + outAsym)
     float outLpHz;     // pickup band-limit low-pass
-    // Wet makeup at DRIVE 1, dB (along pushCurve²): gives back the level the
-    // pushed LoopSat squashes out of a tail, which no level follower can
-    // see (it happens inside the Loop), so DRIVE stays colour, not volume
-    // (±2 dB, SPEC §7 M5). Calibrated on 02_hits and steady noise.
+    // Wet makeup at DRIVE 1, dB (along pushCurve²): gives back, at once, the
+    // level the pushed pickups squash out of the tail. Their automatic makeup
+    // does too, but slowly (kAutoMakeupSeconds) and only up to
+    // kAutoMakeupMax, so without this a KICKED tail came back ~1.5 dB quiet at
+    // DRIVE up and dipped when the Morph flipped into KICKED. (Until ADR 0033
+    // it gave back the pushed LoopSat's squash; same numbers, same job.)
     float wetMakeupDb;
     // Level trim so the three ATTITUDEs are equally loud (SPEC §7 M5 ±2 dB).
     float trimDb;
@@ -128,14 +134,18 @@ struct Voice {
 //        light solid, Magneto REC LVL red): thick, squashed, gritty, the
 //        asymmetric curves adding even harmonics; still a spring.
 // ADR 0022 retune (28 Sep 2026): earlier pre-gain curve, DRIVEN top +5 dB,
-// CLEAN +3 dB; the new push columns (lDrv, oDrv) and wMk; KICKED's range
-// shifted down 2 dB (-11 dB, 9 o'clock stays clean-ish with the earlier
-// curve) and its top kept at +20 dB (aliasing at 10 Vpp, see above).
+// CLEAN +3 dB; the push column (oDrv); KICKED's range shifted down 2 dB
+// (-11 dB, 9 o'clock stays clean-ish with the earlier curve) and its top kept
+// at +20 dB (aliasing at 10 Vpp, see above). ADR 0033 (30 Sep 2026): the
+// LoopSat push (lDrv 24 / 22) is gone; KICKED's pickup push 26 -> 28 dB takes
+// back part of the grit it gave at DRIVE 1 (level-matched 0 vs 1 null -6.4
+// -> -5.7 dB, ADR 0022 bar -6); dB0 / dB1 are unchanged, now read as INPUT +
+// offset.
 inline constexpr std::array<Voice, 3> kVoice{{
-    //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    lDrv   oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
-    {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
-    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 3.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.4f, 0.0f}, // DRIVEN (emph 5 -> 3 at TENSION: aliasing, see below)
-    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 22.0f, 26.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  1.6f, 0.0f}, // KICKED (wMk 1.3 -> 1.6 at the HighsLater re-tune: steady-noise level across DRIVE)
+    //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
+    {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
+    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 3.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.0f, 0.0f}, // DRIVEN (emph 5 -> 3 at TENSION: aliasing, see below)
+    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 28.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  0.8f, 0.0f}, // KICKED
 }};
 
 // Magnetic transducer (DriveIn): a driver coil saturates on magnetic flux,
@@ -238,6 +248,31 @@ constexpr float kDriveCurvePower = 1.3f;
 inline float driveCurve(float v) { return v <= 0.0f ? 0.0f : std::exp(kDriveCurvePower * std::log(v)); }
 // dB -> linear gain, via exp for the same reason.
 inline float dbToGain(float db) { return std::exp(db * (2.302585093f / 20.0f)); }
+//
+// DRIVE is the INPUT (ADR 0033, owner 30 Sep 2026; the Wellspring's INPUT
+// knob, docs/m8-tuning-backlog.md "Send-level calibration study"): one input
+// gain G at the front of the Tank, the same in every ATTITUDE, 0 dB at
+// DRIVE 0 up to kInputGainMaxDb at DRIVE 1 along driveCurve (+9.7 dB at
+// noon, +18 dB at ~0.8). +18 dB turns a -24 dBFS mixer send into a -6 dBFS
+// DAW-level hit; the top leaves room for quieter sends.
+//  - The Splash hears the input after G and before any saturation
+//    (SplashVoicing.h), so DRIVE up never reduces splash, and a quiet send
+//    splashes like a DAW-level hit once DRIVE makes up the difference.
+//  - The saturators see G x the ATTITUDE's voicing offset (Voice::driveDbMin
+//    / driveDbMax, the pre-gain curve they had before: same colour per
+//    ATTITUDE as ADR 0022 tuned it).
+//  - Partly louder: DriveIn's automatic gain compensation takes G back, and
+//    the Tank gives kInputHeard of it (in dB) back on the Springs' output:
+//    the tail grows +6 dB across the knob, the same in every ATTITUDE, a
+//    gentle throw by CV, not a volume knob (ADR 0033). On the output, not
+//    into the Springs: the LoopSat, the AntiRes fade and the Howl then see
+//    the same level at every DRIVE, so DRIVE never changes the tail's length.
+//    The pickups' hardness is divided by the same gain (Tank::controlTick),
+//    so they bend the louder tail as ADR 0022 voiced them, and a Kick's Loop
+//    feed too (a Kick keeps its size, ADR 0005).
+constexpr float kInputGainMaxDb = 24.0f;
+constexpr float kInputHeard     = 0.25f;
+inline float inputGainDb(float drive) { return kInputGainMaxDb * driveCurve(drive); }
 inline float drivePreGainDb(const Voice& vc, float drive)
 {
     return vc.driveDbMin + (vc.driveDbMax - vc.driveDbMin) * driveCurve(drive);
@@ -249,9 +284,9 @@ inline float smearHz(const Voice& vc, float drive)
     return map::expLerp(kSmearOpenHz, vc.smearHzMax, driveCurve(drive));
 }
 //
-// 2. "Push" on the stages after the input, LoopSat and output pickup
-//    (ADR 0022: most of what DRIVE does to the input is smeared into the
-//    dark tail and lost; these make it heard). An S-curve (logistic, scaled
+// 2. "Push" on the output pickup, the stage after the springs (ADR 0022:
+//    most of what DRIVE does to the input is smeared into the dark tail and
+//    lost; the pickup makes it heard). An S-curve (logistic, scaled
 //    to run 0 -> 1): 20 % of the push at 9 o'clock, 68 % at noon, 95 % at
 //    3 o'clock. Why an S: saturation is heard late (a curve twice as hard
 //    sounds much more than twice as driven), so the push has to arrive
@@ -280,37 +315,32 @@ inline float outAmountCurve(float v)
     return v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : std::exp(kOutAmountPower * std::log(v)));
 }
 struct Push {
-    float loopDb = 0.0f; // LoopSat hardness raise, dB (the Tank scales it down in the Howl zone)
     float out    = 1.0f; // output pickup hardness factor, linear
+    float wet    = 1.0f; // static wet makeup, linear (Voice::wetMakeupDb)
     float outFluxDb = kOutFluxDb; // output pickup flux cut, dB (kOutFluxDb - outFluxOpenDb · c)
     float outAmount = 1.0f;       // output pickup blend (outAmount0 -> 1 along outAmountCurve)
-    float wet    = 1.0f; // static wet makeup, linear
 };
 // Computed only when DRIVE or the ATTITUDE Morph moved (a few exp calls).
 inline Push push(const Voice& vc, float drive)
 {
     const float c = pushCurve(drive);
     Push p;
-    p.loopDb = vc.loopDriveDb * c;
     p.out    = dbToGain(vc.outDriveDb * c);
     p.outFluxDb = kOutFluxDb - vc.outFluxOpenDb * c;
     p.outAmount = vc.outAmount0 + (1.0f - vc.outAmount0) * outAmountCurve(drive);
-    // The LoopSat's squash of the tail (the part the automatic makeups
-    // cannot see, it happens inside the Loop) lags the push: c².
     p.wet    = dbToGain(vc.wetMakeupDb * c * c);
     return p;
 }
 
-// Automatic gain compensation (SPEC §4.9, ADR 0022): measured, not
-// modelled. DriveIn and DriveOut each follow the slow mean-square level
+// Automatic gain compensation (SPEC §4.9, ADR 0022, ADR 0033): measured,
+// not modelled. DriveIn and DriveOut each follow the slow mean-square level
 // (kAutoMakeupSeconds) going into and coming out of their saturators and
 // make up the difference (Drive.h). So DRIVE changes the shape (rounded,
-// squashed, gritty) but the average level stays where it was at DRIVE 0,
-// for loud hits and quiet pads alike (test_drive: within ~1 dB on snare
-// hits, 02_hits and steady noise). Before ADR 0022 this was a static model
-// calibrated on -6 dBFS snares, which made quieter material up to 5 dB
-// louder once the curves were pushed harder. The one part neither follower
-// can see is the LoopSat's squash inside the Loop: Voice::wetMakeupDb.
+// squashed, gritty) and the level only by G's heard share (kInputHeard),
+// for loud hits and quiet pads alike (test_drive). Before ADR 0022 this was
+// a static model calibrated on -6 dBFS snares, which made quieter material
+// up to 5 dB louder once the curves were pushed harder. What the pickups'
+// follower gives back late or not at all: Voice::wetMakeupDb.
 
 // ---- TONE tilt (ADR 0017; SPEC §3 K1) ---------------------------------------
 // Pre-tank tilt EQ: split at the pivot with a one-pole low-pass, then

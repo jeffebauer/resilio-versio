@@ -40,6 +40,24 @@ void HitDetector::reset()
     fast_ = slow_ = dMax_ = lastD_ = prog_ = 0.0f;
 }
 
+// ---- HitEnvelope -------------------------------------------------------------------
+
+void HitEnvelope::prepare(float sampleRate)
+{
+    fa_  = onePole(splash::kEnvFastAttackMs, sampleRate);
+    fr_  = onePole(splash::kEnvFastReleaseMs, sampleRate);
+    sa_  = onePole(splash::kEnvSlowAttackMs, sampleRate);
+    sr_  = onePole(splash::kEnvSlowReleaseMs, sampleRate);
+    lpC_ = 1.0f - std::exp(-2.0f * map::kPi * splash::kClangHz / sampleRate);
+    reset();
+}
+
+void HitEnvelope::reset()
+{
+    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = 0.0f;
+    invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
+}
+
 // ---- Clatter -----------------------------------------------------------------------
 
 void Clatter::prepare(float sampleRate, uint32_t seed)
@@ -125,21 +143,25 @@ void Splash::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_ = sampleRate;
     seed_       = mixSeed(seed);
+    hpLp_.setCutoff(splash::kDetectorHpHz, sampleRate);
     detector_.prepare(sampleRate);
+    envelope_.prepare(sampleRate);
     clatter_.prepare(sampleRate, mixSeed(seed_ + 1u));
     jolt_.prepare(sampleRate, mixSeed(seed_ + 2u));
     const float every = float(splash::kControlInterval);
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
     maxRiseTicks_  = int(splash::kMaxRiseMs * 0.001f * sampleRate / every + 0.5f);
     attW_   = {{-1.0f, -1.0f, -1.0f}};
-    splash_ = -1.0f;
+    splash_ = driveGain_ = -1.0f;
     set({{0.0f, 1.0f, 0.0f}}, 0.3f);
     reset();
 }
 
 void Splash::reset()
 {
+    hpLp_.reset();
     detector_.reset();
+    envelope_.reset();
     clatter_.reset();
     jolt_.reset();
     rng_.seed(seed_);
@@ -149,19 +171,20 @@ void Splash::reset()
     armed_   = true;
     countdown_ = secondaries_ = 0;
     strength_  = 0.0f;
-    level_     = 1.0f;
     impacts_   = 0;
     strokes_   = 0;
     sinceStroke_ = 1 << 30;
     numStrikes_ = 0;
 }
 
-void Splash::set(const std::array<float, 3>& attitudeWeights, float splash)
+void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain)
 {
-    if (attitudeWeights == attW_ && splash == splash_) return; // blend + exp only on change
-    attW_   = attitudeWeights;
-    splash_ = splash;
-    voice_  = splash::blendVoice(attitudeWeights);
+    if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_) return; // blend + exp only on change
+    attW_      = attitudeWeights;
+    splash_    = splash;
+    driveGain_ = driveGain;
+    voice_     = splash::blendVoice(attitudeWeights);
+    envelope_.set(splash, voice_.clang, voice_.bite, driveGain);
     detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
@@ -177,12 +200,12 @@ void Splash::strike(float strength, int sampleOffset)
 void Splash::fire()
 {
     const float s = strength_;
-    const float clat = forced_ ? voice_.clatterMax : splash::clatterAmount(voice_, splash_);
+    // The Clatter is the Kick's crash only (ADR 0032): a hit's splash is its
+    // own sound (Clang, Bite, applied by the Tank). Both fire the Jolt.
+    const float clat = forced_ ? voice_.clatterMax : 0.0f;
     const float jolt = forced_ ? voice_.joltMax : splash::joltAmount(voice_, splash_);
     const float decayMs = voice_.clatterDecayMinMs + (voice_.clatterDecayMaxMs - voice_.clatterDecayMinMs) * s;
-    // The crash follows the stroke's size (λ, SplashVoicing.h); a Kick has its own.
-    const float lvl = forced_ ? splash::kKickClatterLevel : level_;
-    if (clat > 0.0f) clatter_.impact(splash::kClatterGain * s * clat * lvl, decayMs);
+    if (clat > 0.0f) clatter_.impact(splash::kClatterGain * s * clat * splash::kKickClatterLevel, decayMs);
     jolt_.impact(s * jolt);
     ++impacts_;
 
@@ -211,6 +234,7 @@ void Splash::controlTick()
 {
     const float h = detector_.take();
     hit_ = h;
+    envelope_.setProgramLevel(detector_.programLevel());
     if (armed_ && h < valley_) valley_ = h;
     if (armed_ && h > splash::kOnsetHit + splash::kRetriggerRatio * valley_) {
         armed_      = false;
@@ -228,7 +252,6 @@ void Splash::controlTick()
             jitter_         = countdown_;
             riseTicks_      = 0;
             strength_       = h;
-            level_          = 0.0f;
         }
     } else if (!armed_) {
         if (h > strokePeak_) strokePeak_ = h;
@@ -237,22 +260,20 @@ void Splash::controlTick()
             valley_ = h;
         }
     }
-    // While the primary waits out its jitter it takes the stroke's peak Hit
-    // and level λ (largest d so far, for the crash size). The jitter runs
-    // from the peak (M8): while the stroke is still growing (for at most
-    // splash::kMaxRiseMs) the countdown restarts, so a short jitter can no
-    // longer fire a weak burst on a hit's first millisecond.
+    // While the primary waits out its jitter it takes the stroke's peak Hit.
+    // The jitter runs from the peak (M8): while the stroke is still growing
+    // (for at most splash::kMaxRiseMs) the countdown restarts, so a short
+    // jitter can no longer fire a weak Jolt on a hit's first millisecond.
     if (pending_ && pendingPrimary_ && !forced_) {
-        const float lv = std::fmin(detector_.lastDifference() * (1.0f / splash::kClatterLevelRef), splash::kClatterLevelMax);
-        const bool rising = h > strength_ || lv > level_;
-        if (h > strength_) strength_ = h;
-        if (lv > level_) level_ = lv;
+        const bool rising = h > strength_;
+        if (rising) strength_ = h;
         if (rising && ++riseTicks_ <= maxRiseTicks_) countdown_ = jitter_ + splash::kControlInterval; // re-checked next tick
     }
     jolt_.tick(tankLevel_);
 }
 
-void Splash::process(const float* driven, float* clatterOut, float* clatterB, float* clatterC, float* joltLoopOut, int n)
+void Splash::process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
+                     float* joltLoopOut, int n)
 {
     const int streams = clatterB && clatterC ? Clatter::kStreams : 1;
     for (int i = 0; i < n; ++i) {
@@ -271,7 +292,12 @@ void Splash::process(const float* driven, float* clatterOut, float* clatterB, fl
         if (pending_ && countdown_-- <= 0) fire();
 
         if (sinceStroke_ < (1 << 30)) ++sinceStroke_;
-        detector_.push(driven[i]);
+        const float h = in[i] - hpLp_.process(in[i]); // one high-pass for both detectors
+        detector_.pushHighpassed(h);
+        float clang, bite;
+        envelope_.push(h, clang, bite);
+        if (clangOut) clangOut[i] = clang;
+        if (biteOut) biteOut[i] = bite;
         float cy[Clatter::kStreams];
         clatter_.process(cy, streams);
         clatterOut[i] = cy[0];

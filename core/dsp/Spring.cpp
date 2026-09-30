@@ -290,7 +290,7 @@ void Spring::commitDesign()
         g = p / maxMag;
     }
     g_ = g;
-    loopSat_.set(s.loopSatAmount, s.loopSatKPos, s.loopSatKNeg);
+    loopSat_.set(s.loopSatAmount * satGate_, s.loopSatKPos, s.loopSatKNeg); // quiet-tail fade kept on a redesign
 
     modDepth_ = std::max(0.0f, s.modDepth) * antires::kMicroModNorm;
     lfoDepth_ = std::max(0.0f, s.lfoDepth);

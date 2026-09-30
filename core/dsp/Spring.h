@@ -160,6 +160,15 @@ public:
     // moves a on every tick and must reach all Springs together). The next
     // setSettings() sees the change and redesigns as usual.
     void setAllpassCoeff(float a) { a_ = a; }
+    // LoopSat blend scale 0..1 (AntiRes.h "LoopSat quiet-tail fade"), set by
+    // the Tank every control tick from the tail's level. Multiplies
+    // SpringSettings::loopSatAmount; no Loop redesign (the LoopSat's slope
+    // at rest is 1 whatever its blend, so g does not depend on it).
+    void setLoopSatGate(float gate)
+    {
+        satGate_ = gate;
+        loopSat_.setAmount(settings_.loopSatAmount * gate);
+    }
     // True between the two calls of a TENSION redesign (setSettings).
     bool redesignPending() const { return pending_; }
 
@@ -258,6 +267,7 @@ private:
     int   mTarget_ = 0, mActive_ = 0;
     float g_ = 0.0f;
     dsp::LoopSat loopSat_;
+    float satGate_ = 1.0f; // quiet-tail fade (setLoopSatGate)
 
     // High path state.
     std::array<float, kHighStages> hapX1_{}, hapY1_{};

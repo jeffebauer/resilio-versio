@@ -1,12 +1,15 @@
 #pragma once
-// SPLASH / ATTITUDE nonlinear model (SPEC §4.5; CONTEXT.md: Hit, Clatter,
-// Jolt, Splash). One Splash per Tank (Tank.h; hooks in docs/m7-integration.md).
+// SPLASH / ATTITUDE nonlinear model (SPEC §4.5; CONTEXT.md: Hit, Clang,
+// Bite, Clatter, Jolt, Splash; ADR 0032). One Splash per Tank (Tank.h).
 //
-//   driven mono (post-DriveIn) ─ HitDetector ─ Hit (0..1, control rate)
-//                                                  │ onset → impact (seeded jitter, then KICKED rattle impacts)
-//                                                  ├─► Clatter: bursts of band-passed knocks ─► each Spring's Loop + high path
-//                                                  └─► Jolt: envelope ─► Loop delay offset (fraction of L), Δa
-//   Kick ─ strike() ────────────────────────────────┘ (forced: Hit 1, SPLASH 1)
+//   mono in × G (INPUT, before any saturation) ─ HP 200 Hz ─┬─ HitEnvelope ─ e, short (per sample)
+//                                                            │     ├─► Clang: × Voice::clang ─► the Tank feeds the hit's own highs into the springs
+//                                                            │     └─► Bite:  × Voice::bite × short ─► the Tank pushes DriveIn harder
+//                                                            └─ HitDetector ─ Hit (0..1, control rate)
+//                                                                   │ onset → impact (seeded jitter)
+//                                                                   └─► Jolt: envelope ─► Loop delay offset (fraction of L), Δa
+//   Kick ─ strike() (forced: Hit 1, SPLASH 1) ─► Jolt + Clatter: a burst of band-passed knocks
+//                                                (then KICKED rattle impacts) ─► each Spring's Loop + high path
 //
 // Numbers: core/params/SplashVoicing.h. Everything is one sample at a time,
 // no allocation, seeded (reset() restores the seed). The control-rate part
@@ -31,9 +34,11 @@ class HitDetector {
 public:
     void prepare(float sampleRate);
     void reset();
-    void push(float x)
+    void push(float x) { pushHighpassed(x - hpLp_.process(x)); } // high-pass: x − LP(x)
+    // The same, for input the caller has already high-passed at
+    // splash::kDetectorHpHz (the Splash shares one high-pass with HitEnvelope).
+    void pushHighpassed(float x)
     {
-        x -= hpLp_.process(x); // high-pass: x − LP(x)
         // +1e-20: the followers settle at ~1e-20 in silence, never denormal.
         const float a = (x < 0.0f ? -x : x) + 1.0e-20f;
         fast_ += (a > fast_ ? fastAtt_ : fastRel_) * (a - fast_);
@@ -69,6 +74,61 @@ private:
     float progAtt_ = 1.0f, progRel_ = 1.0f; // per control tick
     float fast_ = 0.0f, slow_ = 0.0f, dMax_ = 0.0f, lastD_ = 0.0f, prog_ = 0.0f;
     float threshold_ = 0.2f, rel_ = 1.0f;
+};
+
+// Hit envelope (ADR 0032, SplashVoicing.h "Hit envelope e"): per sample, on
+// the high-passed input after the INPUT gain. e = SPLASH × sudden × loud
+// (0..1, a hit's first ~10-25 ms), and short = how much of the hit is crack
+// (highs) rather than notes. clang = Voice::clang × e, bite = kBiteGain ×
+// Voice::bite × short × e. The Tank applies them.
+class HitEnvelope {
+public:
+    void prepare(float sampleRate);
+    void reset();
+    // Control rate: SPLASH, the blended Voice's clang amount and bite weight,
+    // and DRIVE's gain on both (splash::splashDriveGain).
+    void set(float splash, float clang, float biteWeight, float driveGain = 1.0f)
+    {
+        splash_   = splash;
+        clang_    = clang * driveGain;
+        biteGain_ = splash::kBiteGain * driveGain * biteWeight;
+    }
+    // Control rate: the program level P (HitDetector::programLevel): the loud
+    // reference R = max(kLoudRef, kLoudRel · P).
+    void setProgramLevel(float p)
+    {
+        const float r = p * splash::kLoudRel > splash::kLoudRef ? p * splash::kLoudRel : splash::kLoudRef;
+        invRef2_ = 1.0f / (r * r);
+    }
+    // h = the input, high-passed at splash::kDetectorHpHz.
+    void push(float h, float& clang, float& bite)
+    {
+        lp_ += lpC_ * (h - lp_);
+        const float hi = h - lp_; // the part above splash::kClangHz
+        const float a = (h < 0.0f ? -h : h) + 1.0e-20f, ah = hi < 0.0f ? -hi : hi;
+        fast_ += (a > fast_ ? fa_ : fr_) * (a - fast_);
+        hiFast_ += (ah > hiFast_ ? fa_ : fr_) * (ah - hiFast_);
+        slow_ += (fast_ > slow_ ? sa_ : sr_) * (fast_ - slow_);
+        const float inv    = 1.0f / fast_;
+        const float sudden = fast_ > slow_ ? (fast_ - slow_) * inv : 0.0f;
+        const float lf     = fast_ * fast_ * invRef2_;
+        const float e0     = splash_ * sudden * (lf < 1.0f ? lf : 1.0f);
+        const float e      = e0 < 1.0f ? e0 : 1.0f;
+        float sh = (hiFast_ * inv - splash::kShortLo) * (1.0f / (splash::kShortHi - splash::kShortLo));
+        sh = sh < 0.0f ? 0.0f : (sh > 1.0f ? 1.0f : sh);
+        e_     = e;
+        short_ = sh;
+        clang  = clang_ * e;
+        bite   = biteGain_ * sh * e;
+    }
+    float envelope() const { return e_; }  // e of the last sample (tests, meters)
+    float shortness() const { return short_; }
+
+private:
+    float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
+    float fa_ = 1.0f, fr_ = 1.0f, sa_ = 1.0f, sr_ = 1.0f, lpC_ = 1.0f;
+    float fast_ = 0.0f, slow_ = 0.0f, hiFast_ = 0.0f, lp_ = 0.0f;
+    float splash_ = 0.0f, clang_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
 };
 
 // Band-passed seeded sparse knocks (or noise) with an exponential burst
@@ -190,17 +250,19 @@ private:
     float    rPrev_ = 0.0f, rCur_ = 0.0f;
 };
 
-// The whole Splash for one Tank: Hit detector + impact sequencer + Clatter
-// + Jolt. One instance; the Tank feeds its Clatter to every Spring's high
-// path and its Jolt to every Spring's L and a (docs/m7-integration.md).
+// The whole Splash for one Tank: Hit detector + hit envelope (Clang, Bite)
+// + impact sequencer + Jolt + the Kick's Clatter. One instance; the Tank
+// applies the Clang and the Bite, feeds the Clatter to every Spring's Loop
+// and high path and the Jolt to every Spring's L and a.
 class Splash {
 public:
     void prepare(float sampleRate, uint32_t seed);
     void reset();
 
-    // Control rate: ATTITUDE Morph weights (CLEAN, DRIVEN, KICKED; sum 1)
-    // and the smoothed SPLASH Normalised value.
-    void set(const std::array<float, 3>& attitudeWeights, float splash);
+    // Control rate: ATTITUDE Morph weights (CLEAN, DRIVEN, KICKED; sum 1),
+    // the smoothed SPLASH Normalised value and DRIVE's gain on the Clang and
+    // the Bite (splash::splashDriveGain; 1 = as picked at DRIVE 0.8).
+    void set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain = 1.0f);
     // Wet level 0..1 (e.g. a smoothed RMS), for KICKED's energy-dependent
     // rattle. Optional: 0 leaves the rattle Hit-driven only.
     void setTankLevel(float level) { tankLevel_ = level; }
@@ -209,35 +271,42 @@ public:
     // sample offset within the next process() call (clamped into it).
     void strike(float strength, int sampleOffset);
 
-    // n samples. driven = post-DriveIn mono (the detector input).
-    // clatterOut = Clatter (stream 0; the Tank feeds each Spring's Loop and
-    // high path, splash::kClatterLoop / kClatterHigh, and sends
-    // splash::kClatterWet of it straight to the wet mid). joltLoopOut =
+    // n samples. in = the mono input after the INPUT gain, before any
+    // saturation (the detector input, ADR 0032 / 0033). clangOut / biteOut =
+    // the Clang and Bite amounts per sample (HitEnvelope; may be null).
+    // clatterOut = the Kick's Clatter (stream 0; the Tank feeds each Spring's
+    // Loop and high path, splash::kClatterLoop / kClatterHigh). joltLoopOut =
     // Loop delay offset as a fraction of L (Spring A scale; may be null).
-    void process(const float* driven, float* clatterOut, float* joltLoopOut, int n)
+    void process(const float* in, float* clatterOut, float* joltLoopOut, int n)
     {
-        process(driven, clatterOut, nullptr, nullptr, joltLoopOut, n);
+        process(in, nullptr, nullptr, clatterOut, nullptr, nullptr, joltLoopOut, n);
     }
-    // Same, plus the Clatter's other two noise streams (same envelope,
-    // independent noise: one per Spring). Pass both or neither.
-    void process(const float* driven, float* clatterOut, float* clatterB, float* clatterC, float* joltLoopOut, int n);
+    // Everything: the Clang and Bite, and the Clatter's other two noise
+    // streams (same envelope, independent noise: one per Spring; pass both or
+    // neither).
+    void process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
+                 float* joltLoopOut, int n);
 
     // Control-rate outputs (valid after process()).
     float hit() const { return hit_; }
     float allpassDelta() const { return jolt_.allpassDelta(); }
     float joltEnvelope() const { return jolt_.envelope(); }
     float clatterEnvelope() const { return clatter_.envelope(); } // burst envelope (tests)
+    float hitEnvelope() const { return envelope_.envelope(); }     // e (ADR 0032), last sample (tests)
     int   impactCount() const { return impacts_; } // impacts fired since reset, rattle included (tests)
     int   strokeCount() const { return strokes_; } // primary impacts (one per stroke / strike)
     const splash::Voice& voice() const { return voice_; }
     const HitDetector&   detector() const { return detector_; } // tests, meters
+    const HitEnvelope&   envelope() const { return envelope_; } // tests
 
 private:
     void controlTick();
     void fire();
 
     float sampleRate_ = 48000.0f;
+    OnePoleLowpass hpLp_;  // the shared 200 Hz high-pass (x − LP(x))
     HitDetector detector_;
+    HitEnvelope envelope_;
     Clatter     clatter_;
     Jolt        jolt_;
     Rng         rng_;
@@ -245,7 +314,7 @@ private:
 
     splash::Voice voice_{};
     std::array<float, 3> attW_{{-1.0f, -1.0f, -1.0f}};
-    float splash_ = -1.0f, tankLevel_ = 0.0f;
+    float splash_ = -1.0f, tankLevel_ = 0.0f, driveGain_ = -1.0f;
 
     int   k_ = 0; // position in the control grid
     float hit_ = 0.0f;
@@ -259,7 +328,6 @@ private:
     int   countdown_ = 0, secondaries_ = 0;
     int   jitter_ = 0, riseTicks_ = 0, maxRiseTicks_ = 8; // primary jitter runs from the stroke's peak
     float strength_ = 0.0f;
-    float level_ = 1.0f;      // λ of the pending impact (stroke level re kClatterLevelRef)
     int   impacts_ = 0, strokes_ = 0;
     // Strikes queued for the next process() call.
     static constexpr int kMaxStrikes = 4;
