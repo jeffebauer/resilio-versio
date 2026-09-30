@@ -58,6 +58,35 @@ inline float microModDepth(float loopDelaySeconds)
                                                        : kMicroModDepth * kMicroModRefLoopSeconds / loopDelaySeconds;
 }
 
+// ---- LoopSat quiet-tail fade (layer 5, M8) ---------------------------------
+// Plain version: the Loop's saturator (LoopSat, DriveVoicing.h) bends even a
+// quiet tail a tiny bit, and that bend makes faint overtones of the tail's
+// strongest, longest-lived notes (3 x, and sums of three). Wherever one
+// lands right on one of the Loop's own high resonances, that resonance is
+// kept fed by the long-lived note underneath and dies at the note's pace
+// instead of its own much faster one: one high pitch outliving everything
+// around it (M6 grid, KICKED / 1 Spring / tightest TENSION / TONE 1:
+// 3902 Hz = 3 x a 1301 Hz mode). The LoopSat is there for loud tails
+// (squash, thickness, the Howl's ceiling), not quiet ones, so its blend
+// fades out as the tail gets quiet: full above kLoopSatQuietDb +
+// kLoopSatFadeDb, none at and below kLoopSatQuietDb (linear in power in
+// between; the level is the wet mid's, the smoothed one the Splash rattle
+// already uses, or the last control tick's if louder, so a hit into a quiet
+// tank is bent at once). Control rate, no Loop redesign: the LoopSat's slope
+// at rest is 1 whatever its blend. Details: docs/m8-tuning-backlog.md
+// "Tight-tank ringing (M6 corner)" and "Tight-tank ringing: owner listen".
+// The level is measured in the saturator's own terms, u = k x (k = the
+// harder half's hardness; fixed per ATTITUDE since ADR 0033), so KICKED's
+// harder curve keeps its bend on quieter tails than DRIVEN's.
+// Floor -30 dB (owner, 30 Sep 2026: the fade was "very subtle"; gentler, so
+// quiet skank tails keep more of the LoopSat's colour). At the floor (u RMS
+// -30 dB, peaks ~0.1) the curve bends the signal by well under 1 %. Margin:
+// the M6 corner sweeps pass with the floor anywhere from -20 to -30 dB and
+// fail at -35 (proto/tight-ringing). Needed once the SPLASH noise burst is
+// gone (ADR 0032): the burst had been masking the corner (23.5 dB without).
+constexpr float kLoopSatQuietDb = -30.0f; // u = k x, RMS, dB
+constexpr float kLoopSatFadeDb  = 12.0f;
+
 // ---- Howl movement (ADR 0019: "rough, moving, never a steady sine") --------
 // In the KICKED Howl zone the Loop self-oscillates, and a self-oscillating
 // Loop settles on one resonance: without help it is a steady tone (the M6

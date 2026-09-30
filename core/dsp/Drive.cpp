@@ -11,7 +11,7 @@ drive::Voice blendVoice(const std::array<float, 3>& w)
     static constexpr float V::*kFields[] = {
         &V::bandHpHz, &V::bandLpHz, &V::transKPos, &V::transKNeg, &V::fluxCutDb, &V::driveDbMin, &V::driveDbMax,
         &V::tapeAmount, &V::tapeK, &V::preEmphDb, &V::smearHzMax, &V::loopAmount, &V::loopKPos,
-        &V::loopKNeg, &V::loopDriveDb, &V::outDriveDb, &V::outFluxOpenDb, &V::outAmount0, &V::outK, &V::outAsym, &V::outLpHz, &V::wetMakeupDb,
+        &V::loopKNeg, &V::outDriveDb, &V::outFluxOpenDb, &V::outAmount0, &V::outK, &V::outAsym, &V::outLpHz, &V::wetMakeupDb,
         &V::trimDb};
     static_assert(sizeof(kFields) / sizeof(kFields[0]) * sizeof(float) == sizeof(V), "blendVoice misses a Voice field");
     V out{};
@@ -24,8 +24,12 @@ DriveInSettings driveInSettings(const drive::Voice& v, float drive)
 {
     DriveInSettings s;
     s.voice   = v;
-    s.preGain = drive::dbToGain(drive::drivePreGainDb(v, drive));
-    s.makeup  = drive::dbToGain(v.trimDb) / s.preGain;
+    const float inputDb = drive::inputGainDb(drive);
+    s.inputGain = drive::dbToGain(inputDb);
+    s.preGain   = drive::dbToGain(drive::drivePreGainDb(v, drive));
+    // The level DRIVE adds on purpose (ADR 0033); DriveIn gives back the rest.
+    s.heard  = drive::dbToGain(drive::kInputHeard * inputDb);
+    s.makeup = drive::dbToGain(v.trimDb) / s.preGain;
     s.smearHz = drive::smearHz(v, drive);
     return s;
 }

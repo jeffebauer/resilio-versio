@@ -176,6 +176,21 @@ class ListenPageTest(unittest.TestCase):
         self.assertEqual(data["lede"], "SPLASH voicings. Same hits in each ATTITUDE.")
         self.assertIsNotNone(next(iter(data["items"].values()))["rms"])  # measured from the WAV itself
 
+    def test_two_character_version_labels(self):
+        # SPLASH round 4 (renders/splash_round4): T1 / T2 / TC next to A and E.
+        d = self.root / "splash_round4"
+        for att in ("driven", "kicked"):
+            for stim in ("02_hits", "04_skank"):
+                for v in ("A_burst", "E_drive_alone", "T1_hits_bite_gentle", "TC_both"):
+                    write_wav(d / att / "{}_{}.wav".format(stim, v))
+        (d / "README.txt").write_text("Round 4.\n\nT1_hits_bite_gentle   T1 hits bite harder, gentle\n")
+        run(d)
+        data = self.assertAudioResolves(d / "index.html")
+        self.assertEqual([r["name"] for r in data["rows"]], ["Hits", "Skank"])
+        self.assertEqual([(v["k"], v["n"]) for v in data["legend"]],
+                         [("A", "burst"), ("E", "drive alone"), ("T1", "hits bite gentle"), ("TC", "both")])
+        self.assertEqual(data["legend"][2]["d"], "T1 hits bite harder, gentle")
+
     def test_before_after_suffix(self):
         d = self.root / "predelay_ab"
         for stim in ("02_hits", "04_skank"):

@@ -42,11 +42,15 @@ void Wobble::reset()
     prev_ = cur_;
 }
 
-void Wobble::setAmount(float wobble)
+void Wobble::setAmount(float wobble, float depthScale)
 {
-    if (wobble == amount_) return;
-    amount_ = wobble;
+    if (wobble == amount_ && depthScale == depthScale_) return;
+    amount_     = wobble;
+    depthScale_ = depthScale;
     depths_ = wobble::depths(wobble, role_ == Role::Transport, rateScale_, sampleRate_);
+    depths_.lfo *= depthScale;
+    depths_.wow *= depthScale;
+    depths_.flutter *= depthScale;
     indep_  = depths_.independence;
     const float every = float(splash::kControlInterval) / sampleRate_;
     lfoStep_     = depths_.lfoHz * every;

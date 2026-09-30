@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 118,760 B (90%), ≈12 KB headroom (30 Sep 2026, LED meters + DMA-driven LED PWM)
+- release 120,160 B (92%), ≈11 KB headroom (1 Oct 2026, SPLASH from the hit + DRIVE as INPUT, ADR 0032 / 0033, merged: +1.4 KB; was 118,760 B with the LED meters + DMA-driven LED PWM)
 - m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 124,996 B (95%): the M3 benchmark code; trim before adding profile features
+- profile 128,388 B (98%, 2.7 KB headroom): the M3 benchmark code; trim profile-only code before adding profile features (was 127,044 B). Run 13 binary: `dist/resilio_versio_m3_profile_run13.bin` (desktop estimate: worst case steady signal ~+3 %, ~+2 points on the chip; hits + Kicks ~+1 %)
 
 ### Flash-budget techniques in use (ADR 0011)
 
@@ -271,3 +271,5 @@ Sound: static settings are bit-identical to run 11 (desktop, with and without FM
 Flash: release 115,424 B (88 %, +4.6 KB: the new code, and the Tank object is copied from flash at boot), m0test 85,976 B (unchanged), profile 127,044 B (96.9 %). Expected on the chip: the corner-start blocks lose most of the control tick's burst (~2-3 points), so the worst case max should land around 64-66 %; averages move a little (~0.3 point from the MIX square roots). If it still misses: block 96 (ADR 0030), or give the Tank object zero-initialised storage in `main.cpp` to win back ~7 KB of flash per variant.
 
 **Run 12 on the chip** (30 Sep, owner's Versio, USB): **target met.** Worst case S3 D1.0 TN0.0 TO0.5 **avg 60.7 % / max 63.3 %** (run 11: 62.1 / 67.8); highest max anywhere **64.0 %** (S3 and S2, tight tank, TO 0.5; run 11: 68.6). `PEAK ctl` 6.1 → 2.6–3.2; `out` average 8.6 → 7.7 (the MIX square roots). Every corner's max ≤ 65 %. Headroom against the target: ~1 point on peaks, ~4 points on averages.
+
+**Run 13 on the chip** (30 Sep, owner's Versio; the SPLASH/DRIVE build before the owner's tuning, `dist/resilio_versio_m3_profile_run13.bin`): worst case S3 D1.0 TN0.0 TO0.5 **avg 63.4 % / max 66.3 %**; highest max anywhere 66.5 % (S3 D0 TN1 TO0.5). `splash` 2.5 → 4.8 %, `drvIn` 6.0 → 5.4 %. All under the 70 % target (ADR 0030 amendment); ~3.5 points of peak headroom left. The tuning after it (gentler Bite, milder DRIVEN, KICKED Clang) moved the desktop worst case from +2.5 % to ~+3 % vs main; D's Clang blend and the DRIVE stretch add no work. No chip run since.

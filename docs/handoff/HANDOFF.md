@@ -1,50 +1,55 @@
 # Handoff
 
-**Written:** 29 Sep 2026, end of session 3 (a long hardware night). Start the next one with `/resilio-start`. The owner plans, in the morning: the SPLASH voicings listening page, then M3 run 11 on the Versio.
+**Written:** 30 Sep 2026, end of session 4 (a very long day, 29 Sep overnight → 30 Sep evening). Start the next session with `/resilio-start`. The owner is low on weekly usage: keep agents few and focused, and replies lean.
 
 ## State
 
 | Milestone | State |
 |---|---|
-| M0 toolchains + hardware | **Passed** on the owner's Versio (Daisy Seed 2). Found: the Versio's analog path inverts polarity and is +1.17 dB hot; the release build undoes both (`kOutputTrim` -0.874). Knob order measured: pots P1–P7 = libDaisy knobs 0, 4, 2, 1, 5, 3, 6 |
-| M1 one Spring + Renderer | Built. **A/B vs the Wellspring built** (`renders/references/wellspring/ab/index.html`, TASKS 4b): Wellspring tail 3.5 s (combined-click method), matched by DECAY 0.70. Owner listen pending |
-| M2 plugin shell | Built. Owner Ableton check pending (TASKS 4) |
-| M3 hardware profiling | **In progress, nearly there.** Worst case 83 → ~63 % average (target 65 %), peak 100 → ~67 % (run 9). Runs 10–11 not measured yet. See `firmware/README.md` "M3 results", ADR 0030 |
+| M0 hardware | **Passed.** Output polarity/level fix confirmed on hardware (OPTX takes: −0.65 dB vs a straight loop, polarity right) |
+| M1 one Spring + Renderer | Built. Superseded as a listening task by the Wellspring work below |
+| M2 plugin | Built. Owner's Ableton check waits for the next install |
+| M3 CPU | **Done.** Target raised by the owner to **≤ 70 % peak** (ADR 0030 amendment, SPEC v1.0.20). Run 12 (main): 60.7 % avg / 63.3 % peak. Run 13 (SPLASH/DRIVE build, before tuning): 63.4 / 66.3 % |
 | M4–M7 | Built |
-| M8 tuning | Knob layout (ADR 0028), earlier first echo (ADR 0029) done. **SPLASH round 3** in progress: prototype voicings rendered, owner to pick (TASKS 3d) |
-| M9 polish | Not started |
+| M8 tuning | **In progress.** SPLASH/DRIVE build approved (merge pending, see In flight); tank sound being fitted to the owner's Wellspring; bipolar WOBBLE prototyped |
+| M9 polish | LED meters with DMA-driven smooth dimming (ADR 0031, merged); manual + preset drafts (`docs/manual.md`, `docs/presets.md`) |
 
-- `main` HEAD: this handoff's commit. Code HEAD before it: `fca8d6a` (ADR 0029) plus docs.
-- **Installed plugin: `ae844da`** (29 Sep 19:13, `dist/installed_plugin.txt`). `main` has moved on: ADR 0029's earlier first echo, the Jolt fix and the M3 changes are not in Ableton. Next install after the SPLASH pick.
-- **Gates at wrap:** **15/15 suites pass** (ctest log read, not the exit code). M6 grid after ADR 0029: 270 cells, 0 Ringing (worst 14.7, limit 15, the known KICKED/1 Spring/tight/TONE 1/DECAY 0.75 corner), Howl 54/54. Firmware: release 110,008 B (83 %), m0test 85,976 B (65 %), profile 124,996 B (**95 %, warning**: the benchmark code, see "Will bite").
-- SPEC v1.0.17. New ADRs 0028 (knobs follow the printed panel), 0029 (earlier first echo), 0030 (fitting the CPU).
+- `main` HEAD: this handoff's commit (code last changed at `bc90d47`: profile LED threshold 70 %). Pushed to GitHub today (was 57 commits behind).
+- **Gates on `main`:** 16/16 suites pass (ctest log read, after the afternoon merges; later commits are docs only). Firmware: release 118,760 B (90 %), m0test 85,976 B (65 %), profile 127,044 B (96 %, warning).
+- **On the Versio:** release `dist/resilio_versio_release_e618e12.bin` (= main's sound; LED meters, run 12 trim). The owner last flashed run 13 (profile) and may still have it on.
+- **Plugin in Ableton: `ae844da`** (29 Sep). Way behind: the next install should be the merged SPLASH/DRIVE build.
+- SPEC v1.0.20 on main. ADRs on main to 0031 (+ amendments to 0018, 0030). On branches: 0032, 0033 (SPLASH/DRIVE build), 0034 (bipolar WOBBLE).
 
-## In flight
-- **Nothing running.** No worktrees besides `main`. Branch `proto/tension` still superseded (owner hasn't said delete).
-- **SPLASH round 3 prototype** lives outside the build: `docs/prototypes/splash-voicings.patch` (apply to a copy of `core/`, build a renderer per `-DRV_SV=0..3`; header has the commands). Renders + listening page: `renders/splash_voicings/index.html` (gitignored; regenerate from the patch if lost). Findings: `docs/m8-tuning-backlog.md` "SPLASH round 3".
-- `dist/` holds every M3 profile binary from tonight (`_dtcm`, `_split`, …, `_run10`, `_run11`); only **`resilio_versio_m3_profile_run11.bin`** matters now. Gitignored, local only.
-- `renders/` new folders: `references/` (M1 A/B), `m3_stagger_ab/`, `m3_stagger_abc/`, `predelay_ab/`, `splash_check/`, `splash_voicings/`. All listened to except `splash_voicings`.
+## In flight (read before touching anything)
+1. **SPLASH/DRIVE build: approved by the owner, merge pending.** Branch `worktree-agent-a96f54d1b700d5ca6` (worktree `.claude/worktrees/agent-a96f54d1b700d5ca6`). Commits to 3c65405 (version D, approved in every panel), plus possibly one more: an agent was **stretching the DRIVE grit** (owner: "drive80 still feels a bit hot … 100% would yield distortion that wouldn't be particularly useful") so that today's 0.8 grit arrives at ~1.0, without changing the INPUT gain range, the +6 dB "partly louder" curve, Bite/Clang, or the CLEAN < DRIVEN < KICKED spread. It was told to render spot-check files into `renders/splash_drive_build2/drive_top/` and update `dist/resilio_versio_m3_profile_run13.bin`. **Check:** `git -C .claude/worktrees/agent-a96f54d1b700d5ca6 log --oneline -3` and its `git status`; if the stretch commit is there, re-run the full ctest in its `build-agent` (read the summary line), `make -C firmware all-variants`, and listen to or measure the drive_top files against D. If it isn't there (the agent died with the session), do the stretch yourself (lower each ATTITUDE's top colour pre-gain to its old DRIVE-0.8 value; `core/params/DriveVoicing.h`), same checks. **Then (owner already approved D):** cherry-pick onto main (conflicts likely in SPEC changelog, backlog, firmware/README; keep both sides), full gates, update firmware/README "M3 results" with run 13, the README's SPLASH/DRIVE rows, build the release to `dist/resilio_versio_release_<hash>.bin`, and install the plugin with `tools/install_plugin.sh <commit>` (Ableton closed; then TASKS' "Plugin installed" line).
+2. **Bipolar WOBBLE prototype: done, page built, awaiting the owner's listen.** Branch `proto/bipolar-wobble` (pushed; 828b041; worktree `.claude/worktrees/agent-a8fb67c34b36df755`; it ran locally, see memory `remote-agent-ran-locally`). Page `renders/proto_bipolar_wobble/index.html` (20 files: held tones + skank, main vs proto at WOBBLE 0 / 0.25 / 0.5 / 0.75 / 1). Noon still (dead zone 0.47–0.53), left = random wow (wandering 0.2–1.5 Hz) + flutter (5–12 Hz) with shared drift at low amounts, right = sine 0.6→1.4 Hz with ±6 % rate wander; default 0.45; constants in `core/params/WobbleVoicing.h`; ADR 0034 (Proposed), SPEC v1.0.21 on the branch (collides with the SPLASH/DRIVE branch's v1.0.21: renumber at merge). Gates: 15/15 without the plugin (plugin_host_test and firmware not built there: run on the Mac). **Not met:** M6 grid flags cells at WOBBLE 0.25 (7, worst 21.6 dB), 0.75 (3) and fully left (2), all bursts at TENSION 1. Main does the same away from WOBBLE 0 (0.2: 3 cells, worst 18.1), and the reading jumps 3→21 dB between neighbouring 0.05 steps in both builds: the metric is unstable on tight-tank burst tails with any pitch movement. Needs a decision (a metric fix, e.g. the audibility floor from the tight-ringing work, vs tuning) before merging. CPU +0.1–0.17 %; pool 29,061 of 30,000 floats.
+3. **Prototype branches kept on purpose** (listening history; code to reuse): `proto/wellspring-fit` (worktree kept: the next round builds on it), `proto/smooth-arc`, `proto/sweet-tank`, `proto/diffuse-tank`, `proto/splash-round4`, `proto/tight-ringing` (bend fade, now inside the SPLASH/DRIVE build), `proto/wobble-hang` (pushed; its "drift together" is folded into bipolar WOBBLE), `proto/low-tail` (retired idea), `proto/tension` (old; owner hasn't said delete). Two worktrees (splash-round4, diffuse-tank) are locked by the app; leave them. `claude/nifty-shtern-b943cb` belongs to a separate session fixing `rv_render --set` switch labels.
+4. **Renders (gitignored, local):** listening pages under `renders/` for every round today (`splash_round4`, `splash_drive_build`, `splash_drive_build2`, `proto_*`, `eq_preview`), plus `test_audio/hardware/` (the owner's OPTX takes H0–H4, notes in `NOTES.md`, tracked).
 
 ## Next steps (in order)
-1. **Owner's SPLASH picks** (they paste "Copy results for Claude" output into chat). Build the chosen voicing into the Core from the patch: SPLASH = "how hard the hits hit", derived from the input; Kick keeps its crash; Jolt stays. Then ADR 0031, SplashVoicing constants, rework the SPLASH tests (test_splash, test_drive's SPLASH checks, test_tank crash numbers), re-run the full suite and the M6 grid, and check CPU on the next profile run (the envelope + HF split are cheap, but measure). Then ask about DRIVE coupling (TASKS 3d; B and E showed DRIVE alone barely splashes in our model).
-2. **M3 run 11** (owner flashes `dist/resilio_versio_m3_profile_run11.bin`, USB only, streams in the Claude Terminal panel; read with `read_terminal` on its tab). Target: worst case (S3 D1.0 TN0.0) `max` ≤ 65 %. If still over: candidates in `firmware/README.md` "M3 results" (more reciprocal/division work, the output stage's 9 %, drive stages). Block 96 only with the owner's OK (ADR 0030). Then trim `m3_bench.cpp` out of the profile build (flash 95 %) and hand the owner the **release** firmware to flash and play (their knob layout, output fix): verify a passthrough take matches a cable (polarity and level) once.
-3. **Install the plugin** after SPLASH lands (`tools/install_plugin.sh <commit>`, TASKS "Plugin installed" line, rescan note).
-4. **Metrics.cpp T60** reads long on repeated stimuli (segment ends at the next event's -40 dBFS crossing, which includes a spring's build-up): fix, then re-check every gate that pins a T60 (tuning backlog, M1 section).
-5. Owner listening backlog (TASKS 4b, 5–10) feeds M8 round 2.
+1. **Finish and merge SPLASH/DRIVE** (In flight 1). Then the release firmware, a click check on the Versio (TASKS §3), the plugin install, and the owner's M2 Ableton check.
+2. **Next Wellspring fit round** (local only: the recordings never leave the Mac; one focused agent). Build on the merged SPLASH/DRIVE code plus `proto/wellspring-fit`'s **B** (the Sweep: `core/dsp/Sweep.h`, `core/params/WellspringFit.h`; the owner picked B, and C's 2.5 kHz tone dip is dropped). Targets for the owner's "resonant quality … in a different register": **thin arcs** with near-silence between (less smear and fewer extra pickups now that the Sweep carries the dispersion; guard the wobble and 250–500 Hz width), and the Wellspring's **highs-only arcs at half the echo period** (2–5 kHz every ~35 ms vs ours 68 ms: a faster high path). Then tail peakiness and the low-mid T60 (~0.9 s short). Compare at **SPLASH 0** and at the default (memory `compare-tank-at-splash-0`). Fix the two tight-end Howl cells the fit left. Method, targets and scripts: `proto/wellspring-fit:docs/prototypes/wellspring-fit/` and its backlog section "Wellspring fit".
+3. **Bipolar WOBBLE page** for the owner (In flight 2), then merge with ADR 0034 after their pick.
+4. Fold the chosen tank changes into the Core with ADRs, re-tuned tests (many tests encode today's sound: see each prototype's gate list), a CPU run (~3.5 points left under 70 % after run 13), then an install.
 
 ## Waiting on the owner (`docs/TASKS.md`)
-SPLASH voicings page (3d) and the DRIVE-coupling decision; M3 run 11 (3c); M2 Ableton check (4); M1 A/B listen (4b); listening tasks 5–10; WOBBLE ceiling (2); delete `proto/tension`?
+- Nothing blocking right now: the SPLASH/DRIVE build is approved; they're waiting on Claude for the merge, release and plugin.
+- Next listens: the Wellspring-fit round 2 page, the bipolar WOBBLE page.
+- Hardware: the click check on the next release; optional DECAY fully-left/right OPTX takes (the tails measured ~10 % shorter on hardware, probably DECAY's physical noon).
+- Open design questions list in TASKS (SPLASH scaling the Kick's crash, KICKED stereo lurch, Howl on a tight tank, TONE's right side / Big Knob, bright vs dark material).
 
 ## Will bite
-- **ctest exit codes lie through pipes.** Tonight a piped background run "exited 0" with 2 suites failing. Log to a file and gate on `100% tests passed` (CLAUDE.md Hard rules).
-- **Test windows that assume the pickup position:** the Tank-level chirp tests now use `modes::kPickupArrival` (ADR 0029). Any other test that windows "the first echo" by a fixed multiple of L will break the same way if the pickup moves again.
-- **Thin margins:** M6 worst cell 14.7 vs 15 (same corner as before). SPLASH round 3 changes what goes into the Loops: re-run the grid.
-- **Firmware vs desktop numerics:** firmware uses `-ffp-contract=off`, the desktop fuses; outputs differ ~90 dB down (recirculating tails). Bit-exact checks must compare like with like: build the old and new `core/` with the same flags (tonight: a small harness driving `rv::Tank` with parameter moves and Kicks, float32 output compared byte for byte, once with `-ffp-contract=off`).
-- **M7 performance intuition was wrong twice tonight:** reordering the Chirp loop stage-by-stage was bit-exact but slower; measure on the chip (`m3_bench.cpp` shapes print as a BENCH line) before committing to a shape. Profile flash is at 95 %: drop the bench (or the SPLIT/PEAK code) before adding more.
-- **Serial on the Versio:** USB CDC `TransmitInternal` drops a second back-to-back send; build one buffer per report. On USB power the knobs read 1000 (no rack rails): knob checks happen on rack power via LEDs. Never USB + rack power together.
-- **Owner-facing review pages:** columns per group, colour-coded headers, settings as chips, synced switching, picks + notes + "Copy results" (memory `review-pages-columns`). The older `make_review.py` pages were hard to use; update that tool when next touched.
-- **Preview pane can't play local audio** (it snapshots `file://` pages as `data:`); verify file paths from the shell instead.
-- **GitHub routing drops** on this network happen; retry push later.
+- **Merging needs the owner's yes** (auto-mode blocked an unasked merge; memory `merge-needs-owner-ok`). D is approved; the DRIVE stretch was requested by the owner, so merging D + stretch is covered.
+- **`rv_render --set attitude=KICKED` renders CLEAN**, and `--set springs=2` gives 3 Springs (it parses switch labels as numbers). Use `--preset` JSON until the other session's fix lands. A T60 CLEAN-vs-DRIVEN check was wrong because of it.
+- **Profile flash at ~97 %** (128,2xx B on the SPLASH/DRIVE branch): trim the BENCH line / profile-only code before adding more. Release ~120 KB (91 %).
+- **CPU headroom ~3.5 points** after run 13 against the 70 % target; the Sweep (fit C) was estimated cheaper than smooth-arc D in the worst case, and bipolar WOBBLE ~+0.2. Each landing needs a profile run.
+- **Thin margins on the SPLASH/DRIVE build:** 3 `steady_tone` flags (CLEAN, DECAY 1, TENSION 1, TONE 1: the same tail as main, pushed over the metric's −30 dBFS by DRIVE's added level); 16/16 otherwise.
+- **The first-hit fix** starts the excitation trim at −6 dB; the first chord after a run of drums is still ~2.5 dB hot (one control-tick lag).
+- **Agents writing outside their worktree:** an agent found another branch's backlog text in its worktree once. Brief agents to check `pwd` before writing, and diff their branches for stray files.
+- **Disk:** an agent's scratch grids once filled the disk (56 GB). Brief a ~10 GB cap.
+- **Concurrent ctest runs** make timing-based suites fail spuriously (test_antires, test_drive, test_metrics). Re-run alone before believing a failure.
+- **Stale reference renders:** `renders/references/wellspring/ab/` was regenerated tonight by the ingest; don't trust older copies of match renders.
+- **GitHub routing drops** on this network happen; retry pushes.
 
 ## Where to look
-`docs/TASKS.md` (3c, 3d) · `firmware/README.md` "M3 results" · `docs/m8-tuning-backlog.md` "SPLASH round 3" · `docs/prototypes/splash-voicings.patch` · `docs/adr/0028`–`0030` · `core/dsp/Splash.cpp` + `core/params/SplashVoicing.h` (where round 3 lands)
+`docs/TASKS.md` (the owner's list, reorganised today) · `docs/m8-tuning-backlog.md` from "Sonic signature vs real springs" to the end (the whole Wellspring story, SPLASH rounds 3–4, DRIVE decisions, run 13) · the SPLASH/DRIVE branch's ADRs 0032/0033 and its backlog section "SPLASH/DRIVE build" · `proto/wellspring-fit:docs/m8-tuning-backlog.md` "Wellspring fit" · `docs/dub-spring-reference.md` §8 · `firmware/README.md` "M3 results"

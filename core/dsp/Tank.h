@@ -3,15 +3,14 @@
 //
 // Signal flow (M7):
 //
-//   in L,R ─ mono sum ─ DriveIn ─┬─ Tilt ─ + ─ x ──────────────────── low in  ─┐
-//                                │          ▲   └ (x + Clatter) × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
-//                                │          │                                        │
-//                                └─ Splash ─┼─ Clatter; Jolt ─► each Spring's L, a  ─┤  Wobble[i] ─► Spring i's L
-//   kick() ─ KickVoice ─ loop feed (HP 160 Hz⁴)                                       │
-//                      ├ direct thump ────────────────────────────────┐              │
-//                      └ forced Splash (Hit 1, SPLASH 1)              │              ▼
-//                                          SPRINGS mid/side mix ─ mid ┴ + ─┬─────────────┐   (per mode, 20 ms fade)
-//                                                                          └ decorrelator ─ D
+//   in L,R ─ mono sum ─┬─ × G (INPUT) ─ Splash ─ Clang c, Bite b; Jolt ─► each Spring's L, a; Kick's Clatter
+//                      └─ × (1+b) ─ DriveIn ─ ÷ √(1+b) ─ Tilt ─ + c·highs ─ + ─ x ─── low in  ─┐
+//                                                                   ▲  └ (x + Clatter) × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
+//   kick() ─ KickVoice ─ loop feed (HP 160 Hz⁴) ────────────────────┘                        │  Wobble[i] ─► Spring i's L
+//                      ├ direct thump ────────────────────────────────┐                        │
+//                      └ forced Splash (Hit 1, SPLASH 1)              │                        ▼
+//                  × G^kInputHeard ─ SPRINGS mid/side mix ─ mid ┴ + ─┬─────────────┐   (per mode, 20 ms fade)
+//                                                                     └ decorrelator ─ D
 //     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
 //
@@ -33,14 +32,17 @@
 // bright material comes back about as loud as in-band material. It trims
 // only new input (never a ringing tail) and holds in silence.
 //
-// DRIVE (ADR 0014, 0022; curves in DriveVoicing.h): pre-gain into DriveIn,
-// plus a "push" that makes each LoopSat and the DriveOut pickups bite
-// harder, so the drive is heard in the finished tail, not only smeared in
-// from the input. Gain compensation is measured, not modelled (SPEC §4.9):
-// DriveIn and DriveOut follow the slow level into and out of their
-// saturators and make up the difference (DriveOut's makeup is linked
-// across L/R here, on the control grid). DRIVE then changes colour, grit
-// and squash, not loudness, whatever the material.
+// DRIVE (ADR 0014, 0022, 0033; curves in DriveVoicing.h) is the INPUT: one
+// input gain G (0 -> +24 dB) that the Splash hears first, then DriveIn's
+// saturators (G x the ATTITUDE's voicing offset), plus a "push" that makes
+// the DriveOut pickups bite harder, so the drive is heard in the finished
+// tail, not only smeared in from the input. The LoopSat is not pushed (ADR
+// 0033: that shortened the tail). Gain compensation is measured, not
+// modelled (SPEC §4.9): DriveIn and DriveOut follow the slow level into and
+// out of their saturators and make up the difference (DriveOut's makeup is
+// linked across L/R here, on the control grid), and DriveIn lets a quarter
+// of G through: DRIVE changes colour, grit and squash, and the tank's level
+// only by a few dB (drive::kInputHeard), whatever the material.
 //
 // Latency: the wet path picks up ~5 samples (0.1 ms at 48 kHz) of group
 // delay from the DriveIn and DriveOut oversamplers (2.5 each at x2): like a
@@ -50,15 +52,17 @@
 //
 // SPLASH / KICK / WOBBLE (M7, SPEC §4.5-4.7, docs/m7-integration.md; all
 // numbers in params/SplashVoicing.h):
-// - Splash (one per Tank) listens to the mono signal after DriveIn, before
-//   Tilt (so TONE does not change SPLASH sensitivity). Its Clatter goes into
-//   every Spring's high path, and (M8) a share goes straight to the wet
-//   after the pickups, mid plus a 1.3 ms-delayed copy in the side (wide,
-//   mono-safe). CLEAN, DRIVEN and KICKED differ only in how big the splash
-//   is (ADR 0025: CLEAN gentle, DRIVEN clear, KICKED unmistakable). Hit is level-adaptive
-//   (judged against a slow program level, SplashVoicing.h). Its Jolt moves
-//   each Spring's L per sample (Spring B the other way) and adds to each
-//   Spring's allpass a on the control grid (clamped |a| <= 0.85).
+// - Splash (one per Tank) listens to the mono input after the INPUT gain G,
+//   before any saturation and before Tilt (so neither DRIVE's colour nor
+//   TONE changes SPLASH sensitivity, and DRIVE up only ever adds splash;
+//   ADR 0032, 0033). A hit's splash is its own sound (ADR 0032): the Clang
+//   feeds the hit's highs harder into the springs (every ATTITUDE), the Bite
+//   pushes a short, cracking hit harder into DriveIn (DRIVEN, KICKED). No
+//   noise is added on a hit; the Clatter is the Kick's crash only, into
+//   every Spring's Loop and high path. Hit is level-adaptive (judged against
+//   a slow program level, SplashVoicing.h). Its Jolt moves each Spring's L
+//   per sample (Spring B the other way) and adds to each Spring's allpass a
+//   on the control grid (clamped |a| <= 0.85).
 // - Kick (ADR 0005, 0013, 0016): kick(offset) starts a KickVoice on its exact
 //   sample. The high-passed thump + burst is added after DriveIn and Tilt
 //   (post-drive: a knock on the tank bypasses the transducer and the EQ),
@@ -194,10 +198,11 @@ public:
     const std::array<float, 3>& attitudeWeights() const { return attW_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
     // Test hook (not a panel control): false = the Splash still runs, but its
-    // Clatter and Jolt are not applied, so a test can
+    // Clang, Bite, Clatter and Jolt are not applied, so a test can
     // measure the Splash's share of the output by difference. Default true.
     void setSplashEnabled(bool on) { splashOn_ = joltOn_ = on; }
-    // Finer: the Clatter, and the Jolt (L and a), separately.
+    // Finer: the Splash's sound (Clang, Bite and the Kick's Clatter), and the
+    // Jolt (L and a), separately.
     void setSplashParts(bool clatter, bool jolt)
     {
         splashOn_ = clatter;
@@ -269,6 +274,8 @@ private:
     float                compDrive_ = -1.0f;
     std::array<float, 3> compW_{{-1.0f, -1.0f, -1.0f}};
     dsp::DriveInSettings driveInSettings_{};
+    dsp::Ramp            heardGain_{};  // the level DRIVE adds (ADR 0033), on the Springs' output
+    dsp::Ramp            inputGain_{};  // the INPUT gain G (ADR 0033): what the Splash hears
     drive::Push          push_{};
 
     // Tank-level stages.
@@ -287,11 +294,15 @@ private:
 
     // M7: Splash (Hit, Clatter, Jolt), the Kick voice and one Wobble per Spring.
     dsp::Splash                        splash_;
+    dsp::OnePoleLowpass                clangLp_{}; // the Clang's split at splash::kClangHz (ADR 0032)
+    float splashDrive_ = 1.0f;                        // DRIVE's gain on the Clang / Bite (splash::splashDriveGain)
+    float dcNoon_ = 0.4f, dcRef_ = 0.75f;             // driveCurve at noon and at splash::kSplashRefDrive
     dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
     dsp::Wobble                        transport_; // WOBBLE on the first echoes: every pickup, shared
-    bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts)
-    float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level
+    bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts): Clang + Bite + Clatter, Jolt
+    float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level, LoopSat fade
+    float satFloorMs_ = 0.0f, satInvSpanMs_ = 0.0f; // LoopSat quiet-tail fade (AntiRes.h), mean-square units
     // M8 excitation trim (DriveVoicing.h "Excitation trim"): band-weighted and
     // full power of the driven input, slow followers, trim ramped per tick.
     std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
@@ -318,7 +329,7 @@ private:
     std::array<SpringSettings, kMaxSprings> springSet_{};
     std::array<uint32_t, kMaxSprings>       springGen_{};
     std::array<float, kMaxSprings>          springTension_{}, springTone_{}; // key values springSet_ was worked out from
-    float keyDecay_ = -1.0f, keyTension_ = -1.0f, keyTone_ = -1.0f, keyDrive_ = -1.0f;
+    float keyDecay_ = -1.0f, keyTension_ = -1.0f, keyTone_ = -1.0f;
     std::array<float, 3> keyW_{{-1.0f, -1.0f, -1.0f}};
     int   keyMode_ = -1;
 };
