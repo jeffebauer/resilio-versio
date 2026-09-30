@@ -519,8 +519,9 @@ void splashAtSendLevel()
 }
 
 // ---- 2. WOBBLE on 08_held_tones ---------------------------------------------------------
-// Bipolar WOBBLE (ADR 0034): noon still, left = random wow + flutter, right =
-// sine LFO. Walked in 0.1 knob steps, as the sweet-spot check does.
+// Bipolar WOBBLE (ADR 0034, round 2 voicing B): noon still, left = random wow
+// + flutter (+ its tremolo), right = a sine vibrato. Walked in 0.1 knob steps,
+// as the sweet-spot check does.
 // 1 kHz at -12 dBFS from 1 s to 9 s. DRIVEN at the default DRIVE, SPRINGS 1
 // (one Spring: a clean pitch to track), SPLASH 0, MIX 1. The wet is the
 // Tank's tail building on the held tone (as test_wobble's "tail": the Loop
@@ -597,7 +598,9 @@ void wobbleOnHeldTones()
         const double tol = di == 2 ? 0.9 : 1.0;
         for (int i = 4; i > 0; --i) rising &= c[di][i - 1] > tol * c[di][i];
         for (int i = 6; i < kN - 1; ++i) rising &= c[di][i + 1] > tol * c[di][i];
-        ends &= std::min(c[di][0], c[di][10]) >= (di == 0 ? 10.0 : 25.0);
+        // Round 2 toned the end stops down on purpose (owner, 1 Oct 2026):
+        // round 1 asked >= 25 here; B's vibrato top reads ~22-25.
+        ends &= std::min(c[di][0], c[di][10]) >= (di == 0 ? 10.0 : 15.0);
         even &= c[di][0] >= 0.6 * c[di][10] && c[di][0] <= 1.6 * c[di][10];
     }
     const bool first = c[1][4] >= 1.5 && c[1][6] >= 1.5;
@@ -616,7 +619,7 @@ void wobbleOnHeldTones()
     check(rising, "every 0.1 step away from noon moves the held tone more, both sides, at DECAY 0 / 0.5 (and never clearly less at 1)");
     std::snprintf(msg, sizeof msg,
                   "both end stops clearly out of tune: fully left %.1f / %.1f / %.1f, fully right %.1f / %.1f / %.1f cents "
-                  "(>= 10 at DECAY 0, >= 25 at noon and max; old WOBBLE 1: 39.0 / 48.6 / 55.3)",
+                  "(>= 10 at DECAY 0, >= 15 at noon and max: toned down in round 2; old WOBBLE 1: 39.0 / 48.6 / 55.3)",
                   c[0][0], c[1][0], c[2][0], c[0][10], c[1][10], c[2][10]);
     check(ends, msg);
     check(even, "fully left roughly as wild as fully right (0.6..1.6x at every DECAY)");

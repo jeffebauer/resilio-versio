@@ -15,7 +15,15 @@ bool findParamId(const std::string& key, ParamId& id);
 
 bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& error);
 
-// Applies every key in a preset object, e.g. { "decay": 0.8, "springs": "2" }.
+// Hidden, Renderer-only keys (not panel controls, not in ParamSpec): used by
+// prototype pages to compare voicings in one sweep. Today only
+// "wobble_voicing" (0 = A, 1 = B, 2 = C; core/params/WobbleVoicing.h,
+// ADR 0034 round 2). Returns false if `key` isn't one.
+inline constexpr const char* kWobbleVoicingKey = "wobble_voicing";
+bool applyHidden(Tank& tank, const std::string& key, double value);
+std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
+
+// Applies every key in a preset object (hidden keys included), e.g. { "decay": 0.8, "springs": "2" }.
 bool applyPreset(Tank& tank, const json::Value& preset, std::string& error);
 
 } // namespace rv::paramsjson

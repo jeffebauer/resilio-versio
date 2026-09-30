@@ -3,7 +3,7 @@
 // 0008's one-way zones; ADR 0015 Gliding tier; CONTEXT.md: Drift, Warble,
 // wow, flutter, Micro-mod floor).
 //
-// PROTOTYPE (branch proto/bipolar-wobble). Every WOBBLE number lives here,
+// PROTOTYPE (branch proto/bipolar-wobble-2, round 2). Every WOBBLE number lives here,
 // so tuning by ear edits constants, not DSP code (the old one-way numbers
 // in SplashVoicing.h's WOBBLE section are no longer used).
 //
@@ -66,29 +66,86 @@ inline float lfoAmount(float knob)
 // ---- Depth shape -----------------------------------------------------------------
 // s(a) = (e^{k a} − 1)/(e^k − 1): 0 at the dead-zone edge (so nothing jumps
 // there), 1 at the end stop. Set so each 0.1 of knob travel (~5 steps per
-// side) grows the heard depth by ~1.5–3x and the first step off noon is
+// side) grows the heard depth by a clear step and the first step off noon is
 // already a few cents on a held tone (the old k = 5.89 spread the whole
-// lower half over 0–0.75 cents per pass: "9 o'clock ≈ noon" by ear). The
-// random side is a little softer-curved: its p95 pitch sits further under
-// its peak than a sine's, so it needs more depth near noon to be heard.
-constexpr float kCurveLfo    = 1.6f;
-constexpr float kCurveRandom = 1.0f;
+// lower half over 0–0.75 cents per pass: "9 o'clock ≈ noon" by ear).
+// Its middle, s(0.5) = 1/(e^{k/2} + 1), fixes k: to lower the end stop by a
+// factor T while the middle only drops by a factor M, the new middle share
+// is r = M·s_old(0.5)/T and k = 2·ln(1/r − 1) (the Voicing table below).
 inline float shape(float a, float k)
 {
     if (a <= 0.0f) return 0.0f;
+    if (k > -1e-3f && k < 1e-3f) return a > 1.0f ? 1.0f : a; // k = 0: a straight line
     return (std::exp(k * a) - 1.0f) / (std::exp(k) - 1.0f);
 }
 
+// ---- Voicings: round 1 (A) and two strengths of toning down (B, C) ---------------
+// Owner, 1 Oct 2026, after round 1's page: "slightly tone down the amount of
+// modulation at the top end of each side … on the smooth side, we could make
+// it feel more like a vibrato or flutter, and the left remains for wow and
+// flutter." So B and C (not A):
+//  - right side is a vibrato: 1.5 Hz just right of noon → 5.5 Hz fully right
+//    (A: a slow sway, 0.6 → 1.4 Hz);
+//  - its rate rises mostly in the first half of the side (lfoRateEase): a
+//    faster vibrato builds up less in the tail than a slow sway, so with an
+//    even rise the top steps (rate up, depth up) cancelled by ear-proxy
+//    (held tone at DECAY noon, 0.9 → 1.0: 24.9 → 22.3 cents); now the top
+//    steps are mostly depth;
+//  - both end stops lower: B by a quarter (×0.75), C by nearly half (×0.55),
+//    first echo scaled the same; the middle of each side (9 and 3 o'clock)
+//    stays about where it is per pass (the curve is re-bent straighter:
+//    B left ×0.94 / right ×1.03, C left ×0.80 / right ×0.89 of A's);
+//  - flutter tremolo: a small volume wobble on the whole wet sound that
+//    follows the Transport's flutter line, left side only (≤ 1 dB peak at
+//    the end stop): flutter sounds like a tape transport, not only a pitch
+//    effect (Wear & Tear manual's idea);
+//  - the flutter's speed follows the wow (±20 % on the wow line), so it
+//    never settles on one rate.
+// A is round 1 exactly (the page's reference). The firmware and plugin use
+// kDefaultVoicing; the Renderer can pick another (Tank::setWobbleVoicing,
+// sweep key "wobble_voicing": 0 = A, 1 = B, 2 = C). Hidden: no panel control.
+struct Voicing {
+    // Right side (Warble): peak cents per pass at the end stop (Loop / first
+    // echo), rate just right of noon → fully right, depth curve k.
+    float lfoLoopCents, lfoEarlyCents, lfoRateMinHz, lfoRateMaxHz, curveLfo;
+    // How the rate rises across the side: 0 = evenly in ratio (A: exp), 1 =
+    // mostly in the first half (1 − (1 − a)²), so the top steps are depth.
+    float lfoRateEase;
+    // Left side (Drift): peak cents per pass at the end stop per layer (Loop
+    // wow / flutter, first echo wow / flutter), depth curve k.
+    float wowLoopCents, flutterLoopCents, wowEarlyCents, flutterEarlyCents, curveRandom;
+    // Flutter tremolo: dB per unit of the flutter line at the end stop (the
+    // line peaks at ~1, rarely 1.25: kRandOvershoot), on the same curve as
+    // the flutter's depth. 0 = none.
+    float tremoloDb;
+    // Flutter speed follows the wow: flutter rate × (1 + this × wow line).
+    float flutterFollow;
+};
+// k for a voicing whose end stop is T × A's and middle M × A's (see "Depth
+// shape"), then trimmed by the held-tone check (test_m7_tank: every step
+// heard, first step off noon >= 1.5 cents):
+//   left  (A: k 1.0, s(0.5) 0.3775):  B T 0.75, k 0.2 (M 0.94);  C T 0.55, k −0.394 (M 0.80)
+//   right (A: k 1.6, s(0.5) 0.3100):  B T 0.75, k 0.6 (M 1.03);  C T 0.55, k 0 (M 0.89)
+inline constexpr std::array<Voicing, 3> kVoicings{{
+    // A: round 1 (proto/bipolar-wobble)
+    {10.0f, 36.0f, 0.6f, 1.4f, 1.6f, 0.0f, /**/ 10.0f, 7.0f, 28.0f, 18.0f, 1.0f, /**/ 0.0f, 0.0f},
+    // B: gentle (end stops ×0.75)
+    {7.5f, 27.0f, 1.5f, 5.5f, 0.6f, 1.0f, /**/ 7.5f, 5.25f, 21.0f, 13.5f, 0.2f, /**/ 0.8f, 0.2f},
+    // C: more (end stops ×0.55)
+    {5.5f, 19.8f, 1.5f, 5.5f, 0.0f, 1.0f, /**/ 5.5f, 3.85f, 15.4f, 9.9f, -0.394f, /**/ 0.8f, 0.2f},
+}};
+constexpr int kVoicingA = 0, kVoicingB = 1, kVoicingC = 2;
+constexpr int kDefaultVoicing = kVoicingB;
+inline const Voicing& voicing(int v) { return kVoicings[size_t(v < 0 ? 0 : (v > 2 ? 2 : v))]; }
+
 // ---- Right side: the sine LFO (Warble) -------------------------------------------
-// Fully right = the old top end (ADR 0008 "clearly out of tune", kept by
-// the owner): 12 cents per pass in the Loop, 36 on the first echo, 1.4 Hz.
-// Rate rises gently with strength: a slow sway just right of noon, the
-// worn-capstan wow at the end stop.
-constexpr float kLfoLoopCents  = 10.0f;
-constexpr float kLfoEarlyCents = 36.0f;
-constexpr float kLfoRateMinHz  = 0.6f;
-constexpr float kLfoRateMaxHz  = 1.4f;
-inline float lfoRateHz(float a) { return map::expLerp(kLfoRateMinHz, kLfoRateMaxHz, a); }
+// Rate rises with strength (Voicing lfoRateMinHz → lfoRateMaxHz).
+inline float lfoRateHz(const Voicing& v, float a)
+{
+    if (v.lfoRateEase <= 0.0f) return map::expLerp(v.lfoRateMinHz, v.lfoRateMaxHz, a);
+    const float e = 1.0f - (1.0f - a) * (1.0f - a);
+    return v.lfoRateMinHz + (v.lfoRateMaxHz - v.lfoRateMinHz) * e;
+}
 // The LFO's rate drifts a little (a slow random line, ±this fraction), so it
 // never sounds mechanical. 0 = a pure sine at a fixed rate.
 constexpr float kLfoRateWander   = 0.06f;
@@ -103,17 +160,10 @@ constexpr float kWowRateMaxHz = 0.9f;  // mean rate fully left
 constexpr float kWowSpreadLo  = 0.6f;
 constexpr float kWowSpreadHi  = 1.6f;
 inline float wowRateHz(float a) { return map::expLerp(kWowRateMinHz, kWowRateMaxHz, a); }
-// Flutter: a smaller, faster random line, ~5–12 Hz.
+// Flutter: a smaller, faster random line, ~5–12 Hz (B, C: ±20 % more, on the wow).
 constexpr float kFlutterRateHz  = 7.5f;
 constexpr float kFlutterSpreadLo = 0.7f;
 constexpr float kFlutterSpreadHi = 1.55f;
-// Peak cents per pass (Loop) and on the first echo (Transport) at the end
-// stop, per layer. Fully left is set to match fully right by ear-proxy
-// (held-tone pitch, test_m7_tank): "roughly as wild as the old top".
-constexpr float kWowLoopCents      = 10.0f;
-constexpr float kFlutterLoopCents  = 7.0f;
-constexpr float kWowEarlyCents     = 28.0f;
-constexpr float kFlutterEarlyCents = 18.0f;
 // Typical peak slope of a unit random line, per Hz of segment rate
 // (Catmull-Rom through uniform points in [-1, 1]).
 constexpr float kRandSlope = 2.0f;
@@ -161,32 +211,40 @@ struct Depths {
     float lfo = 0.0f, wow = 0.0f, flutter = 0.0f;    // samples
     float lfoHz = 0.0f, wowHz = 0.0f, flutterHz = 0.0f;
     float independence = 1.0f;
+    float tremoloDb = 0.0f;     // dB per unit flutter line (Transport only; 0 elsewhere)
+    float flutterFollow = 0.0f; // flutter rate × (1 + this × wow line)
 };
-inline Depths depths(float knob, bool early, float rateScale, float sampleRate)
+inline Depths depths(float knob, bool early, float rateScale, float sampleRate, int voicingIndex = kDefaultVoicing)
 {
+    const Voicing& v = voicing(voicingIndex);
     Depths d;
     const float aL = randomAmount(knob), aR = lfoAmount(knob);
-    d.lfoHz     = lfoRateHz(aR) * rateScale;
+    d.lfoHz     = lfoRateHz(v, aR) * rateScale;
     d.wowHz     = wowRateHz(aL) * rateScale;
     d.flutterHz = kFlutterRateHz * rateScale;
-    const float sL = shape(aL, kCurveRandom), sR = shape(aR, kCurveLfo);
-    d.lfo     = sineDepthSamples(sR * (early ? kLfoEarlyCents : kLfoLoopCents), d.lfoHz, sampleRate);
-    d.wow     = randomDepthSamples(sL * (early ? kWowEarlyCents : kWowLoopCents), d.wowHz, sampleRate);
-    d.flutter = randomDepthSamples(sL * (early ? kFlutterEarlyCents : kFlutterLoopCents), d.flutterHz, sampleRate);
-    d.independence = independence(aL > aR ? aL : aR);
+    const float sL = shape(aL, v.curveRandom), sR = shape(aR, v.curveLfo);
+    d.lfo     = sineDepthSamples(sR * (early ? v.lfoEarlyCents : v.lfoLoopCents), d.lfoHz, sampleRate);
+    d.wow     = randomDepthSamples(sL * (early ? v.wowEarlyCents : v.wowLoopCents), d.wowHz, sampleRate);
+    d.flutter = randomDepthSamples(sL * (early ? v.flutterEarlyCents : v.flutterLoopCents), d.flutterHz, sampleRate);
+    d.independence  = independence(aL > aR ? aL : aR);
+    d.tremoloDb     = early ? sL * v.tremoloDb : 0.0f; // one tremolo per Tank: the Transport's
+    d.flutterFollow = aL > 0.0f ? v.flutterFollow : 0.0f;
     return d;
 }
 
-// Upper bound of |m| in the Loop (samples) over the whole knob, for sizing
-// delay memory. The slowest Spring (kSpringRate[0]) needs the most, and a
-// sharing Spring follows Spring A scaled by its Loop ratio (<= 1.13).
+// Upper bound of |m| in the Loop (samples) over the whole knob and every
+// voicing, for sizing delay memory. The slowest Spring (kSpringRate[0])
+// needs the most, and a sharing Spring follows Spring A scaled by its Loop
+// ratio (<= 1.13). (The flutter's rate follow changes its speed, not its
+// depth in samples.)
 inline float maxDepthSamples(float sampleRate)
 {
     float m = 0.0f;
-    for (int i = 0; i <= 40; ++i) {
-        const Depths d = depths(0.025f * float(i), false, kSpringRate[0], sampleRate);
-        m = std::fmax(m, std::fmax(d.lfo, kRandOvershoot * (d.wow + d.flutter)));
-    }
+    for (int v = 0; v < int(kVoicings.size()); ++v)
+        for (int i = 0; i <= 40; ++i) {
+            const Depths d = depths(0.025f * float(i), false, kSpringRate[0], sampleRate, v);
+            m = std::fmax(m, std::fmax(d.lfo, kRandOvershoot * (d.wow + d.flutter)));
+        }
     return 1.15f * m;
 }
 

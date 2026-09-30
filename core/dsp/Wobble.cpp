@@ -40,6 +40,7 @@ void Wobble::reset()
     // Start from the generator's own value (no jump from 0 when WOBBLE is up).
     cur_  = value();
     prev_ = cur_;
+    gCur_ = gPrev_ = tremoloGain();
 }
 
 void Wobble::setAmount(float wobble, float depthScale)
@@ -47,7 +48,7 @@ void Wobble::setAmount(float wobble, float depthScale)
     if (wobble == amount_ && depthScale == depthScale_) return;
     amount_     = wobble;
     depthScale_ = depthScale;
-    depths_ = wobble::depths(wobble, role_ == Role::Transport, rateScale_, sampleRate_);
+    depths_ = wobble::depths(wobble, role_ == Role::Transport, rateScale_, sampleRate_, voicing_);
     depths_.lfo *= depthScale;
     depths_.wow *= depthScale;
     depths_.flutter *= depthScale;
@@ -57,6 +58,15 @@ void Wobble::setAmount(float wobble, float depthScale)
     wanderStep_  = wobble::kLfoWanderRateHz * every;
     wowStep_     = depths_.wowHz * every;
     flutterStep_ = depths_.flutterHz * every;
+}
+
+void Wobble::setVoicing(int voicing)
+{
+    if (voicing == voicing_) return;
+    voicing_ = voicing;
+    const float w = amount_ < 0.0f ? wobble::kNoon : amount_, sc = depthScale_ < 0.0f ? 1.0f : depthScale_;
+    amount_ = -1.0f; // force a re-map
+    setAmount(w, sc);
 }
 
 void Wobble::tick()
@@ -70,10 +80,23 @@ void Wobble::tick()
     }
     if (depths_.wow > 0.0f) {
         wow_.advance(rng_, wowStep_, wobble::kWowSpreadLo, wobble::kWowSpreadHi);
-        flutter_.advance(rng_, flutterStep_, wobble::kFlutterSpreadLo, wobble::kFlutterSpreadHi);
+        // The flutter's speed follows the wow (B / C): a tape running fast
+        // or slow flutters faster or slower, so it never sits on one rate.
+        const float follow = 1.0f + depths_.flutterFollow * wow_.value();
+        flutter_.advance(rng_, flutterStep_ * follow, wobble::kFlutterSpreadLo, wobble::kFlutterSpreadHi);
     }
-    prev_ = cur_;
-    cur_  = value();
+    prev_  = cur_;
+    cur_   = value();
+    gPrev_ = gCur_;
+    gCur_  = tremoloGain();
+}
+
+// Flutter tremolo (Transport, left side, B / C): 10^(dB·flutter/20), one
+// exp per 32-sample tick; exactly 1 when off, so noon stays bit-identical.
+float Wobble::tremoloGain() const
+{
+    if (depths_.tremoloDb <= 0.0f) return 1.0f;
+    return std::exp((0.115129255f * depths_.tremoloDb) * flutter_.value()); // ln(10)/20
 }
 
 float Wobble::value() const

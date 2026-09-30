@@ -2,14 +2,20 @@
 // supersedes ADR 0008's one-way zones). Stand-alone: the Wobble component
 // alone (the whole-Tank held-tone numbers are in test_m7_tank).
 //
-// Intended behaviour (ADR 0034, params/WobbleVoicing.h):
+// Intended behaviour (ADR 0034 and its round 2, params/WobbleVoicing.h;
+// checked on the default voicing B unless a check names A or C):
 //   noon ± the dead zone  exactly 0 (only M6's Micro-mod floor remains);
 //   left of noon          smooth random wow + flutter: never repeats, the
 //                         wow's rate wanders, a faster flutter layer on top;
-//   right of noon         a sine LFO whose rate drifts only slightly;
+//   right of noon         a sine LFO whose rate drifts only slightly (round 2:
+//                         a vibrato, 1.5 -> 5.5 Hz; round 1's A: 0.6 -> 1.4 Hz);
 //   both sides            depth grows at every 0.1 knob step, from a few
-//                         cents in the tail next to noon to the old top end
-//                         ("clearly out of tune") at the end stops;
+//                         cents in the tail next to noon to a toned-down top
+//                         (round 2: B a quarter under round 1's, C nearly half);
+//   flutter tremolo       (Transport, left only, B / C) a volume wobble on the
+//                         flutter line, <= 1 dB peak, exactly 1 elsewhere;
+//   flutter follows wow   (B / C) the flutter's speed rises and falls with the
+//                         wow line (+-20 %; checked on the mapping);
 //   Springs               share Spring A's movement at low amounts (chords
 //                         fade evenly), independent from kShareTo up;
 //   always                continuous across the whole knob (no jumps crossing
@@ -27,6 +33,7 @@
 #include "params/WobbleVoicing.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
 #include <cstdio>
@@ -51,10 +58,11 @@ constexpr uint32_t kSeeds[3] = {0xA511E9B3u, 0x63D83595u, 0x1B873593u};
 constexpr int   kSteps = 11;
 constexpr float kKnob[kSteps] = {0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1.0f};
 
-Buf generate(float w, int spring, float fs, float seconds, int block = 48)
+Buf generate(float w, int spring, float fs, float seconds, int block = 48, int voicing = rv::wobble::kDefaultVoicing)
 {
     rv::dsp::Wobble wb;
     wb.prepare(fs, spring, kSeeds[spring]);
+    wb.setVoicing(voicing);
     wb.setAmount(w);
     wb.reset();
     Buf out(size_t(seconds * fs));
@@ -270,27 +278,50 @@ int main()
     }
     {
         // Every 0.1 step away from noon deepens the per-pass movement, on
-        // both sides, by a clear factor (>= 1.3x in p95).
+        // both sides, by a clear factor (p95 >= 1.15x per step; round 1 had
+        // >= 1.3x: round 2 lowers the end stops while keeping the middles,
+        // so the curves are straighter and the top steps smaller per pass.
+        // What is heard per step is checked on the whole Tank, test_m7_tank).
         bool rising = true;
         double worst = 1e9;
         for (int i = 4; i > 0; --i) { // left: 0.4 -> 0
-            rising &= peaks[i - 1] > peaks[i] && p95s[i - 1] >= 1.3 * p95s[i];
+            rising &= peaks[i - 1] > peaks[i] && p95s[i - 1] >= 1.15 * p95s[i];
             worst = std::min(worst, p95s[i - 1] / p95s[i]);
         }
         for (int i = 6; i < kSteps - 1; ++i) { // right: 0.6 -> 1
-            rising &= peaks[i + 1] > peaks[i] && p95s[i + 1] >= 1.3 * p95s[i];
+            rising &= peaks[i + 1] > peaks[i] && p95s[i + 1] >= 1.15 * p95s[i];
             worst = std::min(worst, p95s[i + 1] / p95s[i]);
         }
         std::snprintf(msg, sizeof msg,
-                      "each 0.1 step away from noon deepens the per-pass pitch movement on both sides (p95 >= 1.3x per step; "
+                      "each 0.1 step away from noon deepens the per-pass pitch movement on both sides (p95 >= 1.15x per step; "
                       "smallest step x%.2f)",
                       worst);
         check(rising, msg);
     }
-    std::snprintf(msg, sizeof msg,
-                  "fully right = the old top end: per-pass peak %.1f cents (8..13; old WOBBLE 1: 12.3 with a 10 %% random share)",
-                  peaks[10]);
-    check(peaks[10] >= 8.0 && peaks[10] <= 13.0, msg);
+    {
+        const double want = wobble::voicing(wobble::kDefaultVoicing).lfoLoopCents;
+        std::snprintf(msg, sizeof msg, "fully right = the voicing's end stop: per-pass peak %.1f cents (%.1f, within 10 %%)",
+                      peaks[10], want);
+        check(std::fabs(peaks[10] - want) <= 0.1 * want, msg);
+        // Voicing A is round 1, unchanged: its fully right is the old top end.
+        const double a = centsOf(generate(1.0f, 1, kFs, 120.0f, 48, wobble::kVoicingA)).peak;
+        std::snprintf(msg, sizeof msg,
+                      "voicing A (round 1) fully right = the old top end: per-pass peak %.1f cents (8..13; old WOBBLE 1: 12.3)", a);
+        check(a >= 8.0 && a <= 13.0, msg);
+        // Toning down: B's and C's end stops a quarter and nearly half under A's, both sides.
+        bool down = true;
+        std::printf("      end stops p95 per pass (left / right):");
+        double ref[2] = {0, 0};
+        for (int v : {wobble::kVoicingA, wobble::kVoicingB, wobble::kVoicingC}) {
+            const double l = centsOf(generate(0.0f, 1, kFs, 120.0f, 48, v)).p95, r = centsOf(generate(1.0f, 1, kFs, 120.0f, 48, v)).p95;
+            std::printf("  %c %.2f / %.2f", 'A' + v, l, r);
+            if (v == wobble::kVoicingA) { ref[0] = l; ref[1] = r; continue; }
+            const double lo = v == wobble::kVoicingB ? 0.65 : 0.45, hi = v == wobble::kVoicingB ? 0.85 : 0.65;
+            down &= l >= lo * ref[0] && l <= hi * ref[0] && r >= lo * ref[1] && r <= hi * ref[1];
+        }
+        std::printf("\n");
+        check(down, "end stops toned down: B 0.65..0.85x of A's (~-25 %), C 0.45..0.65x (~-45 %), both sides");
+    }
     // Random lines have rare steep moments, so their peak runs ~2x their
     // p95 (a sine's ~1.05x): "as wild" compares the p95.
     std::snprintf(msg, sizeof msg,
@@ -316,18 +347,25 @@ int main()
         // Left: over 2-10 s lags (past its own smoothness). Right: within a
         // few LFO periods (its slow rate drift loosens it over longer spans).
         const double acL = maxAutocorr(left, size_t(2.0 * kFs / 256.0), size_t(10.0 * kFs / 256.0));
-        const double acR = maxAutocorr(right, size_t(0.4 * kFs / 256.0), size_t(3.0 * kFs / 256.0));
+        // Right: within a few LFO periods (1.5-6), whatever its rate.
+        rv::dsp::Wobble probeR;
+        probeR.prepare(kFs, 1, kSeeds[1]);
+        probeR.setAmount(1.0f);
+        const double per = 1.0 / double(probeR.depths().lfoHz);
+        const double acR = maxAutocorr(right, size_t(1.5 * per * kFs / 256.0), size_t(6.0 * per * kFs / 256.0));
         std::snprintf(msg, sizeof msg,
                       "left never repeats: largest self-similarity over 2-10 s lags %.2f (< 0.5); right is a steady sine: "
-                      "%.2f over 0.4-3 s (> 0.9)",
+                      "%.2f over 1.5-6 of its periods (> 0.9)",
                       acL, acR);
         check(acL < 0.5 && acR > 0.9, msg);
 
         const Buf mL = generate(0.0f, 1, kFs, 60.0f), mR = generate(1.0f, 1, kFs, 60.0f), mL3 = generate(0.3f, 1, kFs, 60.0f);
-        const double fL = bandShare(mL, 4.0, 14.0), fL3 = bandShare(mL3, 4.0, 14.0), fR = bandShare(mR, 4.0, 14.0);
+        // The LFO side's own vibrato sits at <= 5.5 Hz (+6 % drift): no
+        // flutter there means nothing at 8-14 Hz.
+        const double fL = bandShare(mL, 4.0, 14.0), fL3 = bandShare(mL3, 4.0, 14.0), fR = bandShare(mR, 8.0, 14.0);
         std::snprintf(msg, sizeof msg,
                       "flutter on the random side: %.0f %% of the pitch movement's power at 4-14 Hz fully left, %.0f %% at 0.3 "
-                      "(3..50 %%: there, smaller than the wow); LFO side %.1f %% (< 1 %%)",
+                      "(3..50 %%: there, smaller than the wow); LFO side %.1f %% at 8-14 Hz (< 1 %%: its vibrato is below)",
                       100 * fL, 100 * fL3, 100 * fR);
         check(fL > 0.03 && fL < 0.5 && fL3 > 0.03 && fL3 < 0.5 && fR < 0.01, msg);
 
@@ -454,7 +492,7 @@ int main()
     // pitch of the wet tail, every 0.1 step. (The whole Tank, with the
     // first-echo Transport on top: test_m7_tank.)
     {
-        bool stillOk = true, rising = true, ends = true;
+        bool stillOk = true, grows = true, ends = true;
         for (float d : {0.0f, 0.5f, 1.0f}) {
             const float L = map::tensionLoopDelaySeconds(0.5f), t60 = map::decayT60Seconds(d);
             double c[kSteps];
@@ -465,18 +503,71 @@ int main()
             }
             std::printf("  (knob 0 .. 1)\n");
             stillOk &= c[5] < 0.01;
-            for (int i = 4; i > 0; --i) rising &= c[i - 1] > c[i];
-            for (int i = 6; i < kSteps - 1; ++i) rising &= c[i + 1] > c[i];
-            // DECAY max is checked on the whole Tank (test_m7_tank, >= 25 at
-            // both ends), not here: in this Loop-only model a pure sine's
-            // shifts cancel over the many LFO periods a 9 s tail spans (the
-            // old top's 10 % random share was what accumulated there), and
-            // the heard number also carries the first-echo Transport.
-            if (d < 1.0f) ends &= std::min(c[0], c[10]) >= (d == 0.0f ? 10.0 : 25.0);
+            // Round 2: the step-by-step check is on the whole Tank (test_m7_tank),
+            // which is what is heard: in this Loop-only model the slow random
+            // wow reads noisily over 30 s (neighbouring steps can swap), and the
+            // vibrato (right) barely builds up at all (at 5.5 Hz a 69 ms Loop's
+            // passes are ~140 degrees apart, so they don't add up; the heard
+            // Warble is mostly the first echoes, the Transport). Here: each end
+            // stop well past the first step off noon.
+            grows &= c[0] >= 2.0 * c[4] && c[10] >= 2.0 * c[6];
+            if (d == 0.5f) ends &= c[0] >= 15.0 && c[10] >= 3.0;
+            if (d == 0.0f) ends &= c[0] >= 5.0 && c[10] >= 3.0;
         }
         check(stillOk, "tail at noon: no pitch movement");
-        check(rising, "tail: every 0.1 step away from noon moves the held tone more, both sides, at every DECAY");
-        check(ends, "tail at both end stops (Loop only): p95 >= 25 cents at DECAY noon, >= 10 at DECAY 0: clearly out of tune");
+        check(grows, "tail: both end stops move the held tone at least 2x the first step off noon (0.4 / 0.6), every DECAY");
+        check(ends, "tail at the end stops (Loop only): fully left p95 >= 15 cents at DECAY noon, >= 5 at DECAY 0; fully right >= 3 "
+                    "(the vibrato is heard on the first echoes: test_m7_tank)");
+    }
+
+    // ---- Flutter tremolo (round 2, B / C): volume wobble on the flutter line --------
+    {
+        auto tremolo = [](float w, int v) {
+            rv::dsp::Wobble t;
+            t.prepare(kFs, 0, 0x7A11u, rv::dsp::Wobble::Role::Transport);
+            t.setVoicing(v);
+            t.setAmount(w);
+            t.reset();
+            Buf o(size_t(120.0f * kFs)), g(o.size());
+            t.process(o.data(), g.data(), int(o.size()));
+            double peak = 0, ss = 0;
+            bool unity = true;
+            for (float x : g) {
+                const double d = 20.0 * std::log10(double(x));
+                peak = std::max(peak, std::fabs(d));
+                ss += d * d;
+                unity &= x == 1.0f;
+            }
+            return std::array<double, 3>{{peak, std::sqrt(ss / double(g.size())), unity ? 1.0 : 0.0}};
+        };
+        const auto t0 = tremolo(0.0f, wobble::kDefaultVoicing), t2 = tremolo(0.2f, wobble::kDefaultVoicing),
+                   t4 = tremolo(0.4f, wobble::kDefaultVoicing);
+        std::printf("      tremolo (B): fully left peak %.2f dB rms %.2f; 0.2 peak %.2f rms %.2f; 0.4 peak %.2f rms %.2f\n", t0[0],
+                    t0[1], t2[0], t2[1], t4[0], t4[1]);
+        std::snprintf(msg, sizeof msg, "flutter tremolo fully left: peak %.2f dB (0.5..1.0: subtle, a tape transport, not a pitch effect)",
+                      t0[0]);
+        check(t0[0] >= 0.5 && t0[0] <= 1.0, msg);
+        check(t0[1] > t2[1] && t2[1] > t4[1] && t4[1] > 0.0, "flutter tremolo grows towards fully left (rms dB at 0.4 < 0.2 < 0)");
+        bool unity = true;
+        for (float w : {0.5f, 0.6f, 1.0f}) unity &= tremolo(w, wobble::kDefaultVoicing)[2] == 1.0;
+        unity &= tremolo(0.0f, wobble::kVoicingA)[2] == 1.0;
+        check(unity, "no tremolo at noon, on the LFO side, or in voicing A: gain exactly 1 (bit-identical)");
+    }
+
+    // ---- Flutter speed follows the wow (round 2, B / C) ------------------------------
+    // Checked on the mapping, not by measurement: the flutter's own segments
+    // already vary its rate by x0.7..1.55, and the slow wow takes a different
+    // random path in every voicing, so a correlation read off 10 minutes of
+    // output swings by +-0.3 either way (tried: A read +0.32 with no follow).
+    {
+        bool ok = true;
+        for (int v : {wobble::kVoicingA, wobble::kVoicingB, wobble::kVoicingC})
+            for (float w : {0.0f, 0.25f, 0.5f, 0.75f, 1.0f}) {
+                const auto d = wobble::depths(w, false, 1.0f, kFs, v);
+                const float want = (v == wobble::kVoicingA || w >= 0.47f) ? 0.0f : 0.2f;
+                ok &= d.flutterFollow == want;
+            }
+        check(ok, "flutter speed follows the wow line by +-20 % on the left side in B and C (none in A, none right of noon)");
     }
 
     std::printf("%d failure(s)\n", failures);

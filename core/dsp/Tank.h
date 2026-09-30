@@ -208,6 +208,15 @@ public:
         splashOn_ = clatter;
         joltOn_   = jolt;
     }
+    // Renderer / test hook (not a panel control, ADR 0034 round 2): which
+    // WOBBLE voicing (WobbleVoicing.h: 0 = A round 1, 1 = B, 2 = C). The
+    // firmware and plugin never call it (wobble::kDefaultVoicing).
+    void setWobbleVoicing(int v)
+    {
+        for (auto& w : wobble_) w.setVoicing(v);
+        transport_.setVoicing(v);
+    }
+    int wobbleVoicing() const { return transport_.voicing(); }
     // M7 components, read-only (tests, meters).
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }

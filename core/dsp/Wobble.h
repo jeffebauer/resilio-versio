@@ -22,9 +22,14 @@
 // Sample-rate aware: depths scale with fs, rates are in Hz.
 //
 // Transport role (M8): the same generator with the first-echo depths
-// (WobbleVoicing.h k*EarlyCents) and its own rate ratio. The Tank runs one,
-// shared by all Springs, as an offset on every pickup read, so the first
-// echoes waver too.
+// (WobbleVoicing.h Voicing *EarlyCents) and its own rate ratio. The Tank
+// runs one, shared by all Springs, as an offset on every pickup read, so the
+// first echoes waver too. On the left side it also gives the flutter
+// tremolo (round 2, voicings B / C): a gain following its flutter line
+// (process(out, gain, n)), which the Tank puts on the Springs' wet sound.
+//
+// Round 2 (voicings B / C): the flutter's rate follows the wow line (±20 %),
+// so it never settles on one speed.
 
 #include "dsp/Filters.h"
 #include "dsp/Seed.h"
@@ -49,6 +54,10 @@ public:
     // depthScale: the Loop depth's DECAY trim (splash::wobbleDecayScale; 1
     // for the transport). Worked out again only when either value moved.
     void setAmount(float wobble, float depthScale = 1.0f);
+    // Hidden, Renderer only (WobbleVoicing.h "Voicings"): 0 = A (round 1),
+    // 1 = B, 2 = C. The firmware and plugin keep wobble::kDefaultVoicing.
+    void setVoicing(int voicing);
+    int  voicing() const { return voicing_; }
 
     // One sample of Loop delay modulation, in samples (signed).
     float next()
@@ -69,6 +78,18 @@ public:
     void process(float* out, int n)
     {
         for (int i = 0; i < n; ++i) out[i] = next();
+    }
+    // Transport: the offset plus the flutter tremolo's gain for the same
+    // samples (exactly 1 unless the left side is active in voicing B / C).
+    void process(float* out, float* gain, int n)
+    {
+        for (int i = 0; i < n; ++i) {
+            if (k_ == 0) tick();
+            const float t = float(k_) * (1.0f / float(splash::kControlInterval));
+            out[i]  = prev_ + (cur_ - prev_) * t;
+            gain[i] = gPrev_ + (gCur_ - gPrev_) * t;
+            if (++k_ == splash::kControlInterval) k_ = 0;
+        }
     }
 
     float depthSamples() const { return depths_.lfo + depths_.wow + depths_.flutter; }
@@ -102,12 +123,14 @@ private:
 
     void  tick();
     float value() const;
+    float tremoloGain() const;
 
     float    sampleRate_ = 48000.0f;
     float    rateScale_  = 1.0f;
     float    loopRatio_  = 1.0f;
     Role     role_       = Role::Loop;
     uint32_t seed_       = 1;
+    int      voicing_    = wobble::kDefaultVoicing;
     Rng      rng_;
 
     float          amount_ = -1.0f, depthScale_ = -1.0f;
@@ -118,6 +141,7 @@ private:
     float      phase_ = 0.0f;
     RandomLine wander_, wow_, flutter_;
     float      prev_ = 0.0f, cur_ = 0.0f;
+    float      gPrev_ = 1.0f, gCur_ = 1.0f; // flutter tremolo gain (Transport)
     int        k_ = 0;
 };
 

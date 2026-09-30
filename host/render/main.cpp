@@ -7,6 +7,8 @@
 //             [--auto a.json] [--block N] [--sidecar]
 //   rv_render --sweep sweep.json --out-dir DIR
 //   rv_render --analyze <in.wav> [--sidecar-out x.json] [--channel L|R|mix]
+//   Hidden, Renderer-only key (ParamsJson.h): wobble_voicing = 0 / 1 / 2 (A / B / C,
+//   core/params/WobbleVoicing.h), in --set, a --preset, or a sweep base / grid.
 
 #include "Automation.h"
 #include "Json.h"
@@ -45,6 +47,7 @@ bool applySet(rv::Tank& tank, const std::string& arg)
     if (eq == std::string::npos) return false;
     const std::string key = arg.substr(0, eq);
     const float value     = std::strtof(arg.c_str() + eq + 1, nullptr);
+    if (rv::paramsjson::applyHidden(tank, key, value)) return true; // e.g. wobble_voicing=2
     for (const auto& p : rv::kParams) {
         if (key == p.key) { tank.setParam(p.id, value); return true; }
     }
@@ -206,7 +209,9 @@ int runSweep(const std::string& sweepPath, const std::string& outDir)
             std::fprintf(stderr, "sweep base preset: %s\n", error.c_str());
             return 1;
         }
+        bool voiced = cfg.base.find(rv::paramsjson::kWobbleVoicingKey) != nullptr;
         for (const auto& [key, value] : combo) {
+            if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = true; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
             tank.setParam(id, float(value));
@@ -226,6 +231,9 @@ int runSweep(const std::string& sweepPath, const std::string& outDir)
         analyzeAndReport(out, mono, m, spec);
 
         rv::json::Value params = rv::sidecar::paramsToJson(tank);
+        // A hidden voicing, when the sweep sets one, goes in as a letter (the
+        // review page's A / B / C versions).
+        if (voiced) params.set(rv::paramsjson::kWobbleVoicingKey, rv::json::Value::makeString(rv::paramsjson::wobbleVoicingLabel(tank)));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }
