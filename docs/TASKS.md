@@ -2,13 +2,13 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 30 Sep 2026, evening (session 4 wrap; next session picks up the SPLASH/DRIVE merge)
+**Last updated:** 1 Oct 2026 (session 5: SPLASH/DRIVE merged, release firmware ready; your bipolar WOBBLE notes in)
 
 | Milestone | State |
 |---|---|
 | M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target now **70 %**, your call 30 Sep: ~7 points for new sound) |
-| Real firmware on the Versio | **Playing.** Keep `dist/resilio_versio_release_e618e12.bin` on it (knob layout, output fix, LED meters without flicker) |
-| M8 sound | **In progress:** SPLASH round 4 and the "one smooth arc" tank are being built for you to hear |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_b3e5ac3.bin` (the new SPLASH + DRIVE as INPUT). Flash it, then the click check in §3 |
+| M8 sound | **In progress:** SPLASH/DRIVE merged (1 Oct); bipolar WOBBLE being toned down from your notes; Wellspring fit next |
 | M2 Ableton check | After the next plugin install |
 | M9 polish | LEDs done; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`) |
 
@@ -20,18 +20,21 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Listened (30 Sep): **the new build won every panel** (hits, skank, quiet send); DRIVE at half on the tail sweep. Remark: DRIVEN and KICKED hits and skank a bit hot/distorted; DRIVEN should sit between CLEAN and KICKED so intensity steps up evenly
 - [x] Listened to the tuned build (30 Sep): **C everywhere** (more balanced) **except KICKED skank**, which sounded hotter and brighter (it had the "dramatic" clang). Fix: KICKED chords go back to your "clear" clang, drums keep the bigger one
 - [x] **D approved** (30 Sep): "sounding great" in every panel. Last note: DRIVE 0.8 still feels hot with 20 % left, so full DRIVE would only be unusable distortion. Being stretched: today's 0.8 grit arrives at about full DRIVE, everything below milder (splash sensitivity and the +6 dB level unchanged)
-- Then Claude merges, builds the release firmware and installs the plugin (you'll get the click check and the Ableton check)
+- [x] **DRIVE stretch picked** (1 Oct): "as far as the rule allows": full DRIVE = D's 0.92 grit (0.8 plays like 0.75), noon unchanged. Going all the way (full = D's 0.8) would have made KICKED at full DRIVE less than clearly cranked (ADR 0022)
+- [x] **Merged** (1 Oct, `b3e5ac3`): all 16 test suites pass. Release firmware `dist/resilio_versio_release_b3e5ac3.bin`
 - Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
-- [ ] After the tuned version: release firmware + plugin install, then the click check
+- [ ] Flash `dist/resilio_versio_release_b3e5ac3.bin` and do the click check (§3)
+- [ ] Plugin install of `b3e5ac3`: tell Claude when Ableton is closed
 
 ### 2. Fitted to your Wellspring · next round after the SPLASH/DRIVE merge
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
-### 2b. Bipolar WOBBLE · **ready** (≈10 min)
-- [ ] Open `renders/proto_bipolar_wobble/index.html`: **A** today vs **B** bipolar at WOBBLE fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock, fully right (sine LFO), on held tones and skank. Does the left side sound like tape that never repeats? Is noon still? Is each step audible? Keep the pure sine or the slightly drifting one on the right?
+### 2b. Bipolar WOBBLE · round 2 from your notes
+- [x] Listened (1 Oct): **you like the bipolar control.** Tone down the top end of each side a little (there's no speed knob, so the amounts have to be right). Right side: more like a **vibrato or flutter** (faster than today's slow 0.6–1.4 Hz sway). Left side stays wow + flutter. Also: ideas from the Wear & Tear manual, Claude's notes in the chat and the backlog
+- Round 1 page (for reference): open `renders/proto_bipolar_wobble/index.html`: **A** today vs **B** bipolar at WOBBLE fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock, fully right (sine LFO), on held tones and skank. Does the left side sound like tape that never repeats? Is noon still? Is each step audible? Keep the pure sine or the slightly drifting one on the right?
 
 ### 3. Play the Versio
 - **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
@@ -56,7 +59,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 
 ## Waiting on Claude (no action needed)
-- **Next session:** merge the approved SPLASH/DRIVE build (with the DRIVE grit stretched), release firmware, plugin install; the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
+- **Now:** bipolar WOBBLE round 2 (gentler tops, vibrato on the right); then the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0). Plugin install of `b3e5ac3` when Ableton is closed
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
