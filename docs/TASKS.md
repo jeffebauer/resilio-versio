@@ -21,7 +21,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Next listen (Claude says when ready):** `renders/splash_drive_build2/index.html`: B (the build you heard) vs C (tuned: less hot, DRIVEN midway), hits and skank at DRIVE ½ and 0.8
 - Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
-- [ ] **Then on the Versio:** run 13 CPU test `dist/resilio_versio_m3_profile_run13.bin` (USB, stream like run 12; expect ~65 % against the 70 % target); then Claude builds the release firmware and the plugin install
+- [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
+- [ ] After the tuned version: release firmware + plugin install, then the click check
 
 ### 2. Fitted to your Wellspring · Claude is building it (listen when ready)
 - The smooth-arc page (30 Sep) was still far off: the Wellspring has a strong "pew" on clicks, little on skank, and is rounder and smoother. Measured: its pew is the top two octaves (2–5.5 kHz) arriving up to ~20 ms after the lows, which also makes each echo swell in (rounder); ours delivers them almost at once. Our tail is also 3–5 dB edgier at 2–3 kHz
