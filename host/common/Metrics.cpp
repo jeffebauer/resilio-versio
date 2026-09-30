@@ -32,41 +32,160 @@ std::vector<size_t> findEvents(const std::vector<float>& mono, float sr)
     return events;
 }
 
+// Mean power of 10 ms blocks over [start, end) (a trailing partial block
+// is dropped).
+std::vector<double> blockPowers(const std::vector<float>& mono, size_t start, size_t end, size_t block)
+{
+    const size_t numBlocks = end > start ? (end - start) / block : 0;
+    std::vector<double> e(numBlocks, 0.0);
+    for (size_t b = 0; b < numBlocks; ++b) {
+        const size_t from = start + b * block;
+        for (size_t i = from; i < from + block; ++i) e[b] += double(mono[i]) * double(mono[i]);
+        e[b] /= double(block);
+    }
+    return e;
+}
+
+// Below this (re the loudest 10 ms block) a segment's floor is too low to
+// matter: the T60 fit runs exactly as on a noise-free render.
+constexpr double kT60FloorNegligibleDb = -90.0;
+// Digital silence (a gap of zeros, a render's tail below float precision)
+// isn't a noise floor: blocks this far below the peak are left out of the
+// floor estimate.
+constexpr double kT60SilenceDb = -120.0;
+// With a floor: integrate until the 50 ms envelope falls to this far above
+// it, and let the fit end (-35 dB) no closer to it than this. 7 dB: noisy
+// synthetic tails of known T60 (1 s, 3.5 s) read within 1 % whenever they
+// pass; the owner's Wellspring take A (floor ~52 dB below its peak) passes
+// at 3.42 s (combined-click 3.52 s), its noisier A-L / A-R read null.
+constexpr double kT60CutAboveFloorDb = 3.0;
+constexpr double kT60ClearAboveFloorDb = 7.0;
+
+// Noise floor of a recording, for the T60 fit: the mean power of the
+// quietest 200 ms after the segment's loudest 10 ms block, over [start,
+// end) (the whole segment, up to the next event's -40 dBFS crossing).
+// Windows touching digital silence don't count, so a render (or a gap of
+// zeros) gives 0: no floor. Averaging 200 ms keeps the estimate steady; it
+// can only read high by including some tail, which errs toward cutting
+// the fit sooner (see schroederT60).
+double noiseFloorPower(const std::vector<float>& mono, size_t start, size_t end, float sr)
+{
+    const size_t block = std::max<size_t>(1, size_t(0.010 * double(sr)));
+    if (end > mono.size() || end <= start + block) return 0.0;
+    const std::vector<double> e = blockPowers(mono, start, end, block);
+    const size_t peak = size_t(std::max_element(e.begin(), e.end()) - e.begin());
+    const double silent = e[peak] * std::pow(10.0, kT60SilenceDb / 10.0);
+    constexpr size_t kWin = 20; // 200 ms
+    double best = 0.0;
+    bool found = false;
+    double sum = 0.0;
+    size_t live = 0; // consecutive non-silent blocks ending at b
+    for (size_t b = peak + 1; b < e.size(); ++b) {
+        if (e[b] <= silent) { live = 0; sum = 0.0; continue; }
+        sum += e[b];
+        if (++live > kWin) { sum -= e[b - kWin]; live = kWin; }
+        if (live == kWin && (!found || sum / double(kWin) < best)) { best = sum / double(kWin); found = true; }
+    }
+    return found ? best : 0.0;
+}
+
 // Schroeder backward-integration T60: fit the -5 -> -35 dB region of the
 // energy decay curve, extrapolate the slope to -60 dB. NaN if the curve
 // never reaches -35 dB in [start, end) (not measurable).
-double schroederT60(const std::vector<float>& mono, size_t start, size_t end, float sr)
+//
+// `floorPower` is the recording's noise floor (noiseFloorPower above; 0
+// for none). Integrated as-is, a floor's energy props up the decay curve
+// and the tail reads far too long (a Wellspring take ~50 dB above its hiss
+// read 14 s against a true ~3.5 s). So, when the floor is within 90 dB of
+// the peak (Lundeby-style, like tools/ingest_references.py's combined-click
+// fit):
+//  - the integration stops where the 50 ms envelope falls to 3 dB above
+//    the floor, and the floor's power is subtracted from every sample
+//    before it;
+//  - the tail energy lost past that point is added back, assuming it keeps
+//    decaying at the fitted rate (a few rounds converge);
+//  - the fit must end (at -35 dB) while the envelope is still >= 7 dB
+//    above the floor. Otherwise the tail never rises clearly enough above
+//    the noise to measure (a floor less than ~42 dB below the tail's
+//    start): NaN, not a guess.
+// With no floor (digital silence, or one more than 90 dB down) this is the
+// plain fit, unchanged.
+double schroederT60(const std::vector<float>& mono, size_t start, size_t end, float sr, double floorPower)
 {
     if (end <= start + 8 || end > mono.size()) return std::nan("");
-    const size_t len = end - start;
+    size_t len = end - start;
+
+    // Noise-floor handling: where to stop integrating (len), the power left
+    // in the tail there (tailPower), and how far the fit may go (clearEnd).
+    double nf = 0.0, tailPower = 0.0;
+    size_t clearEnd = len;
+    const size_t block = std::max<size_t>(1, size_t(0.010 * double(sr)));
+    if (floorPower > 0.0 && len >= 8 * block) {
+        const std::vector<double> e = blockPowers(mono, start, end, block);
+        const size_t peak = size_t(std::max_element(e.begin(), e.end()) - e.begin());
+        if (floorPower > e[peak] * std::pow(10.0, kT60FloorNegligibleDb / 10.0)) {
+            nf = floorPower;
+            // 50 ms envelope: centred mean of 5 blocks.
+            auto env = [&](size_t b) {
+                const size_t lo = b >= 2 ? b - 2 : 0, hi = std::min(e.size(), b + 3);
+                double s = 0.0;
+                for (size_t k = lo; k < hi; ++k) s += e[k];
+                return s / double(hi - lo);
+            };
+            const double cutLevel = nf * std::pow(10.0, kT60CutAboveFloorDb / 10.0);
+            const double clearLevel = nf * std::pow(10.0, kT60ClearAboveFloorDb / 10.0);
+            size_t cut = e.size(), clear = e.size();
+            for (size_t b = peak; b < e.size(); ++b) {
+                const double v = env(b);
+                if (clear == e.size() && v <= clearLevel) clear = b;
+                if (v <= cutLevel) { cut = b; break; }
+            }
+            clearEnd = std::min(len, clear * block);
+            if (cut < e.size()) len = cut * block;
+            tailPower = std::max(env(std::min(cut, e.size() - 1)) - nf, 0.0);
+        }
+    }
+    if (len <= 8) return std::nan("");
+
     std::vector<double> edc(len);
     double acc = 0.0;
     for (size_t n = len; n-- > 0;) {
         const double x = double(mono[start + n]);
-        acc += x * x;
+        acc += x * x - nf;
         edc[n] = acc;
     }
     if (edc[0] <= 0.0) return std::nan("");
-    long n5 = -1, n35 = -1;
-    for (size_t i = 0; i < len; ++i) {
-        const double db = 10.0 * std::log10(edc[i] / edc[0] + 1e-300);
-        if (n5 < 0 && db <= -5.0) n5 = long(i);
-        if (db <= -35.0) { n35 = long(i); break; }
-    }
-    if (n5 < 0 || n35 < 0 || n35 <= n5) return std::nan("");
 
-    double sumT = 0, sumD = 0, sumTT = 0, sumTD = 0;
-    long count = 0;
-    for (long i = n5; i <= n35; ++i) {
-        const double t = double(i) / double(sr);
-        const double db = 10.0 * std::log10(edc[size_t(i)] / edc[0] + 1e-300);
-        sumT += t; sumD += db; sumTT += t * t; sumTD += t * db; ++count;
+    double t60 = std::nan(""), extra = 0.0;
+    for (int round = 0; round < (nf > 0.0 ? 6 : 1); ++round) {
+        const double e0 = edc[0] + extra;
+        auto dbAt = [&](size_t i) { return 10.0 * std::log10(std::max(edc[i] + extra, 1e-300) / e0); };
+        long n5 = -1, n35 = -1;
+        for (size_t i = 0; i < len; ++i) {
+            const double db = dbAt(i);
+            if (n5 < 0 && db <= -5.0) n5 = long(i);
+            if (db <= -35.0) { n35 = long(i); break; }
+        }
+        if (n5 < 0 || n35 < 0 || n35 <= n5) return std::nan("");
+        if (size_t(n35) >= clearEnd) return std::nan(""); // fit would reach into the noise
+
+        double sumT = 0, sumD = 0, sumTT = 0, sumTD = 0;
+        long count = 0;
+        for (long i = n5; i <= n35; ++i) {
+            const double t = double(i) / double(sr);
+            const double db = dbAt(size_t(i));
+            sumT += t; sumD += db; sumTT += t * t; sumTD += t * db; ++count;
+        }
+        const double denom = double(count) * sumTT - sumT * sumT;
+        if (std::fabs(denom) < 1e-12) return std::nan("");
+        const double slope = (double(count) * sumTD - sumT * sumD) / denom; // dB/s, expect negative
+        if (slope >= -1e-6) return std::nan(""); // not decaying
+        t60 = -60.0 / slope;
+        // Tail past the cut: tailPower * exp(-t / tau), tau = T60 / (6 ln 10),
+        // integrated in samples.
+        extra = tailPower * double(sr) * t60 / (6.0 * std::log(10.0));
     }
-    const double denom = double(count) * sumTT - sumT * sumT;
-    if (std::fabs(denom) < 1e-12) return std::nan("");
-    const double slope = (double(count) * sumTD - sumT * sumD) / denom; // dB/s, expect negative
-    if (slope >= -1e-6) return std::nan(""); // not decaying
-    return -60.0 / slope;
+    return t60;
 }
 
 // End of the T60 fit when another event follows at `end`. The next event
@@ -806,9 +925,12 @@ Metrics compute(const std::vector<std::vector<float>>& channels, float sampleRat
         segEnd = events.size() > 1 ? events[1] : frames;
     }
     // T60 stops before the next event's build-up (decayEnd above); the
-    // other segment metrics keep the full [first event, second event).
+    // other segment metrics keep the full [first event, second event). A
+    // recording's noise floor, estimated over the whole segment, bounds the
+    // fit too (schroederT60 above).
     const size_t t60End = events.size() > 1 ? decayEnd(mono, segStart, segEnd, sampleRate) : segEnd;
-    m.t60S = schroederT60(mono, segStart, t60End, sampleRate);
+    const double floorPower = noiseFloorPower(mono, segStart, segEnd, sampleRate);
+    m.t60S = schroederT60(mono, segStart, t60End, sampleRate, floorPower);
 
     // Resonance segment starts 1 s after the first event (or 1 s into the
     // file when no event is found, e.g. analyzing a sustained reference

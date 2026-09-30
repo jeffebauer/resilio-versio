@@ -487,9 +487,12 @@ def make_search_stimulus(tmp_dir):
 
 def measure_t60(search_stim, tmp_dir, sets, tag):
     """Render and measure with the same combined-click method as the
-    reference (not the sidecar's t60_s: rv_render --analyze ends its T60
-    segment at the next event's -40 dBFS crossing, which on a spring
-    includes the next click's quiet build-up and reads long)."""
+    reference, so both sides of the match use one method. The sidecar's
+    t60_s (rv_render --analyze) is no longer biased long -- its fit stops
+    before the next click's quiet build-up and handles a noise floor (it
+    reads null when one click's tail isn't clear enough of the floor) --
+    but it fits one click, while the reference's number averages all of
+    them."""
     out_wav = tmp_dir / f"{tag}.wav"
     err = rv_render_set(search_stim, out_wav, sets)
     if err:
@@ -868,8 +871,12 @@ def write_report(summary, path, notes_text):
                              f"-{fmt(max(v for v in ct['per_click_t60_s'] if v), 2)} s; "
                              f"{fmt(ct['peak_to_floor_db'], 1, ' dB')} above the noise floor"
                              f"{', **low: reads short**' if low else ''}). "
-                             f"The single-segment T60 above is blank because each tail sinks into the noise floor "
-                             f"before -35 dB.")
+                             + ("The single-segment T60 above is blank because one click's tail doesn't stay at "
+                                "least 7 dB above the noise floor down to -35 dB, so it isn't measurable alone; "
+                                "averaging the clicks lowers the noise."
+                                if m.get("t60_s") is None else
+                                "The single-segment T60 above is the first click alone, fitted above the noise "
+                                "floor; the combined figure averages the noise down and is the one the A/B uses."))
             disp = click.get("dispersion")
             if disp and disp.get("ok"):
                 lines.append(f"Chirp repeat {fmt(disp.get('repeat_ms'), 1, ' ms')}, "

@@ -174,6 +174,41 @@ void t60IgnoresNextEventBuildUp()
     check(ok, what);
 }
 
+// A recording's noise floor: a 1 s tail (-10 dBFS start) sinks into hiss
+// `floorDb` below its start and the hiss runs on for seconds, then a gap of
+// digital silence, then a second event. Integrating the hiss would read the
+// tail far too long (a real take read 14 s for ~3.5 s).
+double t60WithFloor(double floorDb)
+{
+    const float sr = 48000.0f;
+    const float amp = 0.3f;
+    std::vector<float> x = decayingNoise(1.0, 5.0, sr, 21);
+    for (float& v : x) v *= amp;
+    std::mt19937 floorRng(22);
+    std::uniform_real_distribution<float> floorDist(-1.0f, 1.0f);
+    const float floorAmp = amp * float(std::pow(10.0, floorDb / 20.0));
+    for (float& v : x) v += floorAmp * floorDist(floorRng);
+    x.resize(x.size() + size_t(0.5 * sr), 0.0f);
+    for (float v : decayingNoise(1.0, 3.0, sr, 23)) x.push_back(amp * v);
+    return rv::metrics::compute({x}, sr).t60S;
+}
+
+void t60HandlesNoiseFloor()
+{
+    for (double floorDb : {-50.0, -60.0}) {
+        const double t = t60WithFloor(floorDb);
+        char what[160];
+        std::snprintf(what, sizeof what, "T60: a 1 s tail over a noise floor %.0f dB down, then silence and a second event, "
+                      "reads within 5%% (got %s)", -floorDb, std::isnan(t) ? "null" : std::to_string(t).c_str());
+        check(!std::isnan(t) && std::fabs(t - 1.0) < 0.05, what);
+    }
+    const double buried = t60WithFloor(-25.0);
+    char what[160];
+    std::snprintf(what, sizeof what, "T60: a tail that never gets clear of the noise (floor 25 dB down) reads null (got %s)",
+                  std::isnan(buried) ? "null" : std::to_string(buried).c_str());
+    check(std::isnan(buried), what);
+}
+
 void resonancePeakDistinguishesTone()
 {
     const float sr = 48000.0f;
@@ -571,6 +606,7 @@ int main()
     fftMatchesDirectDft();
     t60MeasuresKnownDecays();
     t60IgnoresNextEventBuildUp();
+    t60HandlesNoiseFloor();
     resonancePeakDistinguishesTone();
     steadyToneDetectsSustainedSine();
     clickCountOnStimulusFiles();

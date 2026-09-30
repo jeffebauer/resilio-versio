@@ -65,12 +65,23 @@ exists is still processed, and the missing core takes are called out.
    Treat it the way the contract does: "not measurable" for that take, not
    an error, and the DECAY search below is prepared for it.
 
-   **Caution:** on repeated stimuli this single-segment T60 reads **long**.
-   The segment ends at the next event's -40 dBFS crossing, and a spring's
-   output builds up quietly for ~30 ms before it crosses, so the next
-   event's build-up props up the end of the decay curve (same render: 1.23 s
-   vs 1.03 s measured cleanly). The Wellspring's B/C "5.0-5.2 s" came from
-   this; per hit, B's tails are really 3.3-4.3 s.
+   **History:** this single-segment T60 used to read **long** on repeated
+   stimuli, for two reasons, both fixed on 30 Sep 2026 (see the contract).
+   (a) The segment ended at the next event's -40 dBFS crossing, and a
+   spring's output builds up quietly for ~30 ms before it crosses, so the
+   next event's build-up propped up the end of the decay curve (same
+   render: 1.23 s vs 1.03 s measured cleanly; the Wellspring's B/C
+   "5.0-5.2 s" came from this; per hit, B's tails are 3.3-4.3 s). Now the
+   fit stops at the quietest 10 ms before the next event. (b) On a take
+   with audible hiss, that quietest point sits seconds into the hiss and
+   the integrated hiss read Wellspring A as 14 s. Now the fit handles the
+   noise floor the same way as 4b below (floor subtracted, integration cut
+   near it, lost tail added back), and returns `null` when the tail's -35 dB
+   point isn't at least 7 dB above the floor. Single clicks sit close to
+   that line: Wellspring A reads 3.42 s, A-L and A-R read `null` (their
+   floor is only ~42-48 dB below the peak); Magneto MA reads 3.48 s. The
+   combined-click T60 (4b), which averages the noise down first, stays the
+   number the matched A/B uses.
 4b. **Combined-click T60** (click takes: A, A-L, A-R, MA), the number the
    matched A/B uses. Each click's tail is cut from its stimulus onset to
    0.1 s before the next click; the six identical tails are averaged
@@ -104,7 +115,7 @@ exists is still processed, and the missing core takes are called out.
    monotonically with DECAY per SPEC M1) so our own render's T60 matches the
    Wellspring take A's (or Magneto MA's) combined-click T60 (4b), at MIX 1.
    Our renders are measured the same way (not with the sidecar's T60, which
-   reads long, see 4). The recipe and SPEC say "DECAY set to match T60" but
+   fits one click only, see 4), so both sides use one method. The recipe and SPEC say "DECAY set to match T60" but
    don't say which ATTITUDE — this tool renders **both CLEAN and DRIVEN**
    rather than guessing one, each on `01_clicks`, `02_hits` and `04_skank`
    so every reference take (A, B, E) has its like-for-like render on the
