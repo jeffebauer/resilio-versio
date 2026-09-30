@@ -203,7 +203,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Done
 
-- 30 Sep 2026: **merged** the overnight work: tail-length measurement fix, LED meters (ADR 0031, SPEC v1.0.18), manual + dub preset drafts (`docs/manual.md`, `docs/presets.md`), new listening pages. All 16 test suites pass. **Release firmware built** (`dist/resilio_versio_release_e2ff5a7.bin`, 84 % of flash)
+- 30 Sep 2026: **merged** the overnight work: tail-length measurement fix, LED meters (ADR 0031, SPEC v1.0.18), manual + dub preset drafts (`docs/manual.md`, `docs/presets.md`), new listening pages. All 16 test suites pass. **Release firmware built** (`dist/resilio_versio_release_3a790f7.bin`, 84 % of flash)
 - 30 Sep 2026: **M3 run 11**: 62 % average, 68 % peak (target peak 65 %)
 
 - 29 Sep 2026: **Earlier first echo** (ADR 0029): loose tank's gap 45 → 32 ms, like your Wellspring; echo spacing unchanged
