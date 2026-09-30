@@ -56,7 +56,7 @@ float attValue(int a) { return rv::switchToNormalised(a); }
 struct Settings {
     float decay = 0.6f, tension = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f;
     int   att = 1, springs = 1;
-    // M7: < 0 = leave the ParamSpec default (SPLASH 0.3, WOBBLE 0.2).
+    // M7: < 0 = leave the ParamSpec default (SPLASH 0.3, WOBBLE 0.45: a touch of shared Drift).
     float splash = -1.0f, wobble = -1.0f;
 };
 
@@ -578,7 +578,7 @@ void driveAudibility()
 
 // ---- 2c. DRIVE sweet spot: no dead patch (M8, docs/m8-sweetspot.md) ----------------------
 // The M8 sweet-spot report's test: DRIVE in 0.1 steps on 02_hits' first
-// 10 s (MIX 0.5, SPRINGS 2, DECAY / TONE / TENSION noon, WOBBLE 0.2), mono
+// 10 s (MIX 0.5, SPRINGS 2, DECAY / TONE / TENSION noon, WOBBLE 0.45), mono
 // sum; a step is audible if the null between neighbours is >= -40 dB or
 // the RMS moves >= 0.5 dB. Dead patch = 3 or more silent steps in a row.
 // SPLASH 0 here, so only DRIVE's own sound counts (at SPLASH 0.3 the
@@ -607,7 +607,7 @@ void driveSweetSpot()
             s.decay  = 0.5f;
             s.mix    = 0.5f;
             s.splash = 0.0f;
-            s.wobble = 0.2f;
+            s.wobble = 0.45f;
             const Stereo o = renderWith(s, in);
             m[d].resize(o.l.size());
             for (size_t i = 0; i < o.l.size(); ++i) m[d][i] = o.l[i] + o.r[i];
@@ -902,9 +902,9 @@ void aliasing()
     // The whole Tank (wet): what the listener hears. DECAY 0.3 so the tail
     // reaches steady state; analysed from 2.3 s. DRIVEN too at 0 dBFS
     // (since ADR 0022 its pre-gain reaches higher than KICKED's).
-    // SPLASH 0 and WOBBLE 0 (M7): WOBBLE's pitch movement and KICKED's
+    // SPLASH 0 and WOBBLE noon = still (M7): WOBBLE's pitch movement and KICKED's
     // energy-dependent rattle put modulation sidebands within ~10-20 Hz of
-    // the tone (-41 dB at WOBBLE 0.2 / SPLASH 0.3 in KICKED). Those are
+    // the tone (-41 dB at the old WOBBLE 0.2 / SPLASH 0.3 in KICKED). Those are
     // not aliasing; this measures the drive stages.
     {
         AliasResult r;
@@ -916,7 +916,7 @@ void aliasing()
             s.tension = 0.0f; // loosest tank
             s.springs = 2;
             s.splash  = 0.0f;
-            s.wobble  = 0.0f;
+            s.wobble  = 0.5f; // noon: still
             accumulate(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l, f0);
         }
         report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS", r);
@@ -931,7 +931,7 @@ void aliasing()
             s.tension = 0.0f; // loosest tank
             s.springs = 2;
             s.splash  = 0.0f;
-            s.wobble  = 0.0f;
+            s.wobble  = 0.5f; // noon: still
             const Stereo o = renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp));
             accumulate(r, o.l, f0);
         }

@@ -16,7 +16,7 @@
 // DECAY, so the scan walks TENSION (DECAY only sets how long the chord's
 // modes build up).
 //
-// Checks (all MIX 1, SPLASH 0, WOBBLE 0, 2 s tail):
+// Checks (all MIX 1, SPLASH 0, WOBBLE noon = still, 2 s tail):
 //   1. held A minor chord (08_held_tones.wav's, at -9 dBFS since M8's
 //      excitation trim) at TENSION 0.35 .. 0.65 in 0.01 steps, DECAY
 //      kScanDecay, SPRINGS 2, CLEAN, DRIVE 0: click_count 0 each;
@@ -80,7 +80,7 @@ Result render(const Buf& in, float decay, int springs, float attitude, float dri
     t.setParam(rv::ParamId::Tension, tension);
     t.setParam(rv::ParamId::Tone, 0.5f);
     t.setParam(rv::ParamId::Splash, 0.0f);
-    t.setParam(rv::ParamId::Wobble, 0.0f);
+    t.setParam(rv::ParamId::Wobble, 0.5f); // noon: still (ADR 0034)
     t.setParam(rv::ParamId::Mix, 1.0f);
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(springs - 1));
     t.setParam(rv::ParamId::Attitude, attitude);

@@ -432,7 +432,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
-    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
+    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -485,7 +485,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float* c = clat[s];
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
-                lSamples[i] = wobble_[s].next();
+                lSamples[i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]); // B, C share A's at low WOBBLE
                 loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
                 high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }

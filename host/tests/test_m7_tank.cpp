@@ -49,7 +49,7 @@ constexpr float kFs = 48000.0f;
 const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 struct Settings {
-    float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.0f, tone = 0.5f, tension = 0.5f;
+    float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.5f, tone = 0.5f, tension = 0.5f; // WOBBLE noon = still
     int   att = 1, springs = 1;
     bool  clatterOn = true, joltOn = true; // Tank::setSplashParts
 };
@@ -429,6 +429,8 @@ void ghostGroove()
 }
 
 // ---- 2. WOBBLE on 08_held_tones ---------------------------------------------------------
+// Bipolar WOBBLE (ADR 0034): noon still, left = random wow + flutter, right =
+// sine LFO. Walked in 0.1 knob steps, as the sweet-spot check does.
 // 1 kHz at -12 dBFS from 1 s to 9 s. DRIVEN at the default DRIVE, SPRINGS 1
 // (one Spring: a clean pitch to track), SPLASH 0, MIX 1. The wet is the
 // Tank's tail building on the held tone (as test_wobble's "tail": the Loop
@@ -473,41 +475,61 @@ void wobbleOnHeldTones()
     if (!load("08_held_tones.wav", x)) return;
     x.resize(size_t(9.0f * kFs));
     std::printf("      08_held_tones, 1 kHz held, DRIVEN (DRIVE default), 1 Spring: wet p95 (peak) |cents| re median\n");
-    const float ws[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+    constexpr int kN = 11; // knob 0 (fully left) .. 1 (fully right), noon at [5]
     const float ds[] = {0.0f, 0.5f, 1.0f};
-    double c[3][5];
+    double c[3][kN], dflt[3];
+    auto measure = [&](float w, float d) {
+        Settings s;
+        s.drive   = rv::spec(rv::ParamId::Drive).defaultValue;
+        s.decay   = d;
+        s.springs = 0;
+        s.splash  = 0.0f;
+        s.wobble  = w;
+        return pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs));
+    };
     for (int di = 0; di < 3; ++di) {
         std::printf("      DECAY %.1f:", ds[di]);
-        for (int i = 0; i < 5; ++i) {
-            Settings s;
-            s.drive   = rv::spec(rv::ParamId::Drive).defaultValue;
-            s.decay   = ds[di];
-            s.springs = 0;
-            s.splash  = 0.0f;
-            s.wobble  = ws[i];
-            const Pitch p = pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs));
+        for (int i = 0; i < kN; ++i) {
+            const Pitch p = measure(0.1f * float(i), ds[di]);
             c[di][i] = p.p95;
-            std::printf("  W%.2f %5.1f (%5.1f)", ws[i], p.p95, p.peak);
+            std::printf(" W%.1f %4.1f (%4.1f)", 0.1f * float(i), p.p95, p.peak);
         }
-        std::printf("\n");
+        dflt[di] = measure(rv::spec(rv::ParamId::Wobble).defaultValue, ds[di]).p95;
+        std::printf("  default %.1f\n", dflt[di]);
     }
-    bool floorOk = true, driftOk = true, rising = true;
+    bool floorOk = true, dfltOk = true, rising = true, ends = true, even = true;
     for (int di = 0; di < 3; ++di) {
-        floorOk &= c[di][0] < 3.0;
-        driftOk &= c[di][2] < 5.0;
-        rising &= c[di][4] > c[di][3] && c[di][3] > c[di][2];
+        floorOk &= c[di][5] < 3.0;
+        dfltOk &= dflt[di] < 3.0;
+        // At DECAY max the tail is several Loop modes beating and the 6 s
+        // window holds few slow wow cycles, so the reading is noisy there:
+        // allow 10 % (it must still never clearly fall).
+        const double tol = di == 2 ? 0.9 : 1.0;
+        for (int i = 4; i > 0; --i) rising &= c[di][i - 1] > tol * c[di][i];
+        for (int i = 6; i < kN - 1; ++i) rising &= c[di][i + 1] > tol * c[di][i];
+        ends &= std::min(c[di][0], c[di][10]) >= (di == 0 ? 10.0 : 25.0);
+        even &= c[di][0] >= 0.6 * c[di][10] && c[di][0] <= 1.6 * c[di][10];
     }
-    std::snprintf(msg, sizeof msg, "WOBBLE 0 = Micro-mod floor only: p95 %.1f / %.1f / %.1f cents at DECAY 0 / 0.5 / 1 (< 3)",
-                  c[0][0], c[1][0], c[2][0]);
+    const bool first = c[1][4] >= 1.5 && c[1][6] >= 1.5;
+    std::snprintf(msg, sizeof msg, "WOBBLE noon = Micro-mod floor only: p95 %.1f / %.1f / %.1f cents at DECAY 0 / 0.5 / 1 (< 3)",
+                  c[0][5], c[1][5], c[2][5]);
     check(floorOk, msg);
-    std::snprintf(msg, sizeof msg, "Drift (WOBBLE 0.5): p95 %.1f / %.1f / %.1f cents (< 5: held chords in tune)", c[0][2],
-                  c[1][2], c[2][2]);
-    check(driftOk, msg);
     std::snprintf(msg, sizeof msg,
-                  "Warble (WOBBLE 1): p95 %.1f / %.1f / %.1f cents (>= 10 at DECAY 0, >= 25 at noon and max: clearly out of "
-                  "tune), rising through 0.5 -> 0.75 -> 1",
-                  c[0][4], c[1][4], c[2][4]);
-    check(rising && c[0][4] >= 10.0 && c[1][4] >= 25.0 && c[2][4] >= 25.0, msg);
+                  "default WOBBLE %.2f (a touch of shared Drift): p95 %.1f / %.1f / %.1f cents (< 3: held chords in tune)",
+                  double(rv::spec(rv::ParamId::Wobble).defaultValue), dflt[0], dflt[1], dflt[2]);
+    check(dfltOk, msg);
+    std::snprintf(msg, sizeof msg,
+                  "first step off noon is heard (the old 9 o'clock ~ noon complaint): p95 %.1f cents at 0.4 (random), %.1f at 0.6 "
+                  "(LFO), DECAY noon (>= 1.5)",
+                  c[1][4], c[1][6]);
+    check(first, msg);
+    check(rising, "every 0.1 step away from noon moves the held tone more, both sides, at DECAY 0 / 0.5 (and never clearly less at 1)");
+    std::snprintf(msg, sizeof msg,
+                  "both end stops clearly out of tune: fully left %.1f / %.1f / %.1f, fully right %.1f / %.1f / %.1f cents "
+                  "(>= 10 at DECAY 0, >= 25 at noon and max; old WOBBLE 1: 39.0 / 48.6 / 55.3)",
+                  c[0][0], c[1][0], c[2][0], c[0][10], c[1][10], c[2][10]);
+    check(ends, msg);
+    check(even, "fully left roughly as wild as fully right (0.6..1.6x at every DECAY)");
 }
 
 // ---- 3. ATTITUDE Morph blends the Splash and Kick tables ---------------------------------
@@ -545,13 +567,14 @@ void determinism()
     Buf x;
     if (!load("02_hits.wav", x)) return;
     x.resize(size_t(8.0f * kFs));
+    for (float wob : {0.0f, 1.0f}) { // both ends of the bipolar WOBBLE
     auto run = [&](int block) {
         rv::Tank t;
         t.prepare(kFs, block);
         t.setParam(rv::ParamId::Mix, 1.0f);
         t.setParam(rv::ParamId::Attitude, 1.0f);
         t.setParam(rv::ParamId::Splash, 1.0f);
-        t.setParam(rv::ParamId::Wobble, 1.0f);
+        t.setParam(rv::ParamId::Wobble, wob);
         t.setParam(rv::ParamId::Springs, 1.0f);
         Out o{Buf(x.size()), Buf(x.size()), {}, {}};
         const long kickAt = long(3.3f * kFs);
@@ -570,14 +593,20 @@ void determinism()
     }
     const Out again = run(48);
     same &= again.l == ref.l && again.r == ref.r;
-    check(same, "KICKED, SPLASH 1, WOBBLE 1, 3 Springs, hits + Kick: bit-identical for blocks 1, 7, 48, 333, 1024 and on a re-run");
+    std::snprintf(msg, sizeof msg,
+                  "KICKED, SPLASH 1, WOBBLE %.0f (fully %s), 3 Springs, hits + Kick: bit-identical for blocks 1, 7, 48, 333, 1024 "
+                  "and on a re-run",
+                  double(wob), wob < 0.5f ? "left" : "right");
+    check(same, msg);
+    }
 }
 
 // ---- 5. CPU (INFO) ---------------------------------------------------------------------------
 // SPEC §5 worst case (3 Springs, KICKED, TONE/DRIVE max, TENSION loosest) with every M7
 // part busy: a hard noise hit and a Kick 12 times a second each (Clatter,
-// Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE 1; against the
-// same with SPLASH 0 / WOBBLE 0, no hits, no Kicks (steady noise). Daisy
+// Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE at the costlier
+// end stop; against the same with SPLASH 0 / WOBBLE noon, no hits, no Kicks
+// (steady noise). Daisy
 // estimate as test_tank: 15-25x this desktop per sample, at 480 MHz.
 void performance()
 {
@@ -590,7 +619,7 @@ void performance()
         if (k < 480) hits[i] = 0.5f * std::exp(-float(k) / 96.0f) * rng.bipolar();
         steady[i] = 0.3f * rng.bipolar();
     }
-    auto bench = [&](const Buf& in, bool m7) {
+    auto bench = [&](const Buf& in, bool m7, float wob) {
         rv::Tank t;
         t.prepare(kFs, 48);
         t.setParam(rv::ParamId::Mix, 0.5f);
@@ -601,7 +630,7 @@ void performance()
         t.setParam(rv::ParamId::Attitude, 1.0f);
         t.setParam(rv::ParamId::Springs, 1.0f);
         t.setParam(rv::ParamId::Splash, m7 ? 1.0f : 0.0f);
-        t.setParam(rv::ParamId::Wobble, m7 ? 1.0f : 0.0f);
+        t.setParam(rv::ParamId::Wobble, m7 ? wob : 0.5f);
         Buf l(n), r(n);
         const auto t0 = std::chrono::steady_clock::now();
         for (size_t pos = 0; pos < n; pos += 48) {
@@ -612,14 +641,18 @@ void performance()
         const auto t1 = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n);
     };
-    double busy = 1e30, base = 1e30;
+    double busyL = 1e30, busyR = 1e30, base = 1e30;
     for (int rep = 0; rep < 3; ++rep) { // best of 3: least disturbed by the OS
-        busy = std::min(busy, bench(hits, true));
-        base = std::min(base, bench(steady, false));
+        busyL = std::min(busyL, bench(hits, true, 0.0f));
+        busyR = std::min(busyR, bench(hits, true, 1.0f));
+        base  = std::min(base, bench(steady, false, 0.5f));
     }
-    std::printf("INFO  CPU worst case, 3 Springs KICKED TONE/DRIVE 1 TENSION 0: M7 busy (SPLASH 1, WOBBLE 1, hits + Kicks "
+    std::printf("INFO  WOBBLE sides, M7 busy: fully left (wow + flutter) %.1f ns/sample, fully right (LFO) %.1f ns/sample\n",
+                busyL, busyR);
+    const double busy = std::max(busyL, busyR);
+    std::printf("INFO  CPU worst case, 3 Springs KICKED TONE/DRIVE 1 TENSION 0: M7 busy (SPLASH 1, WOBBLE end stop, hits + Kicks "
                 "12/s) %.1f ns/sample, est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k); M7 quiet (SPLASH 0, "
-                "WOBBLE 0, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
+                "WOBBLE noon, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
                 busy, busy * 15 * 0.48, busy * 25 * 0.48, busy * 15 * 0.48 / 100, busy * 25 * 0.48 / 100, base,
                 base * 15 * 0.48 / 100, base * 25 * 0.48 / 100, (busy - base) * 15 * 0.48, (busy - base) * 25 * 0.48);
 }

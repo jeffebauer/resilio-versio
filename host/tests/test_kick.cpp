@@ -43,7 +43,7 @@ constexpr int   kLength = 48000;
 constexpr int   kKickAt = 12345;
 
 struct Settings {
-    float decay = 0.5f, attitude = 0.5f, splash = 0.3f, wobble = 0.2f, springs = 0.5f;
+    float decay = 0.5f, attitude = 0.5f, splash = 0.3f, wobble = 0.45f, springs = 0.5f;
 };
 
 struct Out {

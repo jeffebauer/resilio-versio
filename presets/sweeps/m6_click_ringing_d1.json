@@ -4,7 +4,7 @@
   "base": {
     "mix": 1.0,
     "drive": 0.5,
-    "wobble": 0.0
+    "wobble": 0.5
   },
   "grid": {
     "attitude": [

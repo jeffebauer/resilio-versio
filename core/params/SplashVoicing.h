@@ -336,6 +336,7 @@ constexpr float kKickMergeMs = 5.0f;
 constexpr float kBurstHpHz   = 150.0f; // keeps the burst's own lows out
 
 // ---- WOBBLE (SPEC §4.7, ADR 0008, 0020) ---------------------------------------------
+// UNUSED since ADR 0034 (bipolar WOBBLE): see params/WobbleVoicing.h. Delete this section at merge.
 // Per Spring: Loop delay modulation m(t) = D · (wS · sin(2π f t + φ) + wR · r(t)),
 // r = smoothed seeded random (smoothstep between random points at f_r).
 // It rides on top of M6's Micro-mod floor; at WOBBLE 0 it is exactly 0.
