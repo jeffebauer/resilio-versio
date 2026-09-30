@@ -61,6 +61,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
 - [x] **Run 11** (30 Sep): worst case **62 % average, 68 % peak** (target peak 65 %). The steady load is comfortably under; the peaks are occasional moments when a spring recalculates its settings in the same instant as other housekeeping. About 3 points still to find (Claude's side), or accept it (your call, below)
 
+- [ ] **Run 12 (≈10 min, when convenient):** flash **`dist/resilio_versio_m3_profile_run12.bin`** (USB only), stream in the Terminal panel like run 11 (`screen /dev/tty.usbmodem* 115200`), ~2 minutes, then tell Claude. Target: worst-case peak ≤ 65 % (run 11: 68 %). Sound unchanged with knobs still; a TENSION move reaches the springs within ~6 ms (was 1.3 ms). Afterwards reflash the release firmware to keep playing
+
 ### 3d. Slapback gap and SPLASH (29 Sep)
 - [x] The gap between dry and reverb felt like slapback at low MIX. Decided: **earlier first echo** at every TENSION, same echo spacing ([ADR 0029](adr/0029-earlier-first-echo.md)). Loose tank now 32 ms, like your Wellspring (was 45). Listened: `renders/predelay_ab/`, most noticeable at higher TENSION
 - [x] The snare-like layer is SPLASH's noise burst (gone at SPLASH 0). Direction: **derive the splash from the input**, like a real tank driven hard, not an added impulse. Claude builds voicings to A/B
@@ -179,7 +181,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 
 ## Waiting on Claude (no action needed)
 
-- **M3 run 12** (no sound change): each spring's recalculation spread over two moments to bring the 68 % peaks under 65 % (your call, 30 Sep). Claude builds it; one more 10-minute run for you after
+- **M3 run 12**: built and tested (all 16 suites), waiting for your run (3c). Not merged until the chip confirms it
 - **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
 
 - **M3:** read run 11. If the peak is still over 65 %: trim more (next candidates in [firmware/README.md](../firmware/README.md) "M3 results"), block 96 only if you agree. Then the real firmware for you to flash and play
