@@ -139,7 +139,7 @@ struct Voice {
 // at +20 dB (aliasing at 10 Vpp, see above). ADR 0033 (30 Sep 2026): the
 // LoopSat push (lDrv 24 / 22) is gone; KICKED's pickup push 26 -> 28 dB takes
 // back part of the grit it gave at DRIVE 1 (level-matched 0 vs 1 null -6.4
-// -> -5.7 dB, ADR 0022 bar -6); dB0 / dB1 are unchanged, now read as INPUT +
+// -> -5.3 dB, ADR 0022 bar -6); dB0 / dB1 are unchanged, now read as INPUT +
 // offset.
 inline constexpr std::array<Voice, 3> kVoice{{
     //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
