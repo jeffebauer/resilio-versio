@@ -21,10 +21,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [ ] Listen to the before/after page when Claude says it's ready, then the plugin install
 
-### 2. One smooth arc · **ready** (≈15 min)
-- [ ] Open `renders/proto_smooth_arc/index.html` (pictures: `spectrogram_steps.png` in the same folder). Built on A (bright tail): **B** one smooth arc per echo up to ~5.5 kHz (no fold-back, no plain clicks in the highs), **C** wider low mids in the tail (like the Wellspring's 250–500 Hz), **D** light smear (Claude's pick: the tail's wobble and the echo contrast now match the Wellspring), **E** repeats that keep their shape. Where do you stop? Is the high bend closer to the Wellspring's? Wide enough?
-  - Honest note: the arcs still bend less gradually than the Wellspring's below ~3.5 kHz (its sweep curves across the whole band; ours stays nearly straight, then bends at the top). Matching that fully would cost about twice the boing stages; tell Claude if that's what you still hear
-- Why: last round the Wellspring won every panel. The pictures showed its echoes are smooth arcs and ours kink at ~3.3 kHz ([spectrograms](prototypes/spring-signature/))
+### 2. Fitted to your Wellspring · Claude is building it (listen when ready)
+- The smooth-arc page (30 Sep) was still far off: the Wellspring has a strong "pew" on clicks, little on skank, and is rounder and smoother. Measured: its pew is the top two octaves (2–5.5 kHz) arriving up to ~20 ms after the lows, which also makes each echo swell in (rounder); ours delivers them almost at once. Our tail is also 3–5 dB edgier at 2–3 kHz
+- Now: the Wellspring's sweep, echo attack and tail tone are measured from your click recording, our springs' high part gets its own sweep, and the settings are fitted to those targets automatically. Page: A (smooth arc D), B fitted sweep, C fitted sweep + tone, W
 
 ### 3. Play the Versio
 - **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
@@ -73,6 +72,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **Smooth arc listened:** still way off the Wellspring (its pew on clicks, rounder, smoother). Measured the cause (a 2–5.5 kHz sweep we lack); started fitting our tank to your recording
 - 30 Sep 2026: **CPU target raised to 70 % peak** (your call; ADR 0030 amendment, SPEC v1.0.20): room for the new sound, with a click check on the module for every release
 - 30 Sep 2026: **Hanging note at WOBBLE ~9 o'clock:** B ("springs drift together at low WOBBLE") in every panel. Folded into the bipolar WOBBLE prototype. Also noted: WOBBLE 9 o'clock vs noon sounds nearly the same (today's lower half is only 0–3 cents)
 - 30 Sep 2026: **WOBBLE ceiling:** keep the wilder top end (not the Magneto's ~8 cents). Asked how random it is: today it's sine + one smooth random line at a speed tied to the knob; at the top it's 90 % sine, hence "same-same"
