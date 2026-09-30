@@ -21,8 +21,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [ ] Listen to the before/after page when Claude says it's ready, then the plugin install
 
-### 2. One smooth arc · listen when Claude says it's ready (≈15 min)
-- [ ] Open `renders/proto_smooth_arc/index.html`. Built on A (bright tail): **B** one smooth arc per echo up to ~5.5 kHz (the Wellspring's high pitch bend, no kink, no plain clicks in the highs), **C** wider low mids in the tail, **D** light smear, **E** (option) repeats that don't stretch, **W** your Wellspring. Where do you stop?
+### 2. One smooth arc · **ready** (≈15 min)
+- [ ] Open `renders/proto_smooth_arc/index.html` (pictures: `spectrogram_steps.png` in the same folder). Built on A (bright tail): **B** one smooth arc per echo up to ~5.5 kHz (no fold-back, no plain clicks in the highs), **C** wider low mids in the tail (like the Wellspring's 250–500 Hz), **D** light smear (Claude's pick: the tail's wobble and the echo contrast now match the Wellspring), **E** repeats that keep their shape. Where do you stop? Is the high bend closer to the Wellspring's? Wide enough?
+  - Honest note: the arcs still bend less gradually than the Wellspring's below ~3.5 kHz (its sweep curves across the whole band; ours stays nearly straight, then bends at the top). Matching that fully would cost about twice the boing stages; tell Claude if that's what you still hear
 - Why: last round the Wellspring won every panel. The pictures showed its echoes are smooth arcs and ours kink at ~3.3 kHz ([spectrograms](prototypes/spring-signature/))
 
 ### 3. Play the Versio
