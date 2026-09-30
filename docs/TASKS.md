@@ -73,9 +73,10 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 ### 3g. Play the real firmware on the Versio (≈20 min, 30 Sep)
 - Flash **`dist/resilio_versio_release_e2ff5a7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
 - It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031), and run 12's CPU trim (built from `e2ff5a7`; the older `3a790f7` build works too). SPLASH is still today's version (round 3 not built yet)
-- [ ] **LED order:** patch something into **In L only**. The **leftmost** LED should light (and the right pair shows the output). If a different one lights, tell Claude which (a one-line fix)
-- [ ] **Input red:** turn your source up until it starts to distort at the jack: does the input LED go red about there?
-- [ ] **Look:** does amber read as amber, and does the dimmest glow show without flicker?
+- [x] In L only (30 Sep): **both** input LEDs light. Expected: the Versio's jacks copy In L to In R when R is unpatched
+- [ ] **LED order:** patch **In R only**: only the **second LED from the left** should light (In L then reads silence)
+- [x] **Input red** (30 Sep): goes red when the input gain is bumped; the output often stays amber then. As designed: input red = the Versio's own input is about to clip (turn the source down); output red only when the limiter works
+- [x] **Look** (30 Sep): amber reads as amber. **LEDs flicker instead of dimming**: cause found (the LEDs are refreshed only ~1000×/s, so their dimming gets ~8 uneven steps); Claude is fixing it (next firmware)
 - [x] **Output red:** lights on a KICKED Howl, off in normal playing (30 Sep)
 - [ ] **Passthrough vs a cable (once):** MIX fully left, record the output next to the same source through a plain cable. Same level and not flipped? (Claude checks the recording if you save it in `test_audio/m0/`)
 - [x] First play (30 Sep): **working!** Drum hits (Squid Salmple + Rample → Worng SoundStage II FX send → Resilio → return). Controls audible as expected. The input LEDs never left green (peaks below about −18 dB of full scale, line level rather than Eurorack level: the SoundStage runs quiet), so SPLASH was barely audible
@@ -97,6 +98,13 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
   - Only B passes every existing test as is; C–G would need tests re-tuned to the new sound (nothing loosened blindly)
 - [x] Listened (30 Sep): **F (bright tail) is the favourite**; **G (breath) dropped**: on the skank the air sounds added on top, not part of the tail. Still different from the Wellspring: stereo width, a pitch sweep at the start of each repeat; the Wellspring is "sweeter". Measured: ours repeats on one regular beat (the Wellspring's repeats interleave), each repeat's highs lag further behind, bass isn't centred, the tail is peakier
 - [ ] **Next listen (Claude says when ready):** `renders/proto_sweet_tank/index.html`: A bright tail, then B no single beat, C no growing sweep, D tank-like stereo (centred bass, width blooming), maybe E light smear, with W
+
+- [ ] **Hardware recordings (≈15 min, through the OPTX, Ableton clip gain 0 dB):** save in `test_audio/hardware/` with a line per take in `NOTES.md` there. Knob words: "fully left/right" and noon are exact, so Claude can render the same settings and compare
+  - **H0 loopback:** OPTX out → OPTX in (the channels you use for the Versio): `01_clicks`, `09_pink_noise`
+  - **H1 dry:** Versio in the loop, **MIX fully left**: `01_clicks`, `09_pink_noise` (checks the output fix, and how hot the OPTX is inside the Versio)
+  - **H2 CLEAN:** MIX fully right; DECAY, TONE, TENSION **noon**; SPLASH, DRIVE, WOBBLE **fully left**; SPRINGS **centre**; ATTITUDE **left**: `01_clicks`, `02_hits`, `04_skank`
+  - **H3 KICKED:** as H2 with ATTITUDE **right**: `02_hits`, `04_skank`
+  - **H4 SPLASH:** as H2 with SPLASH **fully right**: `02_hits`
 
 ### 3h. Tight-tank ping (≈5 min, optional, 30 Sep)
 - The "ringing" our test flagged on a tight, bright KICKED tank is real but **inaudible** (75–85 dB under the tail): the drive inside the tank makes a faint overtone that lines up with one of the tank's own high notes. Fix found, **no CPU cost**: that drive fades out once the tail is too quiet to be bent by it
