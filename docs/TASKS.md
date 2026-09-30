@@ -25,10 +25,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
 - [ ] After the tuned version: release firmware + plugin install, then the click check
 
-### 2. Fitted to your Wellspring · **ready** (≈15 min)
-- The smooth-arc page (30 Sep) was still far off: the Wellspring has a strong "pew" on clicks, little on skank, and is rounder and smoother. Measured: its pew is the top two octaves (2–5.5 kHz) arriving up to ~20 ms after the lows, which also makes each echo swell in (rounder); ours delivers them almost at once. Our tail is also 3–5 dB edgier at 2–3 kHz
-- [ ] **Listen:** `renders/proto_wellspring_fit/index.html` (picture: `spectrogram_versions.png` in the folder). **A** smooth arc D (last page), **B** fitted sweep, **C** fitted sweep + tone (Claude's pick: the overall mismatch with your Wellspring drops from 4.95 to 1.81), **W** Wellspring. Is the pew there on clicks, and gone on the skank? Rounder? Still different anywhere?
-  - Known gaps, each a later fit: the Wellspring's arcs are thin lines with silence between (ours still blurred), it has extra highs-only echoes between repeats, its tail is less peaky, its low-mid tail rings ~0.9 s longer
+### 2. Fitted to your Wellspring · next round after the SPLASH/DRIVE merge
+- [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
+- Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
 ### 3. Play the Versio
 - **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
