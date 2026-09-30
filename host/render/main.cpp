@@ -39,18 +39,6 @@ void usage(const char* argv0)
         argv0, argv0, argv0);
 }
 
-bool applySet(rv::Tank& tank, const std::string& arg)
-{
-    const auto eq = arg.find('=');
-    if (eq == std::string::npos) return false;
-    const std::string key = arg.substr(0, eq);
-    const float value     = std::strtof(arg.c_str() + eq + 1, nullptr);
-    for (const auto& p : rv::kParams) {
-        if (key == p.key) { tank.setParam(p.id, value); return true; }
-    }
-    return false;
-}
-
 // Mono downmix used by every analysis metric (sum of channels / channel
 // count, matching the metrics contract).
 std::vector<float> downmix(const Audio& a)
@@ -126,7 +114,7 @@ bool buildTank(rv::Tank& tank, float sampleRate, int block, const std::string& p
         if (!rv::paramsjson::applyPreset(tank, preset, error)) return false;
     }
     for (const auto& s : sets) {
-        if (!applySet(tank, s)) { error = "bad --set: " + s; return false; }
+        if (!rv::paramsjson::applySetArg(tank, s, error)) { error = "bad --set " + s + ": " + error; return false; }
     }
     return true;
 }
