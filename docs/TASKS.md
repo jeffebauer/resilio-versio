@@ -77,7 +77,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] **Output red:** lights on a KICKED Howl, off in normal playing (30 Sep)
 - [ ] **Passthrough vs a cable (once):** MIX fully left, record the output next to the same source through a plain cable. Same level and not flipped? (Claude checks the recording if you save it in `test_audio/m0/`)
 - [x] First play (30 Sep): **working!** Drum hits (Squid Salmple + Rample → Worng SoundStage II FX send → Resilio → return). Controls audible as expected. The input LEDs never left green (peaks below about −18 dB of full scale, line level rather than Eurorack level: the SoundStage runs quiet), so SPLASH was barely audible
-- [ ] **Try:** raise the SoundStage sends until the loudest hits just touch **amber** on the input LEDs (where SPLASH was tuned), then play with SPLASH again
+- [ ] **Try:** SPLASH **near max** (it doubles as sensitivity today) and raise the SoundStage's **main Level** (its FX send follows it) until the loudest hits just touch **amber** on the input LEDs, then play with SPLASH again. Why: today's SPLASH falls off a cliff below about −18 dB of full scale, and DRIVE can't help yet (study in [m8-tuning-backlog.md](m8-tuning-backlog.md) on branch, "Send-level calibration study")
+- Round 3 plan (from the study): DRIVE becomes a real INPUT gain (0 → +24 dB), SPLASH listens right after it, so DRIVE up = more splash and quiet sends get their splash back. Your SoundStage II manual recommends exactly this: set the effect 100 % wet and use its input gain
 - [ ] Then play it more thoroughly: how does it feel on the real panel?
 
 ### 3e. Two prototypes to listen to (≈10 min each, from the overnight agents, 30 Sep)
