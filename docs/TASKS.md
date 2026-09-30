@@ -31,14 +31,17 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1b. Pads clip the output · being fixed (cloud session)
 - [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
 - [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
-- [ ] **Start the cloud session** (claude.ai/code on the repo): "Follow docs/briefs/sustain-trim.md on main. Work on branch proto/sustain-trim and push it; don't merge to main." Then tell Claude, who renders the page with your real pad added
+- [x] Built in the cloud (1 Oct): held sounds no longer reach the limiter at your settings (synthetic pad, drone, organ); hits, skank and the Kick identical to today; the Howl untouched
+- [ ] **Listen (≈10 min):** open `renders/proto_sustain_trim/index.html`. A = today, B = the trim, 2 and 3 Springs. Rows: your real pad (TENSION 0.8, and TENSION full + TONE fully left), a synthetic pad and drone, hits, skank. Is the overdriven harshness gone? Any pumping (the level dipping and swelling while the pad holds)? Do hits and skank sound the same? Note: at TENSION full + TONE fully left, your pad still touches the limiter on the right channel in B
+- Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
 
  · next round after the SPLASH/DRIVE merge
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
-### 2b. Bipolar WOBBLE · round 2 from your notes
+### 2b. Bipolar WOBBLE · round 2 **ready** (≈10 min)
 - [x] Listened (1 Oct): **you like the bipolar control.** Tone down the top end of each side a little (there's no speed knob, so the amounts have to be right). Right side: more like a **vibrato or flutter** (faster than today's slow 0.6–1.4 Hz sway). Left side stays wow + flutter. Also: ideas from the Wear & Tear manual, Claude's notes in the chat and the backlog
+- [ ] **Listen:** open `renders/proto_bipolar_wobble2/index.html`. **A** round 1, **B** gentle (tops ×0.75), **C** more (×0.55), at WOBBLE fully left, 9 o'clock, noon, 3 o'clock, fully right, on held tones and skank. B and C: the right side is a vibrato (1.5 → 5.5 Hz), the left has a faint tape tremolo and a flutter whose speed wanders with the wow. Pick B, C or between. Is the right side vibrato-like enough, and is 3 o'clock enough? Is the tremolo heard as tape, or too subtle?
 - Round 1 page (for reference): open `renders/proto_bipolar_wobble/index.html`: **A** today vs **B** bipolar at WOBBLE fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock, fully right (sine LFO), on held tones and skank. Does the left side sound like tape that never repeats? Is noon still? Is each step audible? Keep the pure sine or the slightly drifting one on the right?
 
 ### 3. Play the Versio
