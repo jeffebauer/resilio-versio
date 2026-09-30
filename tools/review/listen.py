@@ -308,7 +308,7 @@ class Item(object):
 
 def letterish(v):
     s = str(v)
-    return bool(re.match(r"^[A-Z](_.+)?$", s)) or s.lower() in BEFORE_AFTER_SET
+    return bool(re.match(r"^[A-Z][A-Z0-9]?(_.+)?$", s)) or s.lower() in BEFORE_AFTER_SET
 
 
 def collect_from_manifests(root, manifests, with_spec):
@@ -454,7 +454,7 @@ def collect_from_wavs(root, with_spec):
     if not variant_from_dir:
         letter_idx = []
         for t in toks:
-            hits = [i for i, x in enumerate(t) if i > 0 and re.match(r"^[A-Z]$", x)]
+            hits = [i for i, x in enumerate(t) if i > 0 and re.match(r"^[A-Z][A-Z0-9]?$", x)]
             letter_idx.append(hits[0] if hits else None)
         if all(i is not None for i in letter_idx):
             for it, t, i in zip(items, toks, letter_idx):
@@ -647,7 +647,7 @@ def variant_display(key, v, item, pos, readme_desc):
     s = str(v)
     desc = readme_desc.get(s, "")
     if key in ("variant",) or key.startswith("folder"):
-        m = re.match(r"^([A-Z])(?:_(.+))?$", s)
+        m = re.match(r"^([A-Z][A-Z0-9]?)(?:_(.+))?$", s)
         if m:
             return (m.group(1), pretty_words(m.group(2) or ""), desc or readme_desc.get(m.group(1), ""))
         return (letter, pretty_words(s), desc)
