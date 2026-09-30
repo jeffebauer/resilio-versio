@@ -16,10 +16,11 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
-### 1. SPLASH round 4 · listen when Claude says it's ready (≈15 min)
-- [ ] Open `renders/splash_round4/index.html` from Finder. **A** burst (today) and **E** DRIVE alone for reference, then **T** "hits bite harder" (grit on the hits) and **C** "hits clang the springs" (brighter drip on top), each **gentle / clear / dramatic**, plus **TC** both. Deliberately not level-matched: how much harder the hits hit is the point. Pick per panel, notes, **Copy results for Claude**
+### 1. SPLASH round 4 · **ready** (≈15 min)
+- [ ] Open `renders/splash_round4/index.html` from Finder (columns CLEAN / DRIVEN / KICKED, rows hits / skank, MIX half-way). **A** burst (today) and **E** DRIVE alone for reference, then **T** "hits bite harder" (grit on the hits) and **C** "hits clang the springs" (brighter drip on top), each **gentle / clear / dramatic**, plus **TC** both. Deliberately not level-matched: how much harder the hits hit is the point. Pick per panel, notes, **Copy results for Claude**
 - [ ] **Decide with it:** should higher DRIVE make SPLASH bite sooner and harder (like your Wellspring's hot take C)? Today's findings say yes: DRIVE currently *reduces* splash
 - [ ] **Decide with it:** when you push DRIVE, should the tail get **louder** (like a real INPUT knob or a desk send, so an envelope into DRIVE's CV becomes a dub throw), or stay level-matched as today? Background: [dub-spring-reference.md](dub-spring-reference.md) §8
+- Heads-up: **T3, C2, C3 and TC** can touch the output limiter (they're loud on purpose); **ghost notes stay quiet** in every T/C version (A's burst fires on them). In CLEAN, T only gets louder (no grit to add); C still sparkles
 - Why this is first: your pick unblocks the next build (DRIVE becomes the INPUT knob, SPLASH comes from your own hits), and the next plugin install
 
 ### 2. One smooth arc · listen when Claude says it's ready (≈15 min)
@@ -57,7 +58,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **CPU headroom:** 63 % peak against a 65 % target leaves ~1 point. If the new tank needs more, raising the target (say 72 %) is your call, with an ADR ([ADR 0030](adr/0030-fitting-the-versio-cpu.md) explains the 65 %)
 
 ## Waiting on Claude (no action needed)
-- **Running:** SPLASH round 4 page; one-smooth-arc prototype page
+- **Running:** one-smooth-arc prototype page
+- **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (3, optional page) addresses exactly that corner; it would ship with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
 - **After the merge OK:** regenerate the reference report with the corrected tail lengths
