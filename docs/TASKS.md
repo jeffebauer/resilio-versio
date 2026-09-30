@@ -59,7 +59,7 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - [x] Run 9 (29 Sep): springs take changes in turn (your pick). Peaks 75 → ~67 %; close to the target
 - [x] Listened (29 Sep): a bit more undulation on KICKED hits with the stagger. Cause: SPLASH's jolt reached springs B and C a tick or two late. Fixed: the jolt now reaches all springs together; only the heavy recalculation takes turns (now within 112–118 dB of the original sound)
 - [ ] **Optional re-listen:** `renders/m3_stagger_abc/` at moderate DRIVE (KICKED hits, DRIVEN hits, KICKED skank). A = before, B = the version you heard, C = the fix. C should sound like A
-- [ ] **Run 11:** flash **`dist/resilio_versio_m3_profile_run11.bin`** (USB only; skip run 10, which predates the earlier first echo), stream ~2 minutes. Everything from tonight: jolt fix, fewer slow divisions, earlier first echo
+- [x] **Run 11** (30 Sep): worst case **62 % average, 68 % peak** (target peak 65 %). The steady load is comfortably under; the peaks are occasional moments when a spring recalculates its settings in the same instant as other housekeeping. About 3 points still to find (Claude's side), or accept it (your call, below)
 
 ### 3d. Slapback gap and SPLASH (29 Sep)
 - [x] The gap between dry and reverb felt like slapback at low MIX. Decided: **earlier first echo** at every TENSION, same echo spacing ([ADR 0029](adr/0029-earlier-first-echo.md)). Loose tank now 32 ms, like your Wellspring (was 45). Listened: `renders/predelay_ab/`, most noticeable at higher TENSION
