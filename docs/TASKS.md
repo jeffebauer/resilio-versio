@@ -35,7 +35,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **A fresh listening pass** in the plugin, answering the open design questions below where you have a view. (It replaces the old per-milestone listening pages, which judged builds that no longer exist)
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [ ] **WOBBLE ceiling:** the Magneto's tape wobble tops out at ~8 cents; ours reaches ~36 cents on the first echo and ~50–55 in the tail at max, on purpose ("clearly out of tune", ADR 0008). Keep the wilder top, or bring it closer?
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Kick with MIX fully down:** the Kick is part of the reverb, so at MIX 0 it's silent. OK?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
@@ -47,6 +46,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Hanging note at WOBBLE ~9 o'clock (optional page):** `renders/proto_wobble_hang/index.html`. B makes the springs drift together at low WOBBLE so a chord fades evenly. Still wanted once the new tank lands? (It predates the smooth-arc work)
 
 ## Later
+- **Bipolar WOBBLE (your idea, 30 Sep; next prototype after the SPLASH/DRIVE build):** left of noon = smooth random wow + flutter (never repeats), noon = still (small dead zone for the hardware knob), right of noon = sine LFO strength up to today's wild top (you keep the extreme ceiling). Today the top end is 90 % one steady sine, which is why it can sound same-same. CPU ≈ +0.1–0.2 %. Touches ADR 0008, SPEC's WOBBLE row, WOBBLE tests; the random side can fold in the "hanging note at 9 o'clock" fix
 - **Big Knob TONE:** TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump; cheap on CPU. After SPLASH and the tank work ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8)
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 - **CPU headroom:** 63 % peak against a 65 % target leaves ~1 point. If the new tank needs more, raising the target (say 72 %) is your call, with an ADR ([ADR 0030](adr/0030-fitting-the-versio-cpu.md) explains the 65 %)
@@ -73,6 +73,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 30 Sep 2026: **WOBBLE ceiling:** keep the wilder top end (not the Magneto's ~8 cents). Asked how random it is: today it's sine + one smooth random line at a speed tied to the knob; at the top it's 90 % sine, hence "same-same"
 - 30 Sep 2026: **SPLASH round 4 listened:** C2 on longer sounds and CLEAN hits, T2 on hits in DRIVEN/KICKED. Found by ear and measured: DRIVE shortens DRIVEN/KICKED tails (the saturator inside the loop). Decided: DRIVE = INPUT, partly louder, drives only in/out
 - 30 Sep 2026: **Merged** the tail-length fix for noisy recordings, the docs cleanup and the send-level study (all 16 test suites pass); reference report regenerated (your Wellspring clicks: 3.42 s)
 - 30 Sep 2026: **Tight-tank ping listened:** very subtle; C fine on hits, A slightly nicer on the skank (its faint inharmonic colour). Decided: keep the fix but gentler (fade starts at −30 dB, the most lenient setting that still passes the ringing check), shipped with the new SPLASH (without the burst, that corner rings audibly in the test)
