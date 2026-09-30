@@ -135,17 +135,37 @@ constexpr float kLoudRel          = 3.0f;
 // split) fed harder while it lasts:
 //   springs in += Clang amount × (x − LP(x))
 // so the splash is the hit's own sound, chirped and coloured by the tank and
-// dying with the tail: brightness, no grit. Voice::clang 5 = round 4's C2.
+// dying with the tail: brightness, no grit. Voice::clang 5 = round 4's C2
+// (CLEAN, DRIVEN); KICKED 12 (round 4's C3 strength): owner, 30 Sep, "a more
+// even spread of intensity", KICKED clearly the most intense, and with the
+// Bite taking more back, KICKED's dark transducer (5 kHz) left its rimshots
+// little crash at C2.
 constexpr float kClangHz = 2000.0f;
 //
 // Bite: a short, cracking hit is pushed harder into DriveIn (transducer +
 // tape) and part of the push taken back after:
 //   DriveIn(x × (1 + Bite amount)) ÷ (1 + Bite amount)^kBiteTakeBack
-// so the hit gets grit and also reaches the springs harder (a harder hit on
-// a real tank). kBiteGain 4 = round 4's T2. CLEAN has none (its transducer
-// stays clean; round 4 measured T in CLEAN as only a louder hit).
-constexpr float kBiteGain     = 4.0f;
-constexpr float kBiteTakeBack = 0.5f; // sqrt: half the push (in dB) is heard
+// so the hit gets grit and reaches the springs a little harder (a harder
+// hit on a real tank). CLEAN has none (its transducer stays clean; round 4
+// measured T in CLEAN as only a louder hit).
+// Owner, after the build page (30 Sep 2026): DRIVEN / KICKED hits and skank
+// "a bit hot/distorted". Round 4's T2 (x(1 + 4e), half the push heard) made
+// DRIVEN drum hits +9.3 dB louder at DRIVE 1 (default SPLASH) against
+// CLEAN's +6.9; now x(1 + 2.5e) with three quarters of the push taken back
+// (inside DriveIn, so its makeup gives back only the saturators' squash):
+// +7.5. (Taking all of it back left KICKED rimshots only +1.2 dB of crash at
+// the default DRIVE, and the level the push lends a hit at DRIVE noon, gone
+// once KICKED's transducer saturates, dips its splash between noon and 3/4.)
+constexpr float kBiteGain     = 2.5f;
+constexpr float kBiteTakeBack = 0.75f; // share of the push (in dB) taken back (was 0.5, round 4's T2)
+// 1 / push^0.75 = 1 / (s·sqrt(s)), s = sqrt(push): two square roots, cheaper
+// than exp/log on the M7 (per bitten sample only).
+static_assert(kBiteTakeBack == 0.75f, "biteBack is written for a three-quarter take-back");
+inline float biteBack(float push)
+{
+    const float s = std::sqrt(push);
+    return 1.0f / (s * std::sqrt(s));
+}
 //
 // DRIVE's top half (ADR 0032): past noon DRIVE saturates the input harder
 // and pushes the pickups, and both squash the drips with everything else
@@ -155,9 +175,11 @@ constexpr float kBiteTakeBack = 0.5f; // sqrt: half the push (in dB) is heard
 //   gain = (1 + kSplashDriveBoost × u) / (1 + kSplashDriveBoost × u(0.8)),
 //   u = (driveCurve(DRIVE) − driveCurve(0.5)) / (1 − driveCurve(0.5)), >= 0
 // normalised to 1 at DRIVE 0.8, where the owner picked C2 / T2 (round 4's
-// page), so there they are exactly as picked: 0.64 up to noon, 1.28 at 1.
+// page), so there they are as picked: 0.50 up to noon, 1.37 at 1 (1.75: the
+// Bite now lends a hit less level, so the Clang has more to make up above
+// noon; 1.0 before the owner's 30 Sep "less hot" listen).
 // Then the splash never falls as DRIVE rises (test_m7_tank).
-constexpr float kSplashDriveBoost = 1.0f;
+constexpr float kSplashDriveBoost = 1.75f;
 constexpr float kSplashRefDrive   = 0.8f;
 // dc = drive::driveCurve(DRIVE), dcNoon = driveCurve(0.5), dcRef = driveCurve(kSplashRefDrive).
 inline float splashDriveGain(float dc, float dcNoon, float dcRef)
@@ -334,7 +356,7 @@ inline constexpr std::array<Voice, 3> kVoice{{
     //  clang  bite  clat1  dMin   dMax   ratt  jolt0  jolt1  jDec    jL      jA     rattle
     {  5.0f, 0.0f, 0.45f,  4.0f, 10.0f, 0.0f, 0.00f, 0.50f,  60.0f, 0.002f, 0.005f, 0.0000f}, // CLEAN
     {  5.0f, 1.0f, 0.55f,  6.0f, 18.0f, 1.0f, 0.10f, 0.50f,  90.0f, 0.006f, 0.015f, 0.0000f}, // DRIVEN
-    {  5.0f, 1.0f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
+    { 12.0f, 1.0f, 0.80f,  8.0f, 30.0f, 3.0f, 0.20f, 1.00f, 180.0f, 0.011f, 0.12f, 0.0015f}, // KICKED
 }};
 
 // SPLASH 0 has no Clang, no Bite and no Clatter in any ATTITUDE (M8 round 2
@@ -343,7 +365,7 @@ inline constexpr std::array<Voice, 3> kVoice{{
 // transient.
 
 // CLEAN (ADR 0025; ADR 0032): a real splash on hard hits, the same Clang as
-// DRIVEN / KICKED (the owner picked round 4's C2 for CLEAN too) with no Bite
+// DRIVEN (the owner picked round 4's C2 for CLEAN too; KICKED's is bigger) with no Bite
 // and a tiny Jolt (Loop and allpass lurch a third of DRIVEN's): the hit's
 // own sparkle, no grit. Nothing at SPLASH 0: CLEAN stays hi-fi unless asked.
 

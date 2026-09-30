@@ -165,7 +165,13 @@ public:
     void reset();
     // Control rate. snap = jump (first tick / reset).
     void set(const DriveInSettings& s, bool snap, int interval);
-    float process(float x)
+    // push / back: the Splash's Bite (ADR 0032): the saturators get the
+    // signal x push, and back (<= 1) is taken off right after them, before
+    // the makeup's output follower, so the automatic makeup measures only
+    // what the saturators squashed (the bitten hit compared with how it
+    // would have come out unbitten) and gives back nothing more. 1 / 1 = the
+    // plain path, bit for bit.
+    float process(float x, float push = 1.0f, float back = 1.0f)
     {
         // Low-passes before the high-pass: same response, but the high-pass
         // (poles near z = 1, where float rounding noise gets amplified) then
@@ -175,9 +181,10 @@ public:
         x = hp_.process(x);
         x *= preGain_.next();
         envIn_.process(x * x + kEnvFloor);
+        x *= push;
         const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, tk = tapeK_, itk = invTapeK_,
                     amt = tapeAmt_.next();
-        float y = os_.process(x, [&](float u) {
+        float y = back * os_.process(x, [&](float u) {
             const float t = asymClip(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
             const float p = preEmph_.process(t);                            // tape
             const float s = p + amt * (softClip(tk * p) * itk - p);

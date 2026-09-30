@@ -139,13 +139,19 @@ struct Voice {
 // at +20 dB (aliasing at 10 Vpp, see above). ADR 0033 (30 Sep 2026): the
 // LoopSat push (lDrv 24 / 22) is gone; KICKED's pickup push 26 -> 28 dB takes
 // back part of the grit it gave at DRIVE 1 (level-matched 0 vs 1 null -6.4
-// -> -5.3 dB, ADR 0022 bar -6); dB0 / dB1 are unchanged, now read as INPUT +
-// offset.
+// -> -5.3 dB, ADR 0022 bar -6); dB0 / dB1 now read as INPUT + offset.
+// Owner, after the build page (30 Sep 2026): DRIVEN "a bit hot/distorted",
+// wanted "a more even spread of intensity across clean/drive/kicked". So
+// DRIVEN drives less at the top: dB0 / dB1 -6 / 16 -> -5 / 13, oDrv 24 -> 21,
+// and it now sits about midway between CLEAN and KICKED (level-matched null
+// vs DRIVE 0 on 02_hits at DRIVE 0.5 / 0.8: CLEAN -23.8 / -19.9, DRIVEN
+// -19.1 / -13.5 (was -16.8 / -11.0), KICKED -11.2 / -6.8). KICKED's wet
+// makeup 0.8 -> 0.4 dB (its hits no longer run ahead of CLEAN's level).
 inline constexpr std::array<Voice, 3> kVoice{{
     //  hp      lp       tK+    tK-    flux   dB0     dB1    tape  tapeK  emph   smear    loop  lK+    lK-    oDrv   oFlx  oAm0   oK     oAs    oLp      wMk   trim
     {  45.0f, 11000.f, 0.30f, 0.38f,  6.0f,  -6.0f, 12.0f, 0.0f, 0.60f, 5.0f,  9000.f, 0.0f, 0.60f, 0.60f,  0.0f,  6.0f, 0.0f, 4.00f, 0.15f, 15000.f,  0.0f, 0.0f}, // CLEAN (outK 4.5 -> 4.0 at the M8 merge: keeps CLEAN mild, 0 vs 1 <= -15 dB)
-    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -6.0f, 16.0f, 1.0f, 0.85f, 3.0f,  6000.f, 1.0f, 0.70f, 0.70f, 24.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.0f, 0.0f}, // DRIVEN (emph 5 -> 3 at TENSION: aliasing, see below)
-    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 28.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  0.8f, 0.0f}, // KICKED
+    {  85.0f,  6500.f, 0.45f, 0.60f,  9.0f,  -5.0f, 13.0f, 1.0f, 0.85f, 3.0f,  6000.f, 1.0f, 0.70f, 0.70f, 21.0f,  6.0f, 1.0f, 0.55f, 0.20f, 11000.f,  0.0f, 0.0f}, // DRIVEN (emph 5 -> 3 at TENSION: aliasing, see below)
+    { 130.0f,  5000.f, 0.80f, 1.40f, 15.0f, -11.0f, 20.0f, 1.0f, 1.00f, 4.0f,  4500.f, 1.0f, 1.60f, 2.60f, 28.0f,  9.0f, 1.0f, 0.60f, 0.50f,  8500.f,  0.4f, 0.0f}, // KICKED
 }};
 
 // Magnetic transducer (DriveIn): a driver coil saturates on magnetic flux,

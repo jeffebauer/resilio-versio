@@ -236,15 +236,17 @@ int main()
                            j.data() + pos, 48);
                 if (pos > size_t(0.5f * kFs)) {
                     late[f] = std::max(late[f], sp.hit());
-                    for (size_t i = pos; i < pos + 48; ++i) lateE[f] = std::max({lateE[f], cl[i], bt[i]});
+                    // As a share of full scale (the Clang and Bite amounts at e = 1).
+                    for (size_t i = pos; i < pos + 48; ++i)
+                        lateE[f] = std::max({lateE[f], cl[i] / splash::kVoice[2].clang, bt[i] / splash::kBiteGain});
                 }
                 if (pos == size_t(0.3f * kFs)) atSettle = sp.strokeCount();
             }
             strokes[f] = sp.strokeCount() - atSettle; // strokes once sustained (from 0.3 s)
         }
-        std::snprintf(msg, sizeof msg, "held tones (-6 dBFS, 50 ms fade-in) are not Hits once sustained: max Hit %.3f (1 kHz), %.3f (110 Hz), Clang / Bite %.3f / %.3f after 0.5 s; strokes after 0.3 s: %d / %d",
+        std::snprintf(msg, sizeof msg, "held tones (-6 dBFS, 50 ms fade-in) are not Hits once sustained: max Hit %.3f (1 kHz), %.3f (110 Hz), Clang / Bite %.4f / %.4f of full scale after 0.5 s; strokes after 0.3 s: %d / %d",
                       late[0], late[1], lateE[0], lateE[1], strokes[0], strokes[1]);
-        check(late[0] < 0.02f && late[1] < 0.02f && lateE[0] < 0.01f && lateE[1] < 0.01f && strokes[0] == 0
+        check(late[0] < 0.02f && late[1] < 0.02f && lateE[0] < 0.002f && lateE[1] < 0.002f && strokes[0] == 0
                   && strokes[1] == 0,
               msg);
     }

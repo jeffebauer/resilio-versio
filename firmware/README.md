@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 120,680 B (92%), ≈10 KB headroom (30 Sep 2026, SPLASH from the hit + DRIVE as INPUT, ADR 0032 / 0033: +1.9 KB; was 118,760 B with the LED meters + DMA-driven LED PWM)
+- release 119,944 B (92%), ≈11 KB headroom (30 Sep 2026, SPLASH from the hit + DRIVE as INPUT, ADR 0032 / 0033: +1.2 KB; was 118,760 B with the LED meters + DMA-driven LED PWM)
 - m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 128,852 B (98%, 2.2 KB headroom): the M3 benchmark code; trim profile-only code before adding profile features (was 127,044 B). Run 13 binary: `dist/resilio_versio_m3_profile_run13.bin` (desktop estimate: worst case steady signal +2.5 %, ~+1.5 points on the chip; hits + Kicks unchanged)
+- profile 128,180 B (98%, 2.8 KB headroom): the M3 benchmark code; trim profile-only code before adding profile features (was 127,044 B). Run 13 binary: `dist/resilio_versio_m3_profile_run13.bin` (desktop estimate: worst case steady signal ~+3 %, ~+2 points on the chip; hits + Kicks ~+1 %)
 
 ### Flash-budget techniques in use (ADR 0011)
 

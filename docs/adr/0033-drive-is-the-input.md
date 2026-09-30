@@ -27,3 +27,5 @@
 - With the Loop no longer pushed, DRIVEN's noon colour is a little milder than ADR 0022's (level-matched null −16.8 dB vs −14.2, bar −20).
 
 **Why:** the owner's decisions: DRIVE as the Wellspring's INPUT knob, driving harder should splash more and never shorten the tail, and a louder tank as DRIVE comes up.
+
+**Amended 30 Sep 2026 (owner, "a more even spread of intensity", DRIVEN milder is wanted):** DRIVEN's voicing offset −6 / +16 → −5 / +13 dB and pickup push 24 → 21 dB; KICKED wet makeup 0.8 → 0.4 dB. Drive intensity (level-matched null vs DRIVE 0, 02_hits, SPLASH 0) at DRIVE 0.5 / 0.8: CLEAN −23.8 / −19.9, DRIVEN −19.1 / −13.5 (was −16.8 / −11.0), KICKED −11.2 / −6.8: DRIVEN about midway. Level curve unchanged in shape (SPLASH 0, DRIVE 1: CLEAN +6.6, DRIVEN +7.0, KICKED +7.5).

@@ -24,3 +24,8 @@
 - Drum hits in DRIVEN / KICKED get the Clang and the Bite (round 4's TC). The owner picked T2 alone for them at DRIVE 0.8; the Bite replacing the Clang was tried and dropped because below DRIVE ~0.5 the Bite alone gave KICKED rimshots almost no splash (+1.3 dB).
 
 **Why:** the owner's picks, and a model of a real tank: harder hits, not an added sound.
+
+**Amended 30 Sep 2026 (owner, after the build page `renders/splash_drive_build/`: B picked everywhere; "driven and kicked new build hits and skank sound a bit hot/distorted, and I'd expect a little more contrast between driven and kicked … a more even spread of intensity across clean/drive/kicked"):**
+- The Bite is gentler and gives back less level: ×(1 + 2.5e) (was 4), three quarters of the push taken back (was half), inside DriveIn so its automatic makeup gives back only the saturators' squash. DRIVEN drum hits at DRIVE 1 (default SPLASH): +7.5 dB re DRIVE 0 (was +9.3; CLEAN +7.0).
+- KICKED's Clang 5 → 12 (round 4's C3 strength), so KICKED is clearly the most intense (splash at DRIVE 0.8 on the −6 dBFS rim: CLEAN +7.2, DRIVEN +8.1, KICKED +9.9; skank +6.9 / +7.1 / +9.1). DRIVE's top-half gain 1.0 → 1.75 (still ×1 at DRIVE 0.8).
+- Drum hits keep Clang + Bite (owner: fine); DRIVE-linked sensitivity kept (owner: fine).

@@ -519,17 +519,17 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         prof::mark(prof::kSplash);
 
         // DriveIn (transducer -> tape). The Bite (ADR 0032, SplashVoicing.h):
-        // a short, cracking hit goes in harder, x (1 + b), and half of the
-        // push (in dB) is taken back after, ÷ sqrt(1 + b): grit on the hit,
-        // and the hit reaches the springs harder. b = 0 on everything else
-        // (and always in CLEAN): the plain path. DriveIn's automatic makeup
-        // hears the push like any hit and gives back what the saturators
-        // squashed over its ~0.3 s, so a bitten hit's tail comes back louder
-        // (up to the whole push at most): the tank really was hit harder.
+        // a short, cracking hit goes into the saturators harder, x (1 + b),
+        // and most of the push is taken back right after them
+        // (splash::kBiteTakeBack, three quarters since the owner's 30 Sep
+        // listen: "a bit hot/distorted"): grit on the hit, little level. Taken back inside DriveIn, before its
+        // makeup's output follower, so the makeup gives back only what the
+        // saturators squashed. b = 0 on everything else (and always in
+        // CLEAN): the plain path, bit for bit.
         for (int i = 0; i < n; ++i) {
             const float b = bite[i];
-            const float y = driveIn_.process(xin[i] * (1.0f + b)); // one call site: DriveIn inlines once
-            driven[i] = b > 0.0f ? y * (1.0f / std::sqrt(1.0f + b)) : y;
+            const float back = b > 0.0f ? splash::biteBack(1.0f + b) : 1.0f;
+            driven[i] = driveIn_.process(xin[i], 1.0f + b, back); // one call site: DriveIn inlines once
         }
         prof::mark(prof::kDriveIn);
 
