@@ -76,6 +76,12 @@ constexpr double kRingingSteadyS         = 2.0;  // ... for at least this long .
 constexpr double kRingingSteadyProminenceDb = 20.0; // ... standing this far above its neighbourhood
 constexpr double kRingingSteadyRangeDb   = 40.0; // ... and no more than this below the tail's start level
 constexpr double kRingingLeakDb          = 70.0; // growth stops counting here: the reference is the peak's own window leakage
+// ADR 0034 round 2 (WOBBLE moves modes by about a bin): a bin's level is
+// the max over +-this many bins (+-12 Hz at 48 kHz), and a climb must rise
+// in both halves of its late half (each third-to-third step >= this share
+// of the whole rise, 1 dB slack).
+constexpr size_t kRingingFollowBins      = 2;
+constexpr double kRingingSteadyShare     = 0.2;
 constexpr double kHowlFloorMinDb         = -25.0;
 constexpr double kHowlMovePct            = 0.5;
 constexpr double kHowlMoveDb             = 3.0;
