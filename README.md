@@ -6,24 +6,24 @@ A dub spring reverb firmware for the **Noise Engineering Versio** Eurorack platf
 
 The goal is the splashy, drippy ring-out of a spring tank on a single snare or rim hit, including the "kicked tank" crash of dub. It's modelled on a physical spring rather than a room reverb, with a wide sweet spot: every knob position should be usable, with no dead zones and no cliff edge into runaway feedback.
 
-> **Status:** in development. The spec is frozen at v1.0. Milestones M0–M4 are built on the desktop and M5 is in progress. Hardware checks are pending. Not yet ready to install.
+> **Status:** in development. The spec is frozen at v1.0. Milestones M0–M7 are built, M0 passed on hardware, and the M3 CPU profiling and M8 tuning pass are in progress. Not yet ready for release.
 
 ## The instrument
 
 | Control | What it does |
 |---|---|
-| **DECAY** | Tail length, coupled to tank size: short and pingy → long and dense (0.4–9 s). Always fades |
-| **TONE** | The hero tilt: warm dub dark ↔ splashy bright, never harsh |
-| **BOING** | How exaggerated the chirp is: soft and washy → cartoon boing. Always a spring |
-| **SPLASH** | How hard hits make the tank clatter and lurch |
-| **DRIVE** | Transducer and tape colour, level-compensated: changes colour, not volume |
-| **WOBBLE** | Drift in the lower half, worn-tape warble at the top |
-| **MIX** | Dry/wet, equal power. Fully clockwise = 100% wet for send/return |
+| **P1 MIX** | Dry/wet, equal power. Fully clockwise = 100% wet for send/return |
+| **P2 DECAY** | Tail length only (0.4–9 s). Always fades; doesn't change the tank or bend pitch |
+| **P3 TONE** | The hero tilt: warm dub dark ↔ splashy bright, never harsh |
+| **P4 SPLASH** | How hard hits make the tank clatter and lurch |
+| **P5 TENSION** | Which tank is fitted: up = tight (short, quick repeats, small bright chirp), down = loose (long, big darker boing). Always a spring |
+| **P6 WOBBLE** | Drift in the lower half, worn-tape warble at the top |
+| **P7 DRIVE** | Transducer and tape colour, level-compensated: changes colour, not volume |
 | **SPRINGS** switch | 1 (sparse, drippy) / 2 (classic) / 3 (dense, lush) |
 | **ATTITUDE** switch | CLEAN / DRIVEN (tape dub) / KICKED (hard drive, chaos, may Howl) |
 | Button / Gate in | **Kick**: hit the tank |
 
-All seven knobs are CV-controllable (0–5 V). Full panel map: [SPEC.md §3](SPEC.md).
+All seven knobs are CV-controllable (0–5 V). P1–P7 are the pots in reading order on the stock Versio panel (ADR 0028). The four LEDs meter In L, In R, Out L, Out R (ADR 0031). Full panel map: [SPEC.md §3](SPEC.md); player's guide: [docs/manual.md](docs/manual.md).
 
 ## How it's built
 
@@ -40,7 +40,7 @@ sweeps,         in Ableton         gate, LEDs
 metrics
 ```
 
-The DSP follows Välimäki, Parker & Abel, *Parametric Spring Reverberation Effect* (JAES, 2010): each simulated spring is a feedback loop around a chain of "stretched" allpass filters, which delay low frequencies more than highs to produce the falling chirp. On top of that: 1–3 detuned springs in mid/side stereo, a drive chain (transducer → tape → loop saturation → pickup), transient-driven Splash and Kick, and a layered defence against single-tone ringing. Details: [SPEC.md §4](SPEC.md).
+The DSP follows Välimäki, Parker & Abel, *Parametric Spring Reverberation Effect* (JAES, 2010): each simulated spring is a feedback loop around a chain of "stretched" allpass filters, which spread each echo in time by frequency: the highs arrive after the lows, so each echo sweeps up, as in real tanks (ADR 0024). On top of that: 1–3 detuned springs spread across the stereo field (A left, B right, C centre), a drive chain (transducer → tape → loop saturation → pickup), transient-driven Splash and Kick, and a layered defence against single-tone ringing. Details: [SPEC.md §4](SPEC.md).
 
 ## Building
 
@@ -51,7 +51,7 @@ git clone --recursive https://github.com/jeffebauer/resilio-versio.git
 cd resilio-versio
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build          # Core, Renderer, tests, AU + VST3 plugin
-ctest --test-dir build       # 7 test suites
+ctest --test-dir build       # 15 test suites
 make -C libs/libDaisy -j8 && make -C firmware all-variants
 ```
 
@@ -76,7 +76,7 @@ Full setup, including the Arm toolchain and the firmware variants: [docs/buildin
 
 - **[SPEC.md](SPEC.md)**: the full specification: hardware facts, sound target, DSP design, architecture, milestones with acceptance criteria.
 - **[CONTEXT.md](CONTEXT.md)**: the glossary. The code, docs and conversations all use these terms.
-- **[docs/adr/](docs/adr/)**: architecture decision records, one per decision (0001–0021).
+- **[docs/adr/](docs/adr/)**: architecture decision records, one per decision (0001–0031).
 - **[docs/TASKS.md](docs/TASKS.md)**: the owner's running to-do list (recordings, hardware and listening checks).
 - Reference recordings: [Wellspring recipe](docs/recording-recipe.md), [Magneto recipe](docs/recording-recipe-magneto.md), [Ableton setup](docs/ableton-setup.md).
 - Checks: [M0 hardware](docs/m0-hardware-check.md), [M2 Ableton](docs/m2-ableton-check.md).
@@ -85,16 +85,16 @@ Full setup, including the Arm toolchain and the firmware variants: [docs/buildin
 
 | # | Milestone | State |
 |---|---|---|
-| 0 | Toolchains | Built; hardware check pending |
-| 1 | One spring (CLEAN) + Renderer | Built; listening check pending |
+| 0 | Toolchains + hardware check | Passed on the owner's Versio |
+| 1 | One spring (CLEAN) + Renderer | Built; Wellspring A/B listening check pending |
 | 2 | JUCE plugin shell | Built + automated tests pass; Ableton check pending |
-| 3 | Hardware profiling | Firmware ready; waits on M0 |
-| 4 | Multi-spring, stereo, DECAY coupling | Built; listening check pending |
-| 5 | Drive chain + TONE tilt | In progress |
-| 6 | Anti-resonance | — |
-| 7 | SPLASH, KICK, WOBBLE, MIX | — |
-| 8 | Tuning pass | — |
-| 9 | Polish (LEDs, panel overlay, manual, release) | — |
+| 3 | Hardware profiling | In progress: worst case ~62 % average CPU, peaks ~68 % (target 65 %, ADR 0030) |
+| 4 | Multi-spring, stereo, tank coupling | Built |
+| 5 | Drive chain + TONE tilt | Built |
+| 6 | Anti-resonance | Built |
+| 7 | SPLASH, KICK, WOBBLE, MIX | Built |
+| 8 | Tuning pass | In progress (TENSION, knob layout, earlier first echo done; SPLASH being reworked) |
+| 9 | Polish (LEDs, panel overlay, manual, release) | LED meters built (ADR 0031); manual and preset notes drafted |
 
 Acceptance criteria per milestone: [SPEC.md §7](SPEC.md).
 
