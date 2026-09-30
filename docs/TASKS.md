@@ -74,8 +74,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - Flash **`dist/resilio_versio_release_e2ff5a7.bin`** (NE Firmware Swap → Select Custom File, **USB only**). Then unplug USB and play on **rack power** (never both at once)
 - It's the real instrument: your panel's knob layout (ADR 0028), the output polarity/level fix, the new LED meters (ADR 0031), and run 12's CPU trim (built from `e2ff5a7`; the older `3a790f7` build works too). SPLASH is still today's version (round 3 not built yet)
 - [x] In L only (30 Sep): **both** input LEDs light. Expected: the Versio's jacks copy In L to In R when R is unpatched
-- [ ] **LED order:** patch **In R only**: only the **second LED from the left** should light (In L then reads silence)
-- [ ] **LED flicker fix (test build):** flash **`dist/resilio_versio_release_ledfix.bin`** (USB only; not merged until you confirm). The LEDs should now **dim smoothly**, also on a phone camera. Also: is the dimmest glow (a faint signal) visible but clearly dim? And while playing something heavy (3 Springs, KICKED, DRIVE and DECAY up), any **clicks or dropouts**? (The new LED driver uses the chip's DMA hardware; very unlikely to affect audio, but it's new.) If the LEDs still flicker, the fallback kicked in: tell Claude
+- [x] **LED order** (30 Sep): In R only lights only the In R LED; In L lights both (the jacks copy L to R). Correct
+- [x] **LED flicker fix** (30 Sep, `ledfix` build): dims smoothly, faintest glow visible but dim, no clicks on heavy settings. Merged. Found while testing: the **first skank stab after power-up lights the output LEDs red** (it peaks ~4 dB above the later stabs, on hardware and desktop alike): the automatic level trim before the springs starts neutral and needs ~0.3 s to settle. Claude's fix: let it turn down fast and recover slowly
 - [x] **Input red** (30 Sep): goes red when the input gain is bumped; the output often stays amber then. As designed: input red = the Versio's own input is about to clip (turn the source down); output red only when the limiter works
 - [x] **Look** (30 Sep): amber reads as amber. **LEDs flicker instead of dimming**: cause found (the LEDs are refreshed only ~1000×/s, so their dimming gets ~8 uneven steps); Claude is fixing it (next firmware)
 - [x] **Output red:** lights on a KICKED Howl, off in normal playing (30 Sep)
@@ -196,6 +196,8 @@ Your running to-do list. Claude keeps it current: new tasks are added, finished 
 - **Listening:** plain-words answers to the questions above.
 
 ## Waiting on Claude (no action needed)
+
+- **First-hit level jump:** the excitation trim (before the springs) starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up or a change of material peaks ~4 dB hot (the owner saw red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 
 - **Overnight 29–30 Sep (agents, nothing merged until Claude reviews):** tail-length measurement fix; M9 LEDs as level meters (your call: left pair = In L/R, right pair = Out L/R, green → amber → red, input red = near clipping, output red = limiter working, no mode colours, boot pattern kept); M9 one-page manual + dub preset notes (drafts); review pages get the SPLASH-page layout; two prototypes to listen to: the hanging partial at WOBBLE ~9 o'clock (`renders/proto_wobble_hang/`) and lows ringing longer like your Wellspring (`renders/proto_low_tail/`)
 
