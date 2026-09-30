@@ -30,6 +30,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
+### 2b. Bipolar WOBBLE · **ready** (≈10 min)
+- [ ] Open `renders/proto_bipolar_wobble/index.html`: **A** today vs **B** bipolar at WOBBLE fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock, fully right (sine LFO), on held tones and skank. Does the left side sound like tape that never repeats? Is noon still? Is each step audible? Keep the pure sine or the slightly drifting one on the right?
+
 ### 3. Play the Versio
 - **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
@@ -53,7 +56,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 
 ## Waiting on Claude (no action needed)
-- **Next session:** merge the approved SPLASH/DRIVE build (with the DRIVE grit stretched), release firmware, plugin install; bipolar WOBBLE page; the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
+- **Next session:** merge the approved SPLASH/DRIVE build (with the DRIVE grit stretched), release firmware, plugin install; the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
