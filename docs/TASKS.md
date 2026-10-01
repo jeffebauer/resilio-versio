@@ -33,6 +33,11 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
 - [ ] **Start the cloud session:** "Follow docs/briefs/big-knob-tone.md on main. Work on branch proto/big-knob-tone and push it; don't merge to main." Then Claude renders the page here
 
+### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
+- [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
+- [ ] **Start the SPRINGS 3 session:** "Follow docs/briefs/springs3-palette.md on main. Work on branch proto/springs3-palette and push it; don't merge to main." Five versions of position 3: today, a long big tank, tanks in series, wide stereo spread, a different tank type
+- [ ] **Start the SPLASH session:** "Follow docs/briefs/splash-stronger.md on main. Work on branch proto/splash-stronger and push it; don't merge to main." Four versions: today, stronger top, stronger + independent of DRIVE, and a bolder one
+
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (one local agent, best after your weekly usage resets): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH

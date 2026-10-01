@@ -36,7 +36,7 @@ Placement: before the Springs, where the tilt and today's low cut already sit (d
 
 ## Setup and rules
 - Branch `proto/big-knob-tone` from `main`. Build: `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build build`; first `python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py` (gitignored WAVs).
-- Owned files: `core/params/DriveVoicing.h` (TONE section), the Tank's pre-tank filter code, DriveIn only if voicing 3 needs it, `host/common/ParamsJson.*` (the hidden key), TONE tests, a new ADR (next free number, Proposed), the backlog (`docs/m8-tuning-backlog.md`, new section "Big Knob TONE"), sweep JSONs. Commit with explicit paths (never `git commit -a`), push, don't merge to `main`. Scratch ≤ ~10 GB. No recordings in the repo.
+- Owned files: `core/params/DriveVoicing.h` (TONE section), the Tank's pre-tank filter code, DriveIn only if voicing 3 needs it, `host/common/ParamsJson.*` (the hidden key), TONE tests, a new ADR **0036** (Proposed; 0037 is reserved for a parallel SPRINGS 3 session), the backlog (`docs/m8-tuning-backlog.md`, new section "Big Knob TONE"), sweep JSONs. Commit with explicit paths (never `git commit -a`), push, don't merge to `main`. Scratch ≤ ~10 GB. No recordings in the repo.
 - `ctest`'s summary line must read `100% tests passed` (never trust a piped exit code). Don't loosen a limit without saying so plainly. `test_wobble` may fail on Linux containers on `main` too; it passes on the Mac.
 
 ## Deliver
