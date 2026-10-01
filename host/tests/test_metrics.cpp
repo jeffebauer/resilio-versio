@@ -423,6 +423,38 @@ Buf loop(const Buf& in, double L, double t60, double f0, double q, double peakDb
     return out;
 }
 
+// The same loop with WOBBLE-like wow on its delay (ADR 0034 round 2): two
+// slow unrelated sines, +-depth samples each (~8 cents per pass at 60),
+// linear-interpolated read. A tank's modes drift by about a bin.
+Buf loopWow(const Buf& in, double L, double t60, double f0, double q, double peakDb, double depth)
+{
+    const size_t size = 1 << 15;
+    std::vector<double> buf(size, 0.0);
+    const double g = std::pow(10.0, -3.0 * L / t60), c = 1.0 - std::exp(-2 * M_PI * 6000.0 / kFs);
+    const double A = std::pow(10.0, peakDb / 40.0), wv = 2 * M_PI * f0 / kFs, al = std::sin(wv) / (2 * q), a0 = 1 + al / A;
+    const double b0 = (1 + al * A) / a0, b1 = -2 * std::cos(wv) / a0, b2 = (1 - al * A) / a0, a2 = (1 - al / A) / a0;
+    double lp = 0, s1 = 0, s2 = 0;
+    Buf out(in.size());
+    for (size_t i = 0; i < in.size(); ++i) {
+        const double t = double(i) / kFs;
+        const double d = L * kFs + depth * (2.0 + std::sin(2 * M_PI * 0.37 * t) + std::sin(2 * M_PI * 0.61 * t + 1.0));
+        const double rp = double(i) - d;
+        double fb = 0.0;
+        if (rp >= 0) {
+            const size_t i0 = size_t(rp);
+            const double fr = rp - double(i0);
+            fb = buf[i0 & (size - 1)] + fr * (buf[(i0 + 1) & (size - 1)] - buf[i0 & (size - 1)]);
+        }
+        lp += c * (double(in[i]) + g * fb - lp);
+        const double y = b0 * lp + s1;
+        s1 = b1 * lp - b1 * y + s2;
+        s2 = b2 * lp - a2 * y;
+        buf[i & (size - 1)] = std::tanh(y);
+        out[i] = float(fb);
+    }
+    return out;
+}
+
 Buf decayingNoise(double totalS, double t60, double rmsDb, unsigned seed)
 {
     Buf x(size_t(totalS * kFs), 0.0f);
@@ -492,6 +524,14 @@ void ringingMetricCalibration()
     cases.push_back({"feedback loop L 50 ms, T60 2 s, +2 dB Q 8 resonance at 1.1 kHz", syn::loop(burst, 0.05, 2.0, 1100, 8, 2.0), true});
     cases.push_back({"feedback loop L 80 ms, T60 2 s, +2 dB Q 8 resonance at 1.1 kHz", syn::loop(burst, 0.08, 2.0, 1100, 8, 2.0), true});
     cases.push_back({"feedback loop L 100 ms, T60 2 s, +2 dB Q 20 resonance at 300 Hz", syn::loop(burst, 0.1, 2.0, 300, 20, 2.0), true});
+    // ADR 0034 round 2: pitch movement alone is not Ringing (a mode drifting
+    // into a bin used to read as a jump of 10-20 dB), a resonance still is.
+    for (double L : {0.04, 0.05, 0.069})
+        cases.push_back({L == 0.05 ? "plain feedback loop L 50 ms, T60 3 s, with slow wow on its delay (~8 cents per pass)"
+                                   : (L < 0.05 ? "plain feedback loop L 40 ms, T60 3 s, with slow wow" : "plain feedback loop L 69 ms, T60 3 s, with slow wow"),
+                         syn::loopWow(burst, L, 3.0, 1100, 8, 0.0, 60.0), false});
+    cases.push_back({"feedback loop L 50 ms, T60 2 s, +2 dB Q 8 resonance at 1.1 kHz, with slow wow",
+                     syn::loopWow(burst, 0.05, 2.0, 1100, 8, 2.0, 60.0), true});
     cases.push_back({"self-oscillating loop L 30 ms, +3 dB Q 20 at 3 kHz (steady tone)", syn::loop(burst, 0.03, 2.0, 3000, 20, 3.0), true});
     {
         syn::Buf x = syn::decayingNoise(12, 3.0, -10, 8);

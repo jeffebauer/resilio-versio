@@ -3,6 +3,7 @@
 #include "params/AntiRes.h"
 #include "params/SplashVoicing.h"
 #include "params/SpringModes.h"
+#include "params/WobbleVoicing.h"
 
 #include <algorithm>
 #include <cmath>
@@ -39,13 +40,13 @@ int nextPow2(int v)
 // detune factor (core/params/SpringModes.h), plus a little margin (2 %: the
 // Micro-mod floor and the Howl movement, ~1.1 % at most), plus the M7
 // modulation on top: the Jolt (Loop fraction + KICKED rattle, at most
-// kJoltMaxLoopFrac of L) and WOBBLE (at most wobbleMaxDepthSamples()).
+// kJoltMaxLoopFrac of L) and WOBBLE (at most wobble::maxDepthSamples()).
 constexpr float kLongestLoopSeconds = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
 constexpr float kJoltMaxLoopFrac    = 0.0125f;
 int lowDelaySize(float sampleRate)
 {
     return int(std::ceil(kLongestLoopSeconds * sampleRate * (1.02f + kJoltMaxLoopFrac)))
-         + int(std::ceil(splash::wobbleMaxDepthSamples(sampleRate))) + 8;
+         + int(std::ceil(wobble::maxDepthSamples(sampleRate))) + 8;
 }
 int highDelaySize(float sampleRate)
 {

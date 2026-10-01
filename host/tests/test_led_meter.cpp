@@ -155,7 +155,7 @@ void limiterFromTank()
         t.setParam(rv::ParamId::Tension, 0.5f);
         t.setParam(rv::ParamId::Tone, 0.5f);
         t.setParam(rv::ParamId::Splash, 0.0f);
-        t.setParam(rv::ParamId::Wobble, 0.0f);
+        t.setParam(rv::ParamId::Wobble, 0.5f); // noon: still
         t.setParam(rv::ParamId::Mix, 1.0f);
         t.setParam(rv::ParamId::Springs, rv::switchToNormalised(1));
         t.setParam(rv::ParamId::Attitude, 0.0f);

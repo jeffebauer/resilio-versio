@@ -476,7 +476,8 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
     float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
-    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval];
+    float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
+        trem[kControlInterval];
     float wet[kMaxSprings][kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -552,14 +553,16 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float lo = clangLp_.process(x);
             mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
         }
-        transport_.process(tapSamples, n); // one transport for every pickup: the first echoes move together
+        // One transport for every pickup: the first echoes move together. Its
+        // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
+        transport_.process(tapSamples, trem, n);
         prof::mark(prof::kTilt);
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
-                lSamples[i] = wobble_[s].next();
+                lSamples[i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]); // B, C share A's at low WOBBLE
                 loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
                 high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }
@@ -575,7 +578,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // level at every DRIVE (the tail's length and colour don't move
             // with DRIVE), and the pickups' hardness is divided by the same
             // gain (controlTick), so they bend the louder tail as before.
-            const float wg = kWetGain * heardGain_.next();
+            const float wg = kWetGain * heardGain_.next() * trem[i];
             const float src[modes::kNumSources] = {wg * wet[0][i], wg * wet[1][i], wg * wet[2][i]};
 
             if (fadePos_ < 1.0f) {

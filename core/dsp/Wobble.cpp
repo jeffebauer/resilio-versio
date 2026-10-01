@@ -1,18 +1,31 @@
 #include "dsp/Wobble.h"
 
+#include "params/SpringModes.h"
+
 #include <cmath>
 
 namespace rv::dsp {
+
+void Wobble::RandomLine::start(Rng& rng, float lo, float hi)
+{
+    p0     = rng.bipolar();
+    p1     = rng.bipolar();
+    p2     = rng.bipolar();
+    p3     = rng.bipolar();
+    pos    = 0.5f * (rng.bipolar() + 1.0f); // seeded start point along the segment
+    factor = lo + (hi - lo) * 0.5f * (rng.bipolar() + 1.0f);
+}
 
 void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed, Role role)
 {
     sampleRate_ = sampleRate;
     role_       = role;
     const int s = springIndex < 0 ? 0 : (springIndex > 2 ? 2 : springIndex);
-    rateScale_  = role == Role::Transport ? splash::kWobbleTransportRate : splash::kWobbleSpringRate[size_t(s)];
+    rateScale_  = role == Role::Transport ? wobble::kTransportRate : wobble::kSpringRate[size_t(s)];
+    loopRatio_  = modes::kDetune[size_t(s)].loopDelay / modes::kDetune[0].loopDelay;
     seed_       = mixSeed(seed);
     amount_     = -1.0f;
-    setAmount(0.0f);
+    setAmount(wobble::kNoon);
     reset();
 }
 
@@ -20,13 +33,14 @@ void Wobble::reset()
 {
     rng_.seed(seed_);
     phase_ = 0.5f * (rng_.bipolar() + 1.0f); // seeded start phase: Springs never in step
-    rPos_  = 0.0f;
-    rA_    = rng_.bipolar();
-    rB_    = rng_.bipolar();
-    k_     = 0;
+    wander_.start(rng_, 0.7f, 1.4f);
+    wow_.start(rng_, wobble::kWowSpreadLo, wobble::kWowSpreadHi);
+    flutter_.start(rng_, wobble::kFlutterSpreadLo, wobble::kFlutterSpreadHi);
+    k_ = 0;
     // Start from the generator's own value (no jump from 0 when WOBBLE is up).
     cur_  = value();
     prev_ = cur_;
+    gCur_ = gPrev_ = tremoloGain();
 }
 
 void Wobble::setAmount(float wobble, float depthScale)
@@ -34,35 +48,61 @@ void Wobble::setAmount(float wobble, float depthScale)
     if (wobble == amount_ && depthScale == depthScale_) return;
     amount_     = wobble;
     depthScale_ = depthScale;
-    depth_  = depthScale * (role_ == Role::Transport ? splash::wobbleEarlyDepthSamples(wobble, sampleRate_, rateScale_)
-                                                     : splash::wobbleDepthSamples(wobble, sampleRate_, rateScale_));
-    rateHz_ = splash::wobbleRateHz(wobble) * rateScale_;
-    sineW_  = splash::wobbleSineWeight(wobble);
+    depths_ = wobble::depths(wobble, role_ == Role::Transport, rateScale_, sampleRate_, voicing_);
+    depths_.lfo *= depthScale;
+    depths_.wow *= depthScale;
+    depths_.flutter *= depthScale;
+    indep_  = depths_.independence;
     const float every = float(splash::kControlInterval) / sampleRate_;
-    phaseStep_ = rateHz_ * every;
-    randStep_  = rateHz_ * splash::kWobbleRandomRateRatio * every;
+    lfoStep_     = depths_.lfoHz * every;
+    wanderStep_  = wobble::kLfoWanderRateHz * every;
+    wowStep_     = depths_.wowHz * every;
+    flutterStep_ = depths_.flutterHz * every;
+}
+
+void Wobble::setVoicing(int voicing)
+{
+    if (voicing == voicing_) return;
+    voicing_ = voicing;
+    const float w = amount_ < 0.0f ? wobble::kNoon : amount_, sc = depthScale_ < 0.0f ? 1.0f : depthScale_;
+    amount_ = -1.0f; // force a re-map
+    setAmount(w, sc);
 }
 
 void Wobble::tick()
 {
-    phase_ += phaseStep_;
-    if (phase_ >= 1.0f) phase_ -= 1.0f;
-    rPos_ += randStep_;
-    if (rPos_ >= 1.0f) {
-        rPos_ -= 1.0f;
-        rA_ = rB_;
-        rB_ = rng_.bipolar();
+    // Only the active side moves (the other's depth is exactly 0); a frozen
+    // side restarts from where it stopped, from depth 0, so nothing jumps.
+    if (depths_.lfo > 0.0f) {
+        wander_.advance(rng_, wanderStep_, 0.7f, 1.4f);
+        phase_ += lfoStep_ * (1.0f + wobble::kLfoRateWander * wander_.value());
+        if (phase_ >= 1.0f) phase_ -= 1.0f;
     }
-    prev_ = cur_;
-    cur_  = value();
+    if (depths_.wow > 0.0f) {
+        wow_.advance(rng_, wowStep_, wobble::kWowSpreadLo, wobble::kWowSpreadHi);
+        // The flutter's speed follows the wow (B / C): a tape running fast
+        // or slow flutters faster or slower, so it never sits on one rate.
+        const float follow = 1.0f + depths_.flutterFollow * wow_.value();
+        flutter_.advance(rng_, flutterStep_ * follow, wobble::kFlutterSpreadLo, wobble::kFlutterSpreadHi);
+    }
+    prev_  = cur_;
+    cur_   = value();
+    gPrev_ = gCur_;
+    gCur_  = tremoloGain();
+}
+
+// Flutter tremolo (Transport, left side, B / C): 10^(dB·flutter/20), one
+// exp per 32-sample tick; exactly 1 when off, so noon stays bit-identical.
+float Wobble::tremoloGain() const
+{
+    if (depths_.tremoloDb <= 0.0f) return 1.0f;
+    return std::exp((0.115129255f * depths_.tremoloDb) * flutter_.value()); // ln(10)/20
 }
 
 float Wobble::value() const
 {
-    const float t = rPos_ * rPos_ * (3.0f - 2.0f * rPos_);
-    const float r = rA_ + (rB_ - rA_) * t;
-    const float s = std::sin(2.0f * map::kPi * phase_);
-    return depth_ * (sineW_ * s + (1.0f - sineW_) * r);
+    return depths_.lfo * std::sin(2.0f * map::kPi * phase_) + depths_.wow * wow_.value()
+         + depths_.flutter * flutter_.value();
 }
 
 } // namespace rv::dsp
