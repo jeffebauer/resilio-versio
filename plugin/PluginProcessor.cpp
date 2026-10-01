@@ -1,6 +1,7 @@
 // Plugin Host. Parameters are generated from the ParamSpec table; this
 // file never lists parameters by hand (SPEC §6.3).
 
+#include "PluginEditor.h"
 #include "dsp/Tank.h"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -60,6 +61,9 @@ public:
             tank_.setParam(p.id, p.kind == rv::ParamKind::Switch3 ? rv::switchToNormalised(int(v)) : v);
         }
 
+        // The panel's KICK button: one Kick at the start of this block.
+        if (panel_.takeKick())
+            tank_.kick(0);
         // Any note-on = one Kick at its exact sample position; velocity ignored (ADR 0005).
         for (const auto m : midi)
             if (m.getMessage().isNoteOn())
@@ -68,10 +72,20 @@ public:
         const int n = buffer.getNumSamples();
         const float* inL = buffer.getReadPointer(0);
         const float* inR = getTotalNumInputChannels() > 1 ? buffer.getReadPointer(1) : inL; // mono in -> both sides
+
+        // LED meters (ADR 0031): abs peaks of the input before the Tank and
+        // the output after it, and the safety limiter's gain, as the
+        // firmware's audio callback takes them. The panel reads them.
+        using Link = rv::plugin::PanelLink;
+        panel_.notePeak(Link::kInL, peakOf(inL, n));
+        panel_.notePeak(Link::kInR, peakOf(inR, n));
         tank_.process(inL, inR, buffer.getWritePointer(0), buffer.getWritePointer(1), n);
+        panel_.notePeak(Link::kOutL, peakOf(buffer.getReadPointer(0), n));
+        panel_.notePeak(Link::kOutR, peakOf(buffer.getReadPointer(1), n));
+        panel_.noteLimiterGain(tank_.limiterGain());
     }
 
-    juce::AudioProcessorEditor* createEditor() override { return new juce::GenericAudioProcessorEditor(*this); }
+    juce::AudioProcessorEditor* createEditor() override { return new rv::plugin::PanelEditor(*this, state_, panel_); }
     bool hasEditor() const override { return true; }
 
     const juce::String getName() const override { return "Resilio Versio"; }
@@ -99,9 +113,17 @@ public:
     }
 
 private:
+    static float peakOf(const float* x, int n)
+    {
+        float p = 0.0f;
+        for (int i = 0; i < n; ++i) p = std::max(p, std::abs(x[i]));
+        return p;
+    }
+
     juce::AudioProcessorValueTreeState state_;
     std::array<std::atomic<float>*, static_cast<size_t>(rv::ParamId::Count)> raw_{};
     rv::Tank tank_;
+    rv::plugin::PanelLink panel_; // KICK button and LED meters, shared with the editor
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ResilioVersioProcessor)
 };

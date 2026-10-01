@@ -12,7 +12,7 @@ juce_add_plugin(ResilioVersio
     AU_MAIN_TYPE kAudioUnitType_MusicEffect
     COPY_PLUGIN_AFTER_BUILD ${RV_INSTALL_PLUGIN})
 
-target_sources(ResilioVersio PRIVATE PluginProcessor.cpp)
+target_sources(ResilioVersio PRIVATE PluginProcessor.cpp PluginEditor.cpp)
 
 target_compile_definitions(ResilioVersio PUBLIC
     JUCE_WEB_BROWSER=0
@@ -45,11 +45,20 @@ target_compile_definitions(plugin_host_test PRIVATE
     JUCE_PLUGINHOST_AU=1
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    RV_VST3_PATH="$<TARGET_BUNDLE_DIR:ResilioVersio_VST3>"
     RV_STIMULUS_DIR="${CMAKE_SOURCE_DIR}/test_audio/stimulus"
     RV_MAKE_STIMULUS_PY="${CMAKE_SOURCE_DIR}/tools/make_stimulus.py")
 
 add_dependencies(plugin_host_test ResilioVersio_VST3)
+
+# The VST3 is a CMake bundle only on macOS; elsewhere (a Linux cloud build)
+# ask JUCE for the .vst3 folder it made.
+if(APPLE)
+    target_compile_definitions(plugin_host_test PRIVATE
+        RV_VST3_PATH="$<TARGET_BUNDLE_DIR:ResilioVersio_VST3>")
+else()
+    target_compile_definitions(plugin_host_test PRIVATE
+        RV_VST3_PATH="$<GENEX_EVAL:$<TARGET_PROPERTY:ResilioVersio_VST3,JUCE_PLUGIN_ARTEFACT_FILE>>")
+endif()
 
 if(APPLE)
     target_compile_definitions(plugin_host_test PRIVATE
