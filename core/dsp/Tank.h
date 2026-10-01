@@ -366,7 +366,9 @@ private:
     float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
     float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
     // Big Knob makeup (DriveVoicing.h, Renderer voicings 1-3): power into
-    // and out of the Tilt, slow followers (kExcSeconds), gain (1 = none).
+    // and out of the Tilt above ~90 Hz, slow followers (kExcSeconds), gain
+    // (1 = none).
+    std::array<dsp::OnePoleLowpass, 4> bkHp_{}; // 2 x one-pole HP into, 2 out of the Tilt
     float bkAccIn_ = 0.0f, bkAccOut_ = 0.0f, bkIn_ = 0.0f, bkOut_ = 0.0f, bkGain_ = 1.0f;
     // M8 Sustain trim (DriveVoicing.h "Sustain trim"): held detector, the
     // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);

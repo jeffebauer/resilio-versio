@@ -121,6 +121,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     satInvSpanMs_ = 1.0f / (satFloorMs_ * (drive::dbToGain(2.0f * antires::kLoopSatFadeDb) - 1.0f));
     for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
+    for (auto& f : bkHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
     excGate_  = drive::dbToGain(2.0f * drive::kExcGateDb); // a power
     {
@@ -189,6 +190,7 @@ void Tank::reset()
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
     excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
+    for (auto& f : bkHp_) f.reset();
     bkAccIn_ = bkAccOut_ = bkIn_ = bkOut_ = 0.0f;
     bkGain_  = 1.0f;
     // Power-up (and reset): the trim starts turned all the way down, so the
@@ -396,7 +398,11 @@ void Tank::controlTick(bool snap)
             constexpr float kSlope = (kFull - kTgt) / (kFull - kFrom);
             const float peakDb = kTgt - susGNeed_ * (1.0f / kDb);
             const float cutDb  = peakDb <= kFrom ? 0.0f : peakDb < kFull ? (peakDb - kFrom) * kSlope : peakDb - kTgt;
-            susAim_ = -std::min(cutDb, drive::kSusGentleMaxDb) * kDb;
+            // The Big Knob's makeup (DriveVoicing.h, Renderer voicings 1-3;
+            // 0 dB otherwise) is ours to take back on top: it lifted what
+            // reaches the Springs, so the trim may cut that much deeper.
+            const float bkDb = std::max(0.0f, std::log(bkGain_)) * (1.0f / kDb);
+            susAim_ = -std::min(cutDb, drive::kSusGentleMaxDb + bkDb) * kDb;
             // One smooth glide down (~0.3 s), a slow one up.
             susLn_ += (susAim_ < susLn_ ? susGDownCoeff_ : susGUpCoeff_) * (susAim_ - susLn_);
             } else {
@@ -750,8 +756,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         for (int i = 0; i < n; ++i) {
             const float d  = driven[i];
             const float t  = tilt_.process(d);
-            bkAccIn_ += d * d; // Big Knob makeup followers
-            bkAccOut_ += t * t;
+            // Big Knob makeup followers: lows the tank doesn't hear (below
+            // ~90 Hz, the Excitation trim's high-pass) don't count.
+            float wi = d - bkHp_[0].process(d);
+            wi -= bkHp_[1].process(wi);
+            float wo = t - bkHp_[2].process(t);
+            wo -= bkHp_[3].process(wo);
+            bkAccIn_ += wi * wi;
+            bkAccOut_ += wo * wo;
             const float x  = t * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
             mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];

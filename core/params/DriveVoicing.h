@@ -567,7 +567,9 @@ inline float toneLowCutHz(float v)
 //   Level: thinning takes energy out of the tank, and how much depends on
 //     the material (at 1.2 kHz a skank lost 9 dB, a snare 2: no fixed makeup
 //     keeps both within ±3 dB). So the Tank follows the power going into and
-//     out of the Tilt (slow followers, like the Excitation trim) and gives
+//     out of the Tilt above ~90 Hz (slow followers and the high-pass of the
+//     Excitation trim: a bass pad's C2 fundamental, cut but never heard by
+//     the tank, made a broadband makeup bring it back ~4.5 dB hotter) and gives
 //     back kBigKnobMakeupShare of what the low cut took out (in dB), at most
 //     kBigKnobMakeupMaxDb, held in silence. It trims the Springs' input
 //     (never a ringing tail), like the Excitation and Sustain trims.
@@ -596,7 +598,7 @@ constexpr float kBigKnobOrderIn     = 0.2f;
 constexpr float kBumpF1             = 0.70f; // x fc, fully CW
 constexpr float kBumpF2             = 1.30f; // x fc, fully CW
 constexpr float kBumpQ              = 2.20f; // fully CW
-constexpr float kBigKnobMakeupShare = 0.7f;
+constexpr float kBigKnobMakeupShare = 0.75f;
 constexpr float kBigKnobMakeupMaxDb = 12.0f;
 constexpr float kBigKnobBumpTrimDb  = 1.2f;
 constexpr float kBigKnobSquashDb    = 0.2f;
