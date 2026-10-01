@@ -56,6 +56,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3c. Today's sound next to your Wellspring (≈10 min)
 - [ ] Open `renders/wellspring_fit2/page/index.html` (level-matched). Columns: **A your Wellspring recording**, **B** Resilio default settings, then **C / D / E**, the knob settings that measure closest to your Wellspring with 1 / 2 / 3 Springs (TENSION ~7/8, TONE ~2:30, DECAY ~2/3, CLEAN). Each Resilio panel has SPLASH 0 and 0.3. How close is it now, and what's the biggest difference you hear?
 - Measured: echo spacing now matches (within 3–4 ms); the tail's tonal balance is ~3 dB off; our tails are shorter at both ends (lows 3.4 vs 4.7 s, 4 kHz 1.1 vs 1.9 s)
+- [x] **Listened (2 Oct):** still quite different: the Wellspring is more diffuse; ours has more low end/mids (present, forward) where the Wellspring is further away and gentler; its repeats blur fast while ours flicker left/right like a delay. Measured, all three confirmed: tail washed-ness 0.97 vs ours 0.62–0.66; low-mid balance −6 vs −2 dB (defaults +1); L/R jumps 2.8 vs 9–10 dB per 10 ms
+- Wellspring fit round 3 being built (local agent): versions adding one fix each: the fitted sweep you picked, stereo that breathes together (no L/R ping-pong), faster diffusion, then gentler low-mids. Page with your Wellspring as column A
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
