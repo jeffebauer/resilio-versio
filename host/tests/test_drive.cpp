@@ -1192,8 +1192,8 @@ double sectionDb(const rv::drive::BigKnob& b, double hz)
 void bigKnob()
 {
     const float tones[] = {0.5f, 0.7f, 0.85f, 1.0f};
-    const char* const vName[4] = {"0 today", "1 steep", "2 bump", "3 driven"};
-    for (int v = 0; v < 4; ++v)
+    const char* const vName[5] = {"0 today", "1 steep", "2 bump", "3 driven", "4 gentle"};
+    for (int v = 0; v < 5; ++v)
         for (float tn : tones) {
             const rv::drive::BigKnob b = rv::drive::bigKnob(v, tn);
             const double u = std::max(0.0f, 2.0f * tn - 1.0f);

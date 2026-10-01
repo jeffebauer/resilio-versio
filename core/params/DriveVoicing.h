@@ -592,8 +592,15 @@ constexpr int   kToneVoicingToday   = 0;
 constexpr int   kToneVoicingSteep   = 1;
 constexpr int   kToneVoicingBump    = 2;
 constexpr int   kToneVoicingDriven  = 3;
+// 4 = the owner's pick (1 Oct 2026, renders/proto_big_knob/): voicing 2, with
+// the bump easing off over the top of the knob (v1, no bump, won fully CW on
+// skank and KICKED hits): the same up to u = kBumpEaseFrom, kBumpEase less
+// bump amount fully CW.
+constexpr int   kToneVoicingGentle  = 4;
+constexpr float kBumpEaseFrom       = 0.5f;
+constexpr float kBumpEase           = 0.25f;
 constexpr int   kToneDefaultVoicing = kToneVoicingToday;
-constexpr float kBigKnobMaxHz       = 1200.0f;
+constexpr float kBigKnobMaxHz       = 1000.0f;
 constexpr float kBigKnobOrderIn     = 0.2f;
 constexpr float kBumpF1             = 0.70f; // x fc, fully CW
 constexpr float kBumpF2             = 1.30f; // x fc, fully CW
@@ -623,7 +630,11 @@ inline BigKnob bigKnob(int voicing, float v)
     const float u  = std::min(1.0f, 2.0f * v - 1.0f);
     const float s  = std::min(1.0f, u / kBigKnobOrderIn);
     const float fc = bigKnobHz(u);
-    const float w  = voicing >= kToneVoicingBump ? u : 0.0f; // bump amount
+    float w = voicing >= kToneVoicingBump ? u : 0.0f; // bump amount
+    if (voicing == kToneVoicingGentle && u > kBumpEaseFrom) {
+        const float e = (u - kBumpEaseFrom) / (1.0f - kBumpEaseFrom);
+        w -= kBumpEase * e * e;
+    }
     b.hz  = fc * (1.0f + (kBumpF2 - 1.0f) * w);
     b.hz1 = fc * (1.0f + (kBumpF1 - 1.0f) * w);
     b.q   = 0.7071f + (1.0f - 0.7071f) * s + (kBumpQ - 1.0f) * w;
