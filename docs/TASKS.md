@@ -37,7 +37,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Merge held back (1 Oct): with the new WOBBLE, two of the trim's checks failed (a held organ's first note touches the limiter; the trim moves 2.9 dB on a drone, limit 2). **Your pick:** WOBBLE now, the trim retuned in the cloud
 - [x] Retuned in the cloud (1 Oct): held sounds stay clear of the limiter at the default WOBBLE and right of noon (your real pad too, at every page setting); hits and skank bit-for-bit identical. Left of WOBBLE noon (random drift swells the tank on its own) held sounds can still touch the limiter by ~1 dB
 - [x] **Confirm listen (1 Oct):** B on hits, skank, synthetic pad and drone; **A on your real pad everywhere and on most organ cells**: the trim's dip and swell is audible, and the organ feels less alive. You asked for a middle ground that keeps things characterful
-- [ ] **Start the cloud session:** "Follow docs/briefs/sustain-trim-gentle.md on main. Work on branch proto/sustain-trim-3 and push it; don't merge to main." It builds a gentle safety-net trim (only when the limiter would work hard, small and slow) next to "limiter hold only" and round 2, for one page
+- [x] Gentle safety-net trim built in the cloud (1 Oct): within 0–1.8 dB of today's level on held sounds; the limiter takes only short pulls (≤ ~2.5 dB, kept clean by the hold); hits and skank identical
+- [ ] **Listen (≈5 min):** open `renders/proto_sustain_trim3/index.html`. A = today, **B = limiter hold only**, C = round 2 (the dip and swell), **D = gentle trim**. Pick per row; your real pad and the organ matter most. On your real pad D barely trims (its peaks match B), so there it's mostly the hold you hear
+- Then Claude builds everything once from your pick: the Ableton plugin, a universal share plugin, the Versio firmware and install instructions, published as a GitHub Release
 - Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
 
  · next round after the SPLASH/DRIVE merge
