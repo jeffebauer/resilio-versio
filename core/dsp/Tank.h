@@ -260,6 +260,16 @@ public:
     // a trim already in effect).
     void setSustainVoicing(int v) { susVoicing_ = std::clamp(v, 0, 2); }
     int  sustainVoicing() const { return susVoicing_; }
+    // Renderer / test hook (not a panel control, ADR 0036 Proposed): which
+    // Big Knob TONE voicing (DriveVoicing.h: 0 = today, 1 = steep, 2 = steep
+    // + bump, 3 = + ringier when driven). The firmware and plugin never call
+    // it (drive::kToneDefaultVoicing). Set it before rendering.
+    void setToneVoicing(int v)
+    {
+        tilt_.setVoicing(std::clamp(v, 0, 3));
+        compDrive_ = -1.0f; // DriveIn settings again on the next tick (voicing 3)
+    }
+    int  toneVoicing() const { return tilt_.voicing(); }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -317,6 +327,7 @@ private:
     float                morphStep_ = 0.0f; // weight change per control tick
     // Last inputs of the gain-compensation model (recomputed only on change).
     float                compDrive_ = -1.0f;
+    float                compTone_  = -1.0f; // Big Knob voicing 3's DriveIn push
     std::array<float, 3> compW_{{-1.0f, -1.0f, -1.0f}};
     dsp::DriveInSettings driveInSettings_{};
     dsp::Ramp            heardGain_{};  // the level DRIVE adds (ADR 0033), on the Springs' output
@@ -354,6 +365,9 @@ private:
     std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
     float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
     float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
+    // Big Knob makeup (DriveVoicing.h, Renderer voicings 1-3): power into
+    // and out of the Tilt, slow followers (kExcSeconds), gain (1 = none).
+    float bkAccIn_ = 0.0f, bkAccOut_ = 0.0f, bkIn_ = 0.0f, bkOut_ = 0.0f, bkGain_ = 1.0f;
     // M8 Sustain trim (DriveVoicing.h "Sustain trim"): held detector, the
     // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);
     // the Springs' input trim ramped per tick is Excitation x Sustain

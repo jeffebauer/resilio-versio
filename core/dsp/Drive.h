@@ -230,8 +230,17 @@ public:
         split_.reset();
         ceiling_.reset();
         lowCut_.reset();
+        order_.reset();
     }
     void set(float tone, bool snap, int interval);
+    // Big Knob voicing (DriveVoicing.h "Big Knob TONE voicings"; Renderer
+    // only, the firmware and plugin keep drive::kToneDefaultVoicing).
+    void setVoicing(int v)
+    {
+        voicing_ = v;
+        tone_    = -1.0f; // redesign on the next set()
+    }
+    int voicing() const { return voicing_; }
     float process(float x)
     {
         const float lo = split_.process(x);
@@ -243,14 +252,19 @@ public:
         const float g = hi_.next();
         const float extra = (g - 1.0f) * (boost_ ? ceiling_.process(hi) : hi);
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
-        return lowCut_.process(lo * lo_.next() + hi + extra); // bright-side low cut (drive::toneLowCutHz)
+        const float y = lowCut_.process(lo * lo_.next() + hi + extra); // bright-side low cut (drive::bigKnob)
+        // Big Knob's 1st-order section: k 0 (noon, CCW, voicing 0) passes y
+        // through exactly.
+        return y - k_.next() * order_.process(y);
     }
 
 private:
-    OnePoleLowpass split_, ceiling_;
+    OnePoleLowpass split_, ceiling_, order_;
     Biquad lowCut_;
     float sampleRate_ = 48000.0f;
-    Ramp lo_, hi_;
+    Ramp lo_, hi_, k_;
+    int voicing_ = drive::kToneDefaultVoicing;
+    float kTarget_ = 0.0f;
     bool boost_ = false;
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;
 };

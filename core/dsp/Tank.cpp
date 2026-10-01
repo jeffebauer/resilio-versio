@@ -189,6 +189,8 @@ void Tank::reset()
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
     excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
+    bkAccIn_ = bkAccOut_ = bkIn_ = bkOut_ = 0.0f;
+    bkGain_  = 1.0f;
     // Power-up (and reset): the trim starts turned all the way down, so the
     // first sound can only come in too quiet, never too hot (the first chord
     // of a skank peaked ~3 dB over the rest: its attack reached the Springs
@@ -428,8 +430,26 @@ void Tank::controlTick(bool snap)
             susGNeedHold_ = 0.0f;
         }
         susGain_    = susLn_ < 0.0f ? std::exp(susLn_) : 1.0f;
-        inTrimFrom_ = snap ? excTrimTo_ * susGain_ : inTrimTo_;
-        inTrimTo_   = excTrimTo_ * susGain_;
+    }
+    // Big Knob makeup (DriveVoicing.h, voicings 1-3, TONE right of noon):
+    // slow power into and out of the Tilt; give back a share of what the low
+    // cut took out, held in silence. 1 (exactly) otherwise.
+    {
+        constexpr float kInv = 1.0f / float(kControlInterval);
+        bkIn_ += excCoeff_ * (bkAccIn_ * kInv - bkIn_);
+        bkOut_ += excCoeff_ * (bkAccOut_ * kInv - bkOut_);
+        bkAccIn_ = bkAccOut_ = 0.0f;
+        if (tilt_.voicing() == drive::kToneVoicingToday || tone <= 0.5f) {
+            bkGain_ = 1.0f;
+        } else if (bkIn_ > excGate_) {
+            constexpr float kMaxLog = drive::kBigKnobMakeupMaxDb * (2.302585093f / 20.0f);
+            const float l = 0.5f * drive::kBigKnobMakeupShare * std::log(bkIn_ / std::max(bkOut_, 1.0e-12f))
+                          + (2.302585093f / 20.0f) * drive::bigKnobTrimDb(tilt_.voicing(), tone, attW_, drive);
+            bkGain_ = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
+        }
+        const float trim = excTrimTo_ * susGain_ * bkGain_;
+        inTrimFrom_ = snap ? trim : inTrimTo_;
+        inTrimTo_   = trim;
     }
     // Jolt on a (control rate): after the detune, scaled per Spring like the
     // Loop-delay Jolt (splash::kJoltSpringScale, M8), clamped below.
@@ -438,8 +458,19 @@ void Tank::controlTick(bool snap)
     // DriveIn settings (the INPUT gain, ADR 0033) and the DRIVE push on the
     // pickups (ADR 0022): only recomputed when DRIVE or the Morph moved
     // (they cost a few exp).
-    if (snap || drive != compDrive_ || attW_ != compW_) {
+    const bool bigKnobPush = tilt_.voicing() == drive::kToneVoicingDriven;
+    if (snap || drive != compDrive_ || attW_ != compW_ || (bigKnobPush && tone != compTone_)) {
         driveInSettings_ = dsp::driveInSettings(voice, drive);
+        if (bigKnobPush) {
+            // Big Knob voicing 3 (DriveVoicing.h): the lows pushed harder
+            // into the transducer, highs and small signals as before.
+            const float p = drive::bigKnob(drive::kToneVoicingDriven, tone).pushDb;
+            const float g = drive::dbToGain(p);
+            driveInSettings_.voice.fluxCutDb += p;
+            driveInSettings_.preGain *= g;
+            driveInSettings_.makeup /= g;
+        }
+        compTone_  = tone;
         push_      = drive::push(voice, drive);
         splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
         compDrive_ = drive;
@@ -717,7 +748,11 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
         for (int i = 0; i < n; ++i) {
-            const float x  = tilt_.process(driven[i]) * (inTrimFrom_ + excStep * float(tick_ + i));
+            const float d  = driven[i];
+            const float t  = tilt_.process(d);
+            bkAccIn_ += d * d; // Big Knob makeup followers
+            bkAccOut_ += t * t;
+            const float x  = t * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
             mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
         }

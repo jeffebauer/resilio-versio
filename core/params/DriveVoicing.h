@@ -21,6 +21,7 @@
 
 #include "params/Mappings.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 
@@ -533,6 +534,111 @@ inline float toneLowCutHz(float v)
     return v <= 0.5f ? kToneLowCutMinHz
                      : map::expLerp(kToneLowCutMinHz, kToneLowCutMaxHz, std::exp(0.7f * std::log(2.0f * v - 1.0f)));
 }
+// ---- Big Knob TONE voicings (prototype, owner 1 Oct 2026; ADR 0036 Proposed) --
+// King Tubby's "Big Knob": the stepped passive inductor high-pass (Altec
+// 9069B) he swept on the sends to thin a sound out, telephone-like, before
+// the spring. Research and numbers: docs/research/big-knob.md. TONE's right
+// half becomes a smooth version of it (no steps, owner); left of noon and
+// noon are today's, bit for bit, in every voicing.
+//   u = 2·TONE - 1 (0 at noon, 1 fully CW).
+//   Cutoff fc: kToneLowCutMinHz at noon up to kBigKnobMaxHz fully CW, on the
+//     same log + early curve as today's low cut (u^0.7): TONE 0.7 ≈ 170 Hz,
+//     0.85 ≈ 480 Hz, 1 = 1.2 kHz ("telephone"; the Springs' band is
+//     ~200 Hz-4 kHz, so nothing higher).
+//   Slope: 3rd order, 18 dB/oct (the Altec's): today's 2nd-order section
+//     (its Q raised from 0.707 to 1: a flat 3rd-order Butterworth) times a
+//     1st-order section y = x - k·LP(x). k fades in from 0 at noon (the
+//     section is then an exact pass-through) to 1 by u = kBigKnobOrderIn,
+//     so there's no jump anywhere.
+//   Bump (voicings 2, 3): a nasal, ringy peak just above fc that grows with
+//     u. Why a peak at all: the Altec is a 600 ohm constant-k T-section,
+//     exactly a flat 3rd-order Butterworth when driven and loaded at 600
+//     ohm; fed from a low-impedance output into a higher-impedance input, as
+//     on a console, it peaks at ~1.3-1.4 fc (tools/research/
+//     big_knob_circuit.py). The same circuit's poles, as a 1st-order corner
+//     f1 and a 2nd-order pair f2, Q: matched (f1 = f2 = fc, Q 1) at u -> 0,
+//     moving in a straight line to a near-zero source into ~1 kohm with a
+//     coil Q of ~10 fully CW (kBumpF1/F2 x fc, kBumpQ): +1.3 / 3.0 / 4.6 /
+//     6.1 dB at u 0.25 / 0.5 / 0.75 / 1, at ~1.35-1.4 fc; -3 dB stays at
+//     ~0.9 fc. Size: the "medium" loading (between the KTBK-style mild bump
+//     and a bridging input's +16 dB), chosen on the measurements in
+//     docs/m8-tuning-backlog.md "Big Knob TONE" (M6 grid, loudness, Sustain
+//     trim).
+//   Level: thinning takes energy out of the tank, and how much depends on
+//     the material (at 1.2 kHz a skank lost 9 dB, a snare 2: no fixed makeup
+//     keeps both within ±3 dB). So the Tank follows the power going into and
+//     out of the Tilt (slow followers, like the Excitation trim) and gives
+//     back kBigKnobMakeupShare of what the low cut took out (in dB), at most
+//     kBigKnobMakeupMaxDb, held in silence. It trims the Springs' input
+//     (never a ringing tail), like the Excitation and Sustain trims.
+//     Two measured corrections on top (bigKnobTrimDb, dB x u): the bump puts
+//     energy where the tank and the ear are most sensitive (~1-2 kHz), so
+//     voicings 2-3 come down kBigKnobBumpTrimDb; and a driven tank squashes
+//     on its lows (the LoopSat and pickups), so taking the lows away lets
+//     hits come back louder (today's TONE 1 already +2.7 dB on KICKED hits
+//     at DRIVE 0.8): DRIVEN (half) and KICKED come down by
+//     kBigKnobSquashDb + kBigKnobSquashDriveDb x DRIVE.
+//   Voicing 3 adds "ringier when driven": the inductor's core saturates on
+//     loud lows. DriveIn already models a coil saturating on flux (lows); in
+//     voicing 3 its lows are pushed kBigKnobPushDb · u harder into the
+//     transducer (highs as before, small signals unchanged, the automatic
+//     makeup keeps the level), so DRIVE up adds lows' harmonics that the
+//     Big Knob then passes. No new nonlinear stage, no CPU.
+// Renderer-only key "tone_voicing" (the firmware and the plugin use
+// kToneDefaultVoicing).
+constexpr int   kToneVoicingToday   = 0;
+constexpr int   kToneVoicingSteep   = 1;
+constexpr int   kToneVoicingBump    = 2;
+constexpr int   kToneVoicingDriven  = 3;
+constexpr int   kToneDefaultVoicing = kToneVoicingToday;
+constexpr float kBigKnobMaxHz       = 1200.0f;
+constexpr float kBigKnobOrderIn     = 0.2f;
+constexpr float kBumpF1             = 0.70f; // x fc, fully CW
+constexpr float kBumpF2             = 1.30f; // x fc, fully CW
+constexpr float kBumpQ              = 2.20f; // fully CW
+constexpr float kBigKnobMakeupShare = 0.7f;
+constexpr float kBigKnobMakeupMaxDb = 12.0f;
+constexpr float kBigKnobBumpTrimDb  = 1.2f;
+constexpr float kBigKnobSquashDb    = 0.2f;
+constexpr float kBigKnobSquashDriveDb = 3.3f;
+constexpr float kBigKnobPushDb      = 4.0f;
+struct BigKnob {
+    float hz  = kToneLowCutMinHz; // 2nd-order section's cutoff
+    float q   = 0.7071f;          // and Q
+    float hz1 = kToneLowCutMinHz; // 1st-order section's cutoff
+    float k   = 0.0f;             // and depth (0 = pass-through)
+    float pushDb   = 0.0f;        // DriveIn lows push (voicing 3)
+};
+inline float bigKnobHz(float u) // the step's nominal cutoff fc
+{
+    return map::expLerp(kToneLowCutMinHz, kBigKnobMaxHz, std::exp(0.7f * std::log(u)));
+}
+inline BigKnob bigKnob(int voicing, float v)
+{
+    BigKnob b;
+    if (voicing == kToneVoicingToday) { b.hz = b.hz1 = toneLowCutHz(v); return b; }
+    if (v <= 0.5f) return b; // today's, exactly
+    const float u  = std::min(1.0f, 2.0f * v - 1.0f);
+    const float s  = std::min(1.0f, u / kBigKnobOrderIn);
+    const float fc = bigKnobHz(u);
+    const float w  = voicing >= kToneVoicingBump ? u : 0.0f; // bump amount
+    b.hz  = fc * (1.0f + (kBumpF2 - 1.0f) * w);
+    b.hz1 = fc * (1.0f + (kBumpF1 - 1.0f) * w);
+    b.q   = 0.7071f + (1.0f - 0.7071f) * s + (kBumpQ - 1.0f) * w;
+    b.k   = s;
+    if (voicing == kToneVoicingDriven) b.pushDb = kBigKnobPushDb * u;
+    return b;
+}
+
+// The Big Knob makeup's measured corrections (dB, <= 0) for TONE v > 0.5;
+// w = the ATTITUDE Morph weights (CLEAN, DRIVEN, KICKED).
+inline float bigKnobTrimDb(int voicing, float v, const std::array<float, 3>& w, float drive)
+{
+    const float u = std::min(1.0f, 2.0f * v - 1.0f);
+    const float bump = voicing >= kToneVoicingBump ? kBigKnobBumpTrimDb : 0.0f;
+    return -u * (bump + (0.5f * w[1] + w[2]) * (kBigKnobSquashDb + kBigKnobSquashDriveDb * drive));
+}
+
 // Tilt level compensation, dB per dB of tilt. A spring tank's loudness sits
 // mostly *below* the pivot (the Loop is dark and its low-mids ring longest),
 // so tilting toward the lows makes it louder: CCW gets pulled down. Keeps
