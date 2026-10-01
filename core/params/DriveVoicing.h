@@ -611,7 +611,7 @@ constexpr float kHitBumpGain        = 2.0f;
 constexpr float kHitBumpReleaseS    = 0.15f;
 constexpr float kBumpEaseFrom       = 0.5f;
 constexpr float kBumpEase           = 0.25f;
-constexpr int   kToneDefaultVoicing = kToneVoicingToday;
+constexpr int   kToneDefaultVoicing = kToneVoicingHits; // owner pick, 2 Oct 2026
 constexpr float kBigKnobMaxHz       = 800.0f;
 constexpr float kBigKnobOrderIn     = 0.2f;
 constexpr float kBumpF1             = 0.70f; // x fc, fully CW
@@ -661,7 +661,7 @@ inline BigKnob bigKnob(int voicing, float v)
 inline float bigKnobTrimDb(int voicing, float v, const std::array<float, 3>& w, float drive)
 {
     const float u = std::min(1.0f, 2.0f * v - 1.0f);
-    const bool bumped = voicing == kToneVoicingBump || voicing == kToneVoicingDriven || voicing == kToneVoicingGentle;
+    const bool bumped = voicing >= kToneVoicingBump; // 2-5 (v5: its hits carry the bump; held sounds come out ~1 dB quieter at TONE 1)
     const float bump = bumped ? kBigKnobBumpTrimDb : 0.0f;
     return -u * (bump + (0.5f * w[1] + w[2]) * (kBigKnobSquashDb + kBigKnobSquashDriveDb * drive));
 }

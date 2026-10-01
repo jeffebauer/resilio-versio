@@ -1,6 +1,6 @@
 # 0036 — TONE's right side as King Tubby's Big Knob
 
-**Status:** Proposed (1 Oct 2026, branch `proto/big-knob-tone`, not merged). Four voicings on one listening page; the owner picks. The default stays voicing 0 (today) until then: the firmware and the plugin don't change. Research: `docs/research/big-knob.md`. Numbers: `core/params/DriveVoicing.h` "Big Knob TONE voicings". Measurements: `docs/m8-tuning-backlog.md` "Big Knob TONE".
+**Status:** Accepted, 2 Oct 2026 (owner: **voicing 5, the bump on hits only**, after two check pages). TONE's right half: an 18 dB/oct low cut from 20 Hz at noon to **800 Hz** fully right (the research's 1.2 kHz rang in one KICKED corner), plus the Altec's console-loading bump (+4.1 dB fully right, easing off over the top) blended in only while a sharp, cracking hit lasts (the Splash's hit reading, SPLASH-independent). Left of noon and noon unchanged. Default `kToneDefaultVoicing = 5`; voicings 0–4 stay as Renderer-only references (`tone_voicing`). Rounds: `docs/m8-tuning-backlog.md` "Big Knob TONE".
 
 **Context:**
 - King Tubby's "Big Knob" was the stepped high-pass filter on his MCI desk (an Altec 9069B: two capacitors and a coil, 18 dB/oct, 70 Hz–7.5 kHz). He swept it on the reverb and echo sends to thin a sound out, telephone-like, before it reached the spring.

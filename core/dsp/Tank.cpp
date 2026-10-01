@@ -493,6 +493,15 @@ void Tank::controlTick(bool snap)
         inputGain_.aim(driveInSettings_.inputGain, kControlInterval);
     }
     tilt_.set(tone, snap, kControlInterval);
+    // Big Knob voicing 5 (DriveVoicing.h): the bump follows sharp hits (the
+    // Splash's reading since the last tick), up at once, back over
+    // kHitBumpReleaseS. On the tick grid, so any block size gives the same.
+    {
+        const float h = splash_.takeHitMax() * drive::kHitBumpGain;
+        hitBlend_ = h > hitBlend_ * hitRelease_ ? h : hitBlend_ * hitRelease_;
+        if (tilt_.voicing() == drive::kToneVoicingHits)
+            tilt_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, kControlInterval);
+    }
     // The pickups' hardness is divided by the level DRIVE adds (ADR 0033), so
     // they bend the louder tail exactly as ADR 0022 voiced them: DRIVE's
     // extra level passes the pickups as level, not as extra grit (CLEAN
@@ -718,13 +727,6 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
         splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
-        // Big Knob voicing 5 (DriveVoicing.h): the bump follows sharp hits,
-        // up at once, back over kHitBumpReleaseS.
-        {
-            const float h = splash_.takeHitMax() * drive::kHitBumpGain;
-            hitBlend_ = h > hitBlend_ * hitRelease_ ? h : hitBlend_ * hitRelease_;
-            if (tilt_.voicing() == drive::kToneVoicingHits) tilt_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, n);
-        }
         if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
