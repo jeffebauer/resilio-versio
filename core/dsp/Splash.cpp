@@ -213,8 +213,8 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, floa
         const float holdMs = sv.holdMs + sv.topHoldMs * (splash::topBoost(splash, 1.0f) - 1.0f);
         envelope_.setHold(holdMs > 0.0f ? decayPerStep(holdMs, sampleRate_) : 0.0f);
         envelope_.setLoudScale(level);
-        clangCeil_  = sv.clangCeil;
-        clangFloor_ = free ? 0.0f : 1.0f / cb; // stronger top alone: only the top's extra is capped
+        clangCeil_ = sv.clangCeil;
+        envelope_.setToday(voice_.clang * driveGain, voice_.clangShort * driveGain);
     }
     envelope_.set(splash, voice_.clang * cb, voice_.clangShort * cb, voice_.bite * bb, dg);
     detector_.setThresholds(splash::hitThreshold(splash) * level, splash::relThreshold(splash));
@@ -305,7 +305,7 @@ void Splash::controlTick()
 }
 
 void Splash::process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
-                     float* joltLoopOut, int n)
+                     float* joltLoopOut, int n, float* clangTodayOut)
 {
     const int streams = clatterB && clatterC ? Clatter::kStreams : 1;
     for (int i = 0; i < n; ++i) {
@@ -326,8 +326,9 @@ void Splash::process(const float* in, float* clangOut, float* biteOut, float* cl
         if (sinceStroke_ < (1 << 30)) ++sinceStroke_;
         const float h = in[i] - hpLp_.process(in[i]); // one high-pass for both detectors
         detector_.pushHighpassed(h);
-        float clang, bite;
-        envelope_.push(h, clang, bite);
+        float clang, bite, today;
+        envelope_.push(h, clang, bite, today);
+        if (clangTodayOut) clangTodayOut[i] = today;
         if (clangOut) clangOut[i] = clang;
         if (biteOut) biteOut[i] = bite;
         float cy[Clatter::kStreams];

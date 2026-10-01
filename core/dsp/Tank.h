@@ -353,6 +353,7 @@ private:
     dsp::OnePoleLowpass                clangLp_{}; // the Clang's split at splash::kClangHz (ADR 0032)
     float splashDrive_ = 1.0f;                        // DRIVE's gain on the Clang / Bite (splash::splashDriveGain)
     float clangEnv_ = 0.0f, clangAtt_ = 1.0f, clangRel_ = 1.0f; // the Clang's ceiling: peak follower of the springs' input highs
+    float clangCeilPush_ = 1.0f; // its credit for the pickups' push (splash::kCeilPushShare)
     float splashInput_ = 1.0f;                        // the INPUT gain G, for the Splash (SPLASH stronger voicings)
     float dcNoon_ = 0.4f, dcRef_ = 0.75f;             // driveCurve at noon and at splash::kSplashRefDrive
     dsp::KickVoice                     kick_;

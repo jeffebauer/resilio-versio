@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 
 namespace rv {
 
@@ -444,6 +443,11 @@ void Tank::controlTick(bool snap)
     if (snap || drive != compDrive_ || attW_ != compW_) {
         driveInSettings_ = dsp::driveInSettings(voice, drive);
         push_      = drive::push(voice, drive);
+        if constexpr (splash::kVoicingsBuilt) { // the Clang's ceiling credit for the pickups' push (SplashVoicing.h)
+            const float share = attW_[0] * splash::kCeilPushShare[0] + attW_[1] * splash::kCeilPushShare[1]
+                              + attW_[2] * splash::kCeilPushShare[2];
+            clangCeilPush_ = std::exp(share * std::log(push_.out));
+        }
         splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
         splashInput_ = driveInSettings_.inputGain;
         compDrive_ = drive;
@@ -646,7 +650,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     }
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
-    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval];
+    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval], clangToday[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
@@ -682,7 +686,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
-        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
+        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n, splash::kVoicingsBuilt ? clangToday : nullptr);
         if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
@@ -720,9 +724,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
-        // The Clang's ceiling rises with the pickups' push (push_.out): driven
-        // pickups squash a big splash on their own (SplashVoicing.h).
-        const float clangCeil = splash_.clangCeiling() * push_.out, clangFloor = splash_.clangFloorShare();
+        // The Clang's ceiling rises with KICKED's pickup push (clangCeilPush_):
+        // driven KICKED pickups squash a big splash on their own (SplashVoicing.h).
+        const float clangCeil = splash_.clangCeiling() * clangCeilPush_;
         for (int i = 0; i < n; ++i) {
             const float x  = tilt_.process(driven[i]) * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
@@ -730,8 +734,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
                 const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
                 clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
-                const float cmax = clangCeil / (clangEnv_ + 1.0e-9f), cmin = c * clangFloor;
-                c = c < cmax ? c : (cmax > cmin ? cmax : cmin);
+                const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
+                c = c < cmax ? c : cmax;
+                c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
             }
             mono[i] = x + c * (x - lo) + kickScale * kickLoop[i];
         }

@@ -221,12 +221,16 @@ inline float splashDriveGain(float dc, float dcNoon, float dcRef)
 // (02_hits, SPLASH 1, MIX 1: up to 23.5 dB of pull, KICKED at DRIVE 0;
 // today's worst there is 7.2, CLEAN at DRIVE 0.8). So the Tank follows the
 // springs' input highs (x − LP(x), a peak follower with e's fast times) and
-// caps the Clang where the added highs would pass clangCeil × the pickups'
-// push (Push::out): driven pickups squash a big splash on their own (KICKED
-// at DRIVE 0.8 keeps its whole top, its limiter at 1.3 dB), so the cap
-// mostly holds CLEAN and low DRIVE. In voicing 1 it takes only the top's
-// extra (never below today's Clang); in 2 and 3 all of it. 0.4: worst
-// limiter pull on 02_hits 8.1 dB (voicing 3: 8.4), back near today's 7.2.
+// caps the Clang where the added highs would pass clangCeil (× KICKED's
+// pickup push, kCeilPushShare: KICKED at DRIVE 0.8 keeps its whole top,
+// its limiter at 1.3 dB), and never below the Clang today's voicing would
+// give (HitEnvelope computes it alongside), so no voicing splashes less than
+// today anywhere: the cap only trims what a voicing adds. A first cap on the detector's
+// level (before DRIVE's saturation) took KICKED's whole top away at DRIVE
+// 0.8, where the limiter never needed it. 0.2: at SPLASH 1, MIX 1 the
+// limiter pulls about as hard and as long as today's (backlog "SPLASH
+// stronger"); 0.3-0.4 kept hits near today but held the skank down 0.5-2 s
+// longer at DRIVE 0.8-1.
 struct Strong {
     float topClang;  // extra Clang at SPLASH 1 (× (1 + topClang))
     float topBite;   // extra Bite at SPLASH 1
@@ -239,12 +243,18 @@ struct Strong {
 inline constexpr std::array<Strong, 4> kStrong{{
     //  top   bite  free  split     hold  +hold  ceil
     {  0.0f, 0.0f, 0.0f, kClangHz,  0.0f,  0.0f, 0.0f}, // 0 today
-    {  2.0f, 0.5f, 0.0f, kClangHz,  0.0f, 40.0f, 0.4f}, // 1 stronger top
-    {  2.0f, 0.5f, 1.0f, kClangHz,  0.0f, 40.0f, 0.4f}, // 2 stronger top, DRIVE-free
-    {  3.0f, 0.5f, 1.0f, 1200.0f, 40.0f, 40.0f, 0.4f}, // 3 bolder
+    {  2.0f, 0.5f, 0.0f, kClangHz,  0.0f, 40.0f, 0.2f}, // 1 stronger top
+    {  2.0f, 0.5f, 1.0f, kClangHz,  0.0f, 40.0f, 0.2f}, // 2 stronger top, DRIVE-free
+    {  3.0f, 0.5f, 1.0f, 1200.0f, 40.0f, 40.0f, 0.2f}, // 3 bolder
 }};
 constexpr int   kDefaultVoicing = 0;
 constexpr float kTopStart       = 0.75f;
+// The Clang's ceiling rises with the pickups' push, by this share of it (in
+// dB) per ATTITUDE (CLEAN, DRIVEN, KICKED; blended by the Morph): KICKED's
+// pickups squash a big splash on their own (its limiter stays under 2 dB
+// uncapped). DRIVEN's don't (a quarter of its push left the skank at DRIVE
+// 0.8 limiting 8 dB for 2.3 s), CLEAN has none.
+inline constexpr std::array<float, 3> kCeilPushShare{{0.0f, 0.0f, 1.0f}};
 // DRIVE-free voicings: the level references ease from today's (SPLASH 0:
 // the Jolt floor, bit for bit today's) to DRIVE 0.8's by this SPLASH.
 constexpr float kFreeRampSplash = 0.1f;

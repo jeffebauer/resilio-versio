@@ -101,6 +101,17 @@ public:
     {
         const float r = p * splash::kLoudRel > loudRef_ ? p * splash::kLoudRel : loudRef_;
         invRef2_ = 1.0f / (r * r);
+        if constexpr (splash::kVoicingsBuilt) { // today's reference, for today's Clang
+            const float t = p * splash::kLoudRel > splash::kLoudRef ? p * splash::kLoudRel : splash::kLoudRef;
+            invRef2Today_ = 1.0f / (t * t);
+        }
+    }
+    // SPLASH stronger: today's Clang amounts (chord-like, drum-like), for
+    // pushToday's floor (the ceiling never takes a voicing below today).
+    void setToday(float clang, float clangShort)
+    {
+        clangToday_ = clang;
+        clangShortDeltaToday_ = clangShort - clang;
     }
     // SPLASH stronger (SplashVoicing.h "SPLASH stronger"): the loud floor
     // kLoudRef × scale (voicings 2, 3: the INPUT gain re DRIVE 0.8), and the
@@ -108,8 +119,9 @@ public:
     void setLoudScale(float scale) { loudRef_ = splash::kLoudRef * scale; }
     void setHold(float decay) { hold_ = decay; }
 
-    // h = the input, high-passed at splash::kDetectorHpHz.
-    void push(float h, float& clang, float& bite)
+    // h = the input, high-passed at splash::kDetectorHpHz. today = the Clang
+    // today's voicing would give (SPLASH stronger voicings only; else 0).
+    void push(float h, float& clang, float& bite, float& today)
     {
         lp_ += lpC_ * (h - lp_);
         const float hi = h - lp_; // the part above splash::kClangHz
@@ -134,12 +146,19 @@ public:
         short_ = sh;
         clang  = (clang_ + clangShortDelta_ * sh) * eh_;
         bite   = biteGain_ * sh * e;
+        if constexpr (splash::kVoicingsBuilt) {
+            const float lt = fast_ * fast_ * invRef2Today_, et0 = splash_ * sudden * (lt < 1.0f ? lt : 1.0f);
+            today = (clangToday_ + clangShortDeltaToday_ * sh) * (et0 < 1.0f ? et0 : 1.0f);
+        } else {
+            today = 0.0f;
+        }
     }
     float envelope() const { return e_; }  // e of the last sample (tests, meters)
     float shortness() const { return short_; }
 
 private:
     float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef), loudRef_ = splash::kLoudRef, hold_ = 0.0f, eh_ = 0.0f;
+    float invRef2Today_ = 1.0f / (splash::kLoudRef * splash::kLoudRef), clangToday_ = 0.0f, clangShortDeltaToday_ = 0.0f;
     float fa_ = 1.0f, fr_ = 1.0f, sa_ = 1.0f, sr_ = 1.0f, lpC_ = 1.0f;
     float fast_ = 0.0f, slow_ = 0.0f, hiFast_ = 0.0f, lp_ = 0.0f;
     float splash_ = 0.0f, clang_ = 0.0f, clangShortDelta_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
@@ -282,10 +301,9 @@ public:
     void setVoicing(int v);
     int  voicing() const { return splash::kVoicingsBuilt ? voicing_ : splash::kDefaultVoicing; }
     // The Clang's ceiling (SplashVoicing.h "SPLASH stronger"; the Tank applies
-    // it on the springs' input): 0 = none; and today's Clang as a share of
-    // this voicing's (the ceiling never takes the Clang below today's).
+    // it on the springs' input, never below today's Clang, process()'s
+    // clangTodayOut): 0 = none.
     float clangCeiling() const { return splash::kVoicingsBuilt ? clangCeil_ : 0.0f; }
-    float clangFloorShare() const { return clangFloor_; }
     // Wet level 0..1 (e.g. a smoothed RMS), for KICKED's energy-dependent
     // rattle. Optional: 0 leaves the rattle Hit-driven only.
     void setTankLevel(float level) { tankLevel_ = level; }
@@ -306,9 +324,10 @@ public:
     }
     // Everything: the Clang and Bite, and the Clatter's other two noise
     // streams (same envelope, independent noise: one per Spring; pass both or
-    // neither).
+    // neither). clangTodayOut (may be null): the Clang today's voicing would
+    // give (SPLASH stronger voicings only, else 0).
     void process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
-                 float* joltLoopOut, int n);
+                 float* joltLoopOut, int n, float* clangTodayOut = nullptr);
 
     // Control-rate outputs (valid after process()).
     float hit() const { return hit_; }
@@ -339,7 +358,7 @@ private:
     std::array<float, 3> attW_{{-1.0f, -1.0f, -1.0f}};
     float splash_ = -1.0f, tankLevel_ = 0.0f, driveGain_ = -1.0f, inputGain_ = -1.0f;
     float invInputRef_ = 1.0f; // 1 / G at splash::kSplashRefDrive
-    float clangCeil_ = 0.0f, clangFloor_ = 1.0f;
+    float clangCeil_ = 0.0f;
     int   voicing_ = splash::kDefaultVoicing;
 
     int   k_ = 0; // position in the control grid
