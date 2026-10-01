@@ -124,8 +124,12 @@ public:
         const float e      = e0 < 1.0f ? e0 : 1.0f;
         float sh = (hiFast_ * inv - splash::kShortLo) * (1.0f / (splash::kShortHi - splash::kShortLo));
         sh = sh < 0.0f ? 0.0f : (sh > 1.0f ? 1.0f : sh);
-        const float held = eh_ * hold_;
-        eh_    = e > held ? e : held; // = e without a hold
+        if constexpr (splash::kVoicingsBuilt) {
+            const float held = eh_ * hold_;
+            eh_ = e > held ? e : held; // = e without a hold
+        } else {
+            eh_ = e;
+        }
         e_     = e;
         short_ = sh;
         clang  = (clang_ + clangShortDelta_ * sh) * eh_;
@@ -276,11 +280,11 @@ public:
     void set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain = 1.0f, float inputGain = 1.0f);
     // SPLASH stronger (SplashVoicing.h): 0 = today .. 3; Renderer / tests only.
     void setVoicing(int v);
-    int  voicing() const { return voicing_; }
+    int  voicing() const { return splash::kVoicingsBuilt ? voicing_ : splash::kDefaultVoicing; }
     // The Clang's ceiling (SplashVoicing.h "SPLASH stronger"; the Tank applies
     // it on the springs' input): 0 = none; and today's Clang as a share of
     // this voicing's (the ceiling never takes the Clang below today's).
-    float clangCeiling() const { return clangCeil_; }
+    float clangCeiling() const { return splash::kVoicingsBuilt ? clangCeil_ : 0.0f; }
     float clangFloorShare() const { return clangFloor_; }
     // Wet level 0..1 (e.g. a smoothed RMS), for KICKED's energy-dependent
     // rattle. Optional: 0 leaves the rattle Hit-driven only.

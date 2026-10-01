@@ -183,7 +183,7 @@ void Splash::reset()
 
 void Splash::setVoicing(int v)
 {
-    voicing_ = v < 0 ? 0 : (v > 3 ? 3 : v);
+    voicing_ = splash::kVoicingsBuilt ? (v < 0 ? 0 : (v > 3 ? 3 : v)) : splash::kDefaultVoicing;
     splash_ = -1.0f; // set() recomputes
 }
 
@@ -196,19 +196,26 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, floa
     driveGain_  = driveGain;
     inputGain_  = inputGain;
     voice_      = splash::blendVoice(attitudeWeights);
-    // SPLASH stronger (SplashVoicing.h): a bigger top quarter; DRIVE-free
-    // voicings hold DRIVE 0.8's gain and judge levels as DRIVE 0.8 would.
-    const splash::Strong& sv = splash::strong(voicing_);
-    const bool  free  = sv.driveFree > 0.0f;
-    const float dg    = free ? 1.0f : driveGain;
-    const float level = free ? inputGain * invInputRef_ : 1.0f;
-    const float cb = splash::topBoost(splash, sv.topClang), bb = splash::topBoost(splash, sv.topBite);
-    const float holdMs = sv.holdMs + sv.topHoldMs * (splash::topBoost(splash, 1.0f) - 1.0f);
-    envelope_.setHold(holdMs > 0.0f ? decayPerStep(holdMs, sampleRate_) : 0.0f);
+    // SPLASH stronger (SplashVoicing.h): a bigger, longer top quarter;
+    // DRIVE-free voicings keep DRIVE 0.8's gain and judge levels as DRIVE
+    // 0.8 would.
+    float dg = driveGain, level = 1.0f, cb = 1.0f, bb = 1.0f;
+    if constexpr (splash::kVoicingsBuilt) {
+        const splash::Strong& sv = splash::strong(voicing_);
+        const bool free = sv.driveFree > 0.0f;
+        if (free) {
+            dg    = 1.0f;
+            level = inputGain * invInputRef_;
+        }
+        cb = splash::topBoost(splash, sv.topClang);
+        bb = splash::topBoost(splash, sv.topBite);
+        const float holdMs = sv.holdMs + sv.topHoldMs * (splash::topBoost(splash, 1.0f) - 1.0f);
+        envelope_.setHold(holdMs > 0.0f ? decayPerStep(holdMs, sampleRate_) : 0.0f);
+        envelope_.setLoudScale(level);
+        clangCeil_  = sv.clangCeil;
+        clangFloor_ = free ? 0.0f : 1.0f / cb; // stronger top alone: only the top's extra is capped
+    }
     envelope_.set(splash, voice_.clang * cb, voice_.clangShort * cb, voice_.bite * bb, dg);
-    envelope_.setLoudScale(level);
-    clangCeil_  = sv.clangCeil;
-    clangFloor_ = free ? 0.0f : 1.0f / cb; // stronger top alone: only the top's extra is capped
     detector_.setThresholds(splash::hitThreshold(splash) * level, splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
