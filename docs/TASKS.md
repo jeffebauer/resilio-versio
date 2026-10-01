@@ -53,6 +53,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Tip while SPLASH is today's version: SPLASH **near max** and the SoundStage's **main Level** up until the loudest hits just touch **amber** on the input LEDs (today's SPLASH fades out on quiet sends; round 4 fixes that)
 - [ ] Optional, when convenient: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
+### 4. Plugin laid out like the panel · cloud session
+- Knobs and switches where the Versio has them, the KICK button, and the four LED meters (same colours and red warnings as the module). Same parameters, so your sets and automation keep working
+- [ ] **Start the cloud session:** "Follow docs/briefs/plugin-panel-ui.md on main. Work on branch proto/plugin-panel-ui and push it; don't merge to main." Then Claude builds it here, checks the layout and installs it (Ableton closed)
+
 ## After the next plugin install
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
 - [ ] **A fresh listening pass** in the plugin, answering the open design questions below where you have a view. (It replaces the old per-milestone listening pages, which judged builds that no longer exist)

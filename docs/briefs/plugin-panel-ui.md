@@ -1,0 +1,22 @@
+# Brief: plugin interface laid out like the Versio panel, with LED meters (cloud session)
+
+You are a cloud session working on Resilio Versio, dub spring reverb firmware with a JUCE plugin as its desktop test bench. Read `CLAUDE.md` and `CONTEXT.md`, then `plugin/PluginProcessor.cpp` (111 lines; it uses JUCE's `GenericAudioProcessorEditor` today), `core/params/ParamSpec.h` (the one parameter table every Host uses), `tools/make_panel_svg.py` (the Versio panel's part positions in mm), `firmware/LedMeter.h` (the LED meter maths, ADR 0031) and how `firmware/main.cpp` feeds it ("LED level meters"). The owner is a designer, new to DSP and C++. Speak in plain language.
+
+## What the owner wants (1 Oct 2026)
+"Not a fully custom design, but replacing sliders with knobs, and placing them approximately to match the Versio hardware", plus the panel's LED meters, so pads clipping the output show red at the desk the way they do on the module.
+
+## Build
+1. **A panel-shaped editor** (new `plugin/PluginEditor.{h,cpp}`; `createEditor()` returns it). A fixed-size window in the panel's proportions (10 HP: 50.5 × 128.5 mm; e.g. 5 px/mm ≈ 253 × 643 px; a 1× / 1.5× / 2× scale choice is welcome if it's cheap). Draw a plain panel background (a flat colour, a thin outline, the control names). No images or custom graphics.
+2. **Seven rotary knobs** at the pots' positions from `tools/make_panel_svg.py` (P1 MIX, P2 DECAY, P3 TONE, P4 SPLASH, P5 TENSION, P6 WOBBLE, P7 DRIVE: the order in ADR 0028), each labelled. Use JUCE's standard `Slider` (rotary, vertical drag) with the default look and `AudioProcessorValueTreeState::SliderAttachment`. Double-click resets to the ParamSpec default. Show the value on hover or while dragging. WOBBLE is bipolar: noon is still, so a centre tick at noon helps.
+3. **Two three-way switches** at SW1 / SW2 for SPRINGS and ATTITUDE (labels from ParamSpec's choices: 1 / 2 / 3 Springs; CLEAN / DRIVEN / KICKED). Three small segmented buttons or a vertical 3-position control, attached to the existing choice parameters. Check the panel mapping (`tools/make_panel_mapping_svg.py`, ADR 0028) for which toggle is which.
+4. **The KICK button** at BTN: a click fires one Kick, like a MIDI note-on does today (ADR 0005). Pass it to the audio thread with an atomic flag, picked up at the start of the next block; never call the Tank from the UI thread.
+5. **Four LED meters** at LED1–LED4 (In L, In R, Out L, Out R). **Reuse `firmware/LedMeter.h` unchanged** (pure maths, no libDaisy; `host/tests/test_led_meter.cpp` already includes it): same colours, brightness curve, red rules and ballistics as the hardware. The audio thread stores per-block abs peaks (input before the Tank, output after it) and the limiter state (`Tank::limiterGain()`, as `firmware/main.cpp` uses it for the output red) in atomics; the editor reads them on a ~30 Hz timer and runs the meters with the real elapsed `dt`. Draw each LED as a small circle in the meter's colour (`LedMeter.h` gives drive values the hardware's PWM cubes: convert to on-screen RGB with the same cube so dim looks dim).
+6. **Nothing else changes:** no parameter IDs, ranges, defaults or order (saved Ableton sets and automation must keep working), no DSP, no `core/` edits. Bypass stays the host's.
+
+## Rules
+- Branch `proto/plugin-panel-ui` from `main`. Commit with explicit paths (never `git commit -a`) and push. Don't merge to `main`. Owned files: `plugin/` (new editor files, `PluginProcessor.cpp`, `plugin/CMakeLists.txt`), a test if you add one. `core/` must never include JUCE.
+- **Try to build the plugin here:** `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build` (JUCE on Linux needs e.g. libasound2-dev, libfreetype-dev, libx11-dev, libxrandr-dev, libxinerama-dev, libxcursor-dev, libgl-dev, libcurl4-openssl-dev). If it builds, run `ctest --test-dir build` and read the summary line (`100% tests passed`; never trust a piped exit code), especially `plugin_host_test`. If it can't build here, say so plainly and make the code as compile-ready as you can: Claude builds, checks it and installs it on the owner's Mac.
+- Never run system-wide Audio Unit commands (not relevant in the cloud, but don't script them).
+
+## Deliver
+- The branch, pushed. Final message: what the owner will see, in plain words; what you could and couldn't build or test here; anything Claude should check on the Mac (layout against the panel, meter colours, the KICK button, resizing).
