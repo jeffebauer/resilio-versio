@@ -524,11 +524,9 @@ GAIN_STIMULI = [
     "test_audio/stimulus/06_noise_bursts.wav",
 ]
 GAIN_DECAYS = [0.25, 0.5, 0.75, 1.0]
-# `rv_render --set key=value` parses value with strtof (no Switch3 label
-# support, unlike preset JSON / Sweep base) — pass the Normalised switch
-# position directly (ParamSpec.h switchToNormalised: CLEAN=0, DRIVEN=0.5,
-# KICKED=1; springs "2" = 0.5).
-GAIN_ATTITUDES = [("CLEAN", 0.0), ("DRIVEN", 0.5), ("KICKED", 1.0)]
+# `rv_render --set` takes Switch3 labels (ParamSpec choices) and rejects
+# bare numbers on switches.
+GAIN_ATTITUDES = ["CLEAN", "DRIVEN", "KICKED"]
 LIMITER_THRESHOLD = 0.82  # SPEC/ADR safety limiter is 0.89; flag approach at 0.82
 
 
@@ -553,15 +551,15 @@ def run_gain_staging(out_dir, scratch_dir):
         dry_peak = peak_db(dry_mono)
 
         for decay in GAIN_DECAYS:
-            for att, att_norm in GAIN_ATTITUDES:
+            for att in GAIN_ATTITUDES:
                 out_name = f"gain__{stim_name}__d{decay:.2f}__{att.lower()}.wav"
                 out_path = render_dir / out_name
                 cmd = [
                     str(RENDER_BIN), str(stim_path), str(out_path),
                     "--set", f"decay={decay}",
                     "--set", "mix=1.0",
-                    "--set", "springs=0.5",
-                    "--set", f"attitude={att_norm}",
+                    "--set", "springs=2",
+                    "--set", f"attitude={att}",
                 ]
                 subprocess.run(cmd, check=True, capture_output=True)
                 wet_chans, sr = read_wav(out_path)

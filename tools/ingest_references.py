@@ -461,7 +461,6 @@ def run_ir_dispersion(wav_path):
 
 # ---------------------------------------------------------------- DECAY search (matched Resilio A/B render)
 
-ATTITUDE_NORM = {"CLEAN": 0.0, "DRIVEN": 0.5, "KICKED": 1.0}
 AB_STIMULI = [("01_clicks.wav", "clicks"), ("02_hits.wav", "hits"), ("04_skank.wav", "skank")]
 # Below this peak-to-floor (50 ms blocks), the combined-click T60 reads
 # low (about -8 % at 36 dB on noisy renders of known T60; within 3 % from
@@ -756,7 +755,7 @@ def ingest(ref_dir, out_root, notes_text=None, tmp_dir=None):
             matched = {}
             renders_entries = []
             for attitude in ("CLEAN", "DRIVEN"):
-                base_sets = {"mix": 1.0, "attitude": ATTITUDE_NORM[attitude]}
+                base_sets = {"mix": 1.0, "attitude": attitude}
                 decay, history, err = search_decay(target_t60, search_stim, tmp, base_sets)
                 matched[attitude] = {"decay": decay, "iterations": len(history), "error": err,
                                       "final_t60_s": history[-1].get("t60_s") if history else None}
@@ -1025,7 +1024,7 @@ def build_fake_references(fake_dir):
     # and make T60 legitimately unmeasurable (schroederT60 returns null by
     # design when it can't reach -35 dB; see docs/reference-ingest.md).
     err = rv_render_set(str(STIMULUS_DIR / "01_clicks.wav"), str(tank_a),
-                         {"decay": 0.4, "tension": 0.5, "mix": 1.0, "attitude": ATTITUDE_NORM["CLEAN"]})
+                         {"decay": 0.4, "tension": 0.5, "mix": 1.0, "attitude": "CLEAN"})
     if err:
         raise RuntimeError(f"fake take A render failed: {err}")
     a_ch, a_sr = read_wav(tank_a)
@@ -1037,7 +1036,7 @@ def build_fake_references(fake_dir):
     tank_c = fake_dir / "_tank_C.wav"
     err = rv_render_set(str(STIMULUS_DIR / "02_hits.wav"), str(tank_c),
                          {"decay": 0.55, "tension": 0.5, "mix": 1.0, "drive": 0.8,
-                          "attitude": ATTITUDE_NORM["DRIVEN"]})
+                          "attitude": "DRIVEN"})
     if err:
         raise RuntimeError(f"fake take C render failed: {err}")
     c_ch, c_sr = read_wav(tank_c)

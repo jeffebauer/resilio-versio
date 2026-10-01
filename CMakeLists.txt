@@ -39,6 +39,7 @@ foreach(src ${RV_TEST_SOURCES})
     target_link_libraries(rv_${name} PRIVATE rv_host_common)
     add_test(NAME ${name} COMMAND rv_${name} WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endforeach()
+add_dependencies(rv_test_set_args rv_render) # runs the real binary
 
 if(RV_BUILD_PLUGIN)
     if(EXISTS ${CMAKE_SOURCE_DIR}/libs/JUCE/CMakeLists.txt)

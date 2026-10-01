@@ -41,6 +41,7 @@ rv_render --sweep sweep.json --out-dir DIR
 rv_render --analyze <in.wav> [--sidecar-out x.json]      # metrics + spectrogram for an existing WAV (e.g. Wellspring references)
 ```
 
+- **`--set key=value`:** applied after `--preset`. Knobs take a number 0–1 (`--set decay=0.8`). Switches take only a label (`--set springs=2 --set attitude=KICKED`); a bare number on a switch, an unknown label or text on a knob is an error (exit 2).
 - **Preset JSON:** `{ "decay": 0.8, "tension": 0.3, "springs": "2", "attitude": "CLEAN" }`. Knobs are numbers 0–1. Switches accept a label (`ParamSpec::choices`) or a number 0 / 0.5 / 1.
 - **Automation JSON:** `{ "breakpoints": [ {"t": 0.0, "key": "decay", "value": 0.2}, {"t": 4.0, "key": "decay", "value": 1.0} ], "kicks": [1.5, 3.0] }`. Linear interpolation between breakpoints per key. Apply at sample accuracy by splitting blocks at breakpoints, or per block of ≤ 16 samples. Kicks go to `Tank::kick(offset)`.
 - **Sweep JSON:** `{ "name": "m1_grid", "input": "test_audio/stimulus/01_clicks.wav", "base": {preset}, "grid": { "decay": [0, 0.5, 1], "tension": [0, 0.5, 1] }, "tail_seconds": 12 }`. Cartesian product. Output files are named `<name>__decay0.50_tension1.00.wav`. Append `tail_seconds` of silence to the input so tails ring out. Writes `manifest.json` in the out dir: `{ "name", "created", "input", "renders": [ {"wav", "sidecar", "params": {...}} ] }`.

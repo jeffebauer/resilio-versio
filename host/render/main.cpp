@@ -43,19 +43,6 @@ void usage(const char* argv0)
         argv0, argv0, argv0);
 }
 
-bool applySet(rv::Tank& tank, const std::string& arg)
-{
-    const auto eq = arg.find('=');
-    if (eq == std::string::npos) return false;
-    const std::string key = arg.substr(0, eq);
-    const float value     = std::strtof(arg.c_str() + eq + 1, nullptr);
-    if (rv::paramsjson::applyHidden(tank, key, value)) return true; // e.g. wobble_voicing=2
-    for (const auto& p : rv::kParams) {
-        if (key == p.key) { tank.setParam(p.id, value); return true; }
-    }
-    return false;
-}
-
 // Mono downmix used by every analysis metric (sum of channels / channel
 // count, matching the metrics contract).
 std::vector<float> downmix(const Audio& a)
@@ -131,7 +118,7 @@ bool buildTank(rv::Tank& tank, float sampleRate, int block, const std::string& p
         if (!rv::paramsjson::applyPreset(tank, preset, error)) return false;
     }
     for (const auto& s : sets) {
-        if (!applySet(tank, s)) { error = "bad --set: " + s; return false; }
+        if (!rv::paramsjson::applySetArg(tank, s, error)) { error = "bad --set " + s + ": " + error; return false; }
     }
     return true;
 }
@@ -212,7 +199,8 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             return 1;
         }
         for (const auto& s : sets) {
-            if (!applySet(tank, s)) { std::fprintf(stderr, "sweep: bad --set %s\n", s.c_str()); return 1; }
+            std::string err;
+            if (!rv::paramsjson::applySetArg(tank, s, err)) { std::fprintf(stderr, "sweep: bad --set %s: %s\n", s.c_str(), err.c_str()); return 1; }
         }
         auto setsKey = [&](const char* k) {
             for (const auto& s : sets) if (s.rfind(std::string(k) + "=", 0) == 0) return true;
