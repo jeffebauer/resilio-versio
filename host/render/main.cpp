@@ -7,7 +7,7 @@
 //             [--auto a.json] [--block N] [--sidecar]
 //   rv_render --sweep sweep.json --out-dir DIR
 //   rv_render --analyze <in.wav> [--sidecar-out x.json] [--channel L|R|mix]
-//   Hidden, Renderer-only key (ParamsJson.h): wobble_voicing = 0 / 1 / 2 (A / B / C,
+//   Hidden, Renderer-only key (ParamsJson.h): wobble_voicing = 0 / 1 / 2 / 3 (A / B / C / D,
 //   core/params/WobbleVoicing.h), in --set, a --preset, or a sweep base / grid.
 
 #include "Automation.h"

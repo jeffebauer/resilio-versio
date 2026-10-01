@@ -103,7 +103,7 @@ inline float shape(float a, float k)
 //    never settles on one rate.
 // A is round 1 exactly (the page's reference). The firmware and plugin use
 // kDefaultVoicing; the Renderer can pick another (Tank::setWobbleVoicing,
-// sweep key "wobble_voicing": 0 = A, 1 = B, 2 = C). Hidden: no panel control.
+// sweep key "wobble_voicing": 0 = A, 1 = B, 2 = C, 3 = D). Hidden: no panel control.
 struct Voicing {
     // Right side (Warble): peak cents per pass at the end stop (Loop / first
     // echo), rate just right of noon → fully right, depth curve k.
@@ -126,17 +126,23 @@ struct Voicing {
 // heard, first step off noon >= 1.5 cents):
 //   left  (A: k 1.0, s(0.5) 0.3775):  B T 0.75, k 0.2 (M 0.94);  C T 0.55, k −0.394 (M 0.80)
 //   right (A: k 1.6, s(0.5) 0.3100):  B T 0.75, k 0.6 (M 1.03);  C T 0.55, k 0 (M 0.89)
-inline constexpr std::array<Voicing, 3> kVoicings{{
+//   D (owner's pick): T 0.65, B's middles: left k −0.368, right k 0.07
+inline constexpr std::array<Voicing, 4> kVoicings{{
     // A: round 1 (proto/bipolar-wobble)
     {10.0f, 36.0f, 0.6f, 1.4f, 1.6f, 0.0f, /**/ 10.0f, 7.0f, 28.0f, 18.0f, 1.0f, /**/ 0.0f, 0.0f},
     // B: gentle (end stops ×0.75)
     {7.5f, 27.0f, 1.5f, 5.5f, 0.6f, 1.0f, /**/ 7.5f, 5.25f, 21.0f, 13.5f, 0.2f, /**/ 0.8f, 0.2f},
     // C: more (end stops ×0.55)
     {5.5f, 19.8f, 1.5f, 5.5f, 0.0f, 1.0f, /**/ 5.5f, 3.85f, 15.4f, 9.9f, -0.394f, /**/ 0.8f, 0.2f},
+    // D: the owner's pick (1 Oct 2026, round 2 page): B everywhere, but C at
+    // both end stops on held tones ("slightly more resonance buildup with
+    // B"), while skank kept B there. So B's middles with end stops halfway
+    // between B and C (×0.65 of A).
+    {6.5f, 23.4f, 1.5f, 5.5f, 0.07f, 1.0f, /**/ 6.5f, 4.55f, 18.2f, 11.7f, -0.368f, /**/ 0.8f, 0.2f},
 }};
-constexpr int kVoicingA = 0, kVoicingB = 1, kVoicingC = 2;
-constexpr int kDefaultVoicing = kVoicingB;
-inline const Voicing& voicing(int v) { return kVoicings[size_t(v < 0 ? 0 : (v > 2 ? 2 : v))]; }
+constexpr int kVoicingA = 0, kVoicingB = 1, kVoicingC = 2, kVoicingD = 3;
+constexpr int kDefaultVoicing = kVoicingD;
+inline const Voicing& voicing(int v) { return kVoicings[size_t(v < 0 ? 0 : (v > 3 ? 3 : v))]; }
 
 // ---- Right side: the sine LFO (Warble) -------------------------------------------
 // Rate rises with strength (Voicing lfoRateMinHz → lfoRateMaxHz).

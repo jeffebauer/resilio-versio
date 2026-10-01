@@ -209,7 +209,7 @@ public:
         joltOn_   = jolt;
     }
     // Renderer / test hook (not a panel control, ADR 0034 round 2): which
-    // WOBBLE voicing (WobbleVoicing.h: 0 = A round 1, 1 = B, 2 = C). The
+    // WOBBLE voicing (WobbleVoicing.h: 0 = A round 1, 1 = B, 2 = C, 3 = D). The
     // firmware and plugin never call it (wobble::kDefaultVoicing).
     void setWobbleVoicing(int v)
     {

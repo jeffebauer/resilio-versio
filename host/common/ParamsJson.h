@@ -17,7 +17,7 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 
 // Hidden, Renderer-only keys (not panel controls, not in ParamSpec): used by
 // prototype pages to compare voicings in one sweep. Today only
-// "wobble_voicing" (0 = A, 1 = B, 2 = C; core/params/WobbleVoicing.h,
+// "wobble_voicing" (0 = A, 1 = B, 2 = C, 3 = D; core/params/WobbleVoicing.h,
 // ADR 0034 round 2). Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey = "wobble_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);

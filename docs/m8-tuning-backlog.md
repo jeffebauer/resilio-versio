@@ -314,4 +314,4 @@ Owner after round 1's page: likes the bipolar control; tone down the top of each
   python3 tools/review/make_review.py renders/proto_bipolar_wobble2 --columns wobble --variants wobble_voicing --title "Bipolar WOBBLE round 2"
   ```
   30 WAVs. Held-tone renders ignore the Ringing flag (the input is itself a held sine).
-- **Open (owner):** B or C (or between); is the right side vibrato-like enough, and is its first step (3 o'clock-ish) enough? Is the tremolo heard as tape, or too subtle? The Howl reading at 9 o'clock (listen: KICKED, 1 Spring, DECAY max, TENSION 0, WOBBLE 9 o'clock).
+- **Owner listen (1 Oct 2026):** B on skank everywhere and on held tones at 0.25 / 0.5 / 0.75; C on held tones at both end stops ("slightly more resonance buildup with B"). Built as **voicing D** (default): B's middles, end stops ×0.65 of A. Held tone (DECAY 0 / noon / max) fully left 19.3 / 30.0 / 29.4, fully right 21.2 / 19.4 / 20.0 cents. test_m7_tank DECAY-max step allowance 10 → 20 % (0.1 reads 21.7 vs 0.2's 25.6 there). Open: the Howl reading at 9 o'clock (4 of 54 cells).

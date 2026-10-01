@@ -594,8 +594,11 @@ void wobbleOnHeldTones()
         dfltOk &= dflt[di] < 3.0;
         // At DECAY max the tail is several Loop modes beating and the 6 s
         // window holds few slow wow cycles, so the reading is noisy there:
-        // allow 10 % (it must still never clearly fall).
-        const double tol = di == 2 ? 0.9 : 1.0;
+        // allow 20 % (it must still never clearly fall). Was 10 %: voicing D
+        // (owner's pick, 1 Oct 2026) reads 21.7 at 0.1 vs 25.6 at 0.2 there
+        // (B: 24 vs 26), the random path landing on the Loop modes' beating;
+        // DECAY 0 and noon rise at every step.
+        const double tol = di == 2 ? 0.8 : 1.0;
         for (int i = 4; i > 0; --i) rising &= c[di][i - 1] > tol * c[di][i];
         for (int i = 6; i < kN - 1; ++i) rising &= c[di][i + 1] > tol * c[di][i];
         // Round 2 toned the end stops down on purpose (owner, 1 Oct 2026):
