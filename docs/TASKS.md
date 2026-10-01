@@ -7,12 +7,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | Milestone | State |
 |---|---|
 | M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target now **70 %**, your call 30 Sep: ~7 points for new sound) |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_00f17b5.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE). Flash it, then the click check in §3 |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §3 |
 | M8 sound | **In progress:** SPLASH/DRIVE merged (1 Oct); bipolar WOBBLE being toned down from your notes; Wellspring fit next |
 | M2 Ableton check | After the next plugin install |
 | M9 polish | LEDs done; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`) |
 
-**Plugin in Ableton:** `fb930b7` (installed 1 Oct, afternoon: the panel interface on top of bipolar WOBBLE; same sound as `00f17b5`; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
+**Plugin in Ableton:** `1d18fce` (installed 1 Oct, evening: the gentle sustain trim + limiter hold, bipolar WOBBLE, the panel interface; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
 
 ## Now (suggested order)
 
@@ -25,7 +25,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
 - Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
 - [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
-- [ ] Flash `dist/resilio_versio_release_00f17b5.bin` (replaces `b3e5ac3`: adds bipolar WOBBLE) and do the click check (§3)
+- [ ] Flash `dist/resilio_versio_release_1d18fce.bin` (replaces `00f17b5`: adds the sustain trim for pads) and do the click check (§3). Then play your pad again: the output LEDs should stay out of red at your old settings
 - [x] Plugin `b3e5ac3` installed (1 Oct); rescan in Ableton, then the M2 Ableton check below
 
 ### 1b. Pads clip the output · being fixed (cloud session)
@@ -38,8 +38,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Retuned in the cloud (1 Oct): held sounds stay clear of the limiter at the default WOBBLE and right of noon (your real pad too, at every page setting); hits and skank bit-for-bit identical. Left of WOBBLE noon (random drift swells the tank on its own) held sounds can still touch the limiter by ~1 dB
 - [x] **Confirm listen (1 Oct):** B on hits, skank, synthetic pad and drone; **A on your real pad everywhere and on most organ cells**: the trim's dip and swell is audible, and the organ feels less alive. You asked for a middle ground that keeps things characterful
 - [x] Gentle safety-net trim built in the cloud (1 Oct): within 0–1.8 dB of today's level on held sounds; the limiter takes only short pulls (≤ ~2.5 dB, kept clean by the hold); hits and skank identical
-- [ ] **Listen (≈5 min):** open `renders/proto_sustain_trim3/index.html`. A = today, **B = limiter hold only**, C = round 2 (the dip and swell), **D = gentle trim**. Pick per row; your real pad and the organ matter most. On your real pad D barely trims (its peaks match B), so there it's mostly the hold you hear
-- Then Claude builds everything once from your pick: the Ableton plugin, a universal share plugin, the Versio firmware and install instructions, published as a GitHub Release
+- [x] **Listened (1 Oct): D, the gentle trim.** Merged (`1d18fce`), installed, and in the release below
+- [x] **Release published** (private, on your repo): https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce — a zip with the universal plugin (VST3 + AU, Apple Silicon + Intel, macOS 12+), the Versio firmware and a read-me with install steps for both. Download it there to send to friends. Next time: `tools/make_release.sh --publish`
 - Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
 
  · next round after the SPLASH/DRIVE merge
@@ -82,7 +82,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
 - **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
 - **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
-- **Renderer bug:** `rv_render --set attitude=KICKED` silently renders CLEAN (a separate session is fixing it; use `--preset` meanwhile)
 - Small stale spots in docs and code comments (DRIVE-curve percentages, old SPEC sections): folded into the next code change that touches them
 
 ## What to send Claude
