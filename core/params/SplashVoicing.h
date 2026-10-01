@@ -245,6 +245,9 @@ inline constexpr std::array<Strong, 4> kStrong{{
 }};
 constexpr int   kDefaultVoicing = 0;
 constexpr float kTopStart       = 0.75f;
+// DRIVE-free voicings: the level references ease from today's (SPLASH 0:
+// the Jolt floor, bit for bit today's) to DRIVE 0.8's by this SPLASH.
+constexpr float kFreeRampSplash = 0.1f;
 constexpr const Strong& strong(int v) { return kStrong[size_t(v < 0 ? 0 : (v > 3 ? 3 : v))]; }
 // The firmware plays kDefaultVoicing only and, while that is 0 (today), the
 // voicing code compiles out of it (flash: release 126.5 of 128 KB). The

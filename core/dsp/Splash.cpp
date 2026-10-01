@@ -203,9 +203,10 @@ void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, floa
     if constexpr (splash::kVoicingsBuilt) {
         const splash::Strong& sv = splash::strong(voicing_);
         const bool free = sv.driveFree > 0.0f;
-        if (free) {
+        if (free) { // eased in over SPLASH 0 .. kFreeRampSplash: SPLASH 0 (the Jolt floor) stays today's
             dg    = 1.0f;
-            level = inputGain * invInputRef_;
+            const float full = inputGain * invInputRef_, r = splash * (1.0f / splash::kFreeRampSplash);
+            level = r >= 1.0f ? full : map::expLerp(1.0f, full, r);
         }
         cb = splash::topBoost(splash, sv.topClang);
         bb = splash::topBoost(splash, sv.topBite);
