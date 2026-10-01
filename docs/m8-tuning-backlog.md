@@ -476,3 +476,82 @@ done
 python3 tools/review/make_review.py renders/proto_sustain_trim3 --no-level-match --title "Sustain trim round 3: A main, B limiter hold only, C round 2, D gentle"
 ```
 Listen for: the real pad (D: no dip and swell; at most one smooth settle if it grows into the limiter), the organ at TONE 0 / TENSION 1 (D vs A: as alive?), whether D's short limiter moments on arrivals sound driven (the hold should keep them clean; B is the hold with no trim at all), hits and skank identical. The level-match toggle separates level from character.
+
+## SPLASH stronger (1 Oct 2026, branch `proto/splash-stronger`, not merged; ADR 0032 amendment, Proposed)
+Brief: `docs/briefs/splash-stronger.md`. Owner (plugin and module, a range of material): "the splash knob feels very subtle". Picked: **stronger at the top** and **less tied to DRIVE** (they often play with DRIVE fully down). Not picked: soft, dark attacks; evenness (kept anyway).
+
+**Why it's subtle today (measured, `main`):** the splash follows a detector after the INPUT gain, and below noon the Clang / Bite gain is ×0.64. On 02_hits, SPLASH 1 vs 0: CLEAN +2.0 dB at DRIVE 0 vs +7.3 at DRIVE 0.8, KICKED +5.5 vs +13.0; the skank +1.3 to +1.7 at DRIVE 0; clicks +0.3 to +0.8 (nothing). And the top quarter adds little: KICKED at DRIVE 0.8 +11.5 → +13.0 from SPLASH 0.75 to 1 (the first quarter adds +5.8).
+
+**Built:** a hidden Renderer key `splash_voicing` (`SplashVoicing.h` "SPLASH stronger"; firmware and plugin play `kDefaultVoicing` 0):
+
+| | what changes | below SPLASH 0.75 |
+|---|---|---|
+| **A** 0 today | nothing | |
+| **B** 1 stronger top | top quarter: the Clang ×(1 + 2t²) (×3 at SPLASH 1), held up to 40 ms longer (×t²), the Bite ×(1 + 0.5t²); t = 0 at SPLASH 0.75 (no step) | bit for bit today |
+| **C** 2 = B + DRIVE-free | the Clang / Bite gain held at DRIVE 0.8's (×1, the round-4 pick) at every DRIVE, and the detector's level references (Hit floor T, loud floor) scaled by the INPUT gain re DRIVE 0.8: every hit is judged as DRIVE 0.8 judges it. Eased in over SPLASH 0 → 0.1 (SPLASH 0 = today, bit for bit) | DRIVE 0 ≈ DRIVE 0.8 |
+| **D** 3 = C, bolder | top ×4, the Clang split 1.2 kHz (was 2 kHz: more of the hit's body rings the springs), the Clang held 40 ms at every SPLASH (+40 at the top): longer, more metallic | as C, a bit more |
+
+**The Clang's ceiling (B–D).** Uncapped, B and C pushed the output limiter hard at MIX 1: up to 23.5 dB of pull for 1.4 s on 02_hits (KICKED, DRIVE 0; today's worst on that file is 7.2 dB / 0.22 s, CLEAN at DRIVE 0.8). The Tank follows the highs going into the springs and caps the Clang where what it adds would pass 0.2 (×KICKED's pickup push: its driven pickups squash a splash on their own, uncapped it stayed under 2 dB), and never below the Clang today's voicing gives, so no voicing is weaker than today anywhere. Tried on the way: the cap on the detector's level (before DRIVE's saturation) took KICKED's whole top away at DRIVE 0.8, where the limiter never needed it; crediting DRIVEN's push too (a quarter) left its skank at DRIVE 0.8 limited 8 dB for 2.3 s; 0.3–0.4 kept hits near today but held the skank down 0.5–2 s longer at DRIVE 0.8–1. The hold (B's longer top) adds splash without adding peaks: on 02_hits ~+1 dB at the same limiting.
+
+**Splash** (SPLASH s vs 0, wet L+R 2–8 kHz, 20–400 ms after each event, summed; `docs/prototypes/splash-stronger/measure.py`; 2 Springs, DECAY noon, MIX 1), SPLASH 0.25 / 0.5 / 0.75 / 1:
+
+| | A today | B stronger top | C + DRIVE-free | D bolder |
+|---|---|---|---|---|
+| hits CLEAN, DRIVE 0 | 0.5 / 1.0 / 1.5 / 2.0 | 0.5 / 1.0 / 1.5 / 4.6 | 3.2 / 4.7 / 5.4 / 8.2 | 4.2 / 5.8 / 6.7 / 9.8 |
+| hits CLEAN, DRIVE 0.8 | 3.1 / 5.2 / 6.4 / 7.3 | 3.1 / 5.2 / 6.4 / 8.8 | 3.1 / 5.2 / 6.4 / 8.8 | 4.1 / 6.0 / 7.2 / 10.1 |
+| hits KICKED, DRIVE 0 | 1.4 / 2.9 / 4.5 / 5.5 | 1.4 / 2.9 / 4.5 / 7.9 | 6.4 / 8.0 / 8.8 / 11.3 | 7.4 / 8.9 / 9.8 / 12.7 |
+| hits KICKED, DRIVE 0.8 | 5.8 / 9.3 / 11.5 / 13.0 | 5.8 / 9.3 / 11.5 / 17.0 | 5.8 / 9.3 / 11.5 / 17.0 | 7.5 / 10.9 / 12.8 / 17.7 |
+| skank CLEAN, DRIVE 0 | 0.4 / 0.9 / 1.3 / 1.7 | 0.4 / 0.9 / 1.3 / 5.8 | 3.2 / 5.8 / 7.8 / 11.6 | 4.4 / 7.5 / 9.4 / 11.9 |
+| skank CLEAN, DRIVE 0.8 | 3.1 / 5.7 / 7.8 / 9.2 | 3.1 / 5.7 / 7.8 / 11.3 | 3.1 / 5.7 / 7.8 / 11.3 | 4.5 / 7.6 / 9.2 / 11.5 |
+| skank KICKED, DRIVE 0 | 0.3 / 0.5 / 1.0 / 1.3 | 0.3 / 0.5 / 1.0 / 5.7 | 3.4 / 6.1 / 8.2 / 11.8 | 4.7 / 7.7 / 9.3 / 11.6 |
+| skank KICKED, DRIVE 0.8 | 2.2 / 4.3 / 6.1 / 7.3 | 2.2 / 4.3 / 6.1 / 13.0 | 2.2 / 4.3 / 6.1 / 13.0 | 3.6 / 6.1 / 8.0 / 14.9 |
+| clicks CLEAN, DRIVE 0 | 0.1 / 0.1 / 0.2 / 0.3 | 0.1 / 0.1 / 0.2 / 0.7 | 5.2 / 8.6 / 10.6 / 14.8 | 6.1 / 9.7 / 11.7 / 15.9 |
+| clicks CLEAN, DRIVE 0.8 | 5.2 / 8.6 / 11.1 / 13.2 | 5.2 / 8.6 / 11.1 / 16.0 | 5.2 / 8.6 / 11.1 / 16.0 | 6.1 / 9.8 / 12.5 / 17.6 |
+| clicks KICKED, DRIVE 0 | 0.2 / 0.3 / 0.5 / 0.8 | 0.2 / 0.3 / 0.5 / 1.9 | 10.8 / 14.5 / 15.7 / 18.0 | 11.9 / 15.1 / 16.1 / 18.6 |
+| clicks KICKED, DRIVE 0.8 | 10.6 / 16.1 / 19.1 / 20.9 | 10.6 / 16.1 / 19.1 / 26.5 | 10.6 / 16.1 / 19.1 / 26.5 | 12.4 / 18.2 / 20.9 / 27.9 |
+
+- **Top quarter:** at DRIVE 0.8 B adds +1.5 (CLEAN hits) to +5.7 dB (KICKED skank) over today at SPLASH 1 and nothing below (at DRIVE 0: +2.6 / +2.4 on hits, +4.1 / +4.4 on the skank). Where the limiter has room (KICKED at DRIVE 0.8, clicks, the skank) the top grows most; on loud CLEAN / DRIVEN hits at DRIVE 0.8 the ceiling holds it to +1.5 (the limiter's headroom: at SPLASH 0 those hits already peak −3 dBFS).
+- **DRIVE-free:** C at DRIVE 0 vs DRIVE 0.8, SPLASH 0.75: hits CLEAN 5.4 vs 6.4, KICKED 8.8 vs 11.5; skank 7.8 vs 7.8, 8.2 vs 6.1; clicks 10.6 vs 11.1, 15.7 vs 19.1 (today at DRIVE 0: 0.2 to 4.5). KICKED stays 2.5–3.5 dB under DRIVE 0.8 on hits and clicks at DRIVE 0: there the ceiling has no pickup push to lean on. DRIVE still adds its grit and level; above 0.8 the splash follows today's (never below it).
+- **Evenness:** steps grow at the top instead of shrinking (A KICKED hits at DRIVE 0.8: +5.8 / +3.5 / +2.2 / +1.5 per quarter; B: +5.8 / +3.5 / +2.2 / +5.5).
+- **Ghost notes** (test_m7_tank ghostGroove, SPLASH 1, every ATTITUDE): C and D at DRIVE 0 / default / 1 −51.1 dB of a backbeat's envelope, peak 0.01 (A: −51.1 / −53.6).
+
+**Limiter and peaks** (SPLASH 1, MIX 1, 2 Springs, DECAY noon; deepest pull dB / time over 3 dB, whole file; output peaks sit at the limiter's −1.0 dBFS whenever it works):
+
+| | A today | B | C | D |
+|---|---|---|---|---|
+| hits CLEAN DRIVE 0 / 0.8 / 1 | 0 / 7.2 (0.22 s) / 10.6 (0.41 s) | 0 / 7.4 (0.19) / 10.8 (0.44) | 0 / 7.4 (0.19) / 10.7 (0.43) | 0.8 / 9.5 (0.32) / 12.9 (0.65) |
+| hits DRIVEN | 0 / 7.3 (0.20) / 8.7 (0.39) | 0 / 7.2 (0.21) / 8.9 (0.41) | 1.9 / 7.2 (0.21) / 8.6 (0.39) | 2.7 / 8.2 (0.36) / 9.7 (0.59) |
+| hits KICKED | 1.5 / 0.7 / 1.5 | 2.1 / 1.3 / 1.7 | 3.9 (0.05) / 1.3 / 1.8 | 5.7 (0.08) / 1.3 / 2.0 |
+| skank CLEAN | 0 / 1.4 / 4.8 (0.57) | 0 / 2.7 / 4.9 (0.79) | 0 / 2.7 / 4.9 (0.75) | 1.0 / 4.5 (0.47) / 7.7 (2.03) |
+| skank DRIVEN | 0 / 2.3 / 5.2 (0.71) | 0 / 2.8 / 5.5 (0.79) | 0 / 2.8 / 5.4 (0.74) | 0.9 / 5.0 (0.49) / 7.3 (2.13) |
+| skank KICKED | 0 / 0 / 0.4 | 0 / 0.9 / 1.5 | 0.6 / 0.9 / 1.2 | 1.9 / 1.2 / 1.8 |
+| clicks (all) | ≤ 1.3 | ≤ 1.9 | ≤ 1.9 | ≤ 2.5 |
+
+So B and C pull the limiter about as hard and as long as today: on hits at DRIVE 0.8–1 within 0.6 dB and 0.03 s; on the skank up to 1.3 dB deeper and at most 0.22 s longer over 3 dB; at DRIVE 0, where today never limits, C's deepest is 3.9 dB for 0.05 s (KICKED hits). D, the bold bracket, holds the skank down ~1.5 s longer at DRIVE 1 (its lower split and hold sit on top of today's Clang, which the ceiling never takes away). Not loosened anything: today's own CLEAN DRIVE 1 hits already pull 10.6 dB.
+
+**Sustain trim:** exactly 0 dB on hits, skank and clicks in all four voicings, every ATTITUDE, DRIVE 0 / 0.8 / 1, SPLASH 1 (108 cells).
+
+**M6 grid at SPLASH 1** (all six `m6_*` sweeps, 324 renders per voicing, `--set splash=1 --set splash_voicing=N`): B, C, D **0 Ringing**, Howl 54 / 54, no NaN; worst `ringing_db` 14.0 / 13.5 / 11.9 dB (bursts, DECAY 1, 1 Spring, TENSION 0, TONE 0, 1.8 kHz). The 3 `steady_tone` flags are the known CLEAN DECAY 1 / TENSION 1 / TONE 1 level flags (backlog "SPLASH/DRIVE build"). **Found on the way, not from this branch:** today (A, `main` bit for bit) at SPLASH 1 flags **1 Ringing**: DRIVEN, DECAY 1, 1 Spring, TENSION 0, TONE 0, 16.0 dB at 1.8 kHz (the M6 runs so far were at the default SPLASH; this corner read 11.9 there). The voicings' ceiling happens to keep it under the line.
+
+**CPU** (desktop; test_m7_tank's worst case: 3 Springs, KICKED, TONE / DRIVE 1, TENSION 0, DECAY 0.85, hits + Kicks 12/s at SPLASH 1, and steady noise at SPLASH 0). Wall-clock in this cloud VM swung ±15 % run to run, so these are instruction counts (valgrind, 2 s, deterministic): `main` 6,144 instructions/sample busy, 5,842 steady; voicing 0 on this branch +23 (+0.4 %: the Renderer/plugin build works out today's Clang alongside; the firmware compiles it out); B / C / D **+47 to +51 (+0.8 %)** busy and steady (the ceiling's follower and one divide per sample). On the chip that is roughly **+0.5–0.7 points** once a voicing is picked as the default (SPLASH costs ~2.3 points today); 0 while the default is today. Confirm with an M3 run after the pick.
+
+**Flash** (cloud, Ubuntu's arm-none-eabi-gcc 13.2 and newlib, so absolute sizes differ from the Mac's, ~4.7 KB smaller here; the difference is what counts): release `main` 124,728 B → branch 124,956 B (**+228 B**), profile +168 B. While the default is today (0) the voicing code compiles out of the firmware (`kVoicingsBuilt`); on the Mac today's 126.5 KB release would be ~126.7 KB. Once a voicing is picked as the default, its hold, ceiling and "today's Clang" come back into the firmware (estimate under 1 KB; rebuild and check `make -C firmware all-variants` ≤ 128 KB).
+
+**Tests:** ctest 16 / 17 (`94% tests passed`): every suite passes except `test_wobble`, which fails in this Linux container exactly as `main` does here ("smallest step ×1.13", WOBBLE untouched; it passes on the Mac). New in test_m7_tank: `splashStronger` (B bit for bit at SPLASH 0.75; every voicing's top ≥ today's, KICKED's ≥ +2 dB; C / D at DRIVE 0 within 3 dB of DRIVE 0.8 at SPLASH 0.75 and ≥ today's DRIVE 0; limiter ≤ 9 dB on the −6 dBFS rim), ghostGroove for C and D at DRIVE 0 / default / 1. No limit loosened.
+
+**Page (on the Mac; A = today = `main` bit for bit, B stronger top, C + DRIVE-free, D bolder):**
+```bash
+python3 tools/make_stimulus.py   # gitignored WAVs
+git fetch origin proto/splash-stronger
+git worktree add .claude/worktrees/splash-stronger origin/proto/splash-stronger
+W=.claude/worktrees/splash-stronger
+cmake -S $W -B $W/build-r -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build $W/build-r --target rv_render
+# renders (from the main checkout, so the stimulus paths resolve)
+for v in 0 1 2 3; do L=$(echo ABCD | cut -c$((v+1)))
+  for m in hits skank clicks; do
+    $W/build-r/rv_render --sweep $W/presets/sweeps/proto_splash_stronger_$m.json --out-dir renders/proto_splash_stronger/$L/$m --set splash_voicing=$v
+  done
+done
+python3 tools/review/make_review.py renders/proto_splash_stronger --no-level-match --variants splash_voicing --rows stimulus,drive,splash --title "SPLASH stronger: A today, B stronger top, C + independent of DRIVE, D bolder"
+```
+240 renders, ~2.7 GB. Page: columns CLEAN / KICKED, rows material × DRIVE × SPLASH (0 / 0.25 / 0.5 / 0.75 / 1), A–D in sync. Listen for: at DRIVE 0 (your usual), does C or D make SPLASH clearly there across the knob? At SPLASH 1, is B / C's crash "unmistakable" on the snare and rim, and does D's longer, lower ring read as more spring or as too much? Is the top quarter a smooth rise or a jump? The level-match toggle separates loudness from character (a bigger splash is also louder).
