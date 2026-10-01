@@ -59,6 +59,7 @@ struct Settings {
     float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.5f, tone = 0.5f, tension = 0.5f; // WOBBLE noon = still
     int   att = 1, springs = 1;
     bool  clatterOn = true, joltOn = true; // Tank::setSplashParts (clatterOn: the Splash's sound, Clang + Bite + Clatter)
+    bool  sustainOn = true;                // Tank::setSustainTrimEnabled
 };
 
 struct Out {
@@ -82,6 +83,7 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSplashParts(s.clatterOn, s.joltOn);
+    t.setSustainTrimEnabled(s.sustainOn);
     Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
@@ -529,6 +531,13 @@ void splashAtSendLevel()
 // frequency of the 700-1400 Hz band, 3-8.9 s, in cents re its median; p95
 // (peak) of |cents|. (After the tone stops the tail is several Loop modes
 // near 1 kHz beating, so a single pitch is not defined there.)
+// Measured with the Sustain trim off (M8, ADR 0035): this reads WOBBLE, and
+// the reading depends on the tank's level. The trim eases this held tone
+// 1-3 dB down at DECAY 1, and a quieter tank reads more cents here with or
+// without it: main (b3e5ac3) reads 4.2 cents at DECAY 1, WOBBLE 0.5 on this
+// tone and 5.5 on the same tone 6 dB quieter (the LoopSat's quiet-tail fade,
+// AntiRes.h, lets the Loop ring more freely). With the trim on it reads
+// 5.5-6 (printed as INFO below).
 struct Pitch {
     double p95 = 0, peak = 0;
 };
@@ -576,6 +585,7 @@ void wobbleOnHeldTones()
         s.springs = 0;
         s.splash  = 0.0f;
         s.wobble  = w;
+        s.sustainOn = false; // WOBBLE's depth, not the trim's level
         return pitchCents(band(render(s, x).l, 700.0f, 1400.0f), size_t(3.0f * kFs), size_t(8.9f * kFs));
     };
     for (int di = 0; di < 3; ++di) {

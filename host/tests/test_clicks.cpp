@@ -72,10 +72,11 @@ struct Result {
     long  flatRuns = 0; // runs of >= 3 samples held within 1e-6 of the threshold
 };
 
-Result render(const Buf& in, float decay, int springs, float attitude, float drive, float tension = 0.5f)
+Result render(const Buf& in, float decay, int springs, float attitude, float drive, float tension = 0.5f, bool sustainOn = true)
 {
     rv::Tank t;
     t.prepare(kFs, 48);
+    t.setSustainTrimEnabled(sustainOn);
     t.setParam(rv::ParamId::Decay, decay);
     t.setParam(rv::ParamId::Tension, tension);
     t.setParam(rv::ParamId::Tone, 0.5f);
@@ -112,12 +113,15 @@ void tensionScan()
     // -9 dBFS: since M8 the Tank trims in-band input by the excitation trim
     // (DriveVoicing.h; ~-3 dB on this chord), so at -12 dBFS the chord no
     // longer reached the limiter often enough for the scan to test it.
+    // Sustain trim off (ADR 0035): it keeps this held chord under the
+    // limiter (0 of 31 settings reached it), and the scan is about the
+    // limiter's clicks, so it has to be driven into it.
     const Buf in = heldChord(-9.0f);
     long worst = 0, total = 0, limited = 0;
     float worstAt = 0.0f;
     for (int k = 0; k <= 30; ++k) {
         const float  tension = 0.35f + 0.01f * float(k);
-        const Result r       = render(in, kScanDecay, 2, 0.0f, 0.0f, tension);
+        const Result r       = render(in, kScanDecay, 2, 0.0f, 0.0f, tension, false);
         total += r.clicks;
         if (r.peak > rv::Tank::kLimitKnee) ++limited;
         if (r.clicks > worst) { worst = r.clicks; worstAt = tension; }

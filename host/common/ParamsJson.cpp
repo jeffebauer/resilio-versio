@@ -37,6 +37,10 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setWobbleVoicing(int(std::lround(value)));
         return true;
     }
+    if (key == kSustainVoicingKey) {
+        tank.setSustainVoicing(int(std::lround(value)));
+        return true;
+    }
     return false;
 }
 

@@ -16,10 +16,13 @@ bool findParamId(const std::string& key, ParamId& id);
 bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& error);
 
 // Hidden, Renderer-only keys (not panel controls, not in ParamSpec): used by
-// prototype pages to compare voicings in one sweep. Today only
-// "wobble_voicing" (0 = A, 1 = B, 2 = C, 3 = D; core/params/WobbleVoicing.h,
-// ADR 0034 round 2). Returns false if `key` isn't one.
-inline constexpr const char* kWobbleVoicingKey = "wobble_voicing";
+// prototype pages to compare voicings in one sweep: "wobble_voicing" (0 = A,
+// 1 = B, 2 = C, 3 = D; core/params/WobbleVoicing.h, ADR 0034 round 2) and
+// "sustain_voicing" (0 = off, the limiter hold only; 1 = round 2; 2 = gentle;
+// core/params/DriveVoicing.h, ADR 0035 round 3). Returns false if `key`
+// isn't one.
+inline constexpr const char* kWobbleVoicingKey  = "wobble_voicing";
+inline constexpr const char* kSustainVoicingKey = "sustain_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 

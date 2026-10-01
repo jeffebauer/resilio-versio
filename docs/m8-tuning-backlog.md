@@ -315,3 +315,164 @@ Owner after round 1's page: likes the bipolar control; tone down the top of each
   ```
   30 WAVs. Held-tone renders ignore the Ringing flag (the input is itself a held sine).
 - **Owner listen (1 Oct 2026):** B on skank everywhere and on held tones at 0.25 / 0.5 / 0.75; C on held tones at both end stops ("slightly more resonance buildup with B"). Built as **voicing D** (default): B's middles, end stops ×0.65 of A. Held tone (DECAY 0 / noon / max) fully left 19.3 / 30.0 / 29.4, fully right 21.2 / 19.4 / 20.0 cents. test_m7_tank DECAY-max step allowance 10 → 20 % (0.1 reads 21.7 vs 0.2's 25.6 there). Open: the Howl reading at 9 o'clock (4 of 54 cells).
+
+## Sustain trim (1 Oct 2026, branch `proto/sustain-trim`, ADR 0035 proposed)
+Owner on the Versio (release `b3e5ac3`): a low-mid pad at mild settings turns the output LEDs red and sounds driven. Picked: **the tank tames itself on held sounds**. Brief: `docs/briefs/sustain-trim.md`. Numbers: `core/params/DriveVoicing.h` "Sustain trim". Measured on the desktop with synthetic held sounds (`tools/make_sustain_stimulus.py`: `10_pad_cminor` C minor detuned-saw pad, 700 Hz LP, 3 s swell / 6 s hold; `11_drone_c2` C2 sine + 2nd harmonic; `12_organ_chord` drawbar chord; all −6 dBFS peak).
+
+**How it works:** while the input is *held* (its 20 ms level stays within 6 dB of its 0.3 s level for 0.3 s: hits and stabs never qualify), the Tank reads its own build-up gain for that sound (the wet's peak level where the limiter reads it, over what went into the springs, lagged the way the tank fills) and eases the springs' input down just enough to keep the wet's peaks at −7 dBFS (5.3 dB under the limiter's knee). Feed-forward, so it can't hunt; input only, so tails and the Howl are untouched; lets go over 50 ms when the sound stops being held. Designs tried on the way: a feedback integrator on the wet (onset too slow, then a slow 2 dB overshoot on a drone), "wet no louder than the source" in power (trimmed moderate held tones that never reach the limiter; test_drive's material spread 5.0 dB vs 3.5), then the peak target (kept).
+
+**Targets (owner's settings: CLEAN, DRIVE 0, SPLASH 0, DECAY noon; 3 SPRINGS × TONE 0/0.5/0.9 × TENSION 0.5/0.8/1; MIX 0.5 and 1, which read the same: the limiter is on the wet, before MIX):**
+| | `main` worst limiter pull | Sustain trim worst | highest pre-limiter peak (knee −1.7 dBFS) |
+|---|---|---|---|
+| pad | 3.96 dB (3 Springs, TONE 0, TENSION 1) | **0.00 dB** | −2.7 dBFS (headroom 1.0 dB) |
+| drone | 6.97 dB (3 Springs, TONE 0, TENSION 1) | **0.00 dB** | −2.3 dBFS (0.6 dB) |
+| organ | 4.24 dB (1 Spring, TONE 0, TENSION 0.5) | **0.00 dB** | −1.9 dBFS (0.2 dB: its first 0.3 s, let through like a hit) |
+
+- **Hits, skank, Kick:** 02_hits, 04_skank and the Kick (every ATTITUDE, 2 and 3 Springs, TENSION 0.8) render identically to `main` (peaks and 0.6 s tail levels to 0.01 dB; the trim never engages). test_sustain_trim checks it stays exactly at 0 dB on snare hits and stabs in every ATTITUDE and SPRINGS.
+- **Level on held sounds** (loudest 200 ms of the hold, MIX 1, TONE 0.3): drops only where `main` overflowed. Pad 1 Spring TENSION 0.8 −18.1 → −18.1 dB (untouched); 2 Springs TENSION 0.8 −15.8 → −16.8; TENSION 1 −11.7 → −14.3; the drone −4 to −5.5 dB; organ 0 to −4.5 dB.
+- **Pumping** (range of the wet level over the hold, 200 ms windows, first second of the hold skipped): drone 0.1–0.4 dB on `main` → 0.3–1.5 dB (the trim sits still, within 0.1 dB, in 8 of 9 cells; 1 dB in one). Pad: its own beating already moves `main`'s wet 4.4–8.6 dB; with the trim 5.6–11.6 dB. Part of that is `main`'s limiter flattening the pad's peaks (TENSION 1); where `main` didn't limit, +0 to +1.8 dB (the trim follows the pad's beating by 2–4 dB, slowly). Organ +0.3 to +2.5 dB. The listening page's pad and drone are the judge.
+- **DRIVEN / KICKED, DECAY max** (pad, 2 Springs, TENSION 0.8, TONE 0.3, DRIVE 0 and 0.5): at DECAY noon every ATTITUDE is 0–1.4 dB lower at DRIVE 0 and within 0.2 dB at DRIVE 0.5 (DRIVE's level rides on top); no limiting either way. CLEAN/DRIVEN DECAY 1: `main` touched the limiter (0.2 / 0.6 dB in CLEAN at DRIVE 0 / 0.5), now 0 / 0.07; the hold is 0.2–2.2 dB lower and the tail after it starts ~3.5 dB lower (DRIVE 0), same length. KICKED DECAY 1 (Howl zone): the Howl sets the level (−12 dB either way); limiter with the pad fed in 2.3 → 1.0 dB (DRIVE 0), 1.7 → 1.4 (DRIVE 0.5).
+- **The Howl:** a Kick's Howl is never trimmed (no input) and is identical to `main` (DECAY 0.95 / 1: −14.4 / −12.5 dB at 23 s, limiter 0.12 / 1.9 dB). Fed by the pad it settles at the same level (−12.2 dB).
+- **CPU:** per sample one `max()`; per 32-sample tick a few one-poles, one exp and one log. Desktop (this container, pad, 3 Springs, best of 7 × 10 interleaved runs): `main` median 1286 ns/sample, branch 1299; best 1267 vs 1228. Within the machine's noise (±5 %); expected cost ~1–2 ns/sample, well under 0.1 % of the Versio budget. Confirm with an M3 run if it merges.
+
+**The limiter itself (task 4), on `main`:** split the limiter's change to the wet on the pad, drone and organ (TENSION 0.8 / 1, 1–3 Springs, where it engaged):
+- **Soft clip (knee 0.82 → threshold 0.89): nothing measurable,** −150 dB re the wet. The gain glide keeps almost everything under the knee, and the soft clip is smooth there (no slope or curvature step), so what little enters it bends by ~e³.
+- **The limiter's gain moving inside each low cycle: −26 to −32 dB re the wet** (intermodulation, the "driven" sound), up to 0.5–1.2 dB per cycle. Its envelope jumps to each peak and releases over 150 ms: on a 65 Hz drone it sags ~0.9 dB between peaks, so the gain rides the waveform.
+- **Proposal (not built):** hold the envelope ~30 ms (longer than a 40 Hz cycle) before it releases. Measured in scratch on `main`: drone −30 → −45 to −53 dB, pad/organ 1–3 dB cleaner (their envelope really moves), same gain reduction. Cost: one counter per sample. With the Sustain trim the limiter no longer engages at the owner's settings, so this matters only where it still does (DRIVE up, hotter input, the Howl). Separate decision; test_clicks' limiter checks would need re-running.
+
+**Tests:** new `test_sustain_trim` (the grid above on in-test synthetic copies of the three held sounds, a teeth check with the trim off, hits and stabs never trimmed, lets go before the next hit, a steady drone's trim moves ≤ 2 dB, the Howl). Changed: `test_m7_tank`'s WOBBLE pitch checks run with the trim off (`Tank::setSustainTrimEnabled`, a test hook): its Drift check (1 kHz at −12 dBFS, DECAY 1, WOBBLE 0.5, limit 5 cents) reads 5.5–6 cents with the trim on. Not the trim moving: `main` reads 4.2 on that tone and **5.5 on the same tone 6 dB quieter** (the Loop's quiet-tail fade lets it ring more freely), so the reading depends on level. Printed as INFO. `test_drive`'s wet-vs-material spread at DECAY 0.5 reads 2.8–3.0 dB (limit 3.5, `main` 2.0–2.1): held tones come back a little quieter because the tank pushes some of their pitches past the target. No limit loosened.
+
+**DRIVE:** the trim reads the Springs' own level, with DRIVE's heard gain divided out (as the rest of the Tank does, ADR 0033), so DRIVE keeps its +6 dB throw on held sounds too (test_drive's steady-noise level curve: +5.7 to +5.9 dB at full DRIVE; a first version that read the level after DRIVE took it back to +4.0 and failed). The consequence ADR 0033 already names stands: at DRIVE above ~0.6 on DAW-hot held material, the limiter can engage again (by up to the extra DRIVE level).
+
+**Listen (on the Mac, A = `main`, B = the Sustain trim):**
+```bash
+# stimulus (gitignored WAVs): the held sounds
+python3 tools/make_sustain_stimulus.py
+# two builds in worktrees (never touch build/)
+git worktree add .claude/worktrees/st-main main
+git worktree add .claude/worktrees/st-trim proto/sustain-trim
+for w in st-main st-trim; do cmake -S .claude/worktrees/$w -B .claude/worktrees/$w/build-r -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build .claude/worktrees/$w/build-r --target rv_render; done
+# renders (from the main checkout, so the stimulus paths resolve)
+for m in pad drone hits skank; do
+  .claude/worktrees/st-main/build-r/rv_render --sweep presets/sweeps/proto_sustain_trim_$m.json --out-dir renders/proto_sustain_trim/A/$m
+  .claude/worktrees/st-trim/build-r/rv_render --sweep presets/sweeps/proto_sustain_trim_$m.json --out-dir renders/proto_sustain_trim/B/$m
+done
+python3 tools/review/make_review.py renders/proto_sustain_trim --no-level-match --title "Sustain trim: A main, B trim"
+```
+The sweeps (`presets/sweeps/proto_sustain_trim_*.json`) are the owner's settings with TENSION 0.8, TONE 0.3, MIX 1, SPRINGS 2 and 3. The owner's real pad goes in as one more sweep with `"input"` pointing at it (the WAV stays on the Mac). `--no-level-match` because the level drop is the point; the page has a toggle to compare level-matched (harshness, pumping).
+
+**Owner listen (1 Oct 2026):** B (the trim) in every panel: hits, skank, synthetic pad and drone, the owner's real pad at TENSION 0.8 / TONE 0.3 and TENSION 1 / TONE 0, 2 and 3 Springs. Merge together with WOBBLE round 2 (owner). **Limiter hold folded in** (owner): the envelope holds 30 ms (longer than a 40 Hz cycle), refreshed by any peak within 0.5 dB of it, then releases as before (`Tank.h` kLimitHoldS, kLimitHoldRefresh). ctest 100 % of 16 (plugin off). The owner's real pad at TENSION 1 / TONE 0 still reached the limiter on the right channel before the hold (B: R −1.0 dBFS); with the hold that limiting no longer rides the bass cycles.
+
+### Sustain trim round 2 (1 Oct 2026, branch `proto/sustain-trim-2`, ADR 0035 accepted + "Round 2")
+Brief: `docs/briefs/sustain-trim-retune.md`. Merged with `main`'s bipolar WOBBLE (voicing D), round 1 failed `test_sustain_trim` twice: the held organ's attack pulled the limiter 1.49 dB (its first 0.3 s passed like a hit), and the drone's settled trim moved 2.87 dB. The test now runs its grids at WOBBLE 0 / 0.25 / default 0.45 / 0.75 / 1 (round 1 was worse left of noon: 4.83 dB of limiting, 7.8 dB of movement).
+
+**Why left of noon is hard:** Drift moves a held note on and off the tank's resonances, so the springs swell and dip on their own. Untrimmed, at −14 dB input (no limiter), the drone's wet over 8 s of hold swings 8–15 dB at WOBBLE 0 and 0.25, 1–4 dB at the default, ≤ 1 dB right of noon. Round 1 chased each swell (down in 0.1 s, back up over 2 s): pumping, and the pad's trim easing back up (a swell) by up to 9 dB.
+
+**What changed** (numbers in `DriveVoicing.h` "Sustain trim"):
+- Held also when the input's 20 ms level has stayed within 3 dB of its own peak for 80 ms (kSusStillSeconds, kSusStillDropDb). 60 ms trimmed `test_sustain_trim`'s snare (−2.5 dB); 80 ms leaves hits and stabs at exactly 0.
+- Arriving (first 0.5 s once held): aim at −7 dBFS peaks, down over 30 ms. Settled: +2 dB of room (−5 dBFS; kSusSettledLiftDb), the ±1 dB band, and outside it move only to the band's edge. Lift 1 dB tried: left of noon limits less (worst 0.97 vs 1.44) but held sounds 1–3.5 dB under round 1's level; 2 dB keeps them near it (owner picked round 1's B). Target −6 everywhere tried: the organ's attack at the default came back (0.28 dB).
+- K is a high-water mark: held 3 s, then down 1 dB/s (kSusKHoldSeconds, kSusKReleaseDbPerS). First version updated it only while the input was steady and never released it otherwise: the pad stayed 11 dB down. Fixed (always runs).
+- K read in step: the wet's peak envelope (not its 0.3 s average) over the input's envelope with the same release, the input lagged a quarter of the fill time (kSusFillScale). With the full fill time K read ~4 dB high while a drone was still rising, and the high-water mark kept it (the drone over-trimmed 4 dB, then crept back 4 dB). With the 0.3 s average a sudden swell (+6 dB in 0.2 s, WOBBLE 0.25) reached the limiter before the trim (organ 2.2 dB).
+
+**`test_sustain_trim` per WOBBLE** (27 cells; worst limiter pull pad / drone / organ; drone's settled trim movement; pad's largest trim rise in the hold; round 1 in brackets):
+
+| WOBBLE | limiter, dB | drone movement | pad rise |
+|---|---|---|---|
+| 0 | 1.21 / 1.26 / 0.56 (1.90 / 2.40 / 1.69) | 1.46 (7.80) | 2.43 (9.02) |
+| 0.25 | 0.93 / 0.43 / 1.44 (1.46 / 1.64 / 4.83) | 4.95 (6.69) | 3.01 (5.62) |
+| 0.45 default | 0 / 0 / 0 (0.02 / 0 / 1.49) | 1.23 (2.87) | 1.28 (4.49) |
+| 0.75 | 0 / 0 / 0 (0 / 0 / 0.07) | 0.16 (0) | 1.03 (3.04) |
+| 1 | 0 / 0 / 0 (0 / 0 / 0) | 0 (0) | 1.56 (2.92) |
+
+Checked (limit < 0.5 dB, movement ≤ 2 dB) at the default and right of noon; left of noon printed only (ADR 0035 Round 2 says why). No limit loosened; the left-of-noon cells are new and unchecked. The worst left cells: the organ's attack at 0.25 (3 Springs, TONE 0, TENSION 1) touches the limiter ~0.1 s after the attack with the trim already at −6 dB (the tank answers ~50–100 ms after the input); the drone at 0.25 (2 Springs, TENSION 0.8) meets a louder resonance ~4 s into the hold and steps down once.
+
+**Renders of the stimulus WAVs** (`presets/sweeps/proto_sustain_trim2_*.json`: owner's settings, CLEAN, DRIVE 0, SPLASH 0, DECAY noon, MIX 1, WOBBLE default; SPRINGS 2 / 3 × TENSION 0.8 / 1 × TONE 0 / 0.3), `main` / round 1 / round 2:
+- 02_hits, 04_skank: bit for bit identical in all three (every cell).
+- Highest output peak: `main` −1.0 to −1.5 dBFS (limiting) on the organ, pad at TENSION 1, drone; round 1 −1.1 to −4.6; round 2 −1.9 to −4.9 (never past the knee, −1.7).
+- Loudest 200 ms vs round 1: drone −0.8 to +0.7 dB; pad −0.5 to −2.5 (most at TENSION 1, 2 Springs); organ −0.5 to −3.1 (round 1's loudest moment was its untrimmed attack).
+
+**Other suites:** `test_clicks`' held-chord limiter scan and `test_led_meter`'s "held chord −3 dBFS: limiter pulls, LEDs red" now run with the trim off (the retuned trim kept that chord under the limiter: 0 of 31 TENSION settings reached it; the tests are about the limiter's clicks and the LEDs). `test_wobble` fails on `main` too in this Linux container ("each 0.1 step ... ≥ 1.15x", smallest ×1.13; the WOBBLE generator alone, no Tank): not this branch's; re-check on the Mac.
+
+**CPU:** per 32-sample tick a few more compares and one more log than round 1 (two logs, one exp); per sample unchanged. Desktop (this container, pad, 3 Springs, best of 7, 5 interleaved runs): round 1 1336–1414 ns/sample, round 2 1376–1428: within the machine's noise. Confirm with an M3 run if it merges.
+
+**Confirm page (on the Mac, A = `main`, B = round 2):**
+```bash
+python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py   # gitignored WAVs
+git fetch origin proto/sustain-trim-2
+git worktree add .claude/worktrees/st2-main main
+git worktree add .claude/worktrees/st2-trim origin/proto/sustain-trim-2
+for w in st2-main st2-trim; do cmake -S .claude/worktrees/$w -B .claude/worktrees/$w/build-r -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build .claude/worktrees/$w/build-r --target rv_render; done
+# the owner's real pad: one more sweep, same grid, "input" pointing at the WAV (stays on the Mac, never committed)
+python3 -c "import json; d=json.load(open('.claude/worktrees/st2-trim/presets/sweeps/proto_sustain_trim2_pad.json')); d['name']='proto_sustain_trim2_realpad'; d['input']='PATH/TO/OWNER_PAD.wav'; json.dump(d, open('/tmp/proto_sustain_trim2_realpad.json','w'), indent=2)"
+# renders (from the main checkout, so the stimulus paths resolve)
+for m in organ pad drone hits skank; do
+  .claude/worktrees/st2-main/build-r/rv_render --sweep .claude/worktrees/st2-trim/presets/sweeps/proto_sustain_trim2_$m.json --out-dir renders/proto_sustain_trim2/A/$m
+  .claude/worktrees/st2-trim/build-r/rv_render --sweep .claude/worktrees/st2-trim/presets/sweeps/proto_sustain_trim2_$m.json --out-dir renders/proto_sustain_trim2/B/$m
+done
+.claude/worktrees/st2-main/build-r/rv_render --sweep /tmp/proto_sustain_trim2_realpad.json --out-dir renders/proto_sustain_trim2/A/realpad
+.claude/worktrees/st2-trim/build-r/rv_render --sweep /tmp/proto_sustain_trim2_realpad.json --out-dir renders/proto_sustain_trim2/B/realpad
+python3 tools/review/make_review.py renders/proto_sustain_trim2 --no-level-match --title "Sustain trim round 2: A main, B retuned trim"
+```
+Listen for: the organ's attack (B no longer crackles into the limiter), the drone and pad holding still (no pumping, no slow swell), hits and skank identical, and whether B's held sounds are too quiet against A at MIX 1 (the level-match toggle separates level from harshness).
+
+### Sustain trim round 3: the gentle voicing (1 Oct 2026, branch `proto/sustain-trim-3`, ADR 0035 "Round 3")
+Brief: `docs/briefs/sustain-trim-gentle.md`. Owner on round 2's page: B on hits, skank, synthetic pad and drone; **A on the real pad** ("an audible dip and swell in volume") and A on the organ at TONE 0 / TENSION 1 ("less alive"). The real pad's output never passed −2.0 dBFS in B: the dip and swell was round 2's trim moving (down to −7 dBFS over 30 ms while arriving, +2 dB once settled, its high-water mark let down at 1 dB/s).
+
+**Built:** a hidden Renderer key `sustain_voicing` (0 = off, the limiter hold only; 1 = round 2, bit for bit as `proto/sustain-trim-2` in all 40 renders below; **2 = gentle, the default**), and `rv_render --sweep … --set key=value` (applied after the sweep's base, before its grid) so one sweep JSON renders every voicing and `main`. Numbers: `DriveVoicing.h` "Sustain trim voicings".
+
+**The gentle voicing:** from the same build-up reading, the peak the loudest swell so far would reach. Nothing up to −1.5 dBFS; a ramp from there so that past 0 dBFS the peaks land on −2.5; at most 5 dB; the trim that loudest swell needs is held 6 s, then let up at 0.3 dB/s; down over ~0.3 s (one-pole 0.12 s), up over 4 s; lets go over 0.15 s.
+
+**Designs tried on the way** (`test_sustain_trim` grid, default WOBBLE and right):
+- *On/off at "limiter 1.5 dB in", aim −2.5, a ±2.5 dB still band* (the brief, literally): a growing sound got trimmed in 2.5 dB steps, and once at the 4 dB cap a later swell could never re-engage (the drone stuck at −2.6 dB of trim, limiter 4.7 dB). Following the deepening need fixed that, but a drone that crept over the line 5 s into its hold then dropped 2.5 dB at once → the ramp.
+- *Round 2's high-water K × the current input:* a pad that never touched the limiter got 4 dB of trim 7 s in (a past build-up times a later, louder input predicted a peak that never came) → the low-water mark of the needed trim, from this tick's K.
+- *Smoothing the build-up reading (0.1 / 0.25 s) to ignore short bursts:* trims less on average (pad −0.6 vs −1.4 dB), but the limiter's moments grow (pad 3.2–3.8 dB, organ 3.9) → not kept.
+- *Max cut:* 4 dB left the C2 drone (3 Springs, TONE 0, TENSION 1) at 3.2 dB of limiting through its whole hold; 5 dB → 2.3; 5.5 less again, but deeper cuts on every hard cell. 5 kept.
+- *Ramp −1.0 → +0.5 dBFS* vs *−1.5 → 0*: the later ramp let the pad / organ limit 3.0 / 2.1 dB vs 2.7 / 1.7; −1.5 → 0 kept.
+
+**`rv_test_sustain_trim --voicings`** (27 cells; −6 dBFS peak, the owner's settings). Default WOBBLE / 0.75 / 1:
+
+| voicing | worst limiter pull, pad / drone / organ | red LED cells (worst cell's red time) | cells trimmed | deepest trim | trim rise in the hold, pad / drone | loudest 200 ms vs no trim, worst |
+|---|---|---|---|---|---|---|
+| 0 off (hold only) | 6.3 / 7.3 / 5.5 dB | pad 11–13, drone 17, organ 10–17 (4–11 s) | 0 | 0 | 0 / 0 | 0 |
+| 1 round 2 | 0 / 0 / 0 | 0 | 25 / 18 / 26 | 10.7 dB | 2.3 / 0.5 dB | pad −5.5, drone −4.1, organ −6.6 dB |
+| **2 gentle** | **2.6 / 2.4 / 1.7** | pad 11–13 (0.6 s), drone 15–16 (hard cells through the hold), organ 10–16 (0.6 s) | 11–13 / 17 / 13–17 | **5.0** | **0.0 / 0.2** | **pad −4.2, drone −1.8, organ −3.9** |
+
+Gentle, left of noon (printed only): WOBBLE 0 / 0.25 pad 3.6 / 3.2 dB, organ 2.7 / 3.9, drone 7.5 / 7.1 (its hardest cells, trim at 5 dB, Drift's own ~10 dB swells); the trim never rises back (≤ 0.07 dB).
+
+**`test_sustain_trim` (re-targeted to the gentle voicing):** limiter past 2.5 dB ≤ 0.25 s (worst 0.03 s) and no moment past 3 dB (worst 2.63, the pad, 1 Spring, TONE 0, TENSION 1, WOBBLE 1); trim rise over the pad's / drone's hold ≤ 1 dB (0.00 / 0.23); the drone's settled range ≤ 1.5 dB (1.14, one way down as WOBBLE moves it; round 2's limit was 2); at most 5 dB; teeth (the drone without it, 7.25 dB); hits and stabs exactly 0; lets go (0.00 dB at the next hit); the Howl (−12.3 vs −12.2 dB). Round 2's "limiter < 0.5 dB" is gone on purpose (the owner asked for less trim; the hold keeps light limiting clean).
+
+**Renders** (`presets/sweeps/proto_sustain_trim3_*.json`: owner's settings, MIX 1, WOBBLE default; SPRINGS 2 / 3 × TENSION 0.8 / 1 × TONE 0 / 0.3), loudest 200 ms vs `main` (A) and highest output peak (knee −1.7 dBFS):
+
+| | A `main` | B off (hold only) | C round 2 | **D gentle** |
+|---|---|---|---|---|
+| pad, TENSION 0.8 | −15.2 to −15.8 dB, peak −2.5 to −3.5 | bit for bit A | −2.1 to −2.7 dB | **bit for bit A** |
+| pad, TENSION 1 | −11.9 to −12.2, peak −1.0 / −1.1 | 0 to −0.6 | −3.6 to −4.8, peak −3.1 to −4.9 | **−0.3 to −1.4, peak −1.2 to −1.4** |
+| organ | −10.5 to −14.5, peak −1.0 to −1.5 | 0 to −0.6 | −2.7 to −4.5, peak −1.9 to −4.5 | **0 to −1.8 (TENSION 1, TONE 0), peak −1.1 to −1.5** |
+| drone | −7.0 to −11.1, peak −1.2 / −1.3 | −0.2 to −0.6 | −2.9 to −3.5, peak −3.8 to −4.0 | **−0.5 to −1.0, peak −1.5 / −1.6** |
+| hits, skank | | bit for bit A | bit for bit A | bit for bit A |
+
+So: D sits within 0–1.8 dB of `main` on held sounds (round 2: 2.1–4.8 dB under), with the limiter taking only short, held pulls; B shows what the hold alone does (`main` limits these harder: the hold's slower release costs up to 0.6 dB).
+
+**CPU:** the gentle path per 32-sample tick: one log (shared with round 2's reading), a few compares; per sample unchanged. Not measured on the Versio; confirm with an M3 run if it merges. Firmware not built in the cloud (no ARM toolchain): run `make -C firmware all-variants` on the Mac (≤ 128 KB each).
+
+**Confirm page (on the Mac; A = `main`, B = off / hold only, C = round 2, D = gentle):**
+```bash
+python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py   # gitignored WAVs
+git fetch origin proto/sustain-trim-3
+git worktree add .claude/worktrees/st3-main main
+git worktree add .claude/worktrees/st3-trim origin/proto/sustain-trim-3
+for w in st3-main st3-trim; do cmake -S .claude/worktrees/$w -B .claude/worktrees/$w/build-r -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build .claude/worktrees/$w/build-r --target rv_render; done
+# the owner's real pad: one more sweep, same grid, "input" pointing at the WAV (stays on the Mac, never committed)
+python3 -c "import json; d=json.load(open('.claude/worktrees/st3-trim/presets/sweeps/proto_sustain_trim3_pad.json')); d['name']='proto_sustain_trim3_realpad'; d['input']='PATH/TO/OWNER_PAD.wav'; json.dump(d, open('/tmp/proto_sustain_trim3_realpad.json','w'), indent=2)"
+# renders (from the main checkout, so the stimulus paths resolve)
+SW=.claude/worktrees/st3-trim/presets/sweeps
+for m in organ pad drone hits skank realpad; do
+  J=$SW/proto_sustain_trim3_$m.json; [ $m = realpad ] && J=/tmp/proto_sustain_trim3_realpad.json
+  .claude/worktrees/st3-main/build-r/rv_render --sweep $J --out-dir renders/proto_sustain_trim3/A/$m
+  for v in 0 1 2; do L=$(echo BCD | cut -c$((v+1)))
+    .claude/worktrees/st3-trim/build-r/rv_render --sweep $J --out-dir renders/proto_sustain_trim3/$L/$m --set sustain_voicing=$v
+  done
+done
+python3 tools/review/make_review.py renders/proto_sustain_trim3 --no-level-match --title "Sustain trim round 3: A main, B limiter hold only, C round 2, D gentle"
+```
+Listen for: the real pad (D: no dip and swell; at most one smooth settle if it grows into the limiter), the organ at TONE 0 / TENSION 1 (D vs A: as alive?), whether D's short limiter moments on arrivals sound driven (the hold should keep them clean; B is the hold with no trim at all), hits and skank identical. The level-match toggle separates level from character.

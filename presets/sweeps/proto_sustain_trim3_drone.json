@@ -1,0 +1,26 @@
+{
+  "name": "proto_sustain_trim3_drone",
+  "input": "test_audio/stimulus/11_drone_c2.wav",
+  "base": {
+    "mix": 1.0,
+    "attitude": "CLEAN",
+    "drive": 0.0,
+    "splash": 0.0,
+    "decay": 0.5
+  },
+  "grid": {
+    "springs": [
+      0.5,
+      1
+    ],
+    "tension": [
+      0.8,
+      1
+    ],
+    "tone": [
+      0,
+      0.3
+    ]
+  },
+  "tail_seconds": 4
+}

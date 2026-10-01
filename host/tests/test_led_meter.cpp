@@ -149,8 +149,11 @@ void limiterFromTank()
     // test_clicks' "limiter pushed" case: a held chord (220 / 261.63 / 329.63
     // Hz, 4 s) into 2 Springs, CLEAN, DECAY 0.62, fully wet. At -3 dBFS its
     // modes build up into the limiter; at -30 dBFS they stay well under it.
+    // Sustain trim off (ADR 0035): it would keep this held chord under the
+    // limiter, and this checks the LEDs when the limiter does pull.
     auto run = [&](float gainDb) {
         t.reset();
+        t.setSustainTrimEnabled(false);
         t.setParam(rv::ParamId::Decay, 0.62f);
         t.setParam(rv::ParamId::Tension, 0.5f);
         t.setParam(rv::ParamId::Tone, 0.5f);

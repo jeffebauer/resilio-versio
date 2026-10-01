@@ -27,6 +27,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Warble** | WOBBLE right of noon: a sine LFO's periodic pitch wobble, its rate drifting only slightly, up to worn-tape "clearly out of tune" fully right (ADR 0034; was ADR 0008's top quarter). |
 | **Wow** | The slow part of Drift: a random pitch sway, ~0.2–1.5 Hz, its speed itself wandering (tape-speed drift). |
 | **Flutter** | The fast part of Drift: a smaller, quicker random pitch shimmer, ~5–12 Hz, on top of the wow. |
+| **Sustain trim** | Held sounds only (pads, drones, never hits): eases the Springs' input down just enough that the wet's peaks stay under the output limiter. Tails and the Howl untouched (ADR 0035). |
 | **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
 | **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |

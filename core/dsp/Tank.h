@@ -32,6 +32,18 @@
 // bright material comes back about as loud as in-band material. It trims
 // only new input (never a ringing tail) and holds in silence.
 //
+// Sustain trim (M8, ADR 0035, DriveVoicing.h): while the input is held (a
+// pad, a drone; never a hit), the Tank reads its own build-up gain for the
+// sound (the wet's peaks, where the limiter reads them, over what went into
+// the Springs) and eases the Springs' input down. Default voicing (round 3,
+// "gentle"): a safety net that leaves a held sound alone until its loudest
+// swell would push the limiter in by more than a fraction of a dB, then
+// glides it to just under the knee (-2.5 dBFS peaks), at most 5 dB, and
+// holds. Round 2 (-7 dBFS while the sound arrives, -5 once settled) stays as
+// a Renderer voicing (setSustainVoicing). Same place as the Excitation trim
+// (one ramp, the product of the two); lets go as soon as the sound isn't
+// held.
+//
 // DRIVE (ADR 0014, 0022, 0033; curves in DriveVoicing.h) is the INPUT: one
 // input gain G (0 -> +24 dB) that the Splash hears first, then DriveIn's
 // saturators (G x the ATTITUDE's voicing offset), plus a "push" that makes
@@ -133,8 +145,10 @@
 #include "dsp/Spring.h"
 #include "dsp/Wobble.h"
 #include "params/ParamSpec.h"
+#include "params/DriveVoicing.h"
 #include "params/SpringModes.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 
@@ -155,6 +169,15 @@ public:
     // ceiling (test_clicks "limiter pushed"); 0.5 ms keeps up, still click-free.
     static constexpr float kLimitAttackS    = map::kHighsLater ? 0.0005f : 0.001f;
     static constexpr float kLimitReleaseS   = 0.15f;
+    // Hold before release (owner, 1 Oct 2026: limiting on a bass pad "sounds
+    // overdriven, as if DRIVE is way up"). Without a hold the envelope sags
+    // ~0.9 dB between the peaks of a 65 Hz tone, so the gain rides each low
+    // cycle: intermodulation 26-32 dB under the wet, heard as drive. Held
+    // longer than a 40 Hz cycle, and refreshed by any peak within
+    // kLimitHoldRefresh of the envelope, the gain sits still on a steady
+    // tone (-45 to -53 dB) and still releases 30 ms after the loud part ends.
+    static constexpr float kLimitHoldS      = 0.030f;
+    static constexpr float kLimitHoldRefresh = 0.944f; // -0.5 dB
     static constexpr int   kMaxPendingKicks = 16;
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
 
@@ -224,6 +247,19 @@ public:
     const dsp::Wobble&    transport() const { return transport_; }
     // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
     float excitationTrim() const { return excTrimTo_; }
+    // M8 Sustain trim now in effect (linear, 1 = none; DriveVoicing.h), for tests.
+    float sustainTrim() const { return susGain_; }
+    // Test hook (not a panel control): false = no Sustain trim (it stays at
+    // 1), so a test can measure something else on held sounds at the level
+    // they had before it (e.g. WOBBLE's pitch). Default true.
+    void setSustainTrimEnabled(bool on) { susOn_ = on; }
+    // Renderer / test hook (not a panel control, ADR 0035 round 3): which
+    // Sustain trim voicing (DriveVoicing.h: 0 = off, the limiter hold only;
+    // 1 = round 2; 2 = gentle). The firmware and plugin never call it
+    // (drive::kSusDefaultVoicing). Set it before rendering (it doesn't reset
+    // a trim already in effect).
+    void setSustainVoicing(int v) { susVoicing_ = std::clamp(v, 0, 2); }
+    int  sustainVoicing() const { return susVoicing_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -297,6 +333,7 @@ private:
     float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
     map::MixGains                       mixGains_{1.0f, 0.0f};
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
+    int   limitHold_ = 0, limitHoldSamples_ = 0;
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;
@@ -317,6 +354,30 @@ private:
     std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
     float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
     float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
+    // M8 Sustain trim (DriveVoicing.h "Sustain trim"): held detector, the
+    // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);
+    // the Springs' input trim ramped per tick is Excitation x Sustain
+    // (inTrimFrom_ -> inTrimTo_).
+    float susFast_ = 0.0f, susFill_ = 0.0f, susFillIn_ = 0.0f, susFed_ = 0.0f, susHeld_ = 0.0f, susLn_ = 0.0f, susAim_ = 0.0f, susGain_ = 1.0f;
+    float susPeak_ = 0.0f, susPeakEnv_ = 0.0f, susPeakRelease_ = 0.0f; // the wet's peak (limiter input): tick, envelope
+    float susFastCoeff_ = 0.0f, susFillCoeff_ = 0.0f, susDownCoeff_ = 0.0f, susUpCoeff_ = 0.0f, susLetGoCoeff_ = 0.0f;
+    float susHeldRatio_ = 0.25f, susTarget_ = 1.0f;
+    // Round 2: the steady-onset path (the input's fast level since it began:
+    // its peak, how long it has stayed near it), the held latch, and the
+    // high-water K (ln) with its hold time, and the time since it was held
+    // (arriving vs settled).
+    static constexpr float kSusNoK = -1.0e30f; // susKHw_ before the first read
+    float susFastPk_ = 0.0f, susStill_ = 0.0f, susKHw_ = kSusNoK, susKHold_ = 0.0f;
+    float susStillRatio_ = 0.5f, susKRelease_ = 0.0f, susOnsetDownCoeff_ = 0.0f, susSince_ = 0.0f;
+    bool  susEngaged_ = false;
+    bool  susOn_ = true; // test hook (setSustainTrimEnabled)
+    int   susVoicing_ = drive::kSusDefaultVoicing; // setSustainVoicing
+    // Round 3, the gentle voicing: its speeds and target; susGNeed_ is the
+    // trim (ln) the loudest swell met needs (a low-water mark) and its hold.
+    static constexpr float kSusNoNeed = 1.0e30f;
+    float susGDownCoeff_ = 0.0f, susGUpCoeff_ = 0.0f, susGLetGoCoeff_ = 0.0f, susGTarget_ = 1.0f, susGNeedRelease_ = 0.0f;
+    float susGNeed_ = kSusNoNeed, susGNeedHold_ = 0.0f;
+    float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
     std::array<float, kClatterSideMax> clatBuf_{};

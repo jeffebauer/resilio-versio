@@ -5,10 +5,12 @@
 // Usage:
 //   rv_render <in.wav> <out.wav> [--set key=value ...] [--preset p.json]
 //             [--auto a.json] [--block N] [--sidecar]
-//   rv_render --sweep sweep.json --out-dir DIR
+//   rv_render --sweep sweep.json --out-dir DIR [--set key=value ...]
 //   rv_render --analyze <in.wav> [--sidecar-out x.json] [--channel L|R|mix]
-//   Hidden, Renderer-only key (ParamsJson.h): wobble_voicing = 0 / 1 / 2 / 3 (A / B / C / D,
-//   core/params/WobbleVoicing.h), in --set, a --preset, or a sweep base / grid.
+//   Hidden, Renderer-only keys (ParamsJson.h): wobble_voicing = 0 / 1 / 2 / 3 (A / B / C / D,
+//   core/params/WobbleVoicing.h) and sustain_voicing = 0 / 1 / 2 (off / round 2 / gentle,
+//   core/params/DriveVoicing.h), in --set, a --preset, or a sweep base / grid. A sweep's
+//   --set applies after its base and before its grid (one sweep JSON, several voicings).
 
 #include "Automation.h"
 #include "Json.h"
@@ -36,7 +38,7 @@ void usage(const char* argv0)
 {
     std::fprintf(stderr,
         "usage: %s <in.wav> <out.wav> [--set key=value ...] [--preset p.json] [--auto a.json] [--block N] [--sidecar]\n"
-        "       %s --sweep sweep.json --out-dir DIR\n"
+        "       %s --sweep sweep.json --out-dir DIR [--set key=value ...]\n"
         "       %s --analyze <in.wav> [--sidecar-out x.json] [--channel L|R|mix]\n",
         argv0, argv0, argv0);
 }
@@ -178,7 +180,7 @@ int runAnalyze(const std::string& inPath, const std::string& sidecarOut, const s
     return 0;
 }
 
-int runSweep(const std::string& sweepPath, const std::string& outDir)
+int runSweep(const std::string& sweepPath, const std::string& outDir, const std::vector<std::string>& sets)
 {
     std::string error;
     rv::sweep::Config cfg;
@@ -209,9 +211,18 @@ int runSweep(const std::string& sweepPath, const std::string& outDir)
             std::fprintf(stderr, "sweep base preset: %s\n", error.c_str());
             return 1;
         }
-        bool voiced = cfg.base.find(rv::paramsjson::kWobbleVoicingKey) != nullptr;
+        for (const auto& s : sets) {
+            if (!applySet(tank, s)) { std::fprintf(stderr, "sweep: bad --set %s\n", s.c_str()); return 1; }
+        }
+        auto setsKey = [&](const char* k) {
+            for (const auto& s : sets) if (s.rfind(std::string(k) + "=", 0) == 0) return true;
+            return cfg.base.find(k) != nullptr;
+        };
+        bool voiced = setsKey(rv::paramsjson::kWobbleVoicingKey);
+        bool susVoiced = setsKey(rv::paramsjson::kSustainVoicingKey);
         for (const auto& [key, value] : combo) {
-            if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = true; continue; }
+            if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
+            if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
             tank.setParam(id, float(value));
@@ -234,6 +245,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir)
         // A hidden voicing, when the sweep sets one, goes in as a letter (the
         // review page's A / B / C versions).
         if (voiced) params.set(rv::paramsjson::kWobbleVoicingKey, rv::json::Value::makeString(rv::paramsjson::wobbleVoicingLabel(tank)));
+        if (susVoiced) params.set(rv::paramsjson::kSustainVoicingKey, rv::json::Value::makeNumber(tank.sustainVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }
@@ -307,13 +319,15 @@ int main(int argc, char** argv)
     const std::string first = argv[1];
     if (first == "--sweep") {
         std::string sweepPath, outDir;
+        std::vector<std::string> sets;
         for (int i = 2; i < argc; ++i) {
             const std::string a = argv[i];
             if (a == "--out-dir" && i + 1 < argc) outDir = argv[++i];
+            else if (a == "--set" && i + 1 < argc) sets.push_back(argv[++i]);
             else sweepPath = a;
         }
         if (sweepPath.empty() || outDir.empty()) { usage(argv[0]); return 2; }
-        return runSweep(sweepPath, outDir);
+        return runSweep(sweepPath, outDir, sets);
     }
 
     if (first == "--analyze") {
