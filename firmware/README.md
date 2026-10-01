@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 121,944 B (93%), ≈9 KB headroom (1 Oct 2026: the Tank is built at boot instead of copied from flash, −4.6 KB; was 126,528 B with bipolar WOBBLE + the sustain trim)
-- m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 129,948 B (99%, 1.1 KB headroom; fits again since the Tank is built at boot; m3_bench micro-benchmarks dropped, the BENCH line keeps clock + caches). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (bipolar WOBBLE + the sustain trim + limiter hold, first chip run since run 13). Trim test-only code (m3_bench, the BENCH line) before adding anything profile-only
+- release 119,408 B (91%) (2 Oct 2026: Big Knob TONE +~1.1 KB with the Renderer-only voicings compiled out (RV_FIXED_VOICINGS); USB host stack stubbed out, −3.6 KB in every variant, `no_uart_spi.cpp`)
+- m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
+- profile 127,420 B (97%, 3.6 KB headroom). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (rebuilt 2 Oct with Big Knob: bipolar WOBBLE + sustain trim + limiter hold + Big Knob; first chip run since run 13). Also the first hardware run of the Tank built at boot and the USB host stub
 
 ### Flash-budget techniques in use (ADR 0011)
 

@@ -1,0 +1,30 @@
+{
+  "name": "proto_big_knob_skank",
+  "input": "test_audio/stimulus/04_skank.wav",
+  "base": {
+    "springs": "2",
+    "decay": 0.5,
+    "tension": 0.5,
+    "splash": 0.3,
+    "drive": 0.25,
+    "mix": 1.0
+  },
+  "grid": {
+    "attitude": [
+      0,
+      1
+    ],
+    "tone": [
+      0.5,
+      0.7,
+      0.85,
+      1.0
+    ]
+  },
+  "tail_seconds": 4,
+  "ignore_flags": [
+    "click_count",
+    "max_step_db_100ms",
+    "resonance_peak_db"
+  ]
+}
