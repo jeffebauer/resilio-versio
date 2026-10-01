@@ -65,7 +65,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Big Knob TONE page** once the cloud session is done (§3)
-- **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again). The release firmware is fine (96.5 %), 
+- **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
 
