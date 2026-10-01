@@ -35,7 +35,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] **Listened (1 Oct): B (the trim) in every panel**: hits, skank, synthetic pad and drone, and your real pad at both settings, 2 and 3 Springs
 - [x] Limiter hold (30 ms) added on your request (1 Oct)
 - Merge held back (1 Oct): with the new WOBBLE, two of the trim's checks failed (a held organ's first note touches the limiter; the trim moves 2.9 dB on a drone, limit 2). **Your pick:** WOBBLE now, the trim retuned in the cloud
-- [ ] **Start the cloud session:** "Follow docs/briefs/sustain-trim-retune.md on main. Work on branch proto/sustain-trim-2 and push it; don't merge to main." Then a short confirm page, merge, a second release and install
+- [x] Retuned in the cloud (1 Oct): held sounds stay clear of the limiter at the default WOBBLE and right of noon (your real pad too, at every page setting); hits and skank bit-for-bit identical. Left of WOBBLE noon (random drift swells the tank on its own) held sounds can still touch the limiter by ~1 dB
+- [ ] **Confirm listen (≈5 min):** open `renders/proto_sustain_trim2/index.html`. A = today, B = retuned trim; organ, pad, drone, your real pad, hits, skank. Listen for: the organ's first note no longer crackling, pad and drone holding still (no pumping or slow swell), hits and skank the same, and whether B's held sounds are too quiet (the level-match toggle separates loudness from harshness). Then Claude merges, builds the release and installs
 - Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
 
  · next round after the SPLASH/DRIVE merge
