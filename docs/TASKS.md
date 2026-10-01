@@ -41,8 +41,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
 - [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
 - [x] **Listened (1 Oct): v2** (steep + bump) nearly everywhere; v1 (no bump) won fully right on skank and KICKED hits; v3 only on pads at DRIVE 0.8. Your pick: **v2 with a gentler bump at the top** (+4.1 dB fully right instead of +5.6), built as v4
-- [x] The ringing setting is fixed: the top cutoff goes from 1.2 kHz to **1 kHz** (still telephone-thin); the whole ringing/Howl test grid passes
-- [ ] **Quick check (≈5 min):** open `renders/proto_big_knob2/index.html`: v1, v2 and **v4 (gentle top)**, all with the 1 kHz top, on hits, skank, held chords and clicks. If v4 sounds right, Claude merges it
+- [x] **Check page listened (1 Oct):** the bump won on every drum-hit panel, no bump won on pads, clicks and KICKED skank. Your pick: **the bump on hits only** (v5). (Note: that page's "v4" was really v3, a bug Claude fixed; your conclusion holds)
+- [x] Top of the knob is now **800 Hz** (was 1.2 kHz): above ~850 Hz one KICKED setting (3 Springs, TENSION fully loose) rang. Every ringing/Howl test passes at 800 Hz. A deeper tank fix could reopen ~1.2 kHz later if you want it thinner
+- [ ] **Quick check (≈5 min):** open `renders/proto_big_knob3/index.html`: **v1** no bump, **v4** gentle bump everywhere, **v5 bump on hits only**, all with the 800 Hz top. If v5 sounds right (hits ringy, pads and chords clean), Claude merges it
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
