@@ -1,6 +1,6 @@
 # 0035 — The tank tames itself on held sounds (Sustain trim)
 
-**Status:** Accepted (owner, 1 Oct 2026: B, the trim, in every panel of the listening page, plus the limiter hold). Retuned the same day on top of bipolar WOBBLE (ADR 0034), branch `proto/sustain-trim-2`: see "Round 2" below; the owner confirms by ear before it merges. Numbers: `core/params/DriveVoicing.h` "Sustain trim"; measurements: `docs/m8-tuning-backlog.md` "Sustain trim". SPEC changelog v1.0.23 (§4.8 output stage, §4.9 gain staging).
+**Status:** Accepted (owner, 1 Oct 2026: B, the trim, in every panel of the listening page, plus the limiter hold). Retuned the same day on top of bipolar WOBBLE (ADR 0034), branch `proto/sustain-trim-2`: see "Round 2" below; the owner confirms by ear before it merges. Numbers: `core/params/DriveVoicing.h` "Sustain trim"; measurements: `docs/m8-tuning-backlog.md` "Sustain trim". SPEC changelog v1.0.23 (§4.8 output stage, §4.9 gain staging). **Round 3** (same day, branch `proto/sustain-trim-3`): a gentler default after the owner heard round 2 on their real pad; round 2 stays as a Renderer voicing until the owner picks. If the gentle voicing merges, SPEC's changelog and CONTEXT's Sustain trim line change with it (the −7 / −5 dBFS targets become "just under the limiter, only when it would work hard").
 
 **Context:**
 - On the Versio (release `b3e5ac3`, 1 Oct 2026) a low-mid synth pad (C minor, slow swell, energy mostly 90–250 Hz) turned the output LEDs red at mild settings: CLEAN, DRIVE 0, SPLASH 0, DECAY noon, TONE anywhere up to ~3:30, 2 or 3 Springs, TENSION past 3 o'clock. Input LEDs only touched amber. "It definitely sounds overdriven and sometimes a little harsh, as if I have the drive turned way up."
@@ -53,3 +53,36 @@ Measured (`test_sustain_trim`, synthetic pad / drone / organ at −6 dBFS peak, 
 - `test_clicks`' held-chord limiter scan and `test_led_meter`'s "limiter pulls, LEDs red" case now run with the trim off: they need a held chord to reach the limiter, and the retuned trim keeps it under (0 of 31 TENSION settings reached it). What they test (clicks, the LEDs) is the limiter's, not the trim's.
 
 **Why:** the owner's pick: hits keep their punch, and held sounds stop overflowing the tank. Trimming the input rather than the wet keeps every tail and the Howl exactly as they were.
+
+## Round 3 (1 Oct 2026, the gentle voicing; branch `proto/sustain-trim-3`)
+
+**What the owner heard** (page `renders/proto_sustain_trim2/`, A = `main`, B = round 2): B on hits, skank, the synthetic pad and drone; **A on their real pad in every cell** and A on the organ at TONE 0 and at TENSION 1. "For the most part sounding better, but in the last 'in' examples [the real pad], the limiter is causing an audible dip and swell in volume that dips down and back up. And for organ tone examples, it's feeling less alive due to the limiting. Is there a middle ground we can strike to keep things characterful?" Measured on the Mac: B's real pad never passed −2.0 dBFS (the knee is −1.7), so the dip and swell was **the trim moving**: round 2 aims a sound at −7 dBFS while it arrives (down over 30 ms), then lifts it 2 dB once settled, and lets its high-water mark down at 1 dB/s. And it trims a lot: in `test_sustain_trim`'s grid round 2 engages in 18–26 of 27 cells and takes the loudest part of the hold down 3.8–6.6 dB (worst cell; up to 10.7 dB of trim, 12 left of noon).
+
+**Decision: a safety net, not a level rider** (`DriveVoicing.h` "Sustain trim voicings"; the new default). Same held detector and the same build-up reading; what it does with them:
+1. **It leaves a held sound alone unless the limiter would have to work.** From the build-up it reads the peak the loudest swell so far would reach. Up to −1.5 dBFS (the limiter, 30 ms hold, at most ~0.2 dB in) nothing is trimmed; past it the trim **ramps in**, so that from 0 dBFS (the limiter ~1.7 dB in) on the peaks land on **−2.5 dBFS**, just under the knee. A ramp, not an on/off point: the brief's "engage at ~1.5 dB of limiting, then aim at −2.5" as a switch made a drone that crept over the line 5 s into its hold drop 2.5 dB at once.
+2. **At most 5 dB** (brief: ~4). The C2 drone at TENSION 1, 3 Springs, TONE 0 would otherwise be limited ~7 dB; with 4 dB of trim the limiter still sat at 3.2 dB for the whole hold, with 5 at 2.3.
+3. **It answers the loudest swell once and holds.** The trim that swell needs is kept as a low-water mark for 6 s, then let up at 0.3 dB/s, so the sound's own swells below it pass untouched and the trim never eases back up during a hold (no swell). (Round 2's high-water build-up times a later, louder input read swells that never came: a pad that never reached the limiter was trimmed 4 dB.)
+4. **One smooth glide.** Down over ~0.3 s (a one-pole of 0.12 s; at long DECAYs no faster than half the fill time), up over 4 s, no separate "arriving" aim (so no dip then lift). Lets go over 0.15 s when the input stops being held.
+5. **The limiter's 30 ms hold stays** and takes what the trim leaves: the moment before the glide catches a swell, and the loudest peaks. Hits and stabs never count as held: exactly 0 dB, bit for bit as `main`.
+
+**Voicings** (hidden Renderer key `sustain_voicing`, like `wobble_voicing`; firmware and plugin use the default): 0 = off (the limiter hold only), 1 = round 2 (renders bit for bit as `proto/sustain-trim-2`), **2 = gentle (default)**. `rv_render --sweep … --set sustain_voicing=N` renders one sweep JSON in any voicing.
+
+**Trade-offs, in musical words:**
+- **The limiter works again, briefly.** At the owner's settings (−6 dBFS peak; default WOBBLE and right of noon) the output LED would blink red when a held sound arrives in about half the cells (pad 11–13 of 27, organ 10–16, for 0.4–0.6 s); round 2 never lit it. The worst moment is 2.6 dB (the pad, 1 Spring, TONE 0, TENSION 1, ~0.1 s), held so it doesn't ride the bass cycles. Only the extreme drone cells (C2 sine, TENSION 1, TONE 0) stay red through the hold, at ≤ 2.4 dB.
+- **A sound that grows into the limiter mid-hold is caught late, once.** A pad's beating, or WOBBLE carrying a note onto a louder resonance, can push it past the line seconds in; the trim then glides down (up to 5 dB over ~0.3 s) and stays. Heard as the sound settling a little lower, not as a dip and swell. On the steady drone this is ≤ 1.1 dB.
+- **Held sounds keep their level** where they never overflowed: the synthetic pad at TENSION 0.8 renders bit for bit as `main`.
+
+**Measured** (`rv_test_sustain_trim --voicings`; 27 SPRINGS × TONE × TENSION cells, −6 dBFS peak, CLEAN, DRIVE 0, SPLASH 0, DECAY noon; default WOBBLE and right of noon, worst over the three):
+
+| | off (hold only) | round 2 | **gentle** |
+|---|---|---|---|
+| worst limiter pull, pad / drone / organ | 6.3 / 7.3 / 5.5 dB | 0 / 0 / 0 | **2.6 / 2.4 / 1.7** |
+| cells where the red LED lights at all, pad / drone / organ | 13 / 17 / 17 | 0 / 0 / 0 | 13 / 16 / 16 (arrival blinks; drone: the hard cells) |
+| cells trimmed at all, pad / drone / organ | — | 25 / 18 / 26 | **13 / 17 / 17** |
+| deepest trim | — | 10.7 dB | **5.0** |
+| trim rises in the hold (swell), pad / drone | — | 2.3 / 0.5 dB | **0.0 / 0.2** |
+| loudest 200 ms of the hold vs no trim, worst cell, pad / drone / organ | 0 | −5.5 / −4.1 / −6.6 dB | **−4.2 / −1.8 / −3.9** |
+
+Left of noon (printed, not checked) the gentle voicing limits more than round 2 (WOBBLE 0 / 0.25: pad 3.6 / 3.2, organ 2.7 / 3.9; the C2 drone 7.5 / 7.1 dB in its hardest cell, where the trim stops at 5 and Drift's swells reach ~10 dB), and never swells back.
+
+**Testable** (`test_sustain_trim`, re-targeted; limits that changed, and why): round 2's "limiter < 0.5 dB (no red LED)" is replaced by **"past 2.5 dB for no more than 0.25 s, and no moment past 3 dB"** (the owner asked for less trim; the hold keeps light limiting clean; 2.5 not 2 because the hardest drone cell sits at 2.3 dB with the trim at its 5 dB). Round 2's "the drone's settled trim moves ≤ 2 dB" becomes **≤ 1.5 dB** (the brief asked ~1; the drone's worst cell creeps 1.1 dB, one way, as WOBBLE moves it), plus a new **"the trim never eases back up by more than 1 dB over the pad's and drone's hold"** (the swell the owner heard), and **"at most 5 dB"**. Hits and stabs exactly 0, lets go before the next hit, and the Howl unchanged.

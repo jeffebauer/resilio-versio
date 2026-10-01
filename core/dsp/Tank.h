@@ -35,11 +35,14 @@
 // Sustain trim (M8, ADR 0035, DriveVoicing.h): while the input is held (a
 // pad, a drone; never a hit), the Tank reads its own build-up gain for the
 // sound (the wet's peaks, where the limiter reads them, over what went into
-// the Springs; the highest it has met, held a few seconds) and eases the
-// Springs' input down just enough that the peaks stay under the limiter
-// (-7 dBFS while the sound arrives, -5 once settled). Same place as the
-// Excitation trim (one ramp, the product of the two); lets go as soon as
-// the sound isn't held.
+// the Springs) and eases the Springs' input down. Default voicing (round 3,
+// "gentle"): a safety net that leaves a held sound alone until its loudest
+// swell would push the limiter in by more than a fraction of a dB, then
+// glides it to just under the knee (-2.5 dBFS peaks), at most 5 dB, and
+// holds. Round 2 (-7 dBFS while the sound arrives, -5 once settled) stays as
+// a Renderer voicing (setSustainVoicing). Same place as the Excitation trim
+// (one ramp, the product of the two); lets go as soon as the sound isn't
+// held.
 //
 // DRIVE (ADR 0014, 0022, 0033; curves in DriveVoicing.h) is the INPUT: one
 // input gain G (0 -> +24 dB) that the Splash hears first, then DriveIn's
