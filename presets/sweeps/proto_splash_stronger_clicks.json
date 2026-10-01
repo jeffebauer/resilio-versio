@@ -1,0 +1,27 @@
+{
+  "name": "proto_splash_stronger_clicks",
+  "input": "test_audio/stimulus/01_clicks.wav",
+  "base": {
+    "springs": "2",
+    "decay": 0.5,
+    "mix": 1.0
+  },
+  "grid": {
+    "attitude": [
+      0,
+      1
+    ],
+    "drive": [
+      0,
+      0.8
+    ],
+    "splash": [
+      0,
+      0.25,
+      0.5,
+      0.75,
+      1
+    ]
+  },
+  "tail_seconds": 4
+}

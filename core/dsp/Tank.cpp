@@ -110,7 +110,9 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
-    clangLp_.setCutoff(splash::kClangHz, sampleRate);
+    clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate);
+    clangAtt_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastAttackMs * sampleRate));
+    clangRel_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastReleaseMs * sampleRate));
     dcNoon_ = drive::driveCurve(0.5f);
     dcRef_  = drive::driveCurve(splash::kSplashRefDrive);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
@@ -182,6 +184,7 @@ void Tank::reset()
     for (auto& d : driveOut_) d.reset();
     splash_.reset();
     clangLp_.reset();
+    clangEnv_ = 0.0f;
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
@@ -278,7 +281,7 @@ void Tank::controlTick(bool snap)
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
-    splash_.set(attW_, splashAmt, splashDrive_); // splashDrive_: DRIVE's gain on the Clang / Bite (below, on DRIVE moves)
+    splash_.set(attW_, splashAmt, splashDrive_, splashInput_); // DRIVE's gain on the Clang / Bite, the INPUT gain (below, on DRIVE moves)
     const float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
@@ -442,6 +445,7 @@ void Tank::controlTick(bool snap)
         driveInSettings_ = dsp::driveInSettings(voice, drive);
         push_      = drive::push(voice, drive);
         splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
+        splashInput_ = driveInSettings_.inputGain;
         compDrive_ = drive;
         compW_     = attW_;
     }
@@ -716,10 +720,20 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
+        // The Clang's ceiling rises with the pickups' push (push_.out): driven
+        // pickups squash a big splash on their own (SplashVoicing.h).
+        const float clangCeil = splash_.clangCeiling() * push_.out, clangFloor = splash_.clangFloorShare();
         for (int i = 0; i < n; ++i) {
             const float x  = tilt_.process(driven[i]) * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
-            mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
+            float c = clang[i];
+            if (clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
+                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
+                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float cmax = clangCeil / (clangEnv_ + 1.0e-9f), cmin = c * clangFloor;
+                c = c < cmax ? c : (cmax > cmin ? cmax : cmin);
+            }
+            mono[i] = x + c * (x - lo) + kickScale * kickLoop[i];
         }
         // One transport for every pickup: the first echoes move together. Its
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.

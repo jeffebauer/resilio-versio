@@ -1,5 +1,7 @@
 #include "dsp/Splash.h"
 
+#include "params/DriveVoicing.h"
+
 #include <cmath>
 
 namespace rv::dsp {
@@ -54,8 +56,8 @@ void HitEnvelope::prepare(float sampleRate)
 
 void HitEnvelope::reset()
 {
-    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = 0.0f;
-    invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
+    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = eh_ = 0.0f;
+    invRef2_ = 1.0f / (loudRef_ * loudRef_);
 }
 
 // ---- Clatter -----------------------------------------------------------------------
@@ -152,7 +154,9 @@ void Splash::prepare(float sampleRate, uint32_t seed)
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
     maxRiseTicks_  = int(splash::kMaxRiseMs * 0.001f * sampleRate / every + 0.5f);
     attW_   = {{-1.0f, -1.0f, -1.0f}};
-    splash_ = driveGain_ = -1.0f;
+    splash_ = driveGain_ = inputGain_ = -1.0f;
+    invInputRef_ = 1.0f / drive::dbToGain(drive::inputGainDb(splash::kSplashRefDrive));
+    setVoicing(voicing_);
     set({{0.0f, 1.0f, 0.0f}}, 0.3f);
     reset();
 }
@@ -177,15 +181,35 @@ void Splash::reset()
     numStrikes_ = 0;
 }
 
-void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain)
+void Splash::setVoicing(int v)
 {
-    if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_) return; // blend + exp only on change
-    attW_      = attitudeWeights;
-    splash_    = splash;
-    driveGain_ = driveGain;
-    voice_     = splash::blendVoice(attitudeWeights);
-    envelope_.set(splash, voice_.clang, voice_.clangShort, voice_.bite, driveGain);
-    detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash));
+    voicing_ = v < 0 ? 0 : (v > 3 ? 3 : v);
+    splash_ = -1.0f; // set() recomputes
+}
+
+void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain, float inputGain)
+{
+    if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_ && inputGain == inputGain_)
+        return; // blend + exp only on change
+    attW_       = attitudeWeights;
+    splash_     = splash;
+    driveGain_  = driveGain;
+    inputGain_  = inputGain;
+    voice_      = splash::blendVoice(attitudeWeights);
+    // SPLASH stronger (SplashVoicing.h): a bigger top quarter; DRIVE-free
+    // voicings hold DRIVE 0.8's gain and judge levels as DRIVE 0.8 would.
+    const splash::Strong& sv = splash::strong(voicing_);
+    const bool  free  = sv.driveFree > 0.0f;
+    const float dg    = free ? 1.0f : driveGain;
+    const float level = free ? inputGain * invInputRef_ : 1.0f;
+    const float cb = splash::topBoost(splash, sv.topClang), bb = splash::topBoost(splash, sv.topBite);
+    const float holdMs = sv.holdMs + sv.topHoldMs * (splash::topBoost(splash, 1.0f) - 1.0f);
+    envelope_.setHold(holdMs > 0.0f ? decayPerStep(holdMs, sampleRate_) : 0.0f);
+    envelope_.set(splash, voice_.clang * cb, voice_.clangShort * cb, voice_.bite * bb, dg);
+    envelope_.setLoudScale(level);
+    clangCeil_  = sv.clangCeil;
+    clangFloor_ = free ? 0.0f : 1.0f / cb; // stronger top alone: only the top's extra is capped
+    detector_.setThresholds(splash::hitThreshold(splash) * level, splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
 

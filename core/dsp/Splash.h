@@ -99,9 +99,15 @@ public:
     // reference R = max(kLoudRef, kLoudRel · P).
     void setProgramLevel(float p)
     {
-        const float r = p * splash::kLoudRel > splash::kLoudRef ? p * splash::kLoudRel : splash::kLoudRef;
+        const float r = p * splash::kLoudRel > loudRef_ ? p * splash::kLoudRel : loudRef_;
         invRef2_ = 1.0f / (r * r);
     }
+    // SPLASH stronger (SplashVoicing.h "SPLASH stronger"): the loud floor
+    // kLoudRef × scale (voicings 2, 3: the INPUT gain re DRIVE 0.8), and the
+    // Clang's hold (per-sample decay of the held e; 0 = no hold, e as is).
+    void setLoudScale(float scale) { loudRef_ = splash::kLoudRef * scale; }
+    void setHold(float decay) { hold_ = decay; }
+
     // h = the input, high-passed at splash::kDetectorHpHz.
     void push(float h, float& clang, float& bite)
     {
@@ -118,16 +124,18 @@ public:
         const float e      = e0 < 1.0f ? e0 : 1.0f;
         float sh = (hiFast_ * inv - splash::kShortLo) * (1.0f / (splash::kShortHi - splash::kShortLo));
         sh = sh < 0.0f ? 0.0f : (sh > 1.0f ? 1.0f : sh);
+        const float held = eh_ * hold_;
+        eh_    = e > held ? e : held; // = e without a hold
         e_     = e;
         short_ = sh;
-        clang  = (clang_ + clangShortDelta_ * sh) * e;
+        clang  = (clang_ + clangShortDelta_ * sh) * eh_;
         bite   = biteGain_ * sh * e;
     }
     float envelope() const { return e_; }  // e of the last sample (tests, meters)
     float shortness() const { return short_; }
 
 private:
-    float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
+    float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef), loudRef_ = splash::kLoudRef, hold_ = 0.0f, eh_ = 0.0f;
     float fa_ = 1.0f, fr_ = 1.0f, sa_ = 1.0f, sr_ = 1.0f, lpC_ = 1.0f;
     float fast_ = 0.0f, slow_ = 0.0f, hiFast_ = 0.0f, lp_ = 0.0f;
     float splash_ = 0.0f, clang_ = 0.0f, clangShortDelta_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
@@ -264,7 +272,16 @@ public:
     // Control rate: ATTITUDE Morph weights (CLEAN, DRIVEN, KICKED; sum 1),
     // the smoothed SPLASH Normalised value and DRIVE's gain on the Clang and
     // the Bite (splash::splashDriveGain; 1 = as picked at DRIVE 0.8).
-    void set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain = 1.0f);
+    // inputGain = the INPUT gain G (linear; SPLASH stronger voicings only).
+    void set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain = 1.0f, float inputGain = 1.0f);
+    // SPLASH stronger (SplashVoicing.h): 0 = today .. 3; Renderer / tests only.
+    void setVoicing(int v);
+    int  voicing() const { return voicing_; }
+    // The Clang's ceiling (SplashVoicing.h "SPLASH stronger"; the Tank applies
+    // it on the springs' input): 0 = none; and today's Clang as a share of
+    // this voicing's (the ceiling never takes the Clang below today's).
+    float clangCeiling() const { return clangCeil_; }
+    float clangFloorShare() const { return clangFloor_; }
     // Wet level 0..1 (e.g. a smoothed RMS), for KICKED's energy-dependent
     // rattle. Optional: 0 leaves the rattle Hit-driven only.
     void setTankLevel(float level) { tankLevel_ = level; }
@@ -316,7 +333,10 @@ private:
 
     splash::Voice voice_{};
     std::array<float, 3> attW_{{-1.0f, -1.0f, -1.0f}};
-    float splash_ = -1.0f, tankLevel_ = 0.0f, driveGain_ = -1.0f;
+    float splash_ = -1.0f, tankLevel_ = 0.0f, driveGain_ = -1.0f, inputGain_ = -1.0f;
+    float invInputRef_ = 1.0f; // 1 / G at splash::kSplashRefDrive
+    float clangCeil_ = 0.0f, clangFloor_ = 1.0f;
+    int   voicing_ = splash::kDefaultVoicing;
 
     int   k_ = 0; // position in the control grid
     float hit_ = 0.0f;
