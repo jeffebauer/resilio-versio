@@ -7,7 +7,17 @@ King Tubby's "Big Knob": the high-pass filter on his MCI desk (an inductor filte
 
 Today's right side: a gentle tilt plus a 2nd-order (12 dB/oct) high-pass before the Springs, 20 Hz at noon → ~105 Hz at 3 o'clock → 300 Hz fully right.
 
-## Build: voicings on one page
+## Phase 1: research the original first (owner, 1 Oct 2026: "deeper research into the original hardware origins, the tone, and the specifics that create that sound so we can create an accurate emulation")
+Before writing DSP, research and write `docs/research/big-knob.md` (cite every source with a link; mark each claim **sourced**, **single source** or **inference**, as `docs/dub-spring-reference.md` does). Cover:
+- **Origins:** which desk and which filter. King Tubby's MCI console (from Dynamic Sounds), its high-pass "Big Knob", what is known about who built or modified it, and the Altec Lansing filter set often named in connection with it (model, e.g. the Altec 9069B, and its role). Separate what's documented from studio lore.
+- **The circuit:** passive LC (inductor + capacitor) high-pass? Its order and slope, the stepped cutoff frequencies (list them if any source gives them; ~70 Hz up to 7.5 kHz is quoted), the impedance it was designed for and how it was loaded (an unterminated or mis-terminated passive LC filter peaks at cutoff: this may be where the "bump" really comes from, so find out), insertion loss, any make-up gain.
+- **What the inductor adds:** core saturation at high levels and low frequencies, hysteresis, the coil's resistance (it softens the peak, the Q), and how it changes with level. Real measurements beat descriptions.
+- **How Tubby used it:** sweeping it on sends to the spring and echo, cutting drums and vocals to a thin, telephone sound, the "sweep" heard on records. Name a few tracks where it's clearly audible so the owner can listen for the reference.
+- **Existing emulations** (e.g. AudioThing's, the KTBK hardware copy) and what parameters they expose: they show what their makers decided matters.
+- **Translate it into numbers for Resilio:** slope, cutoff range over TONE's right half (keep it smooth; the owner ruled out steps), the bump's size and Q vs cutoff (from the termination analysis if possible), and the saturation's character. Say which of these a digital model can match closely and which are guesses. Then voice 1–3 below from these numbers rather than from taste, and say in the backlog where you departed from them and why.
+Keep the research proportionate (about an hour of searching); stop when more sources repeat the same facts.
+
+## Phase 2 — Build: voicings on one page
 Add a hidden, Renderer-only key `tone_voicing` (like `wobble_voicing` / `sustain_voicing`; the default stays **0 = today** until the owner picks; firmware and plugin use the default):
 - **0 = today** (reference).
 - **1 = steep:** ~18 dB/oct low cut on TONE's right half, reaching higher (towards ~1–1.5 kHz fully right for "telephone"; the Springs' useful band is ~200 Hz–4 kHz, so stay well below ~2 kHz). Smooth all the way.
