@@ -35,7 +35,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
-- [ ] **Start the SPRINGS 3 session:** "Follow docs/briefs/springs3-palette.md on main. Work on branch proto/springs3-palette and push it; don't merge to main." Five versions of position 3: today, a long big tank, tanks in series, wide stereo spread, a different tank type
+- [x] **SPRINGS 3 session** (1 Oct, cloud): built on branch `proto/springs3-palette` (not merged; ADR 0037 proposed). Five versions of position 3: today, a long big tank, tanks in series, wide left/centre/right, a small bright "pan" tank. Positions 1 and 2 unchanged
+- [ ] **Listen to the SPRINGS 3 page and pick one** (≈20 min): render it on the Mac with the commands in [m8-tuning-backlog.md](m8-tuning-backlog.md) "SPRINGS 3 palette" (one script, a few minutes), open `renders/springs3_palette/index.html`. Versions: A SPRINGS 2 · B today's 3 · C long tank · D in series · E wide · F pan tank. Questions: is position 3 now clearly its own thing? Which one (or none)? Note: series still trips one safety check at DECAY max and needs work if you pick it
 - [ ] **Start the SPLASH session:** "Follow docs/briefs/splash-stronger.md on main. Work on branch proto/splash-stronger and push it; don't merge to main." Four versions: today, stronger top, stronger + independent of DRIVE, and a bolder one
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
@@ -56,6 +57,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
+- **SPRINGS 3:** once you pick, Claude ships that one voicing (and, for the long tank, decides whether its loosest setting should get longer: ~48 KB more delay memory, in the module's larger RAM)
 - **Big Knob TONE page** once the cloud session is done (§3)
 - **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued

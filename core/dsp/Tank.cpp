@@ -104,6 +104,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     limitAttack_  = 1.0f - std::exp(-1.0f / (kLimitAttackS * sampleRate));
     limitHoldSamples_ = int(kLimitHoldS * sampleRate);
     fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
+    s3Step_       = float(kControlInterval) / (springs3::kGlideSeconds * sampleRate);
     morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
     driveIn_.prepare(sampleRate);
     tilt_.prepare(sampleRate);
@@ -208,6 +209,9 @@ void Tank::reset()
     limitEnv_  = 0.0f;
     limitHold_ = 0;
     limitGain_ = 1.0f;
+    s3SeriesFrom_ = s3SeriesTo_ = s3WFrom_ = 0.0f;
+    s3InLp_.reset();
+    s3SendLp_.reset();
     numPendingKicks_ = 0;
     tick_     = 0;
     gridTick_ = 0;
@@ -238,17 +242,34 @@ void Tank::controlTick(bool snap)
     const int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
     if (snap) {
         mode_     = mode;
-        mixCur_   = mixTo_ = mixFrom_ = modes::stereoMix(mode);
-        trimCur_  = trimTo_ = trimFrom_ = modes::kModeTrim[size_t(mode)];
+        mixCur_   = mixTo_ = mixFrom_ = modeMix(mode);
+        trimCur_  = trimTo_ = trimFrom_ = modeTrim(mode);
         mixScale_ = trimCur_ / std::sqrt(modes::mixPower(mixCur_));
         fadePos_  = 1.0f;
     } else if (mode != mode_) {
         mode_     = mode;
         mixFrom_  = mixCur_;
         trimFrom_ = trimCur_;
-        mixTo_    = modes::stereoMix(mode);
-        trimTo_   = modes::kModeTrim[size_t(mode)];
+        mixTo_    = modeMix(mode);
+        trimTo_   = modeTrim(mode);
         fadePos_  = 0.0f;
+    }
+    // SPRINGS 3 palette (Springs3Voicing.h): the Springs glide into position
+    // 3's voicing (and back out) over springs3::kGlideSeconds, while the
+    // output mix fades as above. At 0 everything is today's, bit for bit.
+    if (springs3::kPaletteBuilt) {
+        const float target = mode_ == 2 && s3Voicing_ != springs3::kToday ? 1.0f : 0.0f;
+        s3WFrom_ = snap ? target : s3W_;
+        s3W_ = snap ? target : (target > s3W_ ? std::min(target, s3W_ + s3Step_) : std::max(target, s3W_ - s3Step_));
+        const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+        const float series = s3W_ * v3.series;
+        // The Sustain trim's ceiling (ADR 0035): voicings that build up more
+        // on held notes may trim further, so the tank still tames itself
+        // rather than leaving it to the limiter (Springs3Voicing.h).
+        s3SusMaxDb_ = s3W_ > 0.0f ? drive::kSusGentleMaxDb + s3W_ * (v3.sustainMaxDb - drive::kSusGentleMaxDb)
+                                  : drive::kSusGentleMaxDb;
+        s3SeriesFrom_ = snap ? series : s3SeriesTo_;
+        s3SeriesTo_   = series;
     }
 
     // ATTITUDE Morph: glide the weights linearly toward the switch position
@@ -394,7 +415,7 @@ void Tank::controlTick(bool snap)
             constexpr float kSlope = (kFull - kTgt) / (kFull - kFrom);
             const float peakDb = kTgt - susGNeed_ * (1.0f / kDb);
             const float cutDb  = peakDb <= kFrom ? 0.0f : peakDb < kFull ? (peakDb - kFrom) * kSlope : peakDb - kTgt;
-            susAim_ = -std::min(cutDb, drive::kSusGentleMaxDb) * kDb;
+            susAim_ = -std::min(cutDb, springs3::kPaletteBuilt ? s3SusMaxDb_ : drive::kSusGentleMaxDb) * kDb;
             // One smooth glide down (~0.3 s), a slow one up.
             susLn_ += (susAim_ < susLn_ ? susGDownCoeff_ : susGUpCoeff_) * (susAim_ - susLn_);
             } else {
@@ -477,12 +498,14 @@ void Tank::controlTick(bool snap)
     // settings, on its turn (TENSION's allpass coefficient, which every
     // Spring gets on every tick, at once: it's cheap).
     if (snap || decay != keyDecay_ || tension != keyTension_ || tone != keyTone_ || attW_ != keyW_
-        || mode_ != keyMode_) {
+        || mode_ != keyMode_ || s3W_ != keyS3W_) {
         keyDecay_    = decay;
         keyTension_  = tension;
         keyTone_     = tone;
         keyW_        = attW_;
         keyMode_     = mode_;
+        keyS3W_      = s3W_;
+        if (springs3::kPaletteBuilt) updateShapes();
         baseAllpass_ = map::tensionCoefficient(tension);
         baseDirty_   = true;
         ++baseGen_;
@@ -520,12 +543,13 @@ void Tank::controlTick(bool snap)
     const size_t turn    = size_t(springTurn_);
     bool turnDone = true;
     for (size_t i = 0; i < springs_.size(); ++i) {
-        const float a = std::clamp(baseAllpass_ * modes::kDetune[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
+        const float a = std::clamp(baseAllpass_ * shape_[i].allpassCoeff + joltA * splash::kJoltSpringScale[i],
                                    -splash::kMaxAllpassMagnitude, splash::kMaxAllpassMagnitude);
         const bool waits = !heavyOk && i == turn
                         && (springs_[i].redesignPending()
                             || (springGen_[i] != baseGen_
-                                && (springTension_[i] != keyTension_ || springTone_[i] != keyTone_)));
+                                && (springTension_[i] != keyTension_ || springTone_[i] != keyTone_
+                                    || springS3W_[i] != keyS3W_)));
         if (!snap && (i != turn || waits)) {
             // Off turn: only the Jolt's (and TENSION's) allpass coefficient,
             // so a hit's pitch lurch reaches every Spring on the same tick
@@ -559,6 +583,23 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     base.loopDelaySeconds = map::tensionLoopDelaySeconds(tension);
     base.t60Seconds       = map::decayT60Seconds(decay);
     base.transitionHz     = map::tensionTransitionHz(tension);
+    const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+    if (springs3::kPaletteBuilt && s3W_ > 0.0f) {
+        // Position 3's voicing (Springs3Voicing.h): the whole tank longer or
+        // shorter and its Chirp lower or higher. L is capped at the loosest
+        // tank's before the per-Spring detune: the delay memory holds that
+        // (Spring.cpp), and the Springs stay detuned against each other. A
+        // shortened tank is floored (the pan tank's tight end).
+        const float l = base.loopDelaySeconds;
+        const float lv = std::clamp(l * v3.lengthScale, std::min(l, v3.minLoopSeconds), std::max(l, map::kLoopDelayMaxSeconds));
+        base.loopDelaySeconds = l + s3W_ * (lv - l);
+        base.transitionHz *= 1.0f + s3W_ * (v3.transitionScale - 1.0f);
+    }
+    // In series: the send into the second tank follows DECAY (Springs3Voicing.h).
+    if (springs3::kPaletteBuilt && v3.series > 0.0f)
+        s3SeriesSend_ = v3.seriesSend
+                      * std::exp(springs3::kSeriesExponent * std::log(springs3::kSeriesRefT60 * base.loopDelaySeconds
+                                                                      / (springs3::kSeriesRefLoop * base.t60Seconds)));
     base.allpassCoeff     = map::tensionCoefficient(tension);
     base.dampingHz        = map::toneDampingHz(tone);
     base.highPathLevel    = map::toneHighPathLevel(tone);
@@ -591,11 +632,13 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     susGDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
                                      / (sampleRate_ * std::max(drive::kSusGentleDownSeconds,
                                                                drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
-    activeStages_ = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
+    int cap = modes::kStageCap[size_t(mode_)];
+    if (springs3::kPaletteBuilt && mode_ == 2 && s3W_ > 0.0f) cap += int(std::lround(s3W_ * float(v3.stageCap - cap)));
+    activeStages_ = modes::tensionStages(tension, cap);
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
     // line their first echoes up on it (1 Spring = A alone, unchanged).
-    alignA_ = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
-                                        base.transitionHz * modes::kDetune[0].transition, activeStages_, sampleRate_);
+    alignA_ = modes::pickupChainSamples(base.allpassCoeff * shape_[0].allpassCoeff,
+                                        base.transitionHz * shape_[0].transition, activeStages_, sampleRate_);
 }
 
 void Tank::updateSpringSettings(size_t i)
@@ -603,11 +646,15 @@ void Tank::updateSpringSettings(size_t i)
     // g is designed from each Spring's own round trip, so the L/fC/a
     // detune changes pitch/texture, not tail length; the damping and
     // decay detune (SpringModes.h) make each Spring fade its own way.
+    // In position 3 the Spring's shape may be a voicing's (Springs3Voicing.h,
+    // shape_); otherwise it is SpringModes.h's detune.
+    const springs3::Shape& sh = shape_[i];
     SpringSettings s = baseSet_;
-    s.loopDelaySeconds *= modes::kDetune[i].loopDelay;
-    s.transitionHz     *= modes::kDetune[i].transition;
-    s.dampingHz        *= modes::kDetune[i].damping; // Spring.cpp clamps to 0.45 fs
-    s.t60Seconds       *= modes::kDetune[i].decay;
+    s.loopDelaySeconds *= sh.loopDelay;
+    s.transitionHz     *= sh.transition;
+    s.dampingHz        *= sh.damping; // Spring.cpp clamps to 0.45 fs
+    s.t60Seconds       *= sh.decay;
+    s.highPathLevel    *= sh.highPath;
     s.tapRatio          = modes::kPickupTap[i];
     s.stages            = modes::springActive(mode_, int(i)) ? activeStages_ : modes::kIdleStages;
     // Pickup: tapRatio lines the first echoes up along the delay line;
@@ -615,14 +662,53 @@ void Tank::updateSpringSettings(size_t i)
     // position"), plus a fixed trim. Uses a without the Jolt, so it
     // moves with TENSION and SPRINGS only, and the Spring glides to it.
     // (allpassCoeff itself, with the Jolt, goes on every tick: controlTick.)
-    const float aNoJolt = baseSet_.allpassCoeff * modes::kDetune[i].allpassCoeff;
-    s.tapOffsetSeconds  = modes::kPickupOffsetSeconds[i]
+    const float aNoJolt = baseSet_.allpassCoeff * sh.allpassCoeff;
+    s.tapOffsetSeconds  = sh.pickupOffset
                        + (alignA_ - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
     s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
     springSet_[i]       = s;
     springGen_[i]       = baseGen_;
     springTension_[i]   = keyTension_;
     springTone_[i]      = keyTone_;
+    springS3W_[i]       = keyS3W_;
+}
+
+modes::StereoMix Tank::modeMix(int mode) const
+{
+    return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday ? springs3::kVoicings[size_t(s3Voicing_)].mix
+                                                        : modes::stereoMix(mode);
+}
+
+float Tank::modeTrim(int mode) const
+{
+    return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday
+               ? modes::kModeTrim[size_t(mode)] * springs3::kVoicings[size_t(s3Voicing_)].trim
+               : modes::kModeTrim[size_t(mode)];
+}
+
+void Tank::updateShapes()
+{
+    // Today's detune at s3W_ = 0 (exactly: no arithmetic on it), the
+    // voicing's shape at 1, a straight blend while gliding.
+    const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+    s3InLp_.setCutoff(std::max(v3.inputLowCutHz, 1.0f), sampleRate_);
+    s3SendLp_.setCutoff(std::max(v3.seriesLowCutHz, 1.0f), sampleRate_);
+    for (size_t i = 0; i < shape_.size(); ++i) {
+        const springs3::Shape from = springs3::fromDetune(i);
+        if (s3W_ <= 0.0f) {
+            shape_[i] = from;
+            continue;
+        }
+        const springs3::Shape& to = v3.spring[i];
+        const float w = s3W_;
+        shape_[i] = {from.loopDelay + w * (to.loopDelay - from.loopDelay),
+                     from.transition + w * (to.transition - from.transition),
+                     from.allpassCoeff + w * (to.allpassCoeff - from.allpassCoeff),
+                     from.damping + w * (to.damping - from.damping),
+                     from.decay + w * (to.decay - from.decay),
+                     from.highPath + w * (to.highPath - from.highPath),
+                     from.pickupOffset + w * (to.pickupOffset - from.pickupOffset)};
+    }
 }
 
 void Tank::process(const float* inL, const float* inR, float* outL, float* outR, int numSamples)
@@ -646,7 +732,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
-    float wet[kMaxSprings][kControlInterval];
+    float wet[kMaxSprings][kControlInterval], send[kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
         if (tick_ == 0) controlTick(false); // fixed grid, independent of block size
@@ -725,6 +811,20 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
         transport_.process(tapSamples, trem, n);
         prof::mark(prof::kTilt);
+        // SPRINGS 3 "in series" (Springs3Voicing.h): Springs B and C hear
+        // Spring A's output instead of the input, faded in and out with the
+        // voicing's glide (per sample across the tick, so it never steps).
+        const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+        const bool  series     = springs3::kPaletteBuilt && (s3SeriesFrom_ > 0.0f || s3SeriesTo_ > 0.0f);
+        const float seriesSend = s3SeriesSend_;
+        const float seriesStep = (s3SeriesTo_ - s3SeriesFrom_) * (1.0f / float(kControlInterval));
+        const bool  sendCut    = series && v3.seriesLowCutHz > 0.0f;
+        // The voicing's low cut on every Spring's input (the pan tank),
+        // faded in and out with the glide.
+        if (springs3::kPaletteBuilt && v3.inputLowCutHz > 0.0f && (s3WFrom_ > 0.0f || s3W_ > 0.0f)) {
+            const float step = (s3W_ - s3WFrom_) * (1.0f / float(kControlInterval));
+            for (int i = 0; i < n; ++i) mono[i] -= (s3WFrom_ + step * float(tick_ + i)) * s3InLp_.process(mono[i]);
+        }
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
@@ -733,6 +833,17 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 lSamples[i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]); // B, C share A's at low WOBBLE
                 loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
                 high[i]     = mono[i] + splash::kClatterHigh * c[i];
+            }
+            if (series && s > 0) {
+                // Only the Loops: the high paths keep the input, so the fast
+                // high echoes aren't echoed twice (a 5-6 kHz ring on tight
+                // tanks at DECAY max). The send is low-cut once, for B and C.
+                if (s == 1)
+                    for (int i = 0; i < n; ++i) send[i] = sendCut ? wet[0][i] - s3SendLp_.process(wet[0][i]) : wet[0][i];
+                for (int i = 0; i < n; ++i) {
+                    const float k = s3SeriesFrom_ + seriesStep * float(tick_ + i);
+                    loopIn[i] = mono[i] + k * (seriesSend * send[i] - mono[i]) + splash::kClatterLoop * c[i];
+                }
             }
             springs_[s].process(loopIn, high, lFrac, lSamples, tapSamples, wet[s], n);
             prof::mark(prof::Section(prof::kSpringA + int(s)));

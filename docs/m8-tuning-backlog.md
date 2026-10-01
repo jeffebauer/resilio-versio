@@ -476,3 +476,50 @@ done
 python3 tools/review/make_review.py renders/proto_sustain_trim3 --no-level-match --title "Sustain trim round 3: A main, B limiter hold only, C round 2, D gentle"
 ```
 Listen for: the real pad (D: no dip and swell; at most one smooth settle if it grows into the limiter), the organ at TONE 0 / TENSION 1 (D vs A: as alive?), whether D's short limiter moments on arrivals sound driven (the hold should keep them clean; B is the hold with no trim at all), hits and skank identical. The level-match toggle separates level from character.
+
+## SPRINGS 3 palette (1 Oct 2026, branch `proto/springs3-palette`, not merged; ADR 0037 proposed)
+Owner: 2 vs 3 Springs barely differ; hear every idea for a more distinct position 3 (positions 1 and 2 unchanged). Brief: `docs/briefs/springs3-palette.md`. Five voicings behind the Renderer-only key `springs3_voicing` (`core/params/Springs3Voicing.h`, all numbers there; firmware and plugin play 0; the firmware builds don't contain the others). Checks: `host/tests/test_springs3.cpp` (new suite).
+
+**What each sounds like (by design and by the numbers; one click, CLEAN, other knobs default, DECAY noon):**
+
+| voicing | in plain words | T60 | tail centroid (share < 400 Hz) | L/R corr. | first echo |
+|---|---|---|---|---|---|
+| SPRINGS 2 | for contrast | 1.92 s | 810 Hz (40 %) | 0.15 | — |
+| 0 today | position 3 now: a third Spring in the centre, mostly density | 1.89 s | 767 Hz (41 %) | 0.09 | 25 ms |
+| 1 long tank | a big long-decay tank: a slower, deeper drip (echoes 1.5× further apart), a lower boing, darker, a quarter longer | 2.32 s | 653 Hz (46 %) | 0.23 | 39 ms |
+| 2 in series | two tanks in a row: every echo of the first tank goes through a short second one, so each drip is smeared and doubled, softer and more washed; reads shorter | 1.42 s | 780 Hz (38 %) | 0.31 | 27 ms |
+| 3 wide | three different Springs left / centre / right: the left one short and bright, the right one long and dark, so drips land and repeat at different times on each side | 1.83 s | 792 Hz (39 %) | 0.15 | 22 ms left, 25 ms right |
+| 4 pan tank | a small, bright, metallic tank: quick tight echoes, little bass, half the tail | 0.93 s | 1019 Hz (28 %) | 0.02 | 10 ms |
+
+At DECAY 0.85: T60 5.51 / 5.53 / (long, beyond the 8 s render) / 4.21 / 5.50 / 2.72 s.
+
+**Per voicing (SPRINGS 3):**
+
+| | memory | CPU, desktop worst case* | flash | M6 grid (90 Ringing + 18 Howl) | test_springs3 Ringing (36 cells, WOBBLE 0/½/1, TENSION 0/1) | mono (hits / stabs) |
+|---|---|---|---|---|---|---|
+| 0 today | 29,007 floats | 1291 ns/sample, 156 stages | — | 0 Ringing (worst 9.8), **1 steady tone**, Howl 18/18 | (passes, worst 8.6) | as `main` |
+| 1 long | same | +1.8 % | | 0, worst 5.9, Howl 18/18 | 0 of 36 | loss −0.30 / +0.13, notch +0.3 / −2.9 dB |
+| 2 series | same | +4.2 % | | 0 Ringing (worst 11.5), **4 steady tone**, Howl 18/18 | 0 Ringing; steady tone 2 (reported) | +0.86 / +0.04, +0.4 / −1.6 |
+| 3 wide | same | +2.2 % | | 0, worst 8.8, Howl 18/18 | 0 of 36 | −0.11 / −1.12, −2.4 / −3.5 |
+| 4 pan | same | −10.2 % (120 stages) | | 0, worst 9.4, Howl 18/18 | 0 of 36 (worst 8.1) | −0.23 / −0.11, −0.6 / −1.7 |
+
+\*KICKED, DRIVE 1, DECAY/TONE 1, TENSION 0, steady noise, best of 7 interleaved (this container; noise ±5 %: long and wide do the same work per sample as today). Flash (Cortex-M7, -O3, Tank.cpp): firmware +~0.3 KB with the palette compiled out (release was 126.5 of 128 KB); desktop/plugin +~3.9 KB. Not built as firmware here (libDaisy isn't checked out in the cloud): run `make -C firmware all-variants` on the Mac.
+
+**Also checked (all voicings):** SPRINGS 1 and 2 bit for bit as `main` (test_springs3, and `cmp` of Renderer output vs `main` on 02_hits / 04_skank, CLEAN and KICKED); switching 1/2 ↔ 3 mid-tail click-free (worst ratio ≤ 5.8, limit 10), held level step ≤ 2 dB, flipping every 5 ms click-free; level vs SPRINGS 2 within ±1.5 dB (K-weighted; plain power is in the test's output); stability at DECAY/DRIVE/SPLASH 1. Held sounds (pad, drone, organ, −6 dBFS peak, CLEAN DRIVE 0 SPLASH 0 DECAY noon, transposed −5…+4 semitones, TONE 0/½ × TENSION 0.8/1), limiter worst / mean (dB): today pad 2.66 / 1.36, drone 5.64 / 1.60, organ 1.50 / 0.88; every voicing within 1 dB (or 3 dB) of today's worst and 0.5 dB of its mean (long, wide, pan with an 8 dB trim ceiling).
+
+**Found on the way (`main`):** (1) one note is a lottery for the Sustain trim check: today's SPRINGS 3 meets `test_sustain_trim`'s bars on the C2 drone (2.3 dB) but pulls 7.9 dB on an F#2 drone (TONE 0, TENSION 1). (2) Today's SPRINGS 3 flags SPEC's steady tone on one M6 cell (06_noise_bursts, CLEAN, DECAY 1, TENSION 1, TONE 1; ~650 Hz). (3) `test_wobble` fails one check in this container on `main` and here alike (the brief: passes on the Mac).
+
+**Loosened (said plainly):** test_springs3 reports, but doesn't gate, the steady-tone flag for the series voicing (2 of its 36 cells; 4 of 90 on the M6 grid). Its Ringing is gated (0 flagged). It must be fixed before series could ship.
+
+**Listen (on the Mac, this branch's `build/rv_render`):**
+```bash
+git fetch origin proto/springs3-palette
+git worktree add .claude/worktrees/springs3 origin/proto/springs3-palette
+cd .claude/worktrees/springs3
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF && cmake --build build --target rv_render
+python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py   # gitignored WAVs
+tools/springs3_palette.sh            # -> renders/springs3_palette/index.html (~1.3 GB, a few minutes)
+```
+The script runs the four sweeps (`presets/sweeps/proto_springs3_{clicks,hits,skank,pad}.json`: CLEAN and KICKED × DECAY noon and 0.85, MIX 1, other knobs default) once per version with `--set springs=2` (A) or `--set springs3_voicing=0..4` (B–F), renders the Kick (`05_silence_for_kicks.wav` + `presets/sweeps/m7_kick.json`) the same way, and builds the page: rows = material × DECAY, columns = ATTITUDE, versions A–F switched in sync, level-matched by default. One sweep by hand: `build/rv_render --sweep presets/sweeps/proto_springs3_hits.json --out-dir renders/x --set springs3_voicing=2`.
+
+Listen for: is position 3 now clearly its own thing in each? Long: deeper/slower, or just TENSION turned looser? Series: thicker and washed, or only softer? Wide: drips bouncing, or a hole in the middle on headphones? Pan: metallic and fun, or thin? Flip SPRINGS 2 ↔ 3 in the plugin later: the long and pan tanks bend the pitch for a moment on the way in and out.

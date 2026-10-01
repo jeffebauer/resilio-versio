@@ -1,0 +1,41 @@
+# 0037 — SPRINGS 3: a more distinct third position (palette prototype)
+
+**Status:** Proposed, 1 Oct 2026. Prototype on branch `proto/springs3-palette` (not merged). The owner picks one voicing by ear on the listening page; the others are deleted. Brief: `docs/briefs/springs3-palette.md`. Numbers: `core/params/Springs3Voicing.h`; measurements: `docs/m8-tuning-backlog.md` "SPRINGS 3 palette".
+
+**Context:** Owner, 1 Oct 2026, on the plugin and the flashed module: "There isn't a very noticeable difference between 2 springs and 3 springs … I'm wondering how we could make the 3 spring option more distinct from the others, or even consider a different approach to that option to provide a broader sonic palette." Positions 1 and 2 stay as they are. Why it is subtle today: the three Springs are near copies (`SpringModes.h` `kDetune`: length, Chirp and steepness within ±8 %, each a step darker and shorter, ADR 0027), and position 3 only adds Spring C in the centre: mostly more density. One click at the defaults measures it: SPRINGS 2 and 3 have the same tail length (T60 1.92 / 1.89 s), nearly the same brightness (tail centroid 810 / 767 Hz) and width (L/R correlation 0.15 / 0.09).
+
+**Proposal:** a hidden, Renderer-only key `springs3_voicing` (`Tank::setSprings3Voicing`) picks what position 3 does. Default 0 (today) until the owner picks; the firmware and plugin play the default, and the firmware builds don't even contain the other voicings (`springs3::kPaletteBuilt`).
+
+| # | voicing | what changes (position 3 only) | one click at the defaults |
+|---|---|---|---|
+| 0 | today | nothing | T60 1.89 s, centroid 767 Hz, correlation 0.09 |
+| 1 | long tank | Springs 1.5× longer, Chirp lower (fC ×0.8), darker (damping ×0.7, fast high echoes ×0.6), tail ×1.25 | T60 2.32 s, centroid 653 Hz, correlation 0.23; first echo 39 ms (today 25) |
+| 2 | in series | Spring A's output (low-cut 120 Hz) feeds the Loops of B and C, the second tank; A centre, B/C left/right; B and C short (×0.3), A ×0.7 | T60 1.42 s, 780 Hz, 0.31: every echo smeared and doubled, a softer, shorter-reading tail |
+| 3 | wide | three different Springs left / centre / right: lengths 0.82 / 0.93 / 1.05, bright left, dark right | same length and colour as today (1.83 s, 792 Hz); the left Spring's first echo lands 3 ms early and repeats ~20 % faster than the right's |
+| 4 | pan tank | a short, bright, metallic small tank: ×0.42 long (≥ 20 ms), fC ×1.25, damping ×1.7, fast high echoes ×2.2, half the tail, 100 Hz low cut, 40 stages | T60 0.93 s, 1019 Hz (28 % under 400 Hz, today 41 %), 0.02; first echo 10 ms |
+
+Each voicing is a table row: per-Spring multipliers (length, Chirp, steepness, damping, tail, high path, pickup trim) replacing `kDetune` in position 3, a whole-tank length / Chirp scale, a stage cap, the series feed, a low cut, the output matrix and a level trim. The Tank glides into a voicing over 80 ms when SPRINGS goes to 3 (and back out), while the output mix fades over 20 ms as today (ADR 0003).
+
+**What holds (`test_springs3`, new; M6 grid via the Renderer):**
+- SPRINGS 1 and 2 are bit for bit as `main` in every voicing (hits and skank, every ATTITUDE; also `cmp` of Renderer output against `main`).
+- Switching 1/2 ↔ 3 mid-tail: no clicks in any voicing (worst ratio 5.8, limit 10), held level steps ≤ 2 dB. Voicings 1 and 4 change the Springs' length, so the live tail bends in pitch for a moment (slew-limited like DECAY, ADR 0012), never clicks.
+- Level vs SPRINGS 2 within ±1.5 dB (K-weighted loudness, BS.1770; plain power reported), mono safety (mono_loss ≥ −1.5 dB, mono_notch ≥ −6 dB), width (correlation < 0.5), stability at the extremes.
+- M6 grid at SPRINGS 3 (click + bursts, DECAY ¾ and 1, every ATTITUDE × TENSION × TONE, 90 Ringing + 18 Howl cells): long, wide, pan **0 flagged**, Howl 18/18. Series: Ringing 0 (worst 11.5 dB), Howl 18/18, **steady tone 4 cells** (see below). Today's position 3 on the same grid: 1 steady-tone cell (on `main` already).
+- Held sounds (ADR 0035): pad, drone and organ transposed −5…+4 semitones at the tight corners: worst limiter pull no more than 1 dB over today's position 3 (or ADR 0035's 3 dB moment), mean no more than 0.5 dB over. See "Sustain".
+- Memory: no delay memory added (pool 29,007 floats, firmware 30,000); the Tank object +152 bytes. CPU, desktop, SPRINGS 3 worst case (KICKED, DRIVE 1, DECAY/TONE 1, TENSION 0): today 1291 ns/sample; long +1.8 %, series +4.2 %, wide +2.2 %, pan −10.2 % (machine noise ±5 %; only series and pan do different work per sample). Flash (Cortex-M7, -O3): release firmware +~0.3 KB (palette compiled out); the plugin carries ~4 KB more.
+
+**Choices made along the way (and why):**
+- *Memory:* the long tank's length is capped at the loosest tank's before the detune, so it fits today's delay lines: full 1.5× up to about noon TENSION (69 → 103 ms), the cap (110 ms) looser than that, where it is only darker, lower and longer than position 2. The full range at loose TENSION needs ~12,000 more floats (48 KB) for three Loops. They can't go in DTCM (full); AXI SRAM has ~400 KB free and M3 run 2 measured the whole pool there at only ~1 point of CPU worse than DTCM (the Loops' delay lines are read twice per sample; the hot allpass rings would stay in DTCM). That is the plan if the owner picks the long tank and wants it longer at the loose end. SDRAM would work too but is slower and isn't needed.
+- *Series:* a resonance both tanks share comes out as the product of the two, so a long second tank held one note at DECAY max (M6: 10 cells, Ringing up to 21 dB). The second tank is now short (a smear on every echo, the doubled boing), detuned further from A, the send low-cut and DECAY-following; Ringing then passes everywhere. What's left is SPEC §4.10's steady tone (a peak 12 dB proud for > 2 s above −30 dBFS) on hot noise bursts at DECAY 1 on tight/noon tanks: 2.0–2.5 s against the 2 s bar; today's tank holds the same ~650 Hz peak ~1.5 s. **This check is loosened for the series voicing only, in `test_springs3` (reported, not gated).** If the owner picks series, this needs fixing before it ships (options: a lower series level at DECAY max, or a gentler tight end).
+- *Sustain:* how much a held note builds up depends on whether it lands on a mode, so one test pitch is a lottery: today's position 3 meets `test_sustain_trim`'s bars on its C2 drone (2.3 dB) but pulls 7.9 dB on an F#2 drone. So the voicings are judged against today over transposed held sounds. The long, wide and pan tanks build up more on some notes: their Sustain trim may cut up to 8 dB (5 today) before the limiter has to (ADR 0035's ceiling, raised for these voicings only, in position 3).
+- *Pan:* "a different tank type" is the pan (small, bright, metallic) rather than a plate-like shimmer: the short, bright tank is the same physics as ours (the Välimäki model is built on short springs) and costs less, while a plate needs a new structure (a feedback delay network: more code, CPU and flash) and wouldn't be a spring at all.
+
+**CPU plan (series):** its extra work is a low-cut and a blend per sample for two Springs (~10 operations of ~12,000 cycles per sample on the Versio), so +4 % on the desktop is mostly noise; if the owner picks it, confirm with an M3 run (run 13: 66 % peak against 70 %).
+
+**Consequences to watch (owner, by ear):** the pitch swoop when flipping into or out of the long and pan tanks; the long tank's first echo (40 ms, near the slapback the owner disliked at 45 ms, ADR 0029); the wide tank's hard left/right on headphones; whether series is "thicker and washed" or just "darker and longer".
+
+**Rejected:**
+- *A fourth Spring for series:* the brief asked for the Springs we have; a fourth would cost ~25 % more CPU at the worst case.
+- *Hard-panned wide (side 0.5):* one Spring per side peaked higher on held chords (the limiter worked harder); 0.42 keeps 8 % of the other side.
+- *Series with a long second tank (B, C ×0.6–0.75):* the products of shared resonances rang (above).
+- *Extra Loop drift for series:* to move a 650 Hz peak off its bin it would need ~1 % of L (a 17-cent chorus).
