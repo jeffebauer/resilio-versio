@@ -37,13 +37,13 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
 - [ ] **A fresh listening pass**, answering the design questions below where you have a view
 
-### 3. Big Knob TONE · experiment (next)
+### 3. Big Knob TONE · **merged** (2 Oct)
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
 - [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
 - [x] **Listened (1 Oct): v2** (steep + bump) nearly everywhere; v1 (no bump) won fully right on skank and KICKED hits; v3 only on pads at DRIVE 0.8. Your pick: **v2 with a gentler bump at the top** (+4.1 dB fully right instead of +5.6), built as v4
 - [x] **Check page listened (1 Oct):** the bump won on every drum-hit panel, no bump won on pads, clicks and KICKED skank. Your pick: **the bump on hits only** (v5). (Note: that page's "v4" was really v3, a bug Claude fixed; your conclusion holds)
 - [x] Top of the knob is now **800 Hz** (was 1.2 kHz): above ~850 Hz one KICKED setting (3 Springs, TENSION fully loose) rang. Every ringing/Howl test passes at 800 Hz. A deeper tank fix could reopen ~1.2 kHz later if you want it thinner
-- [ ] **Quick check (≈5 min):** open `renders/proto_big_knob3/index.html`: **v1** no bump, **v4** gentle bump everywhere, **v5 bump on hits only**, all with the 800 Hz top. If v5 sounds right (hits ringy, pads and chords clean), Claude merges it
+- [x] **Picked v5, the bump on hits only** (2 Oct). **Merged** (`c996a0a`, ADR 0036): TONE's right half is now the Big Knob. Not yet in Ableton or on the Versio: next plugin install / release
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
@@ -73,7 +73,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Big Knob:** merge v4 after your quick check. **SPRINGS 3** cloud session still running
+- **SPRINGS 3** cloud session still running. **Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
