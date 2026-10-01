@@ -18,6 +18,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
+### 0. CPU run 14 on the module (≈10 min, USB only) · ready
+- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
+- [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
+- Why: WOBBLE and the sustain trim have never been measured on the chip, and knob moves are the CPU peaks: the lead for the red input LEDs. This build is also the first with the engine built at power-up (frees flash): the run checks that on the hardware too
+- Then flash the release back (`dist/resilio_versio_release_1d18fce.bin`) and do §1
+
 ### 1. Flash the Versio and play (≈2 min + play)
 - [ ] Flash `dist/resilio_versio_release_1d18fce.bin` and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
@@ -59,7 +65,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Big Knob TONE page** once the cloud session is done (§3)
-- **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code, then **CPU run 14** on the module (WOBBLE + sustain trim unmeasured on the chip; also the lead for the red input LEDs). The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
+- **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again). The release firmware is fine (96.5 %), 
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
 
