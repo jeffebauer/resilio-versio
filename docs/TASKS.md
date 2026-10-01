@@ -39,7 +39,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3. Big Knob TONE · experiment (next)
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
-- [ ] **Start the cloud session:** "Follow docs/briefs/big-knob-tone.md on main. Work on branch proto/big-knob-tone and push it; don't merge to main." Then Claude renders the page here
+- [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
+- [ ] **Listen (≈10 min):** open `renders/proto_big_knob/index.html` (level-matched). **v0** today, **v1** steeper cut (reaching ~1.2 kHz fully right, telephone-thin), **v2** + the nasal bump, **v3** + ringier lows when driven (only differs in KICKED at DRIVE 0.8). Columns: TONE noon, ~1:30, 3 o'clock, fully right; rows: hits, skank, held chords, clicks × CLEAN / KICKED, and DRIVE 0.8. Pick a version, and say if fully right is too thin or the bump too nasal
+- Before shipping any pick: one test setting rings at TONE fully right (KICKED, DECAY ¾, 3 Springs, TENSION fully loose, noise bursts); Claude fixes it after your pick
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
@@ -64,7 +66,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Big Knob TONE page** once the cloud session is done (§3)
+- **Big Knob:** after your pick, fix the one ringing setting at TONE fully right, then merge
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
