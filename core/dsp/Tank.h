@@ -142,8 +142,10 @@
 #include "dsp/Spring.h"
 #include "dsp/Wobble.h"
 #include "params/ParamSpec.h"
+#include "params/DriveVoicing.h"
 #include "params/SpringModes.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 
@@ -248,6 +250,13 @@ public:
     // 1), so a test can measure something else on held sounds at the level
     // they had before it (e.g. WOBBLE's pitch). Default true.
     void setSustainTrimEnabled(bool on) { susOn_ = on; }
+    // Renderer / test hook (not a panel control, ADR 0035 round 3): which
+    // Sustain trim voicing (DriveVoicing.h: 0 = off, the limiter hold only;
+    // 1 = round 2; 2 = gentle). The firmware and plugin never call it
+    // (drive::kSusDefaultVoicing). Set it before rendering (it doesn't reset
+    // a trim already in effect).
+    void setSustainVoicing(int v) { susVoicing_ = std::clamp(v, 0, 2); }
+    int  sustainVoicing() const { return susVoicing_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -359,6 +368,12 @@ private:
     float susStillRatio_ = 0.5f, susKRelease_ = 0.0f, susOnsetDownCoeff_ = 0.0f, susSince_ = 0.0f;
     bool  susEngaged_ = false;
     bool  susOn_ = true; // test hook (setSustainTrimEnabled)
+    int   susVoicing_ = drive::kSusDefaultVoicing; // setSustainVoicing
+    // Round 3, the gentle voicing: its speeds and target; susGNeed_ is the
+    // trim (ln) the loudest swell met needs (a low-water mark) and its hold.
+    static constexpr float kSusNoNeed = 1.0e30f;
+    float susGDownCoeff_ = 0.0f, susGUpCoeff_ = 0.0f, susGLetGoCoeff_ = 0.0f, susGTarget_ = 1.0f, susGNeedRelease_ = 0.0f;
+    float susGNeed_ = kSusNoNeed, susGNeedHold_ = 0.0f;
     float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)

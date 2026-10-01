@@ -137,6 +137,12 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
         susTarget_     = drive::dbToGain(2.0f * drive::kSusTargetDb);
         susStillRatio_ = drive::dbToGain(-2.0f * drive::kSusStillDropDb);
         susKRelease_   = tick * drive::kSusKReleaseDbPerS * (2.0f * 2.302585093f / 20.0f); // ln of a power, per tick
+        // Round 3, the gentle voicing (DriveVoicing.h "Sustain trim voicings").
+        susGUpCoeff_    = 1.0f - std::exp(-tick / drive::kSusGentleUpSeconds);
+        susGLetGoCoeff_ = 1.0f - std::exp(-tick / drive::kSusGentleLetGoSeconds);
+        susGDownCoeff_  = 1.0f - std::exp(-tick / drive::kSusGentleDownSeconds);
+        susGTarget_     = drive::dbToGain(2.0f * drive::kSusGentleTargetDb);
+        susGNeedRelease_ = tick * drive::kSusGentleNeedReleaseDbPerS * (2.302585093f / 20.0f); // ln of a gain, per tick
     }
     clatDelay_ = std::clamp(int(splash::kClatterSideMs * 0.001f * sampleRate + 0.5f), 1, int(kClatterSideMax));
 
@@ -192,6 +198,8 @@ void Tank::reset()
     susGain_ = 1.0f;
     susFastPk_ = susStill_ = susKHold_ = susSince_ = 0.0f;
     susKHw_ = kSusNoK;
+    susGNeed_ = kSusNoNeed;
+    susGNeedHold_ = 0.0f;
     susEngaged_ = false;
     inTrimFrom_ = inTrimTo_ = excTrimTo_;
     clatBuf_.fill(0.0f);
@@ -328,7 +336,8 @@ void Tank::controlTick(bool snap)
         // or a fall reads the same on both sides of K.
         susFed_ = std::max(susFill_, susFed_ * susPeakRelease_ * susPeakRelease_);
         const float dt   = float(kControlInterval) / sampleRate_;
-        const bool  held = susOn_ && excBroad_ > excGate_ && susFast_ >= susHeldRatio_ * excBroad_;
+        const bool  gentle = susVoicing_ == drive::kSusVoicingGentle; // round 3
+        const bool  held = susOn_ && susVoicing_ != drive::kSusVoicingOff && excBroad_ > excGate_ && susFast_ >= susHeldRatio_ * excBroad_;
         // Held two ways: within kSusHeldDropDb of its slow level for
         // kSusOnsetSeconds, or sooner if its fast level has stayed within
         // kSusStillDropDb of its own peak since it began for kSusStillSeconds
@@ -357,6 +366,38 @@ void Tank::controlTick(bool snap)
                 susKHw_ = std::max(kLn, susKHw_ - susKRelease_);
             }
             susSince_ += dt;
+            if (gentle) {
+            // Round 3, gentle (DriveVoicing.h "Sustain trim voicings"): a
+            // safety net, not a level rider. `now` is the trim that would put
+            // the peaks on the target this tick (this tick's K: with no trim
+            // it reads the wet's real peaks); kept as a low-water mark, the
+            // deepest met, held kSusGentleNeedHoldSeconds, then let up at
+            // kSusGentleNeedReleaseDbPerS, so the trim answers the loudest
+            // swell and holds (no dip and swell). (Round 2's high-water K
+            // times a later, louder input read swells that never came.)
+            constexpr float kDb = 2.302585093f / 20.0f;
+            const float now = 0.5f * (std::log(susGTarget_ / std::max(susFillIn_, 1.0e-24f)) - kLn);
+            if (now <= susGNeed_) {
+                susGNeed_     = now;
+                susGNeedHold_ = drive::kSusGentleNeedHoldSeconds;
+            } else if (susGNeedHold_ > 0.0f) {
+                susGNeedHold_ -= dt;
+            } else {
+                susGNeed_ = std::min(now, susGNeed_ + susGNeedRelease_);
+            }
+            // That swell's peak untrimmed (dBFS) -> the cut: none up to
+            // kSusGentleFromDb (the limiter would hardly work), then a ramp
+            // that lands the peaks on the target by kSusGentleFullDb, then
+            // target-keeping, at most kSusGentleMaxDb. No step anywhere, so a
+            // sound that creeps up a little moves the trim a little.
+            constexpr float kFrom  = drive::kSusGentleFromDb, kFull = drive::kSusGentleFullDb, kTgt = drive::kSusGentleTargetDb;
+            constexpr float kSlope = (kFull - kTgt) / (kFull - kFrom);
+            const float peakDb = kTgt - susGNeed_ * (1.0f / kDb);
+            const float cutDb  = peakDb <= kFrom ? 0.0f : peakDb < kFull ? (peakDb - kFrom) * kSlope : peakDb - kTgt;
+            susAim_ = -std::min(cutDb, drive::kSusGentleMaxDb) * kDb;
+            // One smooth glide down (~0.3 s), a slow one up.
+            susLn_ += (susAim_ < susLn_ ? susGDownCoeff_ : susGUpCoeff_) * (susAim_ - susLn_);
+            } else {
             // Peaks^2 with a trim t = K x t^2 x (the input, as the tank fills
             // with it): t^2 = target^2 / (K x in). The input's fill-time
             // level: on a swell the trim keeps up.
@@ -376,12 +417,15 @@ void Tank::controlTick(bool snap)
             susAim_ = std::clamp(susAim_, -kMaxLn, 0.0f);
             const float down = settled ? susDownCoeff_ : std::max(susDownCoeff_, susOnsetDownCoeff_);
             susLn_ += (susAim_ < susLn_ ? down : susUpCoeff_) * (susAim_ - susLn_);
+          }
         } else {
-            susLn_ -= susLetGoCoeff_ * susLn_;
+            susLn_ -= (gentle ? susGLetGoCoeff_ : susLetGoCoeff_) * susLn_;
             if (susLn_ > -1.0e-6f) susLn_ = 0.0f; // let go all the way (and no denormals)
             susAim_   = 0.0f;
             susKHw_   = kSusNoK;
             susKHold_ = susSince_ = 0.0f;
+            susGNeed_ = kSusNoNeed;
+            susGNeedHold_ = 0.0f;
         }
         susGain_    = susLn_ < 0.0f ? std::exp(susLn_) : 1.0f;
         inTrimFrom_ = snap ? excTrimTo_ * susGain_ : inTrimTo_;
@@ -544,6 +588,9 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     susDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
                                     / (sampleRate_ * std::max(drive::kSusDownSeconds,
                                                               drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
+    susGDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
+                                     / (sampleRate_ * std::max(drive::kSusGentleDownSeconds,
+                                                               drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
     activeStages_ = modes::tensionStages(tension, modes::kStageCap[size_t(mode_)]);
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
     // line their first echoes up on it (1 Spring = A alone, unchanged).
