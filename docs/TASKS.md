@@ -2,87 +2,58 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 1 Oct 2026 (session 5: SPLASH/DRIVE merged, release firmware ready; your bipolar WOBBLE notes in)
+**Last updated:** 1 Oct 2026, evening (session 5: SPLASH/DRIVE, bipolar WOBBLE, sustain trim, panel interface and the `--set` fix all merged; release published)
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | **Done.** Run 12: 61 % average, 63 % peak (target now **70 %**, your call 30 Sep: ~7 points for new sound) |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §3 |
-| M8 sound | **In progress:** SPLASH/DRIVE merged (1 Oct); bipolar WOBBLE being toned down from your notes; Wellspring fit next |
-| M2 Ableton check | After the next plugin install |
-| M9 polish | LEDs done; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`) |
+| M0 hardware · M3 CPU | **Done.** Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. A new run is due for bipolar WOBBLE + the sustain trim (small costs) once the profile firmware fits again |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §1 |
+| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE and the sustain trim merged (1 Oct). Next: Big Knob TONE experiment; the Wellspring fit round |
+| M2 Ableton check | Ready: the plugin is installed |
+| M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`; need updating for the new SPLASH/DRIVE/WOBBLE) |
 
 **Plugin in Ableton:** `1d18fce` (installed 1 Oct, evening: the gentle sustain trim + limiter hold, bipolar WOBBLE, the panel interface; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
 
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
+
 ## Now (suggested order)
 
-### 1. SPLASH + DRIVE build · being tuned from your notes
-- [x] Listened (30 Sep): **the new build won every panel** (hits, skank, quiet send); DRIVE at half on the tail sweep. Remark: DRIVEN and KICKED hits and skank a bit hot/distorted; DRIVEN should sit between CLEAN and KICKED so intensity steps up evenly
-- [x] Listened to the tuned build (30 Sep): **C everywhere** (more balanced) **except KICKED skank**, which sounded hotter and brighter (it had the "dramatic" clang). Fix: KICKED chords go back to your "clear" clang, drums keep the bigger one
-- [x] **D approved** (30 Sep): "sounding great" in every panel. Last note: DRIVE 0.8 still feels hot with 20 % left, so full DRIVE would only be unusable distortion. Being stretched: today's 0.8 grit arrives at about full DRIVE, everything below milder (splash sensitivity and the +6 dB level unchanged)
-- [x] **DRIVE stretch picked** (1 Oct): "as far as the rule allows": full DRIVE = D's 0.92 grit (0.8 plays like 0.75), noon unchanged. Going all the way (full = D's 0.8) would have made KICKED at full DRIVE less than clearly cranked (ADR 0022)
-- [x] **Merged** (1 Oct, `b3e5ac3`): all 16 test suites pass. Release firmware `dist/resilio_versio_release_b3e5ac3.bin`
-- Your round 4 picks (30 Sep), all at the "clear" strength: **every hit clangs the springs** (C2) in all ATTITUDEs; in DRIVEN and KICKED **short, sharp hits also bite** (T2); chords get the clang, not the bite
-- Your DRIVE decisions (30 Sep): DRIVE becomes the **INPUT** knob; **partly louder** when pushed (the tail grows a few dB across the knob, so an envelope into DRIVE's CV makes a gentle throw); DRIVE drives only the **input and output** stages, so it no longer shortens DRIVEN/KICKED tails (measured: KICKED lost ~5 dB of tail at 0.6 s at DRIVE max)
-- [x] **Run 13** (30 Sep, the build you heard): worst case 63.4 % average, **66.3 % peak** (highest anywhere 66.5 %), all under the 70 % target; the new SPLASH costs ~2.3 points. ~3.5 points left for the smooth-arc smear, the Wellspring-fit sweep and bipolar WOBBLE
-- [ ] Flash `dist/resilio_versio_release_1d18fce.bin` (replaces `00f17b5`: adds the sustain trim for pads) and do the click check (§3). Then play your pad again: the output LEDs should stay out of red at your old settings
-- [x] Plugin `b3e5ac3` installed (1 Oct); rescan in Ableton, then the M2 Ableton check below
-
-### 1b. Pads clip the output · being fixed (cloud session)
-- [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
-- [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
-- [x] Built in the cloud (1 Oct): held sounds no longer reach the limiter at your settings (synthetic pad, drone, organ); hits, skank and the Kick identical to today; the Howl untouched
-- [x] **Listened (1 Oct): B (the trim) in every panel**: hits, skank, synthetic pad and drone, and your real pad at both settings, 2 and 3 Springs
-- [x] Limiter hold (30 ms) added on your request (1 Oct)
-- Merge held back (1 Oct): with the new WOBBLE, two of the trim's checks failed (a held organ's first note touches the limiter; the trim moves 2.9 dB on a drone, limit 2). **Your pick:** WOBBLE now, the trim retuned in the cloud
-- [x] Retuned in the cloud (1 Oct): held sounds stay clear of the limiter at the default WOBBLE and right of noon (your real pad too, at every page setting); hits and skank bit-for-bit identical. Left of WOBBLE noon (random drift swells the tank on its own) held sounds can still touch the limiter by ~1 dB
-- [x] **Confirm listen (1 Oct):** B on hits, skank, synthetic pad and drone; **A on your real pad everywhere and on most organ cells**: the trim's dip and swell is audible, and the organ feels less alive. You asked for a middle ground that keeps things characterful
-- [x] Gentle safety-net trim built in the cloud (1 Oct): within 0–1.8 dB of today's level on held sounds; the limiter takes only short pulls (≤ ~2.5 dB, kept clean by the hold); hits and skank identical
-- [x] **Listened (1 Oct): D, the gentle trim.** Merged (`1d18fce`), installed, and in the release below
-- [x] **Release published** (private, on your repo): https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce — a zip with the universal plugin (VST3 + AU, Apple Silicon + Intel, macOS 12+), the Versio firmware and a read-me with install steps for both. Download it there to send to friends. Next time: `tools/make_release.sh --publish`
-- Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
-
- · next round after the SPLASH/DRIVE merge
-- [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
-- Next round (local, one agent, after you OK the SPLASH/DRIVE build): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
-
-### 2b. Bipolar WOBBLE · **merged** (1 Oct, `00f17b5`)
-- [x] Listened (1 Oct): **you like the bipolar control.** Tone down the top end of each side a little (there's no speed knob, so the amounts have to be right). Right side: more like a **vibrato or flutter** (faster than today's slow 0.6–1.4 Hz sway). Left side stays wow + flutter. Also: ideas from the Wear & Tear manual, Claude's notes in the chat and the backlog
-- [x] **Listened (1 Oct):** B on skank everywhere, C on held tones at both end stops. Shipped as **D**: B's middles, end stops halfway between B and C. Page `renders/proto_bipolar_wobble2/index.html`. **A** round 1, **B** gentle (tops ×0.75), **C** more (×0.55), at WOBBLE fully left, 9 o'clock, noon, 3 o'clock, fully right, on held tones and skank. B and C: the right side is a vibrato (1.5 → 5.5 Hz), the left has a faint tape tremolo and a flutter whose speed wanders with the wow. Pick B, C or between. Is the right side vibrato-like enough, and is 3 o'clock enough? Is the tremolo heard as tape, or too subtle?
-- Round 1 page (for reference): open `renders/proto_bipolar_wobble/index.html`: **A** today vs **B** bipolar at WOBBLE fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock, fully right (sine LFO), on held tones and skank. Does the left side sound like tape that never repeats? Is noon still? Is each step audible? Keep the pure sine or the slightly drifting one on the right?
-
-### 3. Play the Versio
-- **With every new release firmware:** a quick click check on the module (≈2 min): 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is now 70 %, so this is the safety net)
+### 1. Flash the Versio and play (≈2 min + play)
+- [ ] Flash `dist/resilio_versio_release_1d18fce.bin` and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
+- [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
-- Tip while SPLASH is today's version: SPLASH **near max** and the SoundStage's **main Level** up until the loudest hits just touch **amber** on the input LEDs (today's SPLASH fades out on quiet sends; round 4 fixes that)
-- [ ] Optional, when convenient: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
+- [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
-### 4. Plugin laid out like the panel · **installed** (1 Oct, `fb930b7`)
-- Knobs and switches where the Versio has them, the KICK button, and the four LED meters (same colours and red warnings as the module). Same parameters, so your sets and automation keep working. Window size 1× / 1.5× / 2× is remembered with the set
-- [ ] **Look at it in Ableton (≈5 min):** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module (green → amber, red on clipping; a hot pad lights the output red today, until the sustain trim lands)? Does KICK fire? Tell Claude or send a screenshot of anything off
-
-## After the next plugin install
+### 2. The plugin in Ableton (≈20 min)
+- [ ] **Look at the panel interface:** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module? Does KICK fire? Tell Claude or send a screenshot of anything off
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
-- [ ] **A fresh listening pass** in the plugin, answering the open design questions below where you have a view. (It replaces the old per-milestone listening pages, which judged builds that no longer exist)
+- [ ] **A fresh listening pass**, answering the design questions below where you have a view
+
+### 3. Big Knob TONE · experiment (next)
+- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Claude prepares a cloud brief and a listening page
+
+### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
+- [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
+- Next round (one local agent, best after your weekly usage resets): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
+
+### Friends' feedback
+- When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
 - [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
-- [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The "Big Knob" idea below would change this side)
-- [x] **Bright vs dark material:** answered by the pad (1 Oct): even it out on held sounds (§1b)
+- [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The Big Knob experiment, §3, will answer this one by ear)
 
 ## Later
-- **Bipolar WOBBLE (your idea, 30 Sep; next prototype after the SPLASH/DRIVE build):** left of noon = smooth random wow + flutter (never repeats), noon = still (small dead zone for the hardware knob), right of noon = sine LFO strength up to today's wild top (you keep the extreme ceiling). Today the top end is 90 % one steady sine, which is why it can sound same-same. CPU ≈ +0.1–0.2 %. Touches ADR 0008, SPEC's WOBBLE row, WOBBLE tests; the random side includes your pick from the hanging-note page (springs drift together at low amounts), and each side must be clearly audible across its range (you found 9 o'clock and noon nearly the same today)
-- **Big Knob TONE:** TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump; cheap on CPU. After SPLASH and the tank work ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8)
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
+- **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Now:** bipolar WOBBLE round 2 (gentler tops, vibrato on the right); then the next Wellspring-fit round (thin arcs, fast high echoes, compared at SPLASH 0)
-- **Found by SPLASH round 4:** without the noise burst, one tight, bright KICKED setting rings at 3.9 kHz (the burst was hiding it). The tight-tank fix (your listen: subtle, keep it gentle) ships with the new SPLASH
-- **First-hit level jump:** the level trim before the springs starts neutral and takes ~0.3 s to settle, so the first loud, bass-heavy hit after power-up peaks ~4 dB hot (your red output LEDs on the first skank stab). Fix: fast down (~20 ms), slow up
-- **After your picks:** build SPLASH (DRIVE as INPUT) and the tank changes into the Core, with ADRs and tests re-tuned to the new sound; then a CPU run on the Versio and the plugin install
-- Small stale spots in docs and code comments (DRIVE-curve percentages, old SPEC sections): folded into the next code change that touches them
+- **Big Knob TONE brief** (§3), then the page
+- **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
+- **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
+- **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
 
 ## What to send Claude
 - **Recordings:** say they're done and where (the Ableton project). Claude copies, renames and analyses them; the WAVs stay on your Mac, never in git
@@ -98,6 +69,12 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 1 Oct 2026: **Released** `1d18fce` as a GitHub Release (universal plugin, firmware, read-me) and installed it in Ableton; `tools/make_release.sh` makes the next one
+- 1 Oct 2026: **Sustain trim merged** (ADR 0035, your pick D after three rounds): a gentle safety net on held sounds (pads, drones, organs) so they rarely reach the output limiter, plus a 30 ms limiter hold so light limiting sounds clean, not driven. Hits and skank unchanged. Found by you on the Versio: a low-mid pad lit the output red and sounded overdriven
+- 1 Oct 2026: **Plugin panel interface** (knobs and switches at the Versio's positions, KICK button, LED meters) merged and installed; a universal share build sent to a friend
+- 1 Oct 2026: **Bipolar WOBBLE merged** (ADR 0034, voicing D: B's middles, end stops halfway to C; right side a vibrato, left wow + flutter with a faint tape tremolo)
+- 1 Oct 2026: **SPLASH/DRIVE build merged** (ADR 0032, 0033; your D + the DRIVE stretch "as far as the rule allows")
+- 1 Oct 2026: **Renderer `--set` fix merged**: switch labels work (`attitude=KICKED`), wrong values are rejected
 - 30 Sep 2026: **Design answers:** Kick at MIX fully down stays silent (it's part of the reverb); ATTITUDE flip while Howling at max DECAY calms into the long tail (already how it behaves; ADR 0018 wording corrected); TENSION bending the pitch of a ringing tail stays (you like it)
 - 30 Sep 2026: **Smooth arc listened:** still way off the Wellspring (its pew on clicks, rounder, smoother). Measured the cause (a 2–5.5 kHz sweep we lack); started fitting our tank to your recording
 - 30 Sep 2026: **CPU target raised to 70 % peak** (your call; ADR 0030 amendment, SPEC v1.0.20): room for the new sound, with a click check on the module for every release
