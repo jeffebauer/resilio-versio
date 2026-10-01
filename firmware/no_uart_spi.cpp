@@ -64,3 +64,18 @@ extern "C" void UART7_IRQHandler() {}
 extern "C" void UART8_IRQHandler() {}
 extern "C" void LPUART1_IRQHandler() {}
 #endif
+
+// USB host (1 Oct 2026, flash): libDaisy's OTG_HS IRQ handlers
+// (src/sys/system.cpp) reference the host handle hhcd_USB_OTG_HS (defined
+// in usbh_conf.o) and HAL_HCD_IRQHandler, which drags in the whole USB host
+// stack (~3 KB: usbh_core, usbh_ctlreq, usbh_ioreq, hal_hcd). The Versio
+// never runs as a USB host, so the handle's Instance stays null and those
+// calls never happen (each is guarded by `if (hhcd_USB_OTG_HS.Instance)`).
+// A zeroed handle and an empty handler here keep the guard's meaning and
+// let the linker leave the host stack out. The USB device path (serial in
+// the profile build, firmware updates) is untouched.
+#include "stm32h7xx_hal.h"
+extern "C" {
+HCD_HandleTypeDef hhcd_USB_OTG_HS;
+void HAL_HCD_IRQHandler(HCD_HandleTypeDef*) {}
+}

@@ -20,12 +20,15 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // prototype pages to compare voicings in one sweep: "wobble_voicing" (0 = A,
 // 1 = B, 2 = C, 3 = D; core/params/WobbleVoicing.h, ADR 0034 round 2) and
 // "sustain_voicing" (0 = off, the limiter hold only; 1 = round 2; 2 = gentle;
-// core/params/DriveVoicing.h, ADR 0035 round 3) and "springs3_voicing"
-// (what SPRINGS position 3 does: 0 = today, 1 = long tank, 2 = in series,
-// 3 = wide, 4 = pan tank; core/params/Springs3Voicing.h, ADR 0037 proposed).
-// Returns false if `key` isn't one.
+// core/params/DriveVoicing.h, ADR 0035 round 3), "tone_voicing" (0 =
+// today, 1 = steep, 2 = steep + bump, 3 = + ringier when driven; the Big
+// Knob, DriveVoicing.h, ADR 0036) and "springs3_voicing" (what SPRINGS
+// position 3 does: 0 = today, 1 = long tank, 2 = in series, 3 = wide,
+// 4 = pan tank, 5-10 round 2; core/params/Springs3Voicing.h, ADR 0037
+// proposed). Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
+inline constexpr const char* kToneVoicingKey     = "tone_voicing";
 inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"

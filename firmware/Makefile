@@ -38,10 +38,12 @@ else
   CPP_SOURCES = main.cpp no_uart_spi.cpp $(wildcard ../core/dsp/*.cpp)
 endif
 ifeq ($(MODE),profile)
-  CPP_SOURCES += m3_bench.cpp # micro-benchmarks, printed with the corners
+  # (m3_bench.cpp's micro-benchmarks dropped 1 Oct 2026 for flash; the file stays for reference)
 endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)
+# Renderer-only sound voicings compile out (core/dsp/Drive.h RV_FIXED_VOICINGS).
+C_DEFS     += -DRV_FIXED_VOICINGS
 # No fused multiply-add (M3, 29 Sep 2026). On the M7, GCC's vfma accumulates
 # into its destination, so every a*b+c becomes vmov/vfma/vmov and each one
 # waits for the last: ~9 cycles per multiply-add, even for independent ones

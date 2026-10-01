@@ -230,8 +230,22 @@ public:
         split_.reset();
         ceiling_.reset();
         lowCut_.reset();
+        order_.reset();
+        lowCutB_.reset();
+        orderB_.reset();
+        hit_.snap(0.0f);
     }
     void set(float tone, bool snap, int interval);
+    // Big Knob voicing (DriveVoicing.h "Big Knob TONE voicings"; Renderer
+    // only, the firmware and plugin keep drive::kToneDefaultVoicing).
+    void setVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        voicing_ = v;
+#endif
+        tone_    = -1.0f; // redesign on the next set()
+    }
+    int voicing() const { return voicing_; }
     float process(float x)
     {
         const float lo = split_.process(x);
@@ -243,14 +257,34 @@ public:
         const float g = hi_.next();
         const float extra = (g - 1.0f) * (boost_ ? ceiling_.process(hi) : hi);
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
-        return lowCut_.process(lo * lo_.next() + hi + extra); // bright-side low cut (drive::toneLowCutHz)
+        const float in = lo * lo_.next() + hi + extra;
+        const float y  = lowCut_.process(in); // bright-side low cut (drive::bigKnob)
+        // Big Knob's 1st-order section: k 0 (noon, CCW, voicing 0) passes y
+        // through exactly.
+        const float k  = k_.next();
+        const float out = y - k * order_.process(y);
+        if (voicing_ != drive::kToneVoicingHits) return out;
+        // Voicing 5: the gentle bump's path, blended in while a hit lasts.
+        const float yb = lowCutB_.process(in);
+        const float ob = yb - k * orderB_.process(yb);
+        return out + hit_.next() * (ob - out);
     }
+    // Voicing 5: how much of the bumped path (0..1), once per control tick.
+    void setHitBlend(float target, int interval) { hit_.aim(target, interval); }
 
 private:
-    OnePoleLowpass split_, ceiling_;
-    Biquad lowCut_;
+    OnePoleLowpass split_, ceiling_, order_, orderB_;
+    Biquad lowCut_, lowCutB_;
     float sampleRate_ = 48000.0f;
-    Ramp lo_, hi_;
+    Ramp lo_, hi_, k_, hit_;
+#ifdef RV_FIXED_VOICINGS
+    // Firmware (firmware/Makefile): only the default voicing exists, so the
+    // compiler drops the Renderer-only ones (flash, ADR 0011).
+    static constexpr int voicing_ = drive::kToneDefaultVoicing;
+#else
+    int voicing_ = drive::kToneDefaultVoicing;
+#endif
+    float kTarget_ = 0.0f;
     bool boost_ = false;
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;
 };

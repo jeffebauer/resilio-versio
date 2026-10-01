@@ -60,10 +60,14 @@ void Wobble::setAmount(float wobble, float depthScale)
     flutterStep_ = depths_.flutterHz * every;
 }
 
-void Wobble::setVoicing(int voicing)
+void Wobble::setVoicing([[maybe_unused]] int voicing)
 {
+#ifdef RV_FIXED_VOICINGS
+    return; // firmware: only the default exists
+#else
     if (voicing == voicing_) return;
     voicing_ = voicing;
+#endif
     const float w = amount_ < 0.0f ? wobble::kNoon : amount_, sc = depthScale_ < 0.0f ? 1.0f : depthScale_;
     amount_ = -1.0f; // force a re-map
     setAmount(w, sc);

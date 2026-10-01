@@ -18,26 +18,43 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
+### 0. CPU run 14 on the module (≈10 min, USB only) · ready
+- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
+- [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
+- Why: WOBBLE and the sustain trim have never been measured on the chip, and knob moves are the CPU peaks: the lead for the red input LEDs. This build is also the first with the engine built at power-up (frees flash): the run checks that on the hardware too
+- Then flash the release back (`dist/resilio_versio_release_1d18fce.bin`) and do §1
+
 ### 1. Flash the Versio and play (≈2 min + play)
 - [ ] Flash `dist/resilio_versio_release_1d18fce.bin` and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
+- [ ] **Input LEDs flash red while moving knobs** (your note, 1 Oct; looped sample, LEDs otherwise green/amber, never red untouched). Next time it happens, please note: (1) is the red a brief flicker or held about half a second (a real warning is held 0.5 s)? (2) any click or dropout in the sound at the same moment? (3) which knob(s): DECAY, TENSION and TONE make the module work hardest; MIX, WOBBLE, DRIVE, SPLASH less. Claude's lead: knob moves are the CPU peaks, and this release adds WOBBLE and the sustain trim without a CPU run on the module (the CPU-test firmware is over flash). Next: trim it so it fits, then CPU run 14
+
 ### 2. The plugin in Ableton (≈20 min)
 - [ ] **Look at the panel interface:** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module? Does KICK fire? Tell Claude or send a screenshot of anything off
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
 - [ ] **A fresh listening pass**, answering the design questions below where you have a view
 
-### 3. Big Knob TONE · experiment (next)
+### 3. Big Knob TONE · **merged** (2 Oct)
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
-- [ ] **Start the cloud session:** "Follow docs/briefs/big-knob-tone.md on main. Work on branch proto/big-knob-tone and push it; don't merge to main." Then Claude renders the page here
+- [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
+- [x] **Listened (1 Oct): v2** (steep + bump) nearly everywhere; v1 (no bump) won fully right on skank and KICKED hits; v3 only on pads at DRIVE 0.8. Your pick: **v2 with a gentler bump at the top** (+4.1 dB fully right instead of +5.6), built as v4
+- [x] **Check page listened (1 Oct):** the bump won on every drum-hit panel, no bump won on pads, clicks and KICKED skank. Your pick: **the bump on hits only** (v5). (Note: that page's "v4" was really v3, a bug Claude fixed; your conclusion holds)
+- [x] Top of the knob is now **800 Hz** (was 1.2 kHz): above ~850 Hz one KICKED setting (3 Springs, TENSION fully loose) rang. Every ringing/Howl test passes at 800 Hz. A deeper tank fix could reopen ~1.2 kHz later if you want it thinner
+- [x] **Picked v5, the bump on hits only** (2 Oct). **Merged** (`c996a0a`, ADR 0036): TONE's right half is now the Big Knob. Not yet in Ableton or on the Versio: next plugin install / release
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
-- [x] **SPRINGS 3 session** (1 Oct, cloud): built on branch `proto/springs3-palette` (not merged; ADR 0037 proposed). Five versions of position 3: today, a long big tank, tanks in series, wide left/centre/right, a small bright "pan" tank. Positions 1 and 2 unchanged
-- [ ] **Listen to the SPRINGS 3 page and pick one** (≈20 min): render it on the Mac with the commands in [m8-tuning-backlog.md](m8-tuning-backlog.md) "SPRINGS 3 palette" (one script, a few minutes), open `renders/springs3_palette/index.html`. Versions: A SPRINGS 2 · B today's 3 · C long tank · D in series · E wide · F pan tank. Questions: is position 3 now clearly its own thing? Which one (or none)? Note: series still trips one safety check at DECAY max and needs work if you pick it
-- [ ] **Start the SPLASH session:** "Follow docs/briefs/splash-stronger.md on main. Work on branch proto/splash-stronger and push it; don't merge to main." Four versions: today, stronger top, stronger + independent of DRIVE, and a bolder one
+- [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
+- [ ] **Listen to SPRINGS 3 (≈15 min):** open `renders/springs3_palette/index.html` (level-matched). **A** SPRINGS 2 for contrast, **B** position 3 today, **C** long big tank (slower, deeper drip, lower boing, darker, a quarter longer), **D** tanks in series (each drip smeared and doubled, washed), **E** wide (short bright spring left, long dark one right: drips land at different times on each side; try headphones), **F** pan tank (small, bright, metallic, quick echoes, half the tail). Rows: clicks, hits, skank, pad, Kick × DECAY noon / 0.85; columns CLEAN / KICKED. Is position 3 now its own thing? Which one?
+- [x] SPLASH built in the cloud (1 Oct)
+- [ ] **Listen to SPLASH (≈10 min):** open `renders/proto_splash_stronger/index.html` (not level-matched: the splash's size is the point). **A** today, **B** a much bigger top quarter (about 3× the clang at full), **C** B + independent of DRIVE (with DRIVE down, SPLASH works as if DRIVE were at 0.8), **D** C, bolder (the clang reaches lower into each hit's body and rings longer). Rows: hits, skank, clicks × DRIVE 0 / 0.8 × SPLASH steps; columns CLEAN / KICKED. A ceiling keeps a big splash off the output limiter, never below today's splash
+
+### 3c. Today's sound next to your Wellspring (≈10 min)
+- [ ] Open `renders/wellspring_fit2/page/index.html`. Columns: **A** default settings, then **B / C / D**, the knob settings that measure closest to your Wellspring with 1 / 2 / 3 Springs (TENSION ~7/8, TONE ~2:30, DECAY ~2/3, CLEAN). Each panel has SPLASH 0 and 0.3; use **Compare with** to play your Wellspring take (clicks, hits, skank) next to it. How close is it now, and what's the biggest difference you hear?
+- Measured: echo spacing now matches (within 3–4 ms); the tail's tonal balance is ~3 dB off; our tails are shorter at both ends (lows 3.4 vs 4.7 s, 4 kHz 1.1 vs 1.9 s)
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
@@ -57,9 +74,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **SPRINGS 3:** once you pick, Claude ships that one voicing (and, for the long tank, decides whether its loosest setting should get longer: ~48 KB more delay memory, in the module's larger RAM)
-- **Big Knob TONE page** once the cloud session is done (§3)
-- **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
+**Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
+- **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
 
