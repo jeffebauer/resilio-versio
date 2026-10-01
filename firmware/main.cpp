@@ -219,7 +219,6 @@ int main()
 
 #include "util/CpuLoadMeter.h"
 #include "dsp/ProfileHook.h"
-#include "m3_bench.h"
 
 #include <cstdint>
 #include <cstring>
@@ -305,7 +304,6 @@ int FracToPercentTenths(float frac)
 }
 
 constexpr size_t kLineBufSize = 640; // CORNER + SPLIT (+ BENCH) lines, sent in one transmit
-m3bench::Results gBench{};
 
 void TransmitLine(const char* buf, size_t len)
 {
@@ -517,7 +515,6 @@ int main()
 
     gTankPrepared = PrepareTank();
     StartCycleCounter();
-    gBench = m3bench::Run(); // before audio starts: nothing else competing
     rv::prof::markHook = ProfMark;
     BuildCornerTable();
     ApplyCorner(0);
@@ -600,17 +597,16 @@ int main()
             }
             AppendStr(p, end, "\r\n");
             if (r.index == 0) { // once per pass through the corners
-                const m3bench::Results& b = gBench;
+                // Sanity check that the chip runs as configured (the
+                // multiply-add micro-benchmarks of runs 5-12, m3_bench.cpp,
+                // were dropped for flash on 1 Oct 2026: they had answered
+                // their question).
                 AppendStr(p, end, "BENCH clock ");
-                AppendUInt(p, end, unsigned(b.clockHz / 1000000u));
+                AppendUInt(p, end, unsigned(SystemCoreClock / 1000000u));
                 AppendStr(p, end, " MHz icache ");
-                AppendStr(p, end, b.icache ? "on" : "OFF");
+                AppendStr(p, end, (SCB->CCR & SCB_CCR_IC_Msk) ? "on" : "OFF");
                 AppendStr(p, end, " dcache ");
-                AppendStr(p, end, b.dcache ? "on" : "OFF");
-                AppendStr(p, end, " | mul-add latency");
-                AppendFixed1(p, end, b.fmaLatency, 5);
-                AppendStr(p, end, " throughput");
-                AppendFixed1(p, end, b.fmaThroughput, 5);
+                AppendStr(p, end, (SCB->CCR & SCB_CCR_DC_Msk) ? "on" : "OFF");
                 AppendStr(p, end, "\r\n");
             }
             TransmitLine(buf, size_t(p - buf));

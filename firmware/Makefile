@@ -38,7 +38,7 @@ else
   CPP_SOURCES = main.cpp no_uart_spi.cpp $(wildcard ../core/dsp/*.cpp)
 endif
 ifeq ($(MODE),profile)
-  CPP_SOURCES += m3_bench.cpp # micro-benchmarks, printed with the corners
+  # (m3_bench.cpp's micro-benchmarks dropped 1 Oct 2026 for flash; the file stays for reference)
 endif
 C_INCLUDES += -I../core
 C_DEFS     += $(MODE_DEFS) -DRV_PROFILE_BLOCK=$(PROFILE_BLOCK)

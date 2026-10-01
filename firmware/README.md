@@ -42,7 +42,7 @@ shift slightly as DSP work continues):
 
 - release 121,944 B (93%), ≈9 KB headroom (1 Oct 2026: the Tank is built at boot instead of copied from flash, −4.6 KB; was 126,528 B with bipolar WOBBLE + the sustain trim)
 - m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 130,332 B (99%, 0.7 KB headroom; fits again since the Tank is built at boot). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (bipolar WOBBLE + the sustain trim + limiter hold, first chip run since run 13). Trim test-only code (m3_bench, the BENCH line) before adding anything profile-only
+- profile 129,948 B (99%, 1.1 KB headroom; fits again since the Tank is built at boot; m3_bench micro-benchmarks dropped, the BENCH line keeps clock + caches). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (bipolar WOBBLE + the sustain trim + limiter hold, first chip run since run 13). Trim test-only code (m3_bench, the BENCH line) before adding anything profile-only
 
 ### Flash-budget techniques in use (ADR 0011)
 
