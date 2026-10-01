@@ -784,7 +784,7 @@ def render_report(sweep_analyses, gain_results, out_path, review_base_rel="../re
     lines.append("| 3 | Re-shape SPLASH's hit-threshold curve if clatter/jolt onset is too sudden or too flat across the knob | `kHitThresholdSplash0`/`kHitThresholdSplash1`, `hitThreshold()`, `kClatterGain` in `core/params/SplashVoicing.h` |")
     lines.append("| 4 | Retune DRIVE's onset curve if the clean→driven transition is too abrupt (a cliff) or too gradual (a dead zone) around the ADR 0014 \"9 o'clock / 3 o'clock\" targets | `kDriveCurvePower`, `kPushSlope`/`kPushCentre`, `driveCurve()`/`pushCurve()` in `core/params/DriveVoicing.h` |")
     lines.append("| 5 | Normalise wet level vs program-material brightness (gain-staging finding above) | new slow RMS follower + trim, alongside `kAutoMakeupSeconds`/`kAutoMakeupMax` in `core/params/DriveVoicing.h` |")
-    lines.append("| 6 | If WOBBLE's Drift half (0–0.5) reads too subtle vs Warble quarter (0.75–1), reshape the depth curve | `kWobbleCurve`, `kDriftEnd`, `kWarbleStart`, `wobbleCents()` in `core/params/SplashVoicing.h` |")
+    lines.append("| 6 | If a WOBBLE side (bipolar, ADR 0034: left random, right sine) has dead steps near noon or a jump at an end stop, reshape its depth curve | `kCurveRandom`, `kCurveLfo`, `k*LoopCents`, `k*EarlyCents`, `kDeadZone` in `core/params/WobbleVoicing.h` |")
     lines.append("| 7 | If TONE's tilt feels flat near noon, steepen the pivot/db range (already a \"hero control\" per SPEC §2.3.3) | `kTiltPivotHz`, `kTiltCcwDb`/`kTiltCwDb` in `core/params/DriveVoicing.h` |")
     lines.append("")
 

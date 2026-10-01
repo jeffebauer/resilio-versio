@@ -1,5 +1,7 @@
 #include "ParamsJson.h"
 
+#include <cmath>
+
 namespace rv::paramsjson {
 
 bool findParamId(const std::string& key, ParamId& id)
@@ -29,10 +31,25 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
     return false;
 }
 
+bool applyHidden(Tank& tank, const std::string& key, double value)
+{
+    if (key == kWobbleVoicingKey) {
+        tank.setWobbleVoicing(int(std::lround(value)));
+        return true;
+    }
+    return false;
+}
+
+std::string wobbleVoicingLabel(const Tank& tank)
+{
+    return std::string(1, char('A' + tank.wobbleVoicing()));
+}
+
 bool applyPreset(Tank& tank, const json::Value& preset, std::string& error)
 {
     if (!preset.isObject()) { error = "preset must be a JSON object"; return false; }
     for (const auto& entry : preset.entries()) {
+        if (entry.second.isNumber() && applyHidden(tank, entry.first, entry.second.numberValue())) continue;
         ParamId id;
         if (!findParamId(entry.first, id)) { error = "unknown param '" + entry.first + "'"; return false; }
         if (!applyValue(tank, id, entry.second, error)) return false;

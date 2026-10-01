@@ -78,9 +78,10 @@
 //   The Kick is heard from sample N itself (the DriveOut oversampler's first
 //   tap answers at once), for any block size (test_kick, plugin_host_test).
 // - WOBBLE: one generator per Spring, a Loop delay offset in samples added
-//   on top of the Micro-mod floor; exactly 0 at WOBBLE 0 (ADR 0008). Plus
+//   on top of the Micro-mod floor; bipolar, exactly 0 at noon (ADR 0034,
+//   WobbleVoicing.h); Springs B and C follow A at low amounts. Plus
 //   the transport (M8): one more generator, shared by all Springs, that
-//   moves every pickup read, so the first echoes waver too (SplashVoicing.h).
+//   moves every pickup read, so the first echoes waver too.
 // The M7 components run their control logic on their own 32-sample grid
 // counted from reset(), which lines up with the Tank's (static_assert).
 // ATTITUDE's Morph weights feed their tables too, so a flip Morphs them.
@@ -223,6 +224,15 @@ public:
         splashOn_ = clatter;
         joltOn_   = jolt;
     }
+    // Renderer / test hook (not a panel control, ADR 0034 round 2): which
+    // WOBBLE voicing (WobbleVoicing.h: 0 = A round 1, 1 = B, 2 = C, 3 = D). The
+    // firmware and plugin never call it (wobble::kDefaultVoicing).
+    void setWobbleVoicing(int v)
+    {
+        for (auto& w : wobble_) w.setVoicing(v);
+        transport_.setVoicing(v);
+    }
+    int wobbleVoicing() const { return transport_.voicing(); }
     // M7 components, read-only (tests, meters).
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }

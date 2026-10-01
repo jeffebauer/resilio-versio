@@ -210,3 +210,11 @@ for f in presets/sweeps/m6_*.json; do build/rv_render --sweep $f --out-dir rende
 ```
 
 Sidecar keys added (existing keys and format unchanged): `ringing_db`, `ringing_hz`, `ringing_ratio`, `ringing_end_db`, `ringing_span_s`, `ringing`, `howl_floor_db`, `howl_move_pct`, `howl_move_db`, `howl_ok`. The review page (tools/review, not changed here) doesn't flag them yet.
+
+## 11. Addendum (1 Oct 2026, ADR 0034 round 2): pitch movement is not Ringing
+
+With WOBBLE off noon, tight-tank burst tails (TENSION 1, DECAY ¾) flagged at some settings and not at the next 0.05 step (3 → 21 dB), on main and on the bipolar prototype alike. Cause: the Loop modes move with the wow by about one analysis bin (8 cents at 1.3 kHz ≈ 6 Hz; bins are 5.9 Hz), so a mode drifting into a bin read as a sudden 15–20 dB "growth" there, after which the peak just decays with its neighbourhood. Two changes, both in `ringingGrowth`, the 15 dB limit unchanged:
+- a bin's own level is the max over ±`kRingingFollowBins` = 2 bins (±12 Hz): the peak is followed as it drifts (the neighbourhood still uses the plain bins);
+- "climbs" now needs both steps between the late half's thirds to carry ≥ `kRingingSteadyShare` = 20 % of the rise (1 dB slack): one early jump is not a steady climb.
+
+Effect: synthetic cases keep their verdicts (§3; resonant loops 27.4 → 27.6 and 25.2 → 27.8 dB, noise / comb / modal tail 0–10), plus new ones in test_metrics (plain loops with slow wow on the delay pass, ≤ 10.2 dB; a resonant one with wow is flagged). Tank: numbers in `docs/m8-tuning-backlog.md` "Bipolar WOBBLE round 2". **To re-check on the Mac** (the IR library isn't in git): `for f in renders/ir_library/*.wav; do build/rv_render --analyze "$f" | grep -o 'ringing=[^ ]*'; done`, expecting §3's result (38 of 39 pass, highest 14.7; Short Spring flagged).

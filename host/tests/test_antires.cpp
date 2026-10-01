@@ -5,9 +5,9 @@
 // What is checked here (the full M6 grid runs through the Renderer, see
 // presets/sweeps/m6_*.json and docs/m6-metric-calibration.md):
 //   micromod   Layer 2 shape: peak depth, slow, smooth, independent per
-//              Spring, deterministic (reset() restarts it), on at WOBBLE 0.
+//              Spring, deterministic (reset() restarts it), on at WOBBLE noon (still).
 //   pitch      Layer 2 inaudible on held tones (08_held_tones.wav notes):
-//              pitch deviation at WOBBLE 0, in cents: one Spring with vs
+//              pitch deviation at WOBBLE noon (still), in cents: one Spring with vs
 //              without the floor, and the whole Tank's wet output once each
 //              note has built up.
 //   evenness   Layer 1: per-trip Loop gain and T60 across frequency at every
@@ -54,7 +54,7 @@ constexpr double kPi = 3.14159265358979323846;
 const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 struct Settings {
-    float decay = 1.0f, tension = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f, wobble = 0.0f;
+    float decay = 1.0f, tension = 0.5f, tone = 0.5f, mix = 1.0f, drive = 0.5f, wobble = 0.5f; // WOBBLE noon = still (ADR 0034)
     int   att = 0, springs = 2;
 };
 
@@ -154,7 +154,7 @@ void microMod()
     const double c01 = corr(m[0], m[1]), c02 = corr(m[0], m[2]), c12 = corr(m[1], m[2]);
     const double depth = double(rv::antires::kMicroModDepth);
     std::snprintf(msg, sizeof msg,
-                  "Micro-mod floor at WOBBLE 0: peak %.3f %% of L over 120 s (target %.3f %%), ~%.2f Hz, "
+                  "Micro-mod floor at WOBBLE noon (still): peak %.3f %% of L over 120 s (target %.3f %%), ~%.2f Hz, "
                   "max change %.2g of L per sample (smooth), Springs independent (corr %.2f / %.2f / %.2f)",
                   peak * 100, depth * 100, rateHz, maxStep, c01, c02, c12);
     check(peak > 0.7 * depth && peak < 1.3 * depth && rateHz < 2.0 && maxStep < 1e-7 && std::fabs(c01) < 0.3
@@ -180,7 +180,7 @@ void microMod()
     check(same, "Micro-mod floor deterministic: reset() restarts it; block sizes 1, 7, 48, 512 bit-identical");
 }
 
-// ---- 2. Held-tone pitch at WOBBLE 0 --------------------------------------------------------------
+// ---- 2. Held-tone pitch at WOBBLE noon --------------------------------------------------------------
 // Pitch of one partial: complex demodulation at f0 over 200 ms Hann windows
 // every 20 ms; the phase advance between windows gives the frequency
 // offset. Returns the largest |deviation| in cents and the 95th percentile
@@ -279,7 +279,7 @@ void heldTonePitch()
             worstWithout = std::max(worstWithout, p95[0]);
         }
 
-    // (b) The Tank as the owner hears it (WOBBLE 0, wet only), every SPRINGS
+    // (b) The Tank as the owner hears it (WOBBLE noon, wet only), every SPRINGS
     // mode, DECAY 0.5 and 1, CLEAN and DRIVEN: the mono sum, and each
     // channel where it carries the partial. A partial more than 20 dB weaker
     // in one channel than in the other (the width stage, L = mid + side + wD,
@@ -358,7 +358,7 @@ void heldTonePitch()
                 worstMax = std::max(worstMax, cellMax);
             }
     std::snprintf(msg, sizeof msg,
-                  "Micro-mod floor inaudible on held tones at WOBBLE 0 (1 kHz + A minor chord): it adds at most %.2f "
+                  "Micro-mod floor inaudible on held tones at WOBBLE noon (1 kHz + A minor chord): it adds at most %.2f "
                   "cents p95 to one Spring (%.2f with vs %.2f without; limit +1 cent); the whole Tank reads p95 %.2f "
                   "cents once each note has built up (worst %s, max %.2f; limit 3)",
                   worstAdd, worstWith, worstWithout, worstP95, worstAt, worstMax);
@@ -498,8 +498,15 @@ Buf noiseBurst(double seconds)
     return b;
 }
 
+// WOBBLE settings the Ringing and Howl checks run at (ADR 0034, bipolar):
+// fully left (random wow + flutter), 9 o'clock, noon (still), 3 o'clock,
+// fully right (sine LFO). Movement must never make a mode
+// ring: 0 flagged at every one.
+constexpr float kWobbleChecks[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+
 void tankTails()
 {
+    for (float wob : kWobbleChecks) {
     int n = 0, flagged = 0;
     double worst = 0;
     char worstAt[128] = {};
@@ -507,6 +514,7 @@ void tankTails()
         for (int a = 0; a < 3; ++a)
             for (int m = 0; m < 3; ++m) {
                 Settings s;
+                s.wobble = wob;
                 s.att = a;
                 s.springs = m;
                 s.decay = a == 2 ? 0.75f : 1.0f; // KICKED DECAY 1 is the Howl zone
@@ -524,10 +532,11 @@ void tankTails()
                 }
             }
     std::snprintf(msg, sizeof msg,
-                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 0 (loose), WOBBLE 0): "
+                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 0 (loose), WOBBLE %.2f): "
                   "%d of %d flagged, worst ringing_db %.1f (%s; limit %.0f)",
-                  flagged, n, worst, worstAt, rv::metrics::kRingingGrowthDb);
+                  double(wob), flagged, n, worst, worstAt, rv::metrics::kRingingGrowthDb);
     check(flagged == 0, msg);
+    }
 
     // Not toothless: the same kind of tail with one slow mode added (1.3 kHz,
     // T60 30 s vs the tail's ~9 s, starting 30 dB under the tail's peak
@@ -560,6 +569,7 @@ void tankTails()
 void howlZone()
 {
     const size_t sec = size_t(kFs);
+    for (float wob : kWobbleChecks)
     for (int m = 0; m < 3; ++m) {
         // DRIVE 0.5 (noon), TENSION/TONE noon, click input: like the M6 grid.
         const size_t n = 16 * sec, pullAt = 10 * sec;
@@ -569,6 +579,7 @@ void howlZone()
         Settings s;
         s.att = 2;
         s.springs = m;
+        s.wobble = wob;
         apply(t, s);
         Stereo o{Buf(n), Buf(n)};
         for (size_t pos = 0; pos < n; pos += 48) {
@@ -582,10 +593,10 @@ void howlZone()
         const double before = stereoPowerDb(o, pullAt - sec / 2, pullAt);
         const double after3 = stereoPowerDb(o, pullAt + 3 * sec - sec / 4, pullAt + 3 * sec + sec / 4);
         std::snprintf(msg, sizeof msg,
-                      "Howl KICKED DECAY 1 DRIVE 0.5, %d Spring%s (ADR 0019): sustains at %.1f dBFS; floor %.1f dB "
+                      "Howl KICKED DECAY 1 DRIVE 0.5 WOBBLE %.2f, %d Spring%s (ADR 0019): sustains at %.1f dBFS; floor %.1f dB "
                       "(limit %.0f), steadiest 2 s moves %.2f %% / %.1f dB (limit %.1f %% or %.0f dB); DECAY -> 0.75: "
                       "%.1f dB lower 3 s later (ADR 0018, limit 30)",
-                      m + 1, m ? "s" : "", before, hm.howlFloorDb, rv::metrics::kHowlFloorMinDb, hm.howlMovePct,
+                      double(wob), m + 1, m ? "s" : "", before, hm.howlFloorDb, rv::metrics::kHowlFloorMinDb, hm.howlMovePct,
                       hm.howlMoveDb, rv::metrics::kHowlMovePct, rv::metrics::kHowlMoveDb, before - after3);
         check(before > -40.0 && hm.howlOk && before - after3 >= 30.0, msg);
     }

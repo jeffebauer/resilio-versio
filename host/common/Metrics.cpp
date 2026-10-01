@@ -542,8 +542,11 @@ double maxStepDb100ms(const std::vector<float>& mono, float sr, const std::vecto
 //    kRingingLeakDb clear), take the late half, and
 //    fit a robust (Theil-Sen) line to prominence vs time. Growth = dB gained
 //    over that late half. Counted only for narrow peaks (louder than +-3
-//    bins) that end >= kRingingEndProminenceDb clear, climb steadily (the
-//    late half's thirds rise in order: a bump is not growth) and last (decay
+//    bins; a bin's level follows its peak over +-kRingingFollowBins, so a
+//    mode drifting with WOBBLE stays one peak) that end >=
+//    kRingingEndProminenceDb clear, climb steadily (the late half's thirds
+//    rise in order, each step by kRingingSteadyShare of the rise: a bump or
+//    one early jump is not growth) and last (decay
 //    no faster than a T60 of kRingingMinT60Ratio x the tail's own T60). The late half only:
 //    real tanks have an early phase where their mode peaks emerge from the
 //    initial burst (the valleys drain first), then every mode decays
@@ -637,7 +640,16 @@ RingingResult ringingGrowth(const std::vector<float>& mono, size_t segStart, siz
         const size_t f = t0 + (J > 1 ? (j * (t1 - t0) + (J - 1) / 2) / (J - 1) : 0);
         tj[j] = double(f - t0) * hopS;
         std::copy(lv.begin() + long(f * nb), lv.begin() + long((f + 1) * nb), row.begin());
-        std::copy(row.begin(), row.end(), lev.begin() + long(j * nb));
+        // A bin's own level follows its peak over +-kRingingFollowBins
+        // (ADR 0034 round 2): WOBBLE's pitch movement moves a mode by a bin
+        // or so (8 cents at 1.3 kHz = 6 Hz = one 5.9 Hz bin), and a mode
+        // drifting into a bin read as a sudden "growth" of 10-20 dB there.
+        // The neighbourhood below still uses the plain bins.
+        for (size_t i = 0; i < nb; ++i) {
+            const size_t a = i >= kRingingFollowBins ? i - kRingingFollowBins : 0,
+                         b = std::min(nb - 1, i + kRingingFollowBins);
+            lev[j * nb + i] = *std::max_element(row.begin() + long(a), row.begin() + long(b) + 1);
+        }
         // Neighbourhood = median of the bins within 1/3 octave (at least
         // +-kMinHalf bins), leaving out the peak's own +-kGuard bins (a tone's
         // pooled main lobe), so a strong tone never props up its own reference.
@@ -737,9 +749,10 @@ RingingResult ringingGrowth(const std::vector<float>& mono, size_t segStart, siz
             const double e = ip + sp * tt.back();
             // Steady climb, not a bump: the median prominence of the late
             // half's first, middle and last thirds must rise in order (1 dB
-            // slack). A Ringing mode keeps pulling away; a tail that merely
-            // wobbles (two decay stages handing over, beating) goes up and
-            // back down, which a straight line alone could read as growth.
+            // slack), each step by a share of the whole rise. A Ringing mode
+            // keeps pulling away; a tail that merely wobbles (two decay
+            // stages handing over, beating) goes up and back down, which a
+            // straight line alone could read as growth.
             auto thirdMedian = [&yb](size_t part) {
                 const size_t n = yb.size(), a = part * n / 3, b = (part + 1) * n / 3;
                 std::vector<double> v(yb.begin() + long(a), yb.begin() + long(std::max(b, a + 1)));
@@ -747,7 +760,11 @@ RingingResult ringingGrowth(const std::vector<float>& mono, size_t segStart, siz
                 return v[v.size() / 2];
             };
             const double m1 = thirdMedian(0), m2 = thirdMedian(1), m3 = thirdMedian(2);
-            const bool climbs = m2 >= m1 - 1.0 && m3 >= m2 - 1.0;
+            // (ADR 0034 round 2) Both steps carry at least kRingingSteadyShare
+            // of the rise: a single early jump (the neighbourhood draining
+            // fast, then the peak decaying with it) is not a climb.
+            const double rise = m3 - m1, least = kRingingSteadyShare * rise - 1.0;
+            const bool climbs = rise >= 0.0 && m2 - m1 >= least && m3 - m2 >= least;
             // ...and lasts: a narrow component that dies faster than half
             // the tail's own T60 can't be heard as Ringing (it is gone while
             // the body of the tail is still sounding). This drops the fast,
