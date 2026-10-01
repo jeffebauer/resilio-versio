@@ -40,13 +40,15 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3. Big Knob TONE · experiment (next)
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
 - [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
-- [ ] **Listen (≈10 min):** open `renders/proto_big_knob/index.html` (level-matched). **v0** today, **v1** steeper cut (reaching ~1.2 kHz fully right, telephone-thin), **v2** + the nasal bump, **v3** + ringier lows when driven (only differs in KICKED at DRIVE 0.8). Columns: TONE noon, ~1:30, 3 o'clock, fully right; rows: hits, skank, held chords, clicks × CLEAN / KICKED, and DRIVE 0.8. Pick a version, and say if fully right is too thin or the bump too nasal
-- Before shipping any pick: one test setting rings at TONE fully right (KICKED, DECAY ¾, 3 Springs, TENSION fully loose, noise bursts); Claude fixes it after your pick
+- [x] **Listened (1 Oct): v2** (steep + bump) nearly everywhere; v1 (no bump) won fully right on skank and KICKED hits; v3 only on pads at DRIVE 0.8. Your pick: **v2 with a gentler bump at the top** (+4.1 dB fully right instead of +5.6), built as v4
+- [x] The ringing setting is fixed: the top cutoff goes from 1.2 kHz to **1 kHz** (still telephone-thin); the whole ringing/Howl test grid passes
+- [ ] **Quick check (≈5 min):** open `renders/proto_big_knob2/index.html`: v1, v2 and **v4 (gentle top)**, all with the 1 kHz top, on hits, skank, held chords and clicks. If v4 sounds right, Claude merges it
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
 - [ ] **Start the SPRINGS 3 session:** "Follow docs/briefs/springs3-palette.md on main. Work on branch proto/springs3-palette and push it; don't merge to main." Five versions of position 3: today, a long big tank, tanks in series, wide stereo spread, a different tank type
-- [ ] **Start the SPLASH session:** "Follow docs/briefs/splash-stronger.md on main. Work on branch proto/splash-stronger and push it; don't merge to main." Four versions: today, stronger top, stronger + independent of DRIVE, and a bolder one
+- [x] SPLASH built in the cloud (1 Oct)
+- [ ] **Listen to SPLASH (≈10 min):** open `renders/proto_splash_stronger/index.html` (not level-matched: the splash's size is the point). **A** today, **B** a much bigger top quarter (about 3× the clang at full), **C** B + independent of DRIVE (with DRIVE down, SPLASH works as if DRIVE were at 0.8), **D** C, bolder (the clang reaches lower into each hit's body and rings longer). Rows: hits, skank, clicks × DRIVE 0 / 0.8 × SPLASH steps; columns CLEAN / KICKED. A ceiling keeps a big splash off the output limiter, never below today's splash
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
@@ -66,7 +68,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Big Knob:** after your pick, fix the one ringing setting at TONE fully right, then merge
+- **Big Knob:** merge v4 after your quick check. **SPRINGS 3** cloud session still running
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
