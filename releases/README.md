@@ -55,7 +55,7 @@ THINGS TO TRY
 
 KNOWN ISSUES (already being fixed)
 
-- Long, low pads and drones can make the reverb build up and push the output into its limiter (the output lights go red, and it can sound a bit driven). A fix is in progress.
+- Very big held sounds (low pads, drones) at high TENSION can still briefly light the output red: the reverb gently holds them back, and the brief limiting that remains is kept clean.
 - It's a test build: expect the sound to keep changing between versions.
 
 
