@@ -453,6 +453,8 @@ Gentle, left of noon (printed only): WOBBLE 0 / 0.25 pad 3.6 / 3.2 dB, organ 2.7
 
 So: D sits within 0–1.8 dB of `main` on held sounds (round 2: 2.1–4.8 dB under), with the limiter taking only short, held pulls; B shows what the hold alone does (`main` limits these harder: the hold's slower release costs up to 0.6 dB).
 
+**ctest (cloud, plugin off):** 15 of 16 pass ("94% tests passed"); `test_wobble` fails exactly as on `main` in Linux containers ("each 0.1 step ... ≥ 1.15x", smallest ×1.13; the WOBBLE generator alone, no Tank). Re-run on the Mac for the 100 % line.
+
 **CPU:** the gentle path per 32-sample tick: one log (shared with round 2's reading), a few compares; per sample unchanged. Not measured on the Versio; confirm with an M3 run if it merges. Firmware not built in the cloud (no ARM toolchain): run `make -C firmware all-variants` on the Mac (≤ 128 KB each).
 
 **Confirm page (on the Mac; A = `main`, B = off / hold only, C = round 2, D = gentle):**
