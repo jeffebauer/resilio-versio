@@ -476,3 +476,46 @@ done
 python3 tools/review/make_review.py renders/proto_sustain_trim3 --no-level-match --title "Sustain trim round 3: A main, B limiter hold only, C round 2, D gentle"
 ```
 Listen for: the real pad (D: no dip and swell; at most one smooth settle if it grows into the limiter), the organ at TONE 0 / TENSION 1 (D vs A: as alive?), whether D's short limiter moments on arrivals sound driven (the hold should keep them clean; B is the hold with no trim at all), hits and skank identical. The level-match toggle separates level from character.
+
+## Big Knob TONE (1 Oct 2026, branch `proto/big-knob-tone`, not merged; ADR 0036 proposed)
+Owner: TONE's right side as King Tubby's "Big Knob" (the Altec 9069B high-pass on his MCI desk), smooth (no steps or clicks), exploring the coil's character. Brief: `docs/briefs/big-knob-tone.md`. Research: `docs/research/big-knob.md` (web sources seen through search text only: this cloud session's network policy blocked opening the pages). Numbers: `core/params/DriveVoicing.h` "Big Knob TONE voicings". Renderer key `tone_voicing` (default 0 = today; firmware and plugin unchanged).
+
+**Voiced from the research, not from taste:**
+- **Slope:** 3rd order, 18 dB/oct, as the Altec (sourced). Today's 2nd-order section becomes the flat 3rd-order Butterworth's pair (Q 0.707 → 1), times a 1st-order section that fades in from an exact pass-through at noon (k 0 → 1 by TONE 0.6), so nothing jumps.
+- **Cutoff:** smooth, 20 Hz at noon → 1.2 kHz fully right, same log curve as today's (u^0.7). **Departure:** the Altec's 10 steps (70 Hz–7.5 kHz) are out (owner: no steps), and nothing above 1.2 kHz: the Springs respond ~200 Hz–4 kHz, so the Altec's 2–7.5 kHz steps would just mute the tank.
+- **Bump:** `tools/research/big_knob_circuit.py` shows the Altec is flat when fed and loaded at 600 ohm, and peaks at ~1.3–1.4× the cutoff when a low-impedance output drives a higher-impedance input (+2 dB into 600 ohm, +5–7 into ~1 kohm, +16 into a bridging 10 kohm, coil Q ~10). Voicing 2 uses that circuit's own poles, moving from "matched" at noon to "~0 ohm into ~1 kohm" fully right. **Departure:** the real bump's size was fixed by the desk's wiring (undocumented); ours grows with TONE (brief). **Size:** the "medium" wiring, +5.6 dB fully right. The KTBK-style mild +2 dB would be hard to hear on a tank, a bridging +16 dB is a whistle, and +5.6 passes every guarantee below with margin.
+- **Coil saturation (voicing 3):** undocumented, probably slight on the original (+28 dBm rating). **A guess, offered because the owner asked:** the lows are pushed up to +4 dB harder into DriveIn's coil-flux saturator (highs and small signals unchanged, the automatic makeup keeps the level), so DRIVE adds the lows' harmonics, which the Big Knob lets through.
+
+**Per voicing, the low cut alone** (test_drive "bigknob"; −3 dB point, bump, slope over fc/8 → fc/4):
+| TONE | 0 today | 1 steep | 2 bump (and 3) |
+|---|---|---|---|
+| 0.5 | 20 Hz, 12 dB/oct | same (bit for bit) | same (bit for bit) |
+| 0.7 | 84 Hz, 12 | 174 Hz, 18 | 156 Hz, +2.2 dB at 235 Hz, 18 |
+| 0.85 | 166 Hz, 12 | 499 Hz, 18 | 445 Hz, +4.1 dB at 653 Hz, 18 |
+| 1 | 302 Hz, 12 | 1275 Hz, 18 | 1142 Hz, +5.6 dB at 1669 Hz, 18 |
+Voicing 3's DriveIn push: +1.6 / +2.8 / +4.0 dB at TONE 0.7 / 0.85 / 1.
+
+**Level (the hard part).** Thinning takes energy out, by material: fully right in voicing 1, with no makeup, skank −9.3 dB, held tones −3.5, hits −1.8 (CLEAN). No fixed makeup holds all three within ±3 dB. Tried in order:
+1. A fixed makeup (+6 dB × u^1.5): hits +4 to +6.4, skank −3.2. Out.
+2. An adaptive makeup, from slow followers of the power into and out of the Tilt (like the Excitation trim), giving back a share of what was cut: close, but KICKED hits came back up to +5.5 dB. A driven tank squashes on its lows (LoopSat, pickups), so removing them un-squashes hits; today's TONE 1 already reads +2.7 dB on KICKED hits at DRIVE 0.8. The bump adds energy where the tank and the ear are most sensitive.
+3. Plus two measured corrections (dB × u): −1.2 for the bump (voicings 2–3), and −(0.2 + 3.3 × DRIVE) for a driven tank (DRIVEN half, KICKED full).
+4. Then the Sustain trim check found a bass pad 4.5 dB hotter at TONE 0.7: its C2 fundamental (65 Hz) was cut, and the broadband followers made up for it, though the tank never hears 65 Hz. **Fix:** both followers use the Excitation trim's high-pass (~90 Hz), and the share went from 0.7 to 0.75.
+
+Result, loudness vs noon at TONE 0.7 / 0.85 / 1, owner's settings (2 Springs, DECAY / TENSION noon, SPLASH 0.3), worst of hits / skank / held tones, limit ±3 dB:
+| | CLEAN 0.25 | CLEAN 0.8 | DRIVEN 0.25 | DRIVEN 0.8 | KICKED 0.25 | KICKED 0.8 |
+|---|---|---|---|---|---|---|
+| 0 today | −2.1 | −1.9 | −2.0 | −1.9 | −1.7 | +2.7 |
+| 1 steep | +1.2 | +1.2 | −1.6 | −1.5 | −1.7 | −2.6 |
+| 2 bump | −1.2 | +1.5 | −1.6 | −1.5 | −2.2 | −2.5 |
+| 3 driven | −1.2 | +1.5 | −1.5 | −1.3 | −2.2 | +2.1 |
+(column = ATTITUDE and DRIVE.) The listening page is level-matched anyway; these are the absolute numbers.
+
+**Guarantees:**
+- **TONE ≤ 0.5 unchanged:** hits and skank, CLEAN and KICKED, DRIVE 0.25 (voicing 3 also 0.8), TONE 0 / 0.25 / 0.5: bit for bit voicing 0 in every voicing (48 of 48 identical).
+- **The Chirp at full CW:** highs still arrive after the 200–500 Hz band in every voicing, at TENSION 0 and 1 (e.g. voicing 2: 62.3 vs 46.8 ms; 16.9 vs 13.8 ms). It is still there at 1.2 kHz: the Chirp reaches up to TENSION's transition frequency (2.7–4.6 kHz), well above the cut.
+- **Sustain trim** (held pad / drone / organ at −6 dBFS peak, CLEAN, DRIVE 0, SPLASH 0, DECAY noon, 27 SPRINGS × TONE 0.7/0.85/1 × TENSION cells, default WOBBLE): worst limiter moment pad 2.21 / 2.26 / 2.26 dB (voicings 1/2/3) vs today's 1.26, never past 2.5 dB; red LED in 9 / 8 / 8 cells of 27 for at most 0.27 s (today 5, 0.21 s). Drone 0.67 / 0.43 / 0.42 (today 0.37), organ 1.56 / 1.69 / 1.69 (today 1.63). Within test_sustain_trim's limits (3 dB for a moment, ≤ 0.25 s past 2.5 dB), but held bass pads light red a little more than today. The Sustain trim may now also take back the Big Knob makeup, on top of its own 5 dB (0 dB in voicing 0, so the default is unchanged).
+- **M6 grid:** see below.
+
+**Costs:**
+- **Flash** (release firmware, this container's arm-none-eabi-gcc 13.2, `make -C firmware MODE=release`): `main` 124,728 B → branch 125,956 B, **+1,228 B**, with all four voicings compiled in (the owner's toolchain read 126.5 KB on `main`, so ~127.7 KB of 131,072). The profile variant overflows by ~5 KB with this toolchain on `main` too ("Profile firmware too big" in TASKS). Desktop objects: Drive.o +392 B, Tank.o +1,332 B.
+- **CPU:** see below.

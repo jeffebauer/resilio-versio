@@ -2,13 +2,13 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 1 Oct 2026, evening (session 5: SPLASH/DRIVE, bipolar WOBBLE, sustain trim, panel interface and the `--set` fix all merged; release published)
+**Last updated:** 1 Oct 2026, night (cloud session: Big Knob TONE built on branch `proto/big-knob-tone`, waiting for your listen. Before that, session 5: SPLASH/DRIVE, bipolar WOBBLE, sustain trim, panel interface and the `--set` fix all merged; release published)
 
 | Milestone | State |
 |---|---|
 | M0 hardware · M3 CPU | **Done.** Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. A new run is due for bipolar WOBBLE + the sustain trim (small costs) once the profile firmware fits again |
 | Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §1 |
-| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE and the sustain trim merged (1 Oct). Next: Big Knob TONE experiment; the Wellspring fit round |
+| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE and the sustain trim merged (1 Oct). Big Knob TONE built on a branch, waiting for your listen (§3); next the Wellspring fit round |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`; need updating for the new SPLASH/DRIVE/WOBBLE) |
 
@@ -29,9 +29,13 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
 - [ ] **A fresh listening pass**, answering the design questions below where you have a view
 
-### 3. Big Knob TONE · experiment (next)
-- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
-- [ ] **Start the cloud session:** "Follow docs/briefs/big-knob-tone.md on main. Work on branch proto/big-knob-tone and push it; don't merge to main." Then Claude renders the page here
+### 3. Big Knob TONE · listen and pick (≈20 min)
+- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk. Built on branch `proto/big-knob-tone` (not merged). The research is in [research/big-knob.md](research/big-knob.md): the Altec filter, where the bump comes from, and what's documented vs lore. The proposal is [ADR 0036](adr/0036-big-knob-tone.md)
+- Four versions on one page, at TONE noon / 0.7 / 0.85 / fully right: **0** today · **1** steeper cut, reaching 1.2 kHz ("telephone") · **2** that plus the nasal bump · **3** that plus "ringier when driven" (also rendered at DRIVE 0.8)
+- [x] Cloud session (1 Oct): research, the four versions, tests and measurements done
+- [ ] **Ask Claude to render the page on the Mac:** "Render the Big Knob page from proto/big-knob-tone" (commands in [m8-tuning-backlog.md](m8-tuning-backlog.md) "Big Knob TONE")
+- [ ] **Listen and pick** a version (or "none"). Also answer: fully right, thin enough, too thin, or should the cut start earlier? Is the bump too nasal, or not enough?
+- Reference to listen for on records: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976). One source says the filter is on the hi-hat throughout: listen for a sound that suddenly goes thin and nasal
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
@@ -44,14 +48,14 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
 - [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
-- [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The Big Knob experiment, §3, will answer this one by ear)
+- [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The Big Knob page, §3, answers this one by ear)
 
 ## Later
 - **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Big Knob TONE page** once the cloud session is done (§3)
+- **Big Knob TONE page:** rendered on the Mac when you ask (§3); the cloud session can't play audio to you
 - **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
