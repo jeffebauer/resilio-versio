@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 124,064 B (95%), ≈7 KB headroom (1 Oct 2026, bipolar WOBBLE merged, ADR 0034: +3.9 KB; was 120,160 B after SPLASH/DRIVE)
+- release 121,944 B (93%), ≈9 KB headroom (1 Oct 2026: the Tank is built at boot instead of copied from flash, −4.6 KB; was 126,528 B with bipolar WOBBLE + the sustain trim)
 - m0test 85,976 B (65%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile **does not fit** since bipolar WOBBLE (1 Oct 2026: over by 1,236 B; was 128,388 B, 98 %). Trim profile-only code (the BENCH line, m3_bench) before the next M3 run. Run 13 binary: `dist/resilio_versio_m3_profile_run13.bin` (the SPLASH/DRIVE build before tuning)
+- profile 130,332 B (99%, 0.7 KB headroom; fits again since the Tank is built at boot). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (bipolar WOBBLE + the sustain trim + limiter hold, first chip run since run 13). Trim test-only code (m3_bench, the BENCH line) before adding anything profile-only
 
 ### Flash-budget techniques in use (ADR 0011)
 

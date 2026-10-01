@@ -48,6 +48,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <new>
 
 // Tightly-coupled data RAM (see "Memory placement" above).
 #define RV_DTCM __attribute__((section(".dtcmram_bss")))
@@ -66,7 +67,12 @@ namespace {
 
 DaisyVersio hw;
 #if !defined(RV_MODE_M0TEST)
-rv::Tank    tank;
+// The Tank is built at boot (placement new at the top of main), not as a
+// plain global: its default member values made it ~7.9 KB of .data, stored
+// in flash and copied to RAM at startup. Zeroed .bss storage costs no flash
+// (ADR 0011's 128 KB budget). Never destroyed (main never returns).
+alignas(rv::Tank) unsigned char gTankStorage[sizeof(rv::Tank)];
+rv::Tank& tank = *reinterpret_cast<rv::Tank*>(gTankStorage);
 #endif
 
 // Boot pattern shared by all three variants (NE convention: a unique colour
@@ -505,6 +511,7 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
 
 int main()
 {
+    new (gTankStorage) rv::Tank(); // before anything touches it (see gTankStorage)
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
 
@@ -957,6 +964,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
 int main()
 {
+    new (gTankStorage) rv::Tank(); // before anything touches it (see gTankStorage)
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
     gTankPrepared = PrepareTank();
