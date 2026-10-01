@@ -245,54 +245,83 @@ constexpr float kExcGateDb    = -60.0f;
 // itself on held sounds": hits keep their punch, only pads and drones are
 // trimmed.
 //
-// How (all on the control grid: a handful of one-poles, one exp and one log
-// per tick; per sample only a max() on the peak the limiter already reads):
-// 1. Is the input held? The raw input's fast power (kSusFastSeconds) stays
-//    within kSusHeldDropDb of its slow power (the Excitation trim's
-//    kExcSeconds follower) for kSusOnsetSeconds. A snare, a rimshot or a
-//    skank chord falls away faster than that and never counts as held, so
-//    hits and stabs come out bit for bit as before.
+// How (all on the control grid: a handful of one-poles and compares, one
+// exp and one log per tick; per sample only a max() on the peak the limiter
+// already reads):
+// 1. Is the input held? Two ways in, latched until it stops being held:
+//    a. its fast power (kSusFastSeconds) stays within kSusHeldDropDb of its
+//       slow power (the Excitation trim's kExcSeconds follower) for
+//       kSusOnsetSeconds (round 1), or
+//    b. sooner: its fast power has stayed within kSusStillDropDb of its own
+//       peak since it began for kSusStillSeconds (round 2: "its level has
+//       stopped falling"). An organ, a pad or a drone holds its level; a
+//       snare, a rimshot or a skank chord has already fallen away by then,
+//       so hits and stabs still come out bit for bit as before. A flat stab
+//       longer than ~80 ms (an organ bubble) does count as held from there.
 // 2. How loud will the tank get? The Tank measures its own build-up gain
-//    for this sound, K = the wet's peak power, where the limiter reads it
-//    (after the pickups and the shelf; DRIVE's heard gain divided out, so
-//    DRIVE's deliberate few dB, ADR 0033, ride on top), over what went into
-//    the Springs (the raw input x the Sustain trim squared, lagged the way
-//    the tank fills, T60 / 13.8), both over kSusSlowSeconds. K depends on
-//    the sound and the settings (TENSION's bump, SPRINGS, TONE, DECAY), not
-//    on the trim, so the trim that puts the peaks on kSusTargetDb is read
-//    straight off it: t^2 = target^2 / (K x input). Feed-forward: it cannot
-//    hunt the way a feedback compressor on the wet would.
+//    for this sound, K = the wet's peak envelope (where the limiter reads
+//    it, after the pickups and the shelf; DRIVE's heard gain divided out, so
+//    DRIVE's deliberate few dB, ADR 0033, ride on top) over the envelope of
+//    what went into the Springs (the raw input x the Sustain trim squared,
+//    lagged kSusFillScale x the tank's fill time T60 / 13.8), both released
+//    over kSusSlowSeconds, so a rise or a fall reads alike on both sides
+//    (round 1 averaged the wet over 0.3 s and lagged the input a full fill
+//    time: K read high while a sound was still arriving, and too slowly on
+//    a sudden swell). K depends on the sound and the settings (TENSION's
+//    bump, SPRINGS, TONE, DECAY, WOBBLE), not on the trim, so the trim that
+//    puts the peaks on kSusTargetDb is read straight off it: t^2 = target^2
+//    / (K x input). Feed-forward: it cannot hunt like a compressor on the wet.
+// 3. K is a high-water mark (round 2): the highest build-up met while this
+//    sound is held, kept kSusKHoldSeconds, then let down at
+//    kSusKReleaseDbPerS. WOBBLE's Drift moves a held note on and off the
+//    tank's resonances: fully left a pure drone's wet swings ~10 dB on its
+//    own. Round 1 chased each swell (down fast, up over 2 s: the drone's trim
+//    moved 2.9 dB at the default WOBBLE, 7.8 fully left); now the trim
+//    answers the loudest swell and sits still through the rest.
 // While held, the trim eases the Springs' *input* down (after Tilt and the
 // Excitation trim, before the Loops; never the wet, the Kick's feed or the
 // Clatter), only the part of the held sound that would push the peaks past
-// the target: a held sound that stays under it is untouched. It moves down
-// over kSusDownSeconds (at long DECAYs no faster than kSusDownPerFill x the
-// tank's fill time), back up over kSusUpSeconds, and sits still while it is
-// within kSusSteadyDb of where it should be (K wanders a little as a held
-// note beats against the tank's modes; following that read as a wobble). As
-// soon as the input stops being held (it falls away or goes silent) the trim
-// lets go over kSusLetGoSeconds, so the next hit arrives at full strength.
-// A ringing tail is never touched (only new input is trimmed), so a tail
-// cannot pump, DECAY's tail length is unchanged, and the Howl (which feeds
-// itself) is as loud as before. At most kSusMaxDb.
-// Target: -7 dBFS peaks, 5.3 dB under the limiter's knee (0.82, -1.7 dBFS):
-// the pad, drone and organ at -6 dBFS peak then never reach the limiter at
-// the owner's settings (worst -1.9 dBFS: the organ's first 0.3 s, which is
-// let through like a hit). -6 let the drone's swell reach it (0.7 dB); lower
-// targets trim moderate held tones that never reach the limiter (test_drive's
-// wet-vs-material spread). Measurements: docs/m8-tuning-backlog.md
-// "Sustain trim".
-constexpr float kSusFastSeconds   = 0.02f;
-constexpr float kSusHeldDropDb    = 6.0f;
-constexpr float kSusOnsetSeconds  = 0.3f;
-constexpr float kSusSlowSeconds   = 0.3f;
-constexpr float kSusTargetDb      = -7.0f;
-constexpr float kSusDownSeconds   = 0.1f;
-constexpr float kSusDownPerFill   = 0.5f;
-constexpr float kSusSteadyDb      = 1.0f;
-constexpr float kSusUpSeconds     = 2.0f;
-constexpr float kSusLetGoSeconds  = 0.05f;
-constexpr float kSusMaxDb         = 12.0f;
+// the target: a held sound that stays under it is untouched.
+// - Arriving (the first kSusSettleSeconds once held): it aims at the target
+//   itself and moves down over kSusOnsetDownSeconds, so a held sound's first
+//   peaks are caught (round 1 let the first 0.3 s through like a hit; the
+//   organ's attack reached the limiter, 1.5 dB, once WOBBLE's default moved).
+// - Settled: kSusSettledLiftDb more room (the high-water K already puts the
+//   loudest swell on the target, so the usual peaks sit lower; the lift
+//   brings the level back near round 1's, which the owner picked), a steady
+//   band of +-kSusSteadyDb, and outside it the trim moves only to the band's
+//   edge, down over kSusDownSeconds (at long DECAYs no faster than
+//   kSusDownPerFill x the tank's fill time), up over kSusUpSeconds.
+// As soon as the input stops being held (it falls away or goes silent) the
+// trim lets go over kSusLetGoSeconds, so the next hit arrives at full
+// strength. A ringing tail is never touched (only new input is trimmed), so
+// a tail cannot pump, DECAY's tail length is unchanged, and the Howl (which
+// feeds itself) is as loud as before. At most kSusMaxDb.
+// Target: -7 dBFS peaks while arriving, -5 settled (3.3 dB under the
+// limiter's knee, 0.82 = -1.7 dBFS): the pad, drone and organ at -6 dBFS
+// peak never reach the limiter at the owner's settings at the default
+// WOBBLE or right of noon. Left of noon a later, louder swell than any met
+// so far can still touch it for a moment (worst 1.4 dB, round 1 4.8).
+// Measurements: docs/m8-tuning-backlog.md "Sustain trim".
+constexpr float kSusFastSeconds      = 0.02f;
+constexpr float kSusHeldDropDb       = 6.0f;
+constexpr float kSusOnsetSeconds     = 0.3f;
+constexpr float kSusStillSeconds     = 0.08f;
+constexpr float kSusStillDropDb      = 3.0f;
+constexpr float kSusSlowSeconds      = 0.3f;
+constexpr float kSusFillScale        = 0.25f;
+constexpr float kSusKHoldSeconds     = 3.0f;
+constexpr float kSusKReleaseDbPerS   = 1.0f;
+constexpr float kSusTargetDb         = -7.0f;
+constexpr float kSusSettleSeconds    = 0.5f;
+constexpr float kSusOnsetDownSeconds = 0.03f;
+constexpr float kSusSettledLiftDb    = 2.0f;
+constexpr float kSusDownSeconds      = 0.1f;
+constexpr float kSusDownPerFill      = 0.5f;
+constexpr float kSusSteadyDb         = 1.0f;
+constexpr float kSusUpSeconds        = 2.0f;
+constexpr float kSusLetGoSeconds     = 0.05f;
+constexpr float kSusMaxDb            = 12.0f;
 
 // Output pickup high-pass (also removes DC made by the asymmetric clip).
 constexpr float kOutHpHz = 35.0f;

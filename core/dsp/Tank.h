@@ -35,9 +35,11 @@
 // Sustain trim (M8, ADR 0035, DriveVoicing.h): while the input is held (a
 // pad, a drone; never a hit), the Tank reads its own build-up gain for the
 // sound (the wet's peaks, where the limiter reads them, over what went into
-// the Springs) and eases the Springs' input down just enough that the peaks
-// stay at -7 dBFS, under the limiter. Same place as the Excitation trim (one
-// ramp, the product of the two); lets go as soon as the sound isn't held.
+// the Springs; the highest it has met, held a few seconds) and eases the
+// Springs' input down just enough that the peaks stay under the limiter
+// (-7 dBFS while the sound arrives, -5 once settled). Same place as the
+// Excitation trim (one ramp, the product of the two); lets go as soon as
+// the sound isn't held.
 //
 // DRIVE (ADR 0014, 0022, 0033; curves in DriveVoicing.h) is the INPUT: one
 // input gain G (0 -> +24 dB) that the Splash hears first, then DriveIn's
@@ -344,10 +346,18 @@ private:
     // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);
     // the Springs' input trim ramped per tick is Excitation x Sustain
     // (inTrimFrom_ -> inTrimTo_).
-    float susFast_ = 0.0f, susWet_ = 0.0f, susFill_ = 0.0f, susFillIn_ = 0.0f, susFed_ = 0.0f, susHeld_ = 0.0f, susLn_ = 0.0f, susAim_ = 0.0f, susGain_ = 1.0f;
+    float susFast_ = 0.0f, susFill_ = 0.0f, susFillIn_ = 0.0f, susFed_ = 0.0f, susHeld_ = 0.0f, susLn_ = 0.0f, susAim_ = 0.0f, susGain_ = 1.0f;
     float susPeak_ = 0.0f, susPeakEnv_ = 0.0f, susPeakRelease_ = 0.0f; // the wet's peak (limiter input): tick, envelope
-    float susFastCoeff_ = 0.0f, susSlowCoeff_ = 0.0f, susFillCoeff_ = 0.0f, susDownCoeff_ = 0.0f, susUpCoeff_ = 0.0f, susLetGoCoeff_ = 0.0f;
+    float susFastCoeff_ = 0.0f, susFillCoeff_ = 0.0f, susDownCoeff_ = 0.0f, susUpCoeff_ = 0.0f, susLetGoCoeff_ = 0.0f;
     float susHeldRatio_ = 0.25f, susTarget_ = 1.0f;
+    // Round 2: the steady-onset path (the input's fast level since it began:
+    // its peak, how long it has stayed near it), the held latch, and the
+    // high-water K (ln) with its hold time, and the time since it was held
+    // (arriving vs settled).
+    static constexpr float kSusNoK = -1.0e30f; // susKHw_ before the first read
+    float susFastPk_ = 0.0f, susStill_ = 0.0f, susKHw_ = kSusNoK, susKHold_ = 0.0f;
+    float susStillRatio_ = 0.5f, susKRelease_ = 0.0f, susOnsetDownCoeff_ = 0.0f, susSince_ = 0.0f;
+    bool  susEngaged_ = false;
     bool  susOn_ = true; // test hook (setSustainTrimEnabled)
     float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).

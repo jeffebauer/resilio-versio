@@ -9,13 +9,16 @@
 // (3 s swell, 6 s hold), a C2 drone (sine + 2nd harmonic), an organ chord.
 //
 //   1. Held sounds at -6 dBFS peak, the owner's settings (CLEAN, DRIVE 0,
-//      SPLASH 0, DECAY noon) across SPRINGS x TONE x TENSION: the limiter
-//      never pulls more than 0.5 dB (no red LED). MIX doesn't enter: the
-//      limiter is on the wet, before MIX.
+//      SPLASH 0, DECAY noon) across SPRINGS x TONE x TENSION, at WOBBLE 0,
+//      0.25, the default, 0.75 and 1: at the default and right of noon the
+//      limiter never pulls more than 0.5 dB (no red LED). Left of noon
+//      (Drift) printed, not checked (see heldSoundsAcrossWobble). MIX
+//      doesn't enter: the limiter is on the wet, before MIX.
 //   2. Hits and chord stabs are never trimmed (the trim stays exactly 1).
 //   3. It lets go: a hit 0.4 s after a pad stops meets no trim.
 //   4. No pumping: on a steady drone the trim, once settled, stays within
-//      2 dB (its steady band is +-1 dB, DriveVoicing.h kSusSteadyDb).
+//      2 dB (same WOBBLEs as 1). The pad's largest trim rise in its hold
+//      (heard as a swell) is printed.
 //   5. The Howl: a Kick into KICKED DECAY 1 is never trimmed; a pad into the
 //      Howl leaves it as loud as the Kick's alone, within 1 dB.
 
@@ -164,9 +167,17 @@ Buf stabs()
     return x;
 }
 
+// WOBBLE moves the Loops' pitch, so a held sound drifts on and off the
+// tank's modes and the build-up comes and goes with it (fully left a pure
+// drone's wet swings ~10 dB untrimmed). The grids run at five WOBBLEs: the
+// trim has to hold for all of them, not only the default.
+const float kWobbles[] = {0.0f, 0.25f, rv::spec(rv::ParamId::Wobble).defaultValue, 0.75f, 1.0f};
+constexpr int kNumWobbles = 5;
+
 struct Set {
     int   att = 0, springs = 1;
     float decay = 0.5f, tone = 0.3f, tension = 0.8f, drive = 0.0f, splash = 0.0f;
+    float wobble = rv::spec(rv::ParamId::Wobble).defaultValue;
 };
 
 struct Run {
@@ -189,6 +200,7 @@ Run render(rv::Tank& t, const Set& s, const Buf& in, const std::vector<double>& 
     t.setParam(ParamId::Drive, s.drive);
     t.setParam(ParamId::Splash, s.splash);
     t.setParam(ParamId::Mix, 1.0f);
+    t.setParam(ParamId::Wobble, s.wobble);
     Run r;
     r.wet.resize(in.size());
     Buf l(kBlock), rr(kBlock);
@@ -219,7 +231,7 @@ struct Worst {
     float gr = 0.0f;
     char  at[120] = "none limited";
 };
-Worst worstCell(const Buf& x)
+Worst worstCell(const Buf& x, float wobble)
 {
     rv::Tank t;
     t.prepare(kFs, kBlock);
@@ -228,7 +240,7 @@ Worst worstCell(const Buf& x)
         for (float tone : {0.0f, 0.5f, 0.9f})
             for (float ten : {0.5f, 0.8f, 1.0f}) {
                 Set s;
-                s.springs = sp, s.tone = tone, s.tension = ten;
+                s.springs = sp, s.tone = tone, s.tension = ten, s.wobble = wobble;
                 const float gr = std::max(0.0f, -20.0f * std::log10(render(t, s, x).minLimGain));
                 if (gr > w.gr) {
                     w.gr = gr;
@@ -238,20 +250,100 @@ Worst worstCell(const Buf& x)
     return w;
 }
 
-void heldSoundsStayUnderTheLimiter()
+// The settled trim's movement on the drone (9 cells), worst cell.
+float droneTrimMovement(const Buf& x, float wobble)
+{
+    rv::Tank t;
+    t.prepare(kFs, kBlock);
+    float worst = 0.0f;
+    for (int sp = 0; sp < 3; ++sp)
+        for (float ten : {0.5f, 0.8f, 1.0f}) {
+            Set s;
+            s.springs = sp, s.tension = ten, s.wobble = wobble;
+            const Run r = render(t, s, x);
+            float lo = 0.0f, hi = -100.0f;
+            for (double tt = 4.0; tt < 12.0; tt += 0.05) { // settled: 2 s into the hold
+                lo = std::min(lo, trimAt(r, tt));
+                hi = std::max(hi, trimAt(r, tt));
+            }
+            worst = std::max(worst, hi - lo);
+        }
+    return worst;
+}
+
+// The pad's largest upward move of the trim during its hold (5..9.8 s), worst
+// cell: the trim easing back up is heard as the pad swelling.
+float padTrimRise(const Buf& x, float wobble)
+{
+    rv::Tank t;
+    t.prepare(kFs, kBlock);
+    float worst = 0.0f;
+    for (int sp = 0; sp < 3; ++sp)
+        for (float ten : {0.5f, 0.8f, 1.0f}) {
+            Set s;
+            s.springs = sp, s.tension = ten, s.wobble = wobble;
+            const Run r = render(t, s, x);
+            float lo = 0.0f;
+            for (double tt = 5.0; tt < 9.8; tt += 0.05) {
+                lo    = std::min(lo, trimAt(r, tt));
+                worst = std::max(worst, trimAt(r, tt) - lo);
+            }
+        }
+    return worst;
+}
+
+// Held sounds under the limiter (1) and no pumping (4), at every WOBBLE in
+// kWobbles: 15 limiter grids and 5 drone grids, run in parallel.
+void heldSoundsAcrossWobble()
 {
     const char* const names[] = {"pad", "drone", "organ"};
     const Buf         stims[] = {pad(), drone(), organ()};
     std::vector<std::future<Worst>> jobs;
-    for (const Buf& x : stims) jobs.push_back(std::async(std::launch::async, worstCell, std::cref(x)));
-    for (size_t k = 0; k < jobs.size(); ++k) {
-        const Worst w = jobs[k].get();
-        std::snprintf(msg, sizeof msg,
-                      "Held %s, -6 dBFS peak, CLEAN DRIVE 0 SPLASH 0 DECAY noon, 27 SPRINGS x TONE x TENSION cells: "
-                      "limiter pulls at most %.2f dB (%s; limit < 0.5, the red LED)",
-                      names[k], double(w.gr), w.at);
-        check(w.gr < 0.5f, msg);
+    std::vector<std::future<float>> pumps, rises;
+    for (float w : kWobbles) {
+        for (const Buf& x : stims) jobs.push_back(std::async(std::launch::async, worstCell, std::cref(x), w));
+        pumps.push_back(std::async(std::launch::async, droneTrimMovement, std::cref(stims[1]), w));
+        rises.push_back(std::async(std::launch::async, padTrimRise, std::cref(stims[0]), w));
     }
+    Worst worst[kNumWobbles][3];
+    float pump[kNumWobbles], rise[kNumWobbles];
+    for (int wi = 0; wi < kNumWobbles; ++wi) {
+        for (int k = 0; k < 3; ++k) worst[wi][k] = jobs[size_t(wi * 3 + k)].get();
+        pump[wi] = pumps[size_t(wi)].get();
+        rise[wi] = rises[size_t(wi)].get();
+    }
+    std::printf("INFO  per WOBBLE: worst limiter pull (dB) pad / drone / organ over 27 cells; drone's settled trim movement; "
+                "pad's largest trim rise in the hold (dB)\n");
+    for (int wi = 0; wi < kNumWobbles; ++wi)
+        std::printf("INFO    WOBBLE %.2f: %5.2f / %5.2f / %5.2f   movement %5.2f   pad rise %5.2f\n", double(kWobbles[wi]),
+                    double(worst[wi][0].gr), double(worst[wi][1].gr), double(worst[wi][2].gr), double(pump[wi]), double(rise[wi]));
+    // Checked at the default WOBBLE and on the right side (Warble, a steady
+    // vibrato). Left of noon (Drift) the springs themselves swell and dip by
+    // ~10 dB on a held note as the random wow moves it on and off the tank's
+    // resonances, unforeseeably; the trim answers the loudest swell it has
+    // met and holds, so a later, louder one can still touch the limiter for a
+    // moment (worst ~1.4 dB, the organ's attack at WOBBLE 0.25) and costs
+    // one more step down (worst ~4.4 dB on the drone at 0.25). Printed above
+    // (ADR 0035, round 2); not checked.
+    constexpr int kFirstChecked = 2; // kWobbles[2] = the default
+    for (int k = 0; k < 3; ++k) {
+        int at = kFirstChecked;
+        for (int wi = kFirstChecked + 1; wi < kNumWobbles; ++wi)
+            if (worst[wi][k].gr > worst[at][k].gr) at = wi;
+        std::snprintf(msg, sizeof msg,
+                      "Held %s, -6 dBFS peak, CLEAN DRIVE 0 SPLASH 0 DECAY noon, 27 SPRINGS x TONE x TENSION cells, WOBBLE "
+                      "default / 0.75 / 1: limiter pulls at most %.2f dB (WOBBLE %.2f, %s; limit < 0.5, the red LED)",
+                      names[k], double(worst[at][k].gr), double(kWobbles[at]), worst[at][k].at);
+        check(worst[at][k].gr < 0.5f, msg);
+    }
+    int at = kFirstChecked;
+    for (int wi = kFirstChecked + 1; wi < kNumWobbles; ++wi)
+        if (pump[wi] > pump[at]) at = wi;
+    std::snprintf(msg, sizeof msg,
+                  "No pumping: on a held drone the settled trim moves %.2f dB at most (WOBBLE default / 0.75 / 1, worst at %.2f; "
+                  "limit 2)",
+                  double(pump[at]), double(kWobbles[at]));
+    check(pump[at] <= 2.0f, msg);
     // Teeth: the drone's worst cell on main (b3e5ac3) pulled 5.9 dB.
     rv::Tank t;
     t.prepare(kFs, kBlock);
@@ -297,26 +389,6 @@ void letsGoForTheNextHit(rv::Tank& t)
     check(held < -1.0f && atHit > -0.1f, msg);
 }
 
-void noPumpingOnADrone(rv::Tank& t)
-{
-    const Buf x = drone();
-    float worst = 0.0f;
-    for (int sp = 0; sp < 3; ++sp)
-        for (float ten : {0.5f, 0.8f, 1.0f}) {
-            Set s;
-            s.springs = sp, s.tension = ten;
-            const Run r = render(t, s, x);
-            float lo = 0.0f, hi = -100.0f;
-            for (double tt = 4.0; tt < 12.0; tt += 0.05) { // settled: 2 s into the hold
-                lo = std::min(lo, trimAt(r, tt));
-                hi = std::max(hi, trimAt(r, tt));
-            }
-            worst = std::max(worst, hi - lo);
-        }
-    std::snprintf(msg, sizeof msg, "No pumping: on a held drone the settled trim moves %.2f dB at most (limit 2)", double(worst));
-    check(worst <= 2.0f, msg);
-}
-
 void howlStaysLoud(rv::Tank& t)
 {
     Set s;
@@ -342,10 +414,9 @@ int main()
 {
     rv::Tank t;
     t.prepare(kFs, kBlock);
-    heldSoundsStayUnderTheLimiter();
+    heldSoundsAcrossWobble();
     hitsAreNeverTrimmed(t);
     letsGoForTheNextHit(t);
-    noPumpingOnADrone(t);
     howlStaysLoud(t);
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? 0 : 1;

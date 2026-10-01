@@ -28,15 +28,16 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Flash `dist/resilio_versio_release_00f17b5.bin` (replaces `b3e5ac3`: adds bipolar WOBBLE) and do the click check (§3)
 - [x] Plugin `b3e5ac3` installed (1 Oct); rescan in Ableton, then the M2 Ableton check below
 
-### 1b. Pads clip the output · being fixed (cloud session)
+### 1b. Pads clip the output · retuned, confirm page next
 - [x] Found on the Versio (1 Oct): a low-mid pad at mild settings (CLEAN, DRIVE 0, DECAY noon, 2–3 Springs, TENSION past 3 o'clock) lights the output LEDs red and sounds overdriven, harsh. Measured: a held sound fills the tank until the reverb is 1–4 dB louder than the input, and the limiter sits only ~4–5 dB above an amber input
 - [x] **Your pick:** the tank tames itself on held sounds (hits keep their punch), not a quieter reverb overall
 - [x] Built in the cloud (1 Oct): held sounds no longer reach the limiter at your settings (synthetic pad, drone, organ); hits, skank and the Kick identical to today; the Howl untouched
 - [x] **Listened (1 Oct): B (the trim) in every panel**: hits, skank, synthetic pad and drone, and your real pad at both settings, 2 and 3 Springs
 - [x] Limiter hold (30 ms) added on your request (1 Oct)
 - Merge held back (1 Oct): with the new WOBBLE, two of the trim's checks failed (a held organ's first note touches the limiter; the trim moves 2.9 dB on a drone, limit 2). **Your pick:** WOBBLE now, the trim retuned in the cloud
-- [ ] **Start the cloud session:** "Follow docs/briefs/sustain-trim-retune.md on main. Work on branch proto/sustain-trim-2 and push it; don't merge to main." Then a short confirm page, merge, a second release and install
-- Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; a proposed fix (hold ~30 ms) would clean up the limiter wherever it still works (DRIVE up, hotter input, the Howl). Separate decision, later
+- [x] Cloud session done (1 Oct, branch `proto/sustain-trim-2`): a held organ's first note no longer reaches the limiter, the trim holds still on a drone (1.2 dB, was 2.9), and the pad no longer swells back up; hits and skank identical. It now remembers the loudest swell instead of chasing each one. With WOBBLE left of noon (strong Drift) the springs swell by ~10 dB on their own, so a rare later swell can still touch the limiter for a moment (much less than before). Held sounds sit a little quieter than round 1 in places (pad up to 2.5 dB at TENSION 1)
+- [ ] **Confirm page** (on the Mac, with your real pad): commands in `docs/m8-tuning-backlog.md` "Sustain trim round 2". Listen for the organ's attack, the drone and pad holding still, hits identical, and whether B is too quiet. Then merge, a second release and install
+- Found on the way: the "driven" sound was the limiter's gain moving within each low-frequency cycle; the 30 ms hold (above) cleans it up wherever the limiter still works (DRIVE up, hotter input, the Howl)
 
  · next round after the SPLASH/DRIVE merge
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
