@@ -47,7 +47,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
-- [ ] **Start the SPRINGS 3 session:** "Follow docs/briefs/springs3-palette.md on main. Work on branch proto/springs3-palette and push it; don't merge to main." Five versions of position 3: today, a long big tank, tanks in series, wide stereo spread, a different tank type
+- [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
+- [ ] **Listen to SPRINGS 3 (≈15 min):** open `renders/springs3_palette/index.html` (level-matched). **A** SPRINGS 2 for contrast, **B** position 3 today, **C** long big tank (slower, deeper drip, lower boing, darker, a quarter longer), **D** tanks in series (each drip smeared and doubled, washed), **E** wide (short bright spring left, long dark one right: drips land at different times on each side; try headphones), **F** pan tank (small, bright, metallic, quick echoes, half the tail). Rows: clicks, hits, skank, pad, Kick × DECAY noon / 0.85; columns CLEAN / KICKED. Is position 3 now its own thing? Which one?
 - [x] SPLASH built in the cloud (1 Oct)
 - [ ] **Listen to SPLASH (≈10 min):** open `renders/proto_splash_stronger/index.html` (not level-matched: the splash's size is the point). **A** today, **B** a much bigger top quarter (about 3× the clang at full), **C** B + independent of DRIVE (with DRIVE down, SPLASH works as if DRIVE were at 0.8), **D** C, bolder (the clang reaches lower into each hit's body and rings longer). Rows: hits, skank, clicks × DRIVE 0 / 0.8 × SPLASH steps; columns CLEAN / KICKED. A ceiling keeps a big splash off the output limiter, never below today's splash
 
@@ -73,7 +74,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **SPRINGS 3** cloud session still running. **Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
+**Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
