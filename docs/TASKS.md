@@ -56,6 +56,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Big Knob TONE page:** rendered on the Mac when you ask (§3); the cloud session can't play audio to you
+- **Big Knob: one Ringing cell to fix before any pick ships** (KICKED, loosest TENSION, TONE fully right, noise bursts: a ~3.1 kHz ring in the KICKED Loop that the thinner input exposes). Also on `main`: a steady-tone flag at DECAY max / TENSION max / TONE right of 2 o'clock. Details in the backlog's "Big Knob TONE"
 - **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
