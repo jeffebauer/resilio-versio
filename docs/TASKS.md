@@ -30,7 +30,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **A fresh listening pass**, answering the design questions below where you have a view
 
 ### 3. Big Knob TONE · experiment (next)
-- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Claude prepares a cloud brief and a listening page
+- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
+- [ ] **Start the cloud session:** "Follow docs/briefs/big-knob-tone.md on main. Work on branch proto/big-knob-tone and push it; don't merge to main." Then Claude renders the page here
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
@@ -50,7 +51,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Big Knob TONE brief** (§3), then the page
+- **Big Knob TONE page** once the cloud session is done (§3)
 - **Profile firmware too big** (over 128 KB since bipolar WOBBLE): trim test-only code before the next CPU run on the module. The release firmware is fine (96.5 %), but flash is tight: ~4.5 KB left before new features need space freed
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
