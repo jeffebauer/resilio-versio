@@ -543,8 +543,10 @@ inline float toneLowCutHz(float v)
 //   u = 2·TONE - 1 (0 at noon, 1 fully CW).
 //   Cutoff fc: kToneLowCutMinHz at noon up to kBigKnobMaxHz fully CW, on the
 //     same log + early curve as today's low cut (u^0.7): TONE 0.7 ≈ 170 Hz,
-//     0.85 ≈ 480 Hz, 1 = 1.2 kHz ("telephone"; the Springs' band is
-//     ~200 Hz-4 kHz, so nothing higher).
+//     0.85 ≈ 380 Hz, 1 = 800 Hz ("telephone"; first voiced to 1.2 kHz,
+//     lowered because KICKED, 3 Springs, TENSION 0 rang at 3.1 kHz above
+//     ~850 Hz: with the lows gone its LoopSat lets a Loop mode ring;
+//     backlog "Big Knob TONE" round 2).
 //   Slope: 3rd order, 18 dB/oct (the Altec's): today's 2nd-order section
 //     (its Q raised from 0.707 to 1: a flat 3rd-order Butterworth) times a
 //     1st-order section y = x - k·LP(x). k fades in from 0 at noon (the
@@ -597,10 +599,20 @@ constexpr int   kToneVoicingDriven  = 3;
 // skank and KICKED hits): the same up to u = kBumpEaseFrom, kBumpEase less
 // bump amount fully CW.
 constexpr int   kToneVoicingGentle  = 4;
+// 5 = the bump on hits only (owner, 1 Oct 2026, renders/proto_big_knob2/: the
+// gentle bump won on drum hits, no bump won on pads, chords, clicks and
+// KICKED skank). The Tilt runs voicing 1 (steep, no bump) and voicing 4
+// (gentle bump) side by side and blends to 4 while a sharp hit lasts: the
+// Splash's hit detector, before the SPLASH knob scales it (sudden x loud x
+// short: a hit with crack in it, not a chord or a pad), x kHitBumpGain, up
+// at once, back over kHitBumpReleaseS. Held sounds and chords hear voicing 1.
+constexpr int   kToneVoicingHits    = 5;
+constexpr float kHitBumpGain        = 2.0f;
+constexpr float kHitBumpReleaseS    = 0.15f;
 constexpr float kBumpEaseFrom       = 0.5f;
 constexpr float kBumpEase           = 0.25f;
 constexpr int   kToneDefaultVoicing = kToneVoicingToday;
-constexpr float kBigKnobMaxHz       = 1000.0f;
+constexpr float kBigKnobMaxHz       = 800.0f;
 constexpr float kBigKnobOrderIn     = 0.2f;
 constexpr float kBumpF1             = 0.70f; // x fc, fully CW
 constexpr float kBumpF2             = 1.30f; // x fc, fully CW
@@ -630,6 +642,7 @@ inline BigKnob bigKnob(int voicing, float v)
     const float u  = std::min(1.0f, 2.0f * v - 1.0f);
     const float s  = std::min(1.0f, u / kBigKnobOrderIn);
     const float fc = bigKnobHz(u);
+    if (voicing == kToneVoicingHits) voicing = kToneVoicingSteep; // its plain path (the Tilt adds the bumped one)
     float w = voicing >= kToneVoicingBump ? u : 0.0f; // bump amount
     if (voicing == kToneVoicingGentle && u > kBumpEaseFrom) {
         const float e = (u - kBumpEaseFrom) / (1.0f - kBumpEaseFrom);
@@ -648,7 +661,8 @@ inline BigKnob bigKnob(int voicing, float v)
 inline float bigKnobTrimDb(int voicing, float v, const std::array<float, 3>& w, float drive)
 {
     const float u = std::min(1.0f, 2.0f * v - 1.0f);
-    const float bump = voicing >= kToneVoicingBump ? kBigKnobBumpTrimDb : 0.0f;
+    const bool bumped = voicing == kToneVoicingBump || voicing == kToneVoicingDriven || voicing == kToneVoicingGentle;
+    const float bump = bumped ? kBigKnobBumpTrimDb : 0.0f;
     return -u * (bump + (0.5f * w[1] + w[2]) * (kBigKnobSquashDb + kBigKnobSquashDriveDb * drive));
 }
 

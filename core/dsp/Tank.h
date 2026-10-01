@@ -266,7 +266,7 @@ public:
     // it (drive::kToneDefaultVoicing). Set it before rendering.
     void setToneVoicing(int v)
     {
-        tilt_.setVoicing(std::clamp(v, 0, 3));
+        tilt_.setVoicing(std::clamp(v, 0, drive::kToneVoicingHits));
         compDrive_ = -1.0f; // DriveIn settings again on the next tick (voicing 3)
     }
     int  toneVoicing() const { return tilt_.voicing(); }
@@ -343,6 +343,7 @@ private:
     dsp::Smoother                       mix_;
     float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
     map::MixGains                       mixGains_{1.0f, 0.0f};
+    float hitBlend_ = 0.0f, hitRelease_ = 0.0f; // Big Knob voicing 5
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
     int   limitHold_ = 0, limitHoldSamples_ = 0;
 

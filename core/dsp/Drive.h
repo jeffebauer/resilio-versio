@@ -231,6 +231,9 @@ public:
         ceiling_.reset();
         lowCut_.reset();
         order_.reset();
+        lowCutB_.reset();
+        orderB_.reset();
+        hit_.snap(0.0f);
     }
     void set(float tone, bool snap, int interval);
     // Big Knob voicing (DriveVoicing.h "Big Knob TONE voicings"; Renderer
@@ -252,17 +255,26 @@ public:
         const float g = hi_.next();
         const float extra = (g - 1.0f) * (boost_ ? ceiling_.process(hi) : hi);
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
-        const float y = lowCut_.process(lo * lo_.next() + hi + extra); // bright-side low cut (drive::bigKnob)
+        const float in = lo * lo_.next() + hi + extra;
+        const float y  = lowCut_.process(in); // bright-side low cut (drive::bigKnob)
         // Big Knob's 1st-order section: k 0 (noon, CCW, voicing 0) passes y
         // through exactly.
-        return y - k_.next() * order_.process(y);
+        const float k  = k_.next();
+        const float out = y - k * order_.process(y);
+        if (voicing_ != drive::kToneVoicingHits) return out;
+        // Voicing 5: the gentle bump's path, blended in while a hit lasts.
+        const float yb = lowCutB_.process(in);
+        const float ob = yb - k * orderB_.process(yb);
+        return out + hit_.next() * (ob - out);
     }
+    // Voicing 5: how much of the bumped path (0..1), once per control tick.
+    void setHitBlend(float target, int interval) { hit_.aim(target, interval); }
 
 private:
-    OnePoleLowpass split_, ceiling_, order_;
-    Biquad lowCut_;
+    OnePoleLowpass split_, ceiling_, order_, orderB_;
+    Biquad lowCut_, lowCutB_;
     float sampleRate_ = 48000.0f;
-    Ramp lo_, hi_, k_;
+    Ramp lo_, hi_, k_, hit_;
     int voicing_ = drive::kToneDefaultVoicing;
     float kTarget_ = 0.0f;
     bool boost_ = false;

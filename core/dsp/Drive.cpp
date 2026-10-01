@@ -137,6 +137,11 @@ void Tilt::set(float tone, bool snap, int interval)
         hiGain_ = drive::dbToGain((comp + 0.5f * t));
         lowCut_.setHighpass(b.hz, b.q, sampleRate_);
         order_.setCutoff(b.hz1, sampleRate_);
+        if (voicing_ == drive::kToneVoicingHits) {
+            const drive::BigKnob g = drive::bigKnob(drive::kToneVoicingGentle, tone);
+            lowCutB_.setHighpass(g.hz, g.q, sampleRate_);
+            orderB_.setCutoff(g.hz1, sampleRate_);
+        }
         kTarget_ = b.k;
         tone_    = tone;
     }

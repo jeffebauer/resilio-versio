@@ -107,6 +107,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
     driveIn_.prepare(sampleRate);
     tilt_.prepare(sampleRate);
+    hitRelease_ = std::exp(-float(kControlInterval) / (drive::kHitBumpReleaseS * sampleRate));
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
@@ -180,6 +181,7 @@ void Tank::reset()
     for (auto& s : shelfSplit_) s.reset();
     driveIn_.reset();
     tilt_.reset();
+    hitBlend_ = 0.0f;
     for (auto& d : driveOut_) d.reset();
     splash_.reset();
     clangLp_.reset();
@@ -716,6 +718,13 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
         splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
+        // Big Knob voicing 5 (DriveVoicing.h): the bump follows sharp hits,
+        // up at once, back over kHitBumpReleaseS.
+        {
+            const float h = splash_.takeHitMax() * drive::kHitBumpGain;
+            hitBlend_ = h > hitBlend_ * hitRelease_ ? h : hitBlend_ * hitRelease_;
+            if (tilt_.voicing() == drive::kToneVoicingHits) tilt_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, n);
+        }
         if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
