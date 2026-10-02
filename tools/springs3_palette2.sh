@@ -13,7 +13,8 @@
 # its default. ~1.6 GB of WAVs, a few minutes. (Round 1: tools/springs3_palette.sh.)
 #
 # Usage: tools/springs3_palette2.sh [OUT_DIR]   (default renders/springs3_palette2)
-# RV_RENDER picks the Renderer (default build/rv_render, from this branch).
+# RV_RENDER picks the Renderer (default build/rv_render, from this branch);
+# RV_ONLY="C_pan_brighter F_coupled" re-renders only those versions.
 # Needs the stimulus WAVs:
 #   python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py
 set -euo pipefail
@@ -36,6 +37,8 @@ mkdir -p "$OUT"
 for v in "${VERSIONS[@]}"; do
     name="${v%%:*}"
     set="${v#*:}"
+    # RV_ONLY="C_pan_brighter F_coupled" re-renders just those versions (then the page).
+    if [ -n "${RV_ONLY:-}" ] && [[ " $RV_ONLY " != *" $name "* ]]; then continue; fi
     for m in clicks hits skank pad; do
         "$R" --sweep "presets/sweeps/proto_springs3_$m.json" --out-dir "$OUT/$name/$m" --set "$set" >/dev/null
     done
@@ -49,14 +52,18 @@ for v in "${VERSIONS[@]}"; do
                 --set decay="$d" --set "$set" --sidecar >/dev/null
         done
     done
-    python3 - "$OUT/$name/kick" <<'PY'
+    python3 - "$OUT/$name/kick" "$set" <<'PY'
 import json, sys
 from pathlib import Path
 d = Path(sys.argv[1])
+# A single render's sidecar doesn't record the hidden springs3_voicing key: add the version's --set.
+key, val = sys.argv[2].split("=")
 renders = []
 for wav in sorted(d.glob("*.wav")):
     side = json.loads(wav.with_suffix(".json").read_text())
-    renders.append({"wav": wav.name, "sidecar": wav.with_suffix(".json").name, "params": side.get("params", {})})
+    params = side.get("params", {})
+    params[key] = val if key == "springs" else int(val)
+    renders.append({"wav": wav.name, "sidecar": wav.with_suffix(".json").name, "params": params})
 man = {"name": "proto_springs3_kick", "input": "test_audio/stimulus/05_silence_for_kicks.wav",
        "ignore_flags": ["click_count", "max_step_db_100ms", "resonance_peak_db"], "renders": renders}
 (d / "manifest.json").write_text(json.dumps(man, indent=2))

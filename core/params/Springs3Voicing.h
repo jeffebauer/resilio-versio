@@ -81,9 +81,9 @@
 //                   each other (a rotation, as 8, between those two only), so
 //                   each ear hears both colours: wide, without the lean
 //
-// Held sounds (ADR 0035): the long, wide and pan tanks build up more on some
-// held notes than today's, so their Sustain trim may cut up to 8 dB (5 dB
-// today) before the limiter has to; test_springs3 "sustain".
+// Held sounds (ADR 0035): the long, wide, pan and cross-fed wide tanks build
+// up more on some held notes than today's, so their Sustain trim may cut up
+// to 8 dB (5 dB today) before the limiter has to; test_springs3 "sustain".
 //
 // Memory: no voicing needs more delay memory than today. A Spring's delay
 // line is sized for the loosest tank (map::kLoopDelayMaxSeconds x the
@@ -189,6 +189,7 @@ struct Voicing {
     float stageBoost = 0.0f;   // Chirp stages this share of the way from TENSION's count to stageCap (the cap: same worst case)
     float couplingAngle = 0.0f; // the Loops share energy: a rotation by this angle (radians) of their returns, every trip
     int   couplingKind  = 0;    // kCoupleNone, kCoupleAll (A, B, C) or kCoupleLeftRight (A and B)
+    float dampingCapHz  = 0.0f; // a Spring's damping cutoff never above this x its detune (0 = no cap)
 };
 constexpr int kCoupleNone = 0, kCoupleAll = 1, kCoupleLeftRight = 2;
 
@@ -235,6 +236,13 @@ constexpr std::array<Shape, modes::kNumSprings> kLongSprings = [] {
 // 5: the pan tank's brightness (round 1 voicing 4) without its size.
 constexpr float kPanBrightDamping = 1.7f, kPanBrightHigh = 2.2f;
 constexpr float kPanBrightTrim    = 1.0f;
+// ... but each Spring's damping cutoff stops where today's is at TONE fully
+// right (9 kHz x its detune): brighter there, with the low cut, the darkest
+// Spring (C) let the loosest KICKED tank ring at 3.1 kHz (M6 grid:
+// ringing_db 19.2, limit 15; the cap at a flat 9 kHz didn't help, C's own
+// top did). So TONE's top is today's and the extra brightness is all below
+// it: most at TONE left, fading out toward fully right.
+constexpr float kPanBrightDampingCapHz = map::kDampingMaxHz;
 // 6: the pan tank's Chirp without its size.
 constexpr float kPanChirpTrim = 1.0f;
 // 7: wire gauges. Length, Chirp frequency fC, steepness a, damping, tail,
@@ -274,8 +282,17 @@ inline constexpr std::array<Shape, modes::kNumSprings> kCrossWideSprings{{
     {modes::kDetune[1].loopDelay, 0.93f, 0.96f, 0.72f, 0.965f, 0.75f, modes::kPickupOffsetSeconds[1]}, // dark (right)
     fromDetune(2),                                                                                       // today's (centre)
 }};
+// The turn: 45 degrees (half of each Loop's return goes to the other: the
+// most it can share). Its direction matters: +45 degrees left the left ear
+// 1.9 dB louder, -45 degrees 1.1 dB quieter (today's lean is +0.3 to -1.3
+// dB, by material). Left vs right brightness (one click's tail centroid):
+// 790 / 716 Hz (round 1's wide 840 / 716, today 816 / 800; a milder set
+// without the cross-feed read 880 / 791). Each ear still hears its own
+// Spring's last pass of filtering, so the colours even out only so far.
+// The Sustain trim may cut up to 8 dB (as round 1's long, wide and pan
+// tanks): at 5 dB a +2 semitone drone pulled the limiter 7.4 dB.
 constexpr float kCrossWideAngle = -0.785f;
-constexpr float kCrossWideTrim  = 1.05f;
+constexpr float kCrossWideTrim  = 1.0f;
 
 inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 0 today: never applied (the Tank plays SpringModes.h as on main).
@@ -311,7 +328,7 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // ---- Round 2: today's lengths and repeat timing (keepTiming) ----
     // 5 pan, brighter only: the pan tank's damping, high path and low cut.
     {1.0f, 0.0f, 1.0f, detuned(kPanBrightDamping, 1.0f, kPanBrightHigh), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 100.0f,
-     5.0f, kTodayMix, kPanBrightTrim, true},
+     5.0f, kTodayMix, kPanBrightTrim, true, 0.0f, 0.0f, kCoupleNone, kPanBrightDampingCapHz},
     // 6 pan, higher Chirp only: the pan tank's fC and stage cap.
     {1.0f, 0.0f, 1.25f, detuned(), 40, 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kPanChirpTrim, true},
     // 7 mixed wire gauges
@@ -323,7 +340,7 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     {1.0f, 0.0f, 1.0f, kDiffuseSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kDiffuseTrim, true,
      kDiffuseStageBoost},
     // 10 cross-fed wide
-    {1.0f, 0.0f, 1.0f, kCrossWideSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kCrossWideTrim,
+    {1.0f, 0.0f, 1.0f, kCrossWideSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 8.0f, kTodayMix, kCrossWideTrim,
      true, 0.0f, kCrossWideAngle, kCoupleLeftRight},
 }};
 

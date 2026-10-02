@@ -277,8 +277,13 @@ void Tank::controlTick(bool snap)
         s3SeriesFrom_ = snap ? series : s3SeriesTo_;
         s3SeriesTo_   = series;
 #ifndef RV_FIXED_VOICINGS
-        // Coupled Loops (voicings 8, 10): the rotation follows the glide.
-        const CoupleMatrix m = coupleMatrix(s3W_ * v3.couplingAngle, v3.couplingKind);
+        // Coupled Loops (voicings 8, 10): the rotation follows the glide. It
+        // lets go in the Howl zone (KICKED, top of DECAY; ADR 0019): coupled,
+        // the three Loops locked into one frozen howl (the M6 Howl grid's
+        // movement check failed 3 of 18), so there the Springs howl apart,
+        // as today.
+        const float howl = drive::howlZone(decay) * attW_[2];
+        const CoupleMatrix m = coupleMatrix(s3W_ * (1.0f - howl) * v3.couplingAngle, v3.couplingKind);
         s3CoupleFrom_ = snap ? m : s3CoupleTo_;
         s3CoupleTo_   = m;
         s3Coupled_    = v3.couplingKind != springs3::kCoupleNone && (s3WFrom_ > 0.0f || s3W_ > 0.0f);
@@ -724,6 +729,10 @@ void Tank::updateSpringSettings(size_t i)
     s.loopDelaySeconds *= sh.loopDelay;
     s.transitionHz     *= sh.transition;
     s.dampingHz        *= sh.damping; // Spring.cpp clamps to 0.45 fs
+#ifndef RV_FIXED_VOICINGS
+    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::kVoicings[size_t(s3Voicing_)].dampingCapHz > 0.0f)
+        s.dampingHz = std::min(s.dampingHz, springs3::kVoicings[size_t(s3Voicing_)].dampingCapHz * modes::kDetune[i].damping);
+#endif
     s.t60Seconds       *= sh.decay;
     s.highPathLevel    *= sh.highPath;
     s.tapRatio          = modes::kPickupTap[i];

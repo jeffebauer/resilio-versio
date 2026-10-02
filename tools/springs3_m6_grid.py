@@ -10,7 +10,7 @@ Howl sweeps. The WAVs are deleted as it goes (only the sidecars are kept).
 Voicings run in parallel (one Renderer process each).
 
 Usage: python3 tools/springs3_m6_grid.py [--render build/rv_render]
-           [--out renders/springs3_palette2/m6] [--voicings 0,5,6,7,8,9,10]
+           [--out renders/springs3_palette2_m6] [--voicings 0,5,6,7,8,9,10]
 """
 import argparse
 import concurrent.futures
@@ -68,7 +68,7 @@ def run(render, out, voicing):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--render", default="build/rv_render")
-    ap.add_argument("--out", default="renders/springs3_palette2/m6")
+    ap.add_argument("--out", default="renders/springs3_palette2_m6")
     ap.add_argument("--voicings", default="0,5,6,7,8,9,10")
     a = ap.parse_args()
     out = (ROOT / a.out).resolve()

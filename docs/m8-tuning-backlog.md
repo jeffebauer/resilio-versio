@@ -524,6 +524,48 @@ The script runs the four sweeps (`presets/sweeps/proto_springs3_{clicks,hits,ska
 
 Listen for: is position 3 now clearly its own thing in each? Long: deeper/slower, or just TENSION turned looser? Series: thicker and washed, or only softer? Wide: drips bouncing, or a hole in the middle on headphones? Pan: metallic and fun, or thin? Flip SPRINGS 2 ↔ 3 in the plugin later: the long and pan tanks bend the pitch for a moment on the way in and out.
 
+## SPRINGS 3 palette round 2 (2 Oct 2026, branch `proto/springs3-palette-2`, not merged; ADR 0037 "Round 2", still proposed)
+Owner after round 1: a different tank size moves the repeat timing and muddles TENSION and DECAY; was the pan tank's charm the brightness or the boing?; round 1's wide sounds lopsided and leans to a higher harmonic on chords; "what other approaches ... without affecting repeat timing?" Six new voicings of position 3 (5–10; 0–4 unchanged), numbers in `core/params/Springs3Voicing.h`.
+
+**Every one keeps today's repeat timing.** Same Spring lengths; where a voicing changes the Chirp (which takes a little time, ~1 ms), the Spring's delay gives that time back, so each echo lands where today's does. Checked per Spring (round trip and first echo at 800 Hz, TENSION 0–1 × TONE 0/½/1): within 0.05 % and 0.05 ms of today. On the output: first echo 25.4–25.9 ms (today 25.5), echo spacing 108.5 / 68.5 / 32.5 ms at TENSION 0 / ½ / 1 (today the same, ±0.5 ms). One exception: at the loosest TENSION the longest (right) Spring can't grow past its delay memory, so in 6, 7 and 9 it repeats up to 1.4 % early there.
+
+**What each sounds like (by design and by the numbers; one click, CLEAN, defaults, DECAY noon unless said):**
+
+| voicing | in plain words | T60 | tail centroid (share < 400 Hz) | left / right centroid, level L−R | held chord centroid |
+|---|---|---|---|---|---|
+| SPRINGS 2 | for contrast | 1.92 s | 810 Hz (40 %) | 846 / 858 Hz, +0.4 dB | 203 Hz |
+| 0 today | position 3 now | 1.89 s | 767 Hz (41 %) | 816 / 800 Hz, +0.3 dB | 194 Hz |
+| 5 pan, brighter only | the pan tank's tone at today's size, boing and tail length: less bass, a brighter, airier tail (most at TONE left, fading out toward TONE fully right) | 1.90 s | 1066 Hz (27 %) | 1102 / 1119 Hz, +0.4 dB | 225 Hz |
+| 6 pan, higher Chirp only | the pan tank's boing at today's size and tone: a higher, quicker, more metallic "doing" on each echo | 1.86 s | 830 Hz (39 %) | 889 / 845 Hz, +0.1 dB | 183 Hz |
+| 7 mixed wire gauges | three wire thicknesses: a crisp short boing left, a lower longer one right, a high one in the centre: a hit is a little cluster of boings; balanced left/right | 1.85 s | 776 Hz (41 %) | 781 / 834 Hz, 0.0 dB | 191 Hz |
+| 8 coupled | the Springs pass energy to each other every round trip: echoes multiply and blur into a bloom over the first half second instead of separate drips (drip index 1.20, today 1.32; lower = smoother) | 1.86 s | 756 Hz (43 %) | 811 / 783 Hz, +0.9 dB | 188 Hz |
+| 9 diffuse | more smear inside each Spring: a softer-edged, smoother tail, fewer sharp fast echoes (drip index 1.26) | 1.89 s | 811 Hz (40 %) | 849 / 833 Hz, +0.4 dB | 193 Hz |
+| 10 cross-fed wide | your idea: bright Spring left, today's centre, dark Spring right, the left and right Springs feeding each other half their energy every trip, so each ear hears both colours; wide but more even than round 1's wide; overall a touch darker | 1.89 s | 699 Hz (45 %) | 790 / 716 Hz, −1.1 dB (round 1 wide 840 / 716, +1.3) | 198 Hz (round 1 wide 267) |
+
+At DECAY 0.85: T60 5.55 / 5.44 / 5.56 / 5.48 / 5.51 / 5.55 s (today 5.53). "Held chord centroid": the C minor pad held, CLEAN, defaults; round 1's wide leaned up (267 Hz vs 194), none of round 2 does except 5 (by design, brighter).
+
+**Per voicing (SPRINGS 3):**
+
+| | M6 grid (90 Ringing + 18 Howl) | test_springs3 Ringing (36) | level vs SPRINGS 2 (K-weighted, worst) | mono (min loss / deepest notch, hits / stabs) | Sustain trim: limiter worst / mean, pad · drone · organ (today 2.66/1.36 · 5.64/1.60 · 1.50/0.88) | CPU desktop, worst case* (noon) |
+|---|---|---|---|---|---|---|
+| 0 today | 0, worst 9.8, steady 0, Howl 18/18 | (passes) | — | −0.42 / −0.8, +0.05 / −4.1 | as listed | 565 ns/sample (432) |
+| 5 | 0, worst 9.5, Howl 18/18 | 0, worst 13.1 | +0.7 | −0.35 / −1.6, +0.03 / −3.8 | 1.94/0.82 · 2.81/0.58 · 2.14/0.82 | +0.5 % (+0.5 %) |
+| 6 | 0, worst 9.2, Howl 18/18 | 0, worst 5.6 | −0.5 (mono) | −0.41 / −1.5, +0.06 / −3.8 | 2.33/1.46 · 5.41/1.61 · 1.82/0.99 | −16.6 % (−7.4 %), 40 stages |
+| 7 | 0, worst 8.1, Howl 18/18 | 0, worst 5.6 | −0.7 (mono) | −0.40 / −1.3, 0.00 / −5.1 | 2.68/1.37 · 5.54/1.60 · 2.26/1.00 | +0.2 % (+0.1 %) |
+| 8 | 0, worst 6.6, Howl 18/18 | 0, worst 7.9 | −0.4 | −0.08 / −1.7, +0.29 / −1.9 | 2.49/1.11 · 5.36/1.50 · 2.14/0.87 | −6.0 % (−1.3 %) |
+| 9 | 0, worst 7.3, Howl 18/18 | 0, worst 8.0 | −0.7 (mono) | −0.42 / −1.9, +0.07 / −4.4 | 2.86/1.32 · 5.59/1.59 · 2.19/0.91 | −0.1 % (**+16.4 %**) |
+| 10 | 0, worst 11.8, Howl 18/18 | 0, worst 13.1 | −1.1 | +0.26 / −1.1, +0.17 / −3.2 | 2.94/1.42 · 4.15/1.77 · 2.92/1.17 (trim ceiling 8 dB) | −6.2 % (−1.3 %) |
+
+\*KICKED, DRIVE 1, DECAY/TONE 1, TENSION 0, steady noise, best of 7 (machine noise ±5 %). Notes: 9 runs more Chirp stages where TENSION runs fewer than the cap, so it costs more at noon (+16 %) but its worst case (loosest tank) is today's, which is what the chip budget is written for. 8 and 10 run a per-sample path across the three Springs (the matrix mix), cheaper on the desktop; on the Cortex-M7 it would need an M3 run if picked. Memory: no growth (pool 29,007 floats). Flash: none of round 2 is in the firmware (`RV_FIXED_VOICINGS`): release 119,824 B, round 1's branch 119,832, `main` 119,408 (round 1's plumbing). Also (all six): SPRINGS 1 and 2 and voicing 0 bit for bit as `main` (48 Renderer renders, `cmp`); switching 2 ↔ 3 click-free (worst ratio 4.8, limit 10), held level step ≤ 0.9 dB; stability at DECAY/DRIVE/SPLASH 1 (peak 0.89).
+
+**Found / fixed on the way:** 5 rang at 3.1 kHz on the loosest KICKED tank at TONE fully right (M6: 19.2 dB, limit 15) when the brighter damping went past today's top: each Spring's damping now stops at today's TONE-fully-right value. 8 about the Springs' common axis held a steady tone (680 Hz); a lopsided axis fixed it. 8 and 10 froze the Howl (M6 Howl 15/18 and 17/18, the movement check): the coupling now lets go in the Howl zone, so the Howl is today's. 10 with round 1's wide output matrix was too correlated at DECAY 0 (0.56, limit 0.5): today's matrix. 10's direction of turn decides which ear is louder (chosen: right side a touch louder, −1.1 dB, within today's spread).
+
+**Limits said plainly:** nothing loosened. The Sustain trim ceiling for 10 is 8 dB (5 today), as round 1's long, wide and pan tanks; its held organ reads 2.92 dB against the 3.0 dB bar (little margin). The memory cap at the loosest TENSION (above) is reported, not hidden: up to 1.4 % early on one Spring.
+
+**Listen (on the Mac):** `renders/springs3_palette2/index.html` (~1.7 GB, level-matched): **A** SPRINGS 2, **B** today, **C** 5 pan brighter, **D** 6 pan Chirp, **E** 7 wire gauges, **F** 8 coupled, **G** 9 diffuse, **H** 10 cross-fed wide; rows clicks, hits, skank, pad, Kick × DECAY noon / 0.85; columns CLEAN / KICKED. Rebuild: in the worktree, `RV_RENDER=build-r/rv_render tools/springs3_palette2.sh <out>` (`RV_ONLY="C_pan_brighter ..."` for some versions); M6 grid: `python3 tools/springs3_m6_grid.py --render build-r/rv_render --voicings 0,5,6,7,8,9,10` (sidecars in `renders/springs3_palette2_m6*`).
+
+Listen for: C vs D answers "brightness or boing?" (compare both with round 1's pan, F on `renders/springs3_palette`). E: a cluster of boings on hits, or just busier? F: does a hit bloom, or does it lose the drip that makes it a spring? G: smoother, or just duller? H: wide and even on headphones, or does it miss round 1's bite? On sustained chords, does anything lean up?
+
 ## Big Knob TONE (1 Oct 2026, branch `proto/big-knob-tone`, not merged; ADR 0036 proposed)
 Owner: TONE's right side as King Tubby's "Big Knob" (the Altec 9069B high-pass on his MCI desk), smooth (no steps or clicks), exploring the coil's character. Brief: `docs/briefs/big-knob-tone.md`. Research: `docs/research/big-knob.md` (web sources seen through search text only: this cloud session's network policy blocked opening the pages). Numbers: `core/params/DriveVoicing.h` "Big Knob TONE voicings". Renderer key `tone_voicing` (default 0 = today; firmware and plugin unchanged).
 
