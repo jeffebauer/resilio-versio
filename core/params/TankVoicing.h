@@ -285,8 +285,9 @@ struct Tuning {
     // Big Knob thinning the input, they were most of what was left below
     // 150 Hz (TONE fully right: lows -5.5 dB re noon, test_drive's bar -8).
     // Higher at noon it moves the picked sound (250 Hz: the click take's
-    // low-mid balance +1.4 dB), so it rises with the Big Knob. 0 = none.
-    float tdEvenHpHz         = 60.0f;
+    // low-mid balance +1.4 dB; 60 Hz: +0.4), so it sits at 25 Hz (only the
+    // sub-bass difference tones) and rises with the Big Knob. 0 = none.
+    float tdEvenHpHz         = 25.0f;
     float toneBrightEvenHpHz = 250.0f;
     // TONE re-map. Round 4's numbers are noon's and everything right of it;
     // left of noon they ease, by toneDarkWeight (1 at TONE 0, 0 from noon,
@@ -325,7 +326,7 @@ struct Tuning {
     float toneDarkCurve        = 0.5f;
     float toneBrightOutHz      = 9000.0f;
     float toneBrightDb         = 0.0f;
-    float toneBrightCurve      = 2.0f;
+    float toneBrightCurve      = 4.0f;  // steep: TONE 0.7 (the owner's F) moves < 0.1 dB
     // KICKED drives the coil hard enough to saturate it: its core loses
     // inductance, so it loses less treble. In KICKED (ATTITUDE weight) the
     // coil's corner rises by up to tdDriveOpenOct octaves with DRIVE (weight
