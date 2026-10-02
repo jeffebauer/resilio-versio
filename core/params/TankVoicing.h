@@ -230,6 +230,11 @@ struct Tuning {
     // The high path's ceiling (today Spring::kHighCeilingHz, 9 kHz): its
     // echoes start with the arc, not a click.
     float tdHighCeilHz    = 9000.0f;
+    // The wet's level (dB): less Loop damping keeps more energy in the tail
+    // (noise bursts at DECAY 1, tightest TENSION came back ~3.5 dB louder
+    // than voicing 3 and tripped the M6 grid's steady_tone check, a mode
+    // above -30 dBFS for > 2 s); -2.5 dB clears it in 5-7.
+    float tdTrimDb        = -2.5f;
     // The high path's level x this (TONE's, Mappings.h toneHighPathLevel).
     float tdHighLevel     = 0.9f;
 

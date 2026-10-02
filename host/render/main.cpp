@@ -335,7 +335,7 @@ void applyTankTuneEnv()
         {"gentleDampingScale", &t.gentleDampingScale},
         {"tdInHz", &t.tdInHz}, {"tdInQ", &t.tdInQ}, {"tdOutHz", &t.tdOutHz}, {"tdOutQ", &t.tdOutQ},
         {"tdDampingScale", &t.tdDampingScale}, {"tdHighT60Ratio", &t.tdHighT60Ratio}, {"tdHighCeilHz", &t.tdHighCeilHz},
-        {"tdHighLevel", &t.tdHighLevel}, {"tdEven", &t.tdEven}, {"tdEvenEase", &t.tdEvenEase},
+        {"tdHighLevel", &t.tdHighLevel}, {"tdEven", &t.tdEven}, {"tdTrimDb", &t.tdTrimDb}, {"tdEvenEase", &t.tdEvenEase},
         {"wideW", &t.wideW}, {"wideSide", &t.wideSide}, {"wideSide3", &t.wideSide3},
         {"wide0", &t.wideDecorrMs[0]}, {"wide1", &t.wideDecorrMs[1]}, {"wide2", &t.wideDecorrMs[2]},
         {"wideDecorrCoeff", &t.wideDecorrCoeff}, {"gentleMakeupMaxDb", &t.gentleMakeupMaxDb}, {"gentleMakeupShare", &t.gentleMakeupShare},

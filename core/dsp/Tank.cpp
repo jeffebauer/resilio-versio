@@ -225,6 +225,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     tdIn_.setLowpass(std::min(tankv::tuning().tdInHz, 0.45f * sampleRate), tankv::tuning().tdInQ, sampleRate);
     for (auto& f : tdOut_) f.setLowpass(std::min(tankv::tuning().tdOutHz, 0.45f * sampleRate), tankv::tuning().tdOutQ, sampleRate);
     tdEvenAvg_.setCutoff(20.0f, sampleRate);
+    tdTrim_ = drive::dbToGain(tankv::tuning().tdTrimDb);
 #endif
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
@@ -1096,6 +1097,13 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             prof::mark(prof::Section(prof::kSpringA + int(s)));
         }
 
+#if RV_TANKV_BUILT >= 5
+        // Voicing 5+: the Springs keep more of their highs (less Loop damping),
+        // so their tail comes back louder; tdTrimDb takes that back.
+        const float wetGain = kWetGain * (tankv::hasTransducers(tankVoicing_) ? tdTrim_ : 1.0f);
+#else
+        constexpr float wetGain = kWetGain;
+#endif
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
             // DRIVE's heard share (ADR 0033): the tail comes back louder by
@@ -1104,7 +1112,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // level at every DRIVE (the tail's length and colour don't move
             // with DRIVE), and the pickups' hardness is divided by the same
             // gain (controlTick), so they bend the louder tail as before.
-            const float wg = kWetGain * heardGain_.next() * trem[i];
+            const float wg = wetGain * heardGain_.next() * trem[i];
             const float src[modes::kNumSources] = {wg * wet[0][i], wg * wet[1][i], wg * wet[2][i]};
 
             if (fadePos_ < 1.0f) {
