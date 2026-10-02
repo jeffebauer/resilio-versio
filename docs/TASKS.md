@@ -12,11 +12,18 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points (`docs/manual.md`, `docs/presets.md`) up to date with the sound as of `a8c64c7` |
 
-**Plugin in Ableton:** `2ed84f2`, version **1.2.89** (installed 2 Oct, evening: SPRINGS 3 coupled, plus Big Knob TONE, SPLASH C and everything before; AU validated). Every install now gets its own version number, so Ableton re-reads the parameters: the dead BOING entry is gone and TENSION is listed. **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and use a **fresh** Resilio Versio (an old device in a set can keep BOING; redraw any BOING automation on TENSION). Wellspring F isn't in it yet.
+**Plugin in Ableton:** `8901296`, version **1.3.6**, a **candidate, not merged** (installed 2 Oct, evening): **Wellspring F** (your round 4 pick) on top of SPRINGS 3 coupled, Big Knob TONE, SPLASH C and everything before; AU validated. **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and use a **fresh** Resilio Versio. If you don't like it, Claude reinstalls `2ed84f2` (main, v1.2.89).
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
 
 ## Now (suggested order)
+
+### 0a. Play the Wellspring F candidate in Ableton (≈15 min) · before Claude merges it
+- [ ] **General feel:** does it sit further back and gentler, like your Wellspring, without going dull? Any setting where it sounds worse than before?
+- [ ] **SPLASH in KICKED with DRIVE down:** around 2 o'clock a rim hit splashes ~2 dB less than today (fully up it's slightly more). Still strong enough in the middle of the knob?
+- [ ] **TONE sweep on sharp clicks/rims:** the left half comes out ~4 dB louder than noon and fully right ~4.5 dB quieter on very sharp clicks (drum hits stay even). Does sweeping TONE feel like it jumps in level?
+- [ ] **TONE fully left:** as warm and dark as you're used to?
+- Then tell Claude: merge as is, or what to fix first
 
 ### 0. CPU run 14 on the module (≈10 min, USB only) · ready
 - [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
