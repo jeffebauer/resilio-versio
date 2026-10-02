@@ -28,6 +28,10 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Wow** | The slow part of Drift: a random pitch sway, ~0.2–1.5 Hz, its speed itself wandering (tape-speed drift). |
 | **Flutter** | The fast part of Drift: a smaller, quicker random pitch shimmer, ~5–12 Hz, on top of the wow. |
 | **Sustain trim** | Held sounds only (pads, drones, never hits): eases the Springs' input down just enough that the wet's peaks stay under the output limiter. Tails and the Howl untouched (ADR 0035). |
+| **Big Knob** | TONE's right half (ADR 0036): King Tubby's desk high-pass (Altec 9069B), an 18 dB/oct low cut sweeping 20 Hz at noon to 800 Hz fully right, with the coil's nasal bump above the cutoff on sharp hits only. |
+| **Limiter hold** | The output limiter holds its gain 30 ms before releasing (ADR 0035), so light limiting doesn't ride each bass cycle (heard as drive). |
+| **Voicing (hidden)** | A Renderer-only alternative of a sound feature (`tone_voicing`, `splash_voicing`, `springs3_voicing`, `tank_voicing`, …) for listening pages; the firmware compiles only the default (`RV_FIXED_VOICINGS`). |
+| **Transducers (tank model)** | Prototype (ADR 0038, Proposed): the treble-limited coil-and-magnet input and pickup output of a real tank, fitted to the owner's Wellspring sweep. |
 | **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
 | **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |

@@ -55,6 +55,10 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setTankVoicing(int(std::lround(value)));
         return true;
     }
+    if (key == kSprings3VoicingKey) {
+        tank.setSprings3Voicing(int(std::lround(value)));
+        return true;
+    }
     return false;
 }
 
@@ -81,7 +85,7 @@ bool applySetArg(Tank& tank, const std::string& arg, std::string& error)
     if (eq == std::string::npos) { error = "expected key=value"; return false; }
     const std::string key  = arg.substr(0, eq);
     const std::string text = arg.substr(eq + 1);
-    {   // Hidden, Renderer-only keys (wobble_voicing, sustain_voicing, splash_voicing, tone_voicing, tank_voicing): a plain number.
+    {   // Hidden, Renderer-only keys (wobble_voicing, sustain_voicing, splash_voicing, tone_voicing, springs3_voicing, tank_voicing): a plain number.
         char* end = nullptr;
         const double v = std::strtod(text.c_str(), &end);
         if (!text.empty() && *end == '\0' && applyHidden(tank, key, v)) return true;

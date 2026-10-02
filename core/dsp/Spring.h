@@ -243,6 +243,22 @@ public:
         process(in, highIn, lFrac, lSamples, nullptr, out, n);
     }
 
+    // Coupled Loops (SPRINGS 3 palette, Springs3Voicing.h voicings 8 and 10;
+    // never used by today's tank). One sample in two halves, so the Tank can
+    // mix the Springs' Loop returns between them:
+    //   coupledReturn  advances the glides and modulation, reads the
+    //                  feedback and the pickup, and returns what the Loop
+    //                  would add to its input this sample: g x LoopSat(fb);
+    //   coupledFinish  takes the input and the (mixed) return and runs the
+    //                  rest of the Loop and the high path; returns the
+    //                  Spring's output. With the return unmixed it is
+    //                  process() for one sample.
+    // The Tank mixes the returns with a rotation (energy in = energy out), so
+    // the Loops together never gain: each Loop's own g < 1 still bounds them.
+    // Used by SPRINGS 3 (coupled, the default voicing), firmware included.
+    float coupledReturn(float lFrac, float lSamples, float tapSamples);
+    float coupledFinish(float in, float highIn, float loopReturn);
+
     // ---- Analysis at the current coefficients (Loop gain design + tests) ----
     float sampleRate() const { return sampleRate_; }
     float loopDelaySamples() const { return lCur_; }
@@ -262,6 +278,12 @@ public:
     float loopMagnitude(float freqHz) const;
     // T60 (s) the Loop gives at freqHz with the current g.
     float t60AtSeconds(float freqHz) const;
+    // When the first echo of an impulse comes out at freqHz, samples: the
+    // Chirp chain, fC low-pass and damping once, then the pickup's read
+    // point (tapRatio x L + offset). Analysis (test_springs3 "timing").
+#ifndef RV_FIXED_VOICINGS
+    float firstEchoSamples(float freqHz) const;
+#endif
     // L modulation factor 1 + m(t) applied to the last sample's delay reads
     // (Micro-mod floor + Howl movement; test_antires).
     float lengthModulation() const { return modNow_; }
@@ -269,6 +291,7 @@ public:
 private:
     void  advanceGlides();
     float processLow(float in, float lMod, float tapMod);
+    void  loopWrite(float x); // the Loop after its input sum (coupledFinish): Chirp chain, filters, into the delay line
     float processHigh(float in, float lhMod);
     // The redesign in its three parts (M3 run 12). The Loop gain design
     // evaluates the Loop at kNumPoints frequencies; everything there that
@@ -352,6 +375,7 @@ private:
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
+    float    cTap_ = 0.0f, cNoise_ = 0.0f; // coupledReturn -> coupledFinish
 
     // Feedback diffusers (setDiffusion; Tank voicing 3). Schroeder allpass
     // (c + z^-D)/(1 + c z^-D), integer D.

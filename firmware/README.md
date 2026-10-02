@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 119,408 B (91%) (2 Oct 2026: Big Knob TONE +~1.1 KB with the Renderer-only voicings compiled out (RV_FIXED_VOICINGS); USB host stack stubbed out, −3.6 KB in every variant, `no_uart_spi.cpp`)
+- release 122,392 B (93%) (2 Oct 2026: SPRINGS 3 coupled, ADR 0037: the coupled Loops are the first SPRINGS 3 code in the firmware, +5.7 KB at -O3; the Tank's and Spring's set-up and per-tick housekeeping (`controlTick`, `prepare`, `reset`, the coupled helpers) are now built for size, `RV_SIZE_OPT` in `core/dsp/SizeOpt.h`, and the firmware keeps only its own voicing's entry of the SPRINGS 3 table. The knob-move coefficient redesign (`updateBaseSettings`, `updateSpringSettings`, `Spring::prepareTransition`) and every per-sample path stay -O3)
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 127,420 B (97%, 3.6 KB headroom). Run 14 binary: `dist/resilio_versio_m3_profile_run14.bin` (rebuilt 2 Oct with Big Knob: bipolar WOBBLE + sustain trim + limiter hold + Big Knob; first chip run since run 13). Also the first hardware run of the Tank built at boot and the USB host stub
+- profile 130,396 B (99.5%, ~0.7 KB headroom) with SPRINGS 3 coupled. Run 14 binary (before coupled): `dist/resilio_versio_m3_profile_run14.bin`. Run 15 (this build: coupled per-sample path, -Os control tick) is due before a release with coupled
 
 ### Flash-budget techniques in use (ADR 0011)
 

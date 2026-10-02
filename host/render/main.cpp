@@ -10,8 +10,9 @@
 //   Hidden, Renderer-only keys (ParamsJson.h): wobble_voicing = 0 / 1 / 2 / 3 (A / B / C / D,
 //   core/params/WobbleVoicing.h), sustain_voicing = 0 / 1 / 2 (off / round 2 / gentle,
 //   core/params/DriveVoicing.h), splash_voicing = 0 / 1 / 2 / 3 (today / stronger top / + DRIVE-free /
-//   bolder, core/params/SplashVoicing.h) and tone_voicing = 0..5 (the Big Knob, DriveVoicing.h),
-//   in --set, a --preset, or a sweep base / grid. A sweep's
+//   bolder, core/params/SplashVoicing.h), tone_voicing = 0..5 (the Big Knob, DriveVoicing.h) and
+//   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), in --set, a
+//   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
 
 #include "Automation.h"
@@ -214,11 +215,13 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool splVoiced = setsKey(rv::paramsjson::kSplashVoicingKey);
         bool toneVoiced = setsKey(rv::paramsjson::kToneVoicingKey);
         bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
+        bool s3Voiced = setsKey(rv::paramsjson::kSprings3VoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
             if (key == rv::paramsjson::kSplashVoicingKey) splVoiced = true;
             if (key == rv::paramsjson::kToneVoicingKey) toneVoiced = true;
             if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
+            if (key == rv::paramsjson::kSprings3VoicingKey) s3Voiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
@@ -246,6 +249,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (splVoiced) params.set(rv::paramsjson::kSplashVoicingKey, rv::json::Value::makeNumber(tank.splashVoicing()));
         if (toneVoiced) params.set(rv::paramsjson::kToneVoicingKey, rv::json::Value::makeNumber(tank.toneVoicing()));
         if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
+        if (s3Voiced) params.set(rv::paramsjson::kSprings3VoicingKey, rv::json::Value::makeNumber(tank.springs3Voicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }
