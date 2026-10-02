@@ -1,4 +1,5 @@
 #include "dsp/Spring.h"
+#include "dsp/SizeOpt.h"
 
 #include "params/AntiRes.h"
 #include "params/SplashVoicing.h"
@@ -68,7 +69,7 @@ size_t Spring::requiredFloats(float sampleRate)
          + size_t(kMaxStages) * size_t(ringSize(sampleRate));
 }
 
-void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
+RV_SIZE_OPT void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
 {
     sampleRate_ = sampleRate;
     lowSize_    = lowDelaySize(sampleRate);
@@ -104,7 +105,7 @@ void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
     setSettings(settings_, true);
 }
 
-void Spring::reset()
+RV_SIZE_OPT void Spring::reset()
 {
     std::fill(lowBuf_, lowBuf_ + lowSize_, 0.0f);
     std::fill(highBuf_, highBuf_ + highSize_, 0.0f);
@@ -323,7 +324,7 @@ float Spring::roundTripAt(float freqHz, float cw, float loopSatLatency) const
     return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + loopSatLatency;
 }
 
-#ifndef RV_FIXED_VOICINGS // analysis and the SPRINGS 3 palette's coupled Loops: not in the firmware (Drive.h)
+#ifndef RV_FIXED_VOICINGS // analysis only: not in the firmware (Drive.h)
 float Spring::firstEchoSamples(float freqHz) const
 {
     const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
@@ -477,7 +478,6 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     return tap;
 }
 
-#ifndef RV_FIXED_VOICINGS
 // The Loop after its input sum, for the coupled Loops (coupledFinish): the
 // same arithmetic as processLow's, kept as a copy so the firmware's hot loop
 // (processLow, which never sees the coupling) compiles exactly as before.
@@ -532,7 +532,6 @@ void Spring::loopWrite(float x)
     lowBuf_[lowW_] = x;
     if (++lowW_ == lowSize_) lowW_ = 0;
 }
-#endif
 
 inline float Spring::processHigh(float in, float lhMod)
 {
@@ -568,7 +567,6 @@ inline float Spring::processHigh(float in, float lhMod)
     return out;
 }
 
-#ifndef RV_FIXED_VOICINGS
 float Spring::coupledReturn(float lFrac, float lSamples, float tapSamples)
 {
     // As process(), one sample, up to the Loop's input sum.
@@ -592,7 +590,6 @@ float Spring::coupledFinish(float in, float highIn, float loopReturn)
     const float high = processHigh(highIn + cNoise_, lhCur_);
     return cTap_ + highPathLevel_ * high;
 }
-#endif
 
 void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples,
                      const float* tapSamples, float* out, int n)

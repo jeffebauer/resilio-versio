@@ -1,4 +1,5 @@
 #include "dsp/Tank.h"
+#include "dsp/SizeOpt.h"
 #include "dsp/ProfileHook.h"
 
 #include "params/AntiRes.h"
@@ -8,7 +9,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 
 namespace rv {
 
@@ -76,7 +76,7 @@ size_t Tank::requiredPoolFloats(float sampleRate)
     return n;
 }
 
-void Tank::prepare(float sampleRate, int maxBlockSize)
+RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize)
 {
     const size_t need = requiredPoolFloats(sampleRate);
     if (need > ownedFloats_) {
@@ -88,7 +88,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize)
     prepare(sampleRate, maxBlockSize, ownedPool_, ownedFloats_);
 }
 
-void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats)
+RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats)
 {
     sampleRate_   = sampleRate;
     maxBlockSize_ = maxBlockSize;
@@ -112,7 +112,9 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
-    clangLp_.setCutoff(splash::kClangHz, sampleRate);
+    clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate);
+    clangAtt_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastAttackMs * sampleRate));
+    clangRel_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastReleaseMs * sampleRate));
     dcNoon_ = drive::driveCurve(0.5f);
     dcRef_  = drive::driveCurve(splash::kSplashRefDrive);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
@@ -171,7 +173,7 @@ void Tank::bindPool(float* pool)
     }
 }
 
-void Tank::reset()
+RV_SIZE_OPT void Tank::reset()
 {
     if (!ok_) return;
     for (auto& s : springs_) s.reset();
@@ -186,6 +188,9 @@ void Tank::reset()
     for (auto& d : driveOut_) d.reset();
     splash_.reset();
     clangLp_.reset();
+    clangEnv_ = 0.0f;
+    clangCeilPush_ = 1.0f;
+    splashInput_ = 1.0f;
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
@@ -231,7 +236,7 @@ void Tank::kick(int sampleOffset)
         pendingKicks_[size_t(numPendingKicks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
 }
 
-void Tank::controlTick(bool snap)
+RV_SIZE_OPT void Tank::controlTick(bool snap)
 {
     for (const auto& p : kParams) {
         const size_t i = static_cast<size_t>(p.id);
@@ -267,7 +272,7 @@ void Tank::controlTick(bool snap)
         const float target = mode_ == 2 && s3Voicing_ != springs3::kToday ? 1.0f : 0.0f;
         s3WFrom_ = snap ? target : s3W_;
         s3W_ = snap ? target : (target > s3W_ ? std::min(target, s3W_ + s3Step_) : std::max(target, s3W_ - s3Step_));
-        const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+        const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
         const float series = s3W_ * v3.series;
         // The Sustain trim's ceiling (ADR 0035): voicings that build up more
         // on held notes may trim further, so the tank still tames itself
@@ -276,7 +281,6 @@ void Tank::controlTick(bool snap)
                                   : drive::kSusGentleMaxDb;
         s3SeriesFrom_ = snap ? series : s3SeriesTo_;
         s3SeriesTo_   = series;
-#ifndef RV_FIXED_VOICINGS
         // Coupled Loops (voicings 8, 10): the rotation follows the glide. It
         // lets go in the Howl zone (KICKED, top of DECAY; ADR 0019): coupled,
         // the three Loops locked into one frozen howl (the M6 Howl grid's
@@ -287,7 +291,6 @@ void Tank::controlTick(bool snap)
         s3CoupleFrom_ = snap ? m : s3CoupleTo_;
         s3CoupleTo_   = m;
         s3Coupled_    = v3.couplingKind != springs3::kCoupleNone && (s3WFrom_ > 0.0f || s3W_ > 0.0f);
-#endif
     }
 
     // ATTITUDE Morph: glide the weights linearly toward the switch position
@@ -317,7 +320,7 @@ void Tank::controlTick(bool snap)
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
-    splash_.set(attW_, splashAmt, splashDrive_); // splashDrive_: DRIVE's gain on the Clang / Bite (below, on DRIVE moves)
+    splash_.set(attW_, splashAmt, splashDrive_, splashInput_); // DRIVE's gain on the Clang / Bite, the INPUT gain (below, on DRIVE moves)
     const float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
@@ -515,7 +518,13 @@ void Tank::controlTick(bool snap)
         }
         compTone_  = tone;
         push_      = drive::push(voice, drive);
+        if constexpr (splash::kVoicingsBuilt) { // the Clang's ceiling credit for the pickups' push (SplashVoicing.h)
+            const float share = attW_[0] * splash::kCeilPushShare[0] + attW_[1] * splash::kCeilPushShare[1]
+                              + attW_[2] * splash::kCeilPushShare[2];
+            clangCeilPush_ = std::exp(share * std::log(push_.out));
+        }
         splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
+        splashInput_ = driveInSettings_.inputGain;
         compDrive_ = drive;
         compW_     = attW_;
     }
@@ -645,7 +654,7 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     base.loopDelaySeconds = map::tensionLoopDelaySeconds(tension);
     base.t60Seconds       = map::decayT60Seconds(decay);
     base.transitionHz     = map::tensionTransitionHz(tension);
-    const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+    const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
     if (springs3::kPaletteBuilt && s3W_ > 0.0f) {
         // Position 3's voicing (Springs3Voicing.h): the whole tank longer or
         // shorter and its Chirp lower or higher. L is capped at the loosest
@@ -695,7 +704,6 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
                                      / (sampleRate_ * std::max(drive::kSusGentleDownSeconds,
                                                                drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
     int cap = modes::kStageCap[size_t(mode_)];
-#ifndef RV_FIXED_VOICINGS
     if (springs3::kPaletteBuilt) {
         // Today's position (stages, A's Chirp-chain delay): round 2's
         // reference for the repeat timing (updateSpringSettings).
@@ -704,7 +712,6 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
                                                  map::tensionTransitionHz(tension) * modes::kDetune[0].transition,
                                                  todayStages_, sampleRate_);
     }
-#endif
     if (springs3::kPaletteBuilt && mode_ == 2 && s3W_ > 0.0f) cap += int(std::lround(s3W_ * float(v3.stageCap - cap)));
     activeStages_ = modes::tensionStages(tension, cap);
     // Diffuse (voicing 9): more stages where TENSION runs fewer than the cap,
@@ -729,10 +736,8 @@ void Tank::updateSpringSettings(size_t i)
     s.loopDelaySeconds *= sh.loopDelay;
     s.transitionHz     *= sh.transition;
     s.dampingHz        *= sh.damping; // Spring.cpp clamps to 0.45 fs
-#ifndef RV_FIXED_VOICINGS
-    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::kVoicings[size_t(s3Voicing_)].dampingCapHz > 0.0f)
-        s.dampingHz = std::min(s.dampingHz, springs3::kVoicings[size_t(s3Voicing_)].dampingCapHz * modes::kDetune[i].damping);
-#endif
+    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).dampingCapHz > 0.0f)
+        s.dampingHz = std::min(s.dampingHz, springs3::voicing(s3Voicing_).dampingCapHz * modes::kDetune[i].damping);
     s.t60Seconds       *= sh.decay;
     s.highPathLevel    *= sh.highPath;
     s.tapRatio          = modes::kPickupTap[i];
@@ -745,10 +750,8 @@ void Tank::updateSpringSettings(size_t i)
     const float aNoJolt = baseSet_.allpassCoeff * sh.allpassCoeff;
     s.tapOffsetSeconds  = sh.pickupOffset
                        + (alignA_ - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
-#ifndef RV_FIXED_VOICINGS
-    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::kVoicings[size_t(s3Voicing_)].keepTiming)
+    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).keepTiming)
         keepTodaysTiming(i, s);
-#endif
     s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
     springSet_[i]       = s;
     springGen_[i]       = baseGen_;
@@ -757,7 +760,6 @@ void Tank::updateSpringSettings(size_t i)
     springS3W_[i]       = keyS3W_;
 }
 
-#ifndef RV_FIXED_VOICINGS
 namespace {
 // One-pole low-pass group delay (samples) at kPickupAlignHz, as the Spring's
 // damping filter (dsp::OnePoleLowpass, clamped at 0.45 fs as Spring.cpp).
@@ -769,7 +771,7 @@ float dampingDelayAtAlign(float dampingHz, float sampleRate)
 }
 } // namespace
 
-void Tank::keepTodaysTiming(size_t i, SpringSettings& s) const
+RV_SIZE_OPT void Tank::keepTodaysTiming(size_t i, SpringSettings& s) const
 {
     // Round 2 (Springs3Voicing.h keepTiming): the Spring keeps today's
     // round trip and first echo at kPickupAlignHz. The voicing changed the
@@ -797,7 +799,7 @@ void Tank::keepTodaysTiming(size_t i, SpringSettings& s) const
     s.tapOffsetSeconds = off0 + (dX - s.tapRatio * dL) / sampleRate_;
 }
 
-Tank::CoupleMatrix Tank::coupleMatrix(float angle, int kind)
+RV_SIZE_OPT Tank::CoupleMatrix Tank::coupleMatrix(float angle, int kind)
 {
     CoupleMatrix m{};
     m[0] = m[4] = m[8] = 1.0f;
@@ -822,9 +824,7 @@ Tank::CoupleMatrix Tank::coupleMatrix(float angle, int kind)
             m[size_t(r * 3 + col)] = (r == col ? c : 0.0f) + sn * cross[r][col] + k * u[r] * u[col];
     return m;
 }
-#endif
 
-#ifndef RV_FIXED_VOICINGS
 void Tank::processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
                           float (*wet)[kControlInterval], int tick, int n)
 {
@@ -861,26 +861,25 @@ void Tank::processCoupled(const float* mono, float* const* clat, const float* jo
         }
     }
 }
-#endif
 
 modes::StereoMix Tank::modeMix(int mode) const
 {
-    return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday ? springs3::kVoicings[size_t(s3Voicing_)].mix
+    return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday ? springs3::voicing(s3Voicing_).mix
                                                         : modes::stereoMix(mode);
 }
 
 float Tank::modeTrim(int mode) const
 {
     return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday
-               ? modes::kModeTrim[size_t(mode)] * springs3::kVoicings[size_t(s3Voicing_)].trim
+               ? modes::kModeTrim[size_t(mode)] * springs3::voicing(s3Voicing_).trim
                : modes::kModeTrim[size_t(mode)];
 }
 
-void Tank::updateShapes()
+RV_SIZE_OPT void Tank::updateShapes()
 {
     // Today's detune at s3W_ = 0 (exactly: no arithmetic on it), the
     // voicing's shape at 1, a straight blend while gliding.
-    const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+    const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
     s3InLp_.setCutoff(std::max(v3.inputLowCutHz, 1.0f), sampleRate_);
     s3SendLp_.setCutoff(std::max(v3.seriesLowCutHz, 1.0f), sampleRate_);
     for (size_t i = 0; i < shape_.size(); ++i) {
@@ -918,7 +917,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     }
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
-    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval];
+    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval], clangToday[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
@@ -954,7 +953,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
-        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
+        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n, splash::kVoicingsBuilt ? clangToday : nullptr);
         if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
@@ -992,6 +991,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
+        // The Clang's ceiling rises with KICKED's pickup push (clangCeilPush_):
+        // driven KICKED pickups squash a big splash on their own (SplashVoicing.h).
+        const float clangCeil = splash_.clangCeiling() * clangCeilPush_;
         for (int i = 0; i < n; ++i) {
             const float d  = driven[i];
             const float t  = tilt_.process(d);
@@ -1005,7 +1007,15 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             bkAccOut_ += wo * wo;
             const float x  = t * (inTrimFrom_ + excStep * float(tick_ + i));
             const float lo = clangLp_.process(x);
-            mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
+            float c = clang[i];
+            if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
+                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
+                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
+                c = c < cmax ? c : cmax;
+                c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
+            }
+            mono[i] = x + c * (x - lo) + kickScale * kickLoop[i];
         }
         // One transport for every pickup: the first echoes move together. Its
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
@@ -1014,7 +1024,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // SPRINGS 3 "in series" (Springs3Voicing.h): Springs B and C hear
         // Spring A's output instead of the input, faded in and out with the
         // voicing's glide (per sample across the tick, so it never steps).
-        const springs3::Voicing& v3 = springs3::kVoicings[size_t(s3Voicing_)];
+        const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
         const bool  series     = springs3::kPaletteBuilt && (s3SeriesFrom_ > 0.0f || s3SeriesTo_ > 0.0f);
         const float seriesSend = s3SeriesSend_;
         const float seriesStep = (s3SeriesTo_ - s3SeriesFrom_) * (1.0f / float(kControlInterval));
@@ -1025,11 +1035,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float step = (s3W_ - s3WFrom_) * (1.0f / float(kControlInterval));
             for (int i = 0; i < n; ++i) mono[i] -= (s3WFrom_ + step * float(tick_ + i)) * s3InLp_.process(mono[i]);
         }
-#ifndef RV_FIXED_VOICINGS
         if (springs3::kPaletteBuilt && s3Coupled_) {
             processCoupled(mono, clat, jolt, tapSamples, wobA, wet, tick_, n);
         } else
-#endif
         {
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];

@@ -268,6 +268,16 @@ public:
     // How far the Springs are into position 3's voicing (0..1, glides over
     // springs3::kGlideSeconds), for tests.
     float springs3Blend() const { return s3W_; }
+    // Renderer / test hook (not a panel control, ADR 0032 "SPLASH stronger",
+    // Proposed): which SPLASH voicing (SplashVoicing.h: 0 = today, 1 = stronger
+    // top, 2 = + DRIVE-free, 3 = bolder). The firmware and plugin never call it
+    // (splash::kDefaultVoicing). Set it after prepare(), before rendering.
+    void setSplashVoicing(int v)
+    {
+        splash_.setVoicing(v);
+        clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate_);
+    }
+    int splashVoicing() const { return splash_.voicing(); }
     // M7 components, read-only (tests, meters).
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }
@@ -335,12 +345,10 @@ private:
     void             updateShapes();
     // Round 2 (Springs3Voicing.h): today's repeat timing for Spring i
     // (keepTiming), and the coupled Loops (couplingAngle / couplingKind).
-#ifndef RV_FIXED_VOICINGS
     void keepTodaysTiming(size_t i, SpringSettings& s) const;
     static CoupleMatrix coupleMatrix(float angle, int kind);
     void processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
                         float (*wet)[kControlInterval], int tick, int n);
-#endif
     void releaseOwnedPool();
 
     float sampleRate_   = 48000.0f;
@@ -400,6 +408,9 @@ private:
     dsp::Splash                        splash_;
     dsp::OnePoleLowpass                clangLp_{}; // the Clang's split at splash::kClangHz (ADR 0032)
     float splashDrive_ = 1.0f;                        // DRIVE's gain on the Clang / Bite (splash::splashDriveGain)
+    float clangEnv_ = 0.0f, clangAtt_ = 1.0f, clangRel_ = 1.0f; // the Clang's ceiling: peak follower of the springs' input highs
+    float clangCeilPush_ = 1.0f; // its credit for the pickups' push (splash::kCeilPushShare)
+    float splashInput_ = 1.0f;                        // the INPUT gain G, for the Splash (SPLASH stronger voicings)
     float dcNoon_ = 0.4f, dcRef_ = 0.75f;             // driveCurve at noon and at splash::kSplashRefDrive
     dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
@@ -486,7 +497,6 @@ private:
     dsp::OnePoleLowpass s3InLp_{}, s3SendLp_{}; // the voicing's low cuts (x - LP(x))
     std::array<springs3::Shape, kMaxSprings> shape_ = springs3::detuned();
     std::array<float, kMaxSprings>           springS3W_{}; // s3W_ springSet_ was worked out from
-#ifndef RV_FIXED_VOICINGS // round 2's state: not in the firmware (Drive.h RV_FIXED_VOICINGS)
     // Round 2 (keepTiming): today's position 3 for the same knobs, the
     // reference each Spring's round trip and first echo are held to: A's
     // Chirp-chain delay (today's alignA_) and the stage count.
@@ -496,7 +506,6 @@ private:
     // returns, at the last tick and this one (ramped per sample between).
     CoupleMatrix s3CoupleFrom_{}, s3CoupleTo_{};
     bool s3Coupled_ = false; // either end of the ramp is coupled (s3W_ > 0 in a coupled voicing)
-#endif
 };
 
 } // namespace rv

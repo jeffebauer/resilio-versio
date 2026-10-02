@@ -192,6 +192,88 @@ inline float splashDriveGain(float dc, float dcNoon, float dcRef)
     return (1.0f + kSplashDriveBoost * u) / (1.0f + kSplashDriveBoost * u0);
 }
 //
+// ---- SPLASH stronger (1 Oct 2026, branch proto/splash-stronger; ADR 0032
+// amendment, Proposed) ------------------------------------------------------
+// Owner, 1 Oct (plugin and module): "the splash knob feels very subtle".
+// Asked what matters most: stronger at the top (turned up, unmistakable on
+// any hit) and less tied to DRIVE (they often play with DRIVE fully down).
+// Four voicings on one page (hidden Renderer key splash_voicing; the
+// firmware and plugin use kDefaultVoicing):
+//   0 today (reference).
+//   1 stronger top: over the top quarter of SPLASH the Clang (and a little
+//     of the Bite) grows, (1 + topClang · t²), t = (SPLASH − kTopStart) /
+//     (1 − kTopStart), and lasts longer (held up to topHoldMs × t²): no step
+//     at 3/4 (t² starts flat), the rest of the knob bit for bit today's.
+//     The hold adds splash without adding peaks (the ceiling below caps the
+//     level, so length is where the top's extra comes from on loud hits).
+//   2 = 1, and DRIVE-free: the Clang / Bite gain is held at its DRIVE-0.8
+//     value (1, the round-4 pick) at every DRIVE, and the detector's level
+//     references (the Hit floor T and kLoudRef) follow the INPUT gain, so
+//     the splash hears every hit as it would at DRIVE 0.8 (+18 dB of INPUT):
+//     DRIVE 0 splashes like DRIVE 0.8. The relative parts (q · P, kLoudRel
+//     · P) are level-free already, so ghost notes in a groove stay down.
+//   3 = 2, bolder: a bigger top, a lower Clang split (more of the hit's
+//     body rings the springs) and a held Clang at every SPLASH (it lets go
+//     over holdMs instead of with the hit's first 10–25 ms): a longer,
+//     more metallic splash.
+// The Clang's ceiling (voicings 1-3): uncapped, the bigger top and the
+// DRIVE-free splash on clean, bright hits pushed the output limiter hard
+// (02_hits, SPLASH 1, MIX 1: up to 23.5 dB of pull, KICKED at DRIVE 0;
+// today's worst there is 7.2, CLEAN at DRIVE 0.8). So the Tank follows the
+// springs' input highs (x − LP(x), a peak follower with e's fast times) and
+// caps the Clang where the added highs would pass clangCeil (× KICKED's
+// pickup push, kCeilPushShare: KICKED at DRIVE 0.8 keeps its whole top,
+// its limiter at 1.3 dB), and never below the Clang today's voicing would
+// give (HitEnvelope computes it alongside), so no voicing splashes less than
+// today anywhere: the cap only trims what a voicing adds. A first cap on the detector's
+// level (before DRIVE's saturation) took KICKED's whole top away at DRIVE
+// 0.8, where the limiter never needed it. 0.2: at SPLASH 1, MIX 1 the
+// limiter pulls about as hard and as long as today's (backlog "SPLASH
+// stronger"); 0.3-0.4 kept hits near today but held the skank down 0.5-2 s
+// longer at DRIVE 0.8-1.
+struct Strong {
+    float topClang;  // extra Clang at SPLASH 1 (× (1 + topClang))
+    float topBite;   // extra Bite at SPLASH 1
+    float driveFree; // 1 = the splash ignores DRIVE (voicings 2, 3)
+    float clangHz;   // the Clang's split (kClangHz today)
+    float holdMs;    // the Clang lets go over this (1/e, ms); 0 = with e
+    float topHoldMs; // + this much hold at SPLASH 1 (× t², the top quarter)
+    float clangCeil; // the Clang's ceiling (see above); 0 = none
+};
+inline constexpr std::array<Strong, 4> kStrong{{
+    //  top   bite  free  split     hold  +hold  ceil
+    {  0.0f, 0.0f, 0.0f, kClangHz,  0.0f,  0.0f, 0.0f}, // 0 today
+    {  2.0f, 0.5f, 0.0f, kClangHz,  0.0f, 40.0f, 0.2f}, // 1 stronger top
+    {  2.0f, 0.5f, 1.0f, kClangHz,  0.0f, 40.0f, 0.2f}, // 2 stronger top, DRIVE-free
+    {  3.0f, 0.5f, 1.0f, 1200.0f, 40.0f, 40.0f, 0.2f}, // 3 bolder
+}};
+constexpr int   kDefaultVoicing = 2; // owner pick, 2 Oct 2026: C (stronger top + DRIVE-free)
+constexpr float kTopStart       = 0.75f;
+// The Clang's ceiling rises with the pickups' push, by this share of it (in
+// dB) per ATTITUDE (CLEAN, DRIVEN, KICKED; blended by the Morph): KICKED's
+// pickups squash a big splash on their own (its limiter stays under 2 dB
+// uncapped). DRIVEN's don't (a quarter of its push left the skank at DRIVE
+// 0.8 limiting 8 dB for 2.3 s), CLEAN has none.
+inline constexpr std::array<float, 3> kCeilPushShare{{0.0f, 0.0f, 1.0f}};
+// DRIVE-free voicings: the level references ease from today's (SPLASH 0:
+// the Jolt floor, bit for bit today's) to DRIVE 0.8's by this SPLASH.
+constexpr float kFreeRampSplash = 0.1f;
+constexpr const Strong& strong(int v) { return kStrong[size_t(v < 0 ? 0 : (v > 3 ? 3 : v))]; }
+// The firmware plays kDefaultVoicing only and, while that is 0 (today), the
+// voicing code compiles out of it (flash: release 126.5 of 128 KB). The
+// Renderer, the plugin and the tests build every voicing.
+#if defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
+constexpr bool kVoicingsBuilt = kDefaultVoicing != 0;
+#else
+constexpr bool kVoicingsBuilt = true;
+#endif
+// (1 + amount · t²) over the top quarter, 1 below.
+inline float topBoost(float splash, float amount)
+{
+    const float t = splash > kTopStart ? (splash - kTopStart) * (1.0f / (1.0f - kTopStart)) : 0.0f;
+    return 1.0f + amount * t * t;
+}
+//
 // "Short" (0..1): how much of the hit is crack rather than notes, the share
 // of its high-passed peak envelope above kClangHz (a peak follower on the
 // highs over the fast follower), mapped kShortLo -> 0 .. kShortHi -> 1.

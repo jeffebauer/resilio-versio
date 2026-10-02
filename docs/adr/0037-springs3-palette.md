@@ -1,6 +1,6 @@
 # 0037 — SPRINGS 3: a more distinct third position (palette prototype)
 
-**Status:** Proposed, 1 Oct 2026; round 2 added 2 Oct 2026 (branch `proto/springs3-palette-2`, see "Round 2" below). Prototype on branch `proto/springs3-palette` (not merged). The owner picks one voicing by ear on the listening page; the others are deleted. Brief: `docs/briefs/springs3-palette.md`. Numbers: `core/params/Springs3Voicing.h`; measurements: `docs/m8-tuning-backlog.md` "SPRINGS 3 palette".
+**Status:** Accepted, 2 Oct 2026: the owner picked **voicing 8, coupled** (round 2's F) "across the board" on `renders/springs3_palette2/`. Position 3 is now three Springs that share energy every round trip, so a hit's echoes multiply and bloom instead of dripping; repeat timing, positions 1 and 2 unchanged. See "Decision" at the end. (Proposed 1 Oct 2026; round 2 added 2 Oct 2026. Rounds kept below for the history. Brief: `docs/briefs/springs3-palette.md`. Numbers: `core/params/Springs3Voicing.h`; measurements: `docs/m8-tuning-backlog.md` "SPRINGS 3 palette".)
 
 **Context:** Owner, 1 Oct 2026, on the plugin and the flashed module: "There isn't a very noticeable difference between 2 springs and 3 springs … I'm wondering how we could make the 3 spring option more distinct from the others, or even consider a different approach to that option to provide a broader sonic palette." Positions 1 and 2 stay as they are. Why it is subtle today: the three Springs are near copies (`SpringModes.h` `kDetune`: length, Chirp and steepness within ±8 %, each a step darker and shorter, ADR 0027), and position 3 only adds Spring C in the centre: mostly more density. One click at the defaults measures it: SPRINGS 2 and 3 have the same tail length (T60 1.92 / 1.89 s), nearly the same brightness (tail centroid 810 / 767 Hz) and width (L/R correlation 0.15 / 0.09).
 
@@ -40,7 +40,7 @@ Each voicing is a table row: per-Spring multipliers (length, Chirp, steepness, d
 - *Series with a long second tank (B, C ×0.6–0.75):* the products of shared resonances rang (above).
 - *Extra Loop drift for series:* to move a 650 Hz peak off its bin it would need ~1 % of L (a 17-cent chorus).
 
-## Round 2 (2 Oct 2026, branch `proto/springs3-palette-2`, still Proposed)
+## Round 2 (2 Oct 2026, branch `proto/springs3-palette-2`)
 
 **Context:** the owner, after round 1's page: "Given we have a tension control, introducing a different sized tank that impacts the repeat length/distance muddles the tension and decay control." Liked the pan tank's character but couldn't tell whether it came from the smaller tank or "the brighter sound, higher chirp etc."; heard round 1's wide as today's 3 Springs with a lopsided image that leans to a higher harmonic on sustained chords. Asked: "What other approaches could we take to make the 3 spring option more distinct from 2 spring, without affecting repeat timing?"
 
@@ -62,4 +62,12 @@ Each voicing is a table row: per-Spring multipliers (length, Chirp, steepness, d
 **Choices (round 2):** 5's brightness above TONE's top rang (M6: 19.2 dB at 3.1 kHz, KICKED, loosest tank, TONE 1, with the low cut); capping each Spring's damping at today's TONE-fully-right value fixed it, so 5's extra brightness fades out toward TONE fully right. 10 uses today's output matrix: round 1's wide matrix (side 0.42, less decorrelation) read L/R correlation 0.56 on stabs at DECAY 0 with today's lengths (limit 0.5); its Sustain trim may cut 8 dB (round 1 precedent for long, wide, pan): at 5 dB a +2 semitone drone pulled the limiter 7.4 dB. Held organ at TONE ½ / TENSION 1 reads 2.92 dB against a 3.0 dB bar: little margin.
 
 **Rejected (round 2):** coupling about (1, 1, 1) (steady tone); coupling angles 1.0–2.1 rad for 8 (less smooth by the drip index than 0.7); round 1's wide matrix for 10 (correlation).
+
+## Decision (2 Oct 2026)
+
+- **`springs3::kDefaultVoicing = kCoupled` (8).** The plugin and the firmware play it; the other voicings stay as Renderer-only references (`springs3_voicing`), as for TONE, SPLASH and WOBBLE.
+- **The firmware now carries the coupled path.** Before, the firmware compiled none of the palette (`RV_FIXED_VOICINGS`). Now `kPaletteBuilt` is true in the firmware when the default isn't today's, and the coupled code (`Spring::coupledReturn` / `coupledFinish` / `loopWrite`, `Tank::processCoupled`, `coupleMatrix`, `keepTodaysTiming`, `updateShapes` and round 2's timing state) is built in. The firmware's voicing is a constant, so the other voicings' branches fold away. `Spring::firstEchoSamples` (analysis) and `setSprings3Voicing` stay desktop-only.
+- **Flash.** The coupled path costs +5.7 KB at -O3, which put the profile firmware 3.1 KB over. Two trims, firmware only (desktop unchanged): the Tank's and Spring's set-up and per-tick housekeeping (`controlTick`, `prepare`, `reset`, `updateShapes`, `keepTodaysTiming`, `coupleMatrix`) are built for size (`RV_SIZE_OPT`, `core/dsp/SizeOpt.h`, GCC only), and the firmware keeps only its own entry of the voicing table (`springs3::voicing`, −1.9 KB). The knob-move coefficient redesign (`updateBaseSettings`, `updateSpringSettings`, `Spring::prepareTransition`, the CPU bursts after a knob move) and every per-sample path stay -O3. Result: release 122,392 B (93.4 %, was 120,504), profile 130,396 B (99.5 %, ~0.7 KB left), m0test 82,320 B (unchanged).
+- **Level:** `kCoupledTrim` 1.0 → 1.035 (+0.3 dB): coupled read 0.5 dB under SPRINGS 1/2 at DECAY 1, TENSION 1 (`test_tank` Level: mono −1.64 dB against ±1.5; now −1.34).
+- **CPU:** the coupled per-sample path and the -Os control tick are unmeasured on the chip. An M3 run (run 15, this build) is due before a release with it; run 13 was 66 % peak against 70 %.
 

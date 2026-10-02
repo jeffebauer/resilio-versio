@@ -30,11 +30,11 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 |---|---|
 | **P1 MIX** | Dry ↔ wet. Fully right is 100 % wet, for a send/return (the classic dub way: throw the snare into it). |
 | **P2 DECAY** | How long the tail rings: from a quick slap (~0.4 s) to a long wash (~9 s). It always fades out. In KICKED only, the last stretch (past ~4 o'clock) lets the tank Howl. Pull DECAY back and the Howl falls into a normal tail and fades within a second or two. |
-| **P3 TONE** | Tilt. Left: warm, dark dub (drips and boing still there). Noon: neutral. Right: bright, sizzly splash, capped so it never turns harsh. It changes what hits the springs, not just an EQ after them. |
-| **P4 SPLASH** | How hard the hits hit the springs. A loud, sudden hit rings the springs with its own highs (a bright clang), and in DRIVEN and KICKED a drum hit also bites the input harder (grit, and a bigger tail). Chords get the clang, not the bite. Nothing is added: it's your hit, hitting harder. Ghost notes in a groove stay quiet. Down = no splash at all, only a faint pitch wobble on hard hits in DRIVEN and KICKED. |
+| **P3 TONE** | Left: warm, dark dub (drips and boing still there). Noon: neutral. Right: King Tubby's **Big Knob**, a steep low cut that thins the sound before it reaches the springs, sweeping up to 800 Hz fully right: the further right, the more telephone-like and splashy. Sharp hits (snares, rimshots) also get a nasal "ring" just above the cut, like his desk filter; chords, pads and held sounds get the plain cut. Level stays about the same across the knob. It changes what hits the springs, not just an EQ after them. |
+| **P4 SPLASH** | How hard the hits hit the springs. A loud, sudden hit rings the springs with its own highs (a bright clang), and in DRIVEN and KICKED a drum hit also bites the input harder (grit, and a bigger tail). Chords get the clang, not the bite. Nothing is added: it's your hit, hitting harder. It works the same at any DRIVE, so a quiet line-level send with DRIVE fully down still splashes. The last quarter (past ~3 o'clock) is much bigger: unmistakable on any hit. Ghost notes in a groove stay quiet. Down = no splash at all, only a faint pitch wobble on hard hits in DRIVEN and KICKED. |
 | **P5 TENSION** | Which tank is fitted. Right = tight: short tank, quick repeats, small bright chirp. Left = loose: long tank, slow repeats, big dark boing. Turning it while the tail rings bends the pitch, like tightening or slackening a string. |
 | **P6 WOBBLE** | Pitch movement, both ways from noon. Noon: still. Left: tape-like drift, a smooth random wow with a faster flutter on top that never repeats; gentle just left of noon (held chords stay in tune), wild fully left. Right: a steady wobble (a sine whose speed drifts a touch), up to obvious worn-tape warble fully right. A tiny amount is always on, even at noon. CV adds to the knob: from fully left, CV sweeps drift → still → warble. |
-| **P7 DRIVE** | The tank's INPUT: how hard your signal hits it. Up to +24 dB of gain before anything else, so a quiet mixer send (peaks around −18 to −24 dBFS) splashes like a hot one once DRIVE is up; turning it up never takes splash away. Colour and grit build as before (clean-ish to ~9 o'clock, driven from ~3 o'clock) and the tail gets a few dB louder (about +6 dB from 7 to 5 o'clock), never shorter. On hot material at full MIX the output limiter starts catching peaks from about 1 o'clock. |
+| **P7 DRIVE** | The tank's INPUT: how hard your signal hits it. Up to +24 dB of gain before anything else, so a quiet mixer send (peaks around −18 to −24 dBFS) drives the tank like a hot one once DRIVE is up. SPLASH doesn't depend on it: hits splash the same at any DRIVE. Colour and grit build as before (clean-ish to ~9 o'clock, driven from ~3 o'clock) and the tail gets a few dB louder (about +6 dB from 7 to 5 o'clock), never shorter. On hot material at full MIX the output limiter starts catching peaks from about 1 o'clock. |
 | **SPRINGS** (top toggle) | Left: 1 Spring, sparse and the most splashy. Centre: 2 Springs, the classic tank. Right: 3 Springs, dense and smooth. Switching crossfades, so it's safe mid-tail. |
 | **ATTITUDE** (bottom toggle) | Left: **CLEAN**, a polite, linear tank. Centre: **DRIVEN**, tape saturation, the core dub colour. Right: **KICKED**, hard drive inside the tank, full chaos, Howl allowed. Flipping it changes the tail already ringing. |
 | **Button = KICK** | Knocks the tank: a short low thud, then a big crash ringing through the Springs. Same strength every time; ATTITUDE sets how hard. Holding does nothing extra. |
@@ -46,7 +46,7 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 ### LEDs
 
 - **Left two: input level** (In L, In R). **Right two: output level** (Out L, Out R).
-- Green → amber → red. **Input red:** you're near clipping at the jack, so turn the source down. **Output red:** the safety limiter is catching peaks (normal in a big Howl or Kick; if it's red all the time, lower DRIVE or DECAY).
+- Green → amber → red. **Input red:** you're near clipping at the jack, so turn the source down. **Output red:** the safety limiter is catching peaks (normal in a big Howl or Kick; if it's red all the time, lower DRIVE or DECAY). Held sounds (pads, drones, organ) rarely get there: the tank notices a sound being held and gently turns down what goes into the springs, so the wet stays clear of the limiter. Hits and stabs are never touched, and the tail after you stop still rings its full length.
 - **At power-up** a short colour sweep across the four LEDs says the firmware has loaded.
 
 ## Quick start
@@ -55,7 +55,7 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 2. Set everything to noon, SPRINGS centre, ATTITUDE centre (DRIVEN).
 3. **MIX** to ~2 o'clock so you clearly hear the tank; bring it back down once you've found the sound.
 4. **DECAY**: noon is a ~2 s tail. Turn it up for long dub throws.
-5. **Hit the tank**: press the button. Then try TENSION left for a big boing, TONE right for splash, ATTITUDE right (KICKED) and DECAY past 4 o'clock for Howl.
+5. **Hit the tank**: press the button. Then try TENSION left for a big boing, SPLASH up for a harder clang, TONE right to thin it out like Tubby's Big Knob, ATTITUDE right (KICKED) and DECAY past 4 o'clock for Howl.
 
 ## Installing (Noise Engineering Firmware Swap)
 

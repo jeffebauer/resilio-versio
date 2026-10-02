@@ -12,7 +12,7 @@
 //
 // A hidden, Renderer-only key picks what position 3 does (Tank::
 // setSprings3Voicing, "springs3_voicing" in a sweep or --set). The firmware
-// and the plugin never call it: they play kDefaultVoicing (0 = today).
+// and the plugin never call it: they play kDefaultVoicing (8 = coupled).
 //
 //   0  today        reference: positions 1-3 exactly as on main
 //   1  long tank    a big "long decay" tank: Springs 1.5x longer (a slower,
@@ -111,24 +111,25 @@
 
 namespace rv::springs3 {
 
-// Built into the desktop hosts (Renderer, tests, plugin) only. The firmware
-// builds (firmware/Makefile's RV_MODE_*) play today's position 3 and carry
-// none of the palette's code: it is ~3 KB on the Cortex-M7 and the release
-// firmware has ~4.5 KB of flash left. The voicing the owner picks ships
-// without the gate (and without the other voicings).
+// Every voicing is built into the desktop hosts (Renderer, tests, plugin).
+// The firmware builds (firmware/Makefile's RV_MODE_*) carry only the
+// default: its voicing is a constant, so the other voicings' code folds away.
 // Same switch as the other Renderer-only voicings (core/dsp/Drive.h
 // RV_FIXED_VOICINGS, set by firmware/Makefile); the RV_MODE_* check stays as
 // a second guard.
-#if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
-constexpr bool kPaletteBuilt = false;
-#else
-constexpr bool kPaletteBuilt = true;
-#endif
-
 constexpr int kToday = 0, kLong = 1, kSeries = 2, kWide = 3, kPan = 4;
 constexpr int kPanBright = 5, kPanChirp = 6, kGauges = 7, kCoupled = 8, kDiffuse = 9, kCrossWide = 10;
 constexpr int kNumVoicings    = 11;
-constexpr int kDefaultVoicing = kToday; // firmware + plugin (owner picks)
+// Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board" (ADR 0037).
+constexpr int kDefaultVoicing = kCoupled; // firmware + plugin
+
+#if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
+// The firmware's voicing is fixed (Tank::s3Voicing_ is constexpr), so only the
+// picked voicing's paths survive the optimiser.
+constexpr bool kPaletteBuilt = kDefaultVoicing != kToday;
+#else
+constexpr bool kPaletteBuilt = true;
+#endif
 
 // Settings glide this long into and out of a voicing (as DECAY, ADR 0015).
 constexpr float kGlideSeconds = 0.08f;
@@ -262,7 +263,9 @@ constexpr float kGaugesTrim = 1.0f;
 // resonance held a steady tone (test_springs3 "ringing").
 constexpr float kCoupledAngle = 0.7f;
 inline constexpr std::array<float, 3> kCoupleAxis{{0.26726124f, 0.53452248f, 0.80178373f}}; // (1, 2, 3) / sqrt 14
-constexpr float kCoupledTrim  = 1.0f;
+// +0.3 dB (2 Oct 2026, at the merge): coupled read 0.5 dB under SPRINGS 1/2 at
+// DECAY 1, TENSION 1 (test_tank Level, mono -1.64 dB against +-1.5).
+constexpr float kCoupledTrim  = 1.035f;
 // 9: diffuse.
 constexpr float kDiffuseSteep = 1.18f, kDiffuseHigh = 0.6f, kDiffuseStageBoost = 0.5f;
 inline constexpr std::array<Shape, modes::kNumSprings> kDiffuseSprings = [] {
@@ -343,6 +346,15 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     {1.0f, 0.0f, 1.0f, kCrossWideSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 8.0f, kTodayMix, kCrossWideTrim,
      true, 0.0f, kCrossWideAngle, kCoupleLeftRight},
 }};
+
+// The voicing Tank reads. The firmware plays only the default, so it keeps
+// that one entry rather than the whole table (~1.9 KB of flash).
+#ifdef RV_FIXED_VOICINGS
+inline constexpr Voicing kFixedVoicing = kVoicings[size_t(kDefaultVoicing)];
+inline const Voicing& voicing(int) { return kFixedVoicing; }
+#else
+inline const Voicing& voicing(int v) { return kVoicings[size_t(v)]; }
+#endif
 
 // Round 2 must keep today's lengths: every keepTiming voicing plays each
 // Spring at today's detuned length (the delay is then nudged by the Chirp

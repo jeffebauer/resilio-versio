@@ -753,6 +753,11 @@ void wetLevelVsMaterial()
             s.att   = att;
             s.decay = decay;
             s.drive = rv::spec(rv::ParamId::Drive).defaultValue;
+            // SPLASH 0: this is the tank's evenness across material; the
+            // splash adds to hits by design (SPLASH stronger C, ADR 0032,
+            // owner 2 Oct 2026, read +0.2-0.5 dB over the limit at the
+            // default SPLASH in KICKED).
+            s.splash = 0.0f;
             auto wetPower = [&s](const Buf& x) {
                 const Stereo o = renderWith(s, x);
                 return 0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size()));

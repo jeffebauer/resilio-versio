@@ -3,9 +3,11 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0035). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0037). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.26 — ADR 0037 (owner, 2 Oct 2026): SPRINGS position 3 is coupled. The three Springs share energy every round trip (an energy-preserving rotation of their Loop returns, let go in the Howl zone), so a hit's echoes multiply and bloom instead of dripping. Repeat timing, tail length and level as before; positions 1 and 2 unchanged. §3 SW0, §4.3.
+- v1.0.25 — ADR 0032 amendment (owner, 2 Oct 2026): SPLASH stronger. The top quarter of SPLASH is much bigger (up to ×3 the Clang, held a little longer), and SPLASH no longer depends on DRIVE: every hit is judged as at DRIVE 0.8, so SPLASH works fully with DRIVE down (line-level sends). A ceiling keeps a big splash off the output limiter, never below the old splash. SPLASH 0 unchanged.
 - v1.0.24 — ADR 0036 (owner, 2 Oct 2026): TONE's right side is King Tubby's Big Knob (Altec 9069B): an 18 dB/oct low cut sweeping 20 Hz at noon → 800 Hz fully right (was 12 dB/oct, → 300 Hz), with the coil's nasal bump above the cutoff on sharp hits only (chords, pads and held sounds get the plain cut); level kept within ±3 dB across TONE. Left of noon unchanged. §3 TONE row.
 - v1.0.23 — ADR 0035 (owner, 1 Oct 2026): the Sustain trim, gentle voicing (round 3, owner's pick D). A safety net on held sounds (pads, drones, organs; never hits or stabs, which stay bit for bit as before): only when the tank's build-up would push the output limiter hard, the Springs' input is eased down (at most 5 dB, slowly), so held sounds stay within ~0–2 dB of their old level and the limiter takes only short pulls. The output limiter's envelope holds 30 ms before releasing (§4.8), so light limiting no longer rides each bass cycle (heard as drive).
 - v1.0.22 — ADR 0034 (prototype, owner's idea): WOBBLE is bipolar. Noon still (±3 % dead zone); left = Drift, smooth random wow + flutter that never repeats; right = Warble, a sine LFO. Every knob step audible; Springs share the Drift at low amounts. Supersedes ADR 0008's one-way zones (§3 P6, §4.7). Round 2 (owner, 1 Oct): right side a vibrato (1.5 → 5.5 Hz), both end stops toned down (B −25 %, C −45 %; middles kept), a flutter tremolo (≤ 1 dB) on the left, the flutter's speed following the wow; A / B / C compared by ear, B the build default meanwhile.
@@ -117,7 +119,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 
 | Switch | Left | Centre | Right |
 |---|---|---|---|
-| SW0 **SPRINGS** | 1 spring — sparse, most splashy | 2 springs — classic tank | 3 springs — dense, smooth |
+| SW0 **SPRINGS** | 1 spring — sparse, most splashy | 2 springs — classic tank | 3 springs, coupled — they share energy every trip: echoes bloom instead of dripping (ADR 0037) |
 | SW1 **ATTITUDE** | CLEAN — linear tank, light transducer colour | DRIVEN — tape saturation, moderate clatter | KICKED — hard drive in loop, full chaos, collisions, Howl allowed |
 
 Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003).
@@ -177,6 +179,7 @@ out_spring = DriveOut( C_lf + hf_level(tone) × C_hf )
 ### 4.3 Multiple springs (SW0)
 
 - 1/2/3 instances of §4.2 in parallel, **detuned** L, K, `a` per spring (±3–8%, tune by ear), and (ADR 0027) each a step darker and shorter than the one before (damping × 1 / 0.85 / 0.72, T60 × 1 / 0.93 / 0.865), so modes that line up between Springs die at different rates instead of singing. Detuning = beating + density, and helps prevent shared resonances (§4.10).
+- Position 3 (ADR 0037): the three Loops are **coupled**: each round trip their returns are turned by a 40° rotation about the axis (1, 2, 3)/√14 before going back in (energy in = energy out, each Loop's g < 1, so it always decays), keeping today's repeat timing. The coupling fades out across the Howl zone so the Springs howl apart.
 - Stereo: Spring A → L, B → R, C centre with small cross-feed. 1-spring mode: decorrelate R with short allpass diffuser.
 - Input summed to mono before tank (real tanks are mono). Dry path stays stereo.
 - ~20 ms crossfade on spring-count change.

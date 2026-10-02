@@ -206,11 +206,9 @@ public:
     //                  process() for one sample.
     // The Tank mixes the returns with a rotation (energy in = energy out), so
     // the Loops together never gain: each Loop's own g < 1 still bounds them.
-    // Desktop hosts only (not in the firmware: Drive.h RV_FIXED_VOICINGS).
-#ifndef RV_FIXED_VOICINGS
+    // Used by SPRINGS 3 (coupled, the default voicing), firmware included.
     float coupledReturn(float lFrac, float lSamples, float tapSamples);
     float coupledFinish(float in, float highIn, float loopReturn);
-#endif
 
     // ---- Analysis at the current coefficients (Loop gain design + tests) ----
     float sampleRate() const { return sampleRate_; }
@@ -244,9 +242,7 @@ public:
 private:
     void  advanceGlides();
     float processLow(float in, float lMod, float tapMod);
-#ifndef RV_FIXED_VOICINGS
     void  loopWrite(float x); // the Loop after its input sum (coupledFinish): Chirp chain, filters, into the delay line
-#endif
     float processHigh(float in, float lhMod);
     // The redesign in its three parts (M3 run 12). The Loop gain design
     // evaluates the Loop at kNumPoints frequencies; everything there that
@@ -312,9 +308,7 @@ private:
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
-#ifndef RV_FIXED_VOICINGS
     float    cTap_ = 0.0f, cNoise_ = 0.0f; // coupledReturn -> coupledFinish
-#endif
 
     // ---- Loop gain design (control rate only; kept after the per-sample
     // state so the hot members stay within short load offsets) ----

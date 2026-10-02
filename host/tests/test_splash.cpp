@@ -117,6 +117,8 @@ Run run(const Buf& in, int attitude, float splashV, int block = 48, float fs = k
 {
     rv::dsp::Splash sp;
     sp.prepare(fs, seed);
+
+    sp.setVoicing(0); // today's detector calibration (SPLASH stronger C, the default, is checked in test_m7_tank splashStronger / ghostGroove)
     sp.set(att(attitude), splashV);
     const size_t n0 = in.size();
     Run r{Buf(n0), Buf(n0), Buf(n0), Buf(n0), Buf(n0)};
@@ -228,6 +230,8 @@ int main()
                 tone[i] = 0.5f * std::sin(2.0f * map::kPi * freqs[f] * float(i) / kFs) * std::min(1.0f, float(i) / 2400.0f);
             rv::dsp::Splash sp;
             sp.prepare(kFs, 7u);
+
+            sp.setVoicing(0); // today's detector calibration (SPLASH stronger C, the default, is checked in test_m7_tank splashStronger / ghostGroove)
             sp.set(att(2), 1.0f);
             Buf c(tone.size()), j(tone.size()), cl(tone.size()), bt(tone.size());
             int atSettle = 0;
@@ -261,6 +265,8 @@ int main()
         for (size_t i = 0; i < pair.size(); ++i) pair[i] += g[i];
         rv::dsp::Splash sp;
         sp.prepare(kFs, 7u);
+
+        sp.setVoicing(0); // today's detector calibration (SPLASH stronger C, the default, is checked in test_m7_tank splashStronger / ghostGroove)
         sp.set(att(1), 1.0f);
         Buf c(pair.size()), j(pair.size());
         float ghostHit = 0.0f, prog = 0.0f;
@@ -488,6 +494,8 @@ int main()
         check(blocks, "block-size independent: Clang, Bite, Clatter and Jolt bit-identical for blocks 1, 7, 32, 333, 1024");
         rv::dsp::Splash sp;
         sp.prepare(kFs, 7u);
+
+        sp.setVoicing(0); // today's detector calibration (SPLASH stronger C, the default, is checked in test_m7_tank splashStronger / ghostGroove)
         sp.set(att(2), 1.0f);
         Buf c(hard.size()), j(hard.size()), cl1(hard.size()), cl2(hard.size()), bt(hard.size());
         sp.process(hard.data(), cl1.data(), bt.data(), c.data(), nullptr, nullptr, j.data(), int(hard.size()));

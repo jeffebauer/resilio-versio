@@ -92,6 +92,24 @@ Don't change the interface input gain during the session. If the wet signal clip
 
 A–E is the core spring set. C is the drive reference. F, G, A-L and A-R are optional.
 
+## 5b. Session 2 (for the transducer and stereo modelling, ≈20 min)
+
+Same patch, same Ableton set, **same "spring only" settings and the same base INPUT position as session 1** (check NOTES.md; set it back if it moved). Don't change the interface gain. No new loopback take needed if nothing in the patch changed; if anything did, record take 0 again first. Make the new stimulus files once: `python3 tools/make_stimulus.py` (13–16) and `python3 tools/make_sustain_stimulus.py` (10). Record in this order:
+
+| Take | Export as | Stimulus | Change from "spring only" | Purpose |
+|---|---|---|---|---|
+| H | `wellspring_H_sweep_quiet.wav` | `13_sweep_quiet` | none | Level series: the response at a low level |
+| I | `wellspring_I_sweep_hot.wav` | `14_sweep_hot` | none (it's 9 dB hotter than D on purpose; check the recording doesn't clip in Ableton) | Level series: how the input stage darkens, squashes or distorts when pushed |
+| D-L | `wellspring_D-L_sweep_left.wav` | `03_sweep` | **Dummy plug in the R input**, as for A-L (left tank only) | Stereo matrix: how the left tank reaches each output |
+| D-R | `wellspring_D-R_sweep_right.wav` | `03_sweep` | Stimulus into **R only**, L input empty (right tank only) | Stereo matrix: the right tank |
+| J | `wellspring_J_tone_bursts.wav` | `15_tone_bursts` | none (back to both inputs) | Per-octave decay and darkening, the metallic modes |
+| K | `wellspring_K_pink_noise.wav` | `09_pink_noise` | none | Steady-state colour and the cleanest per-band tail lengths |
+| L | `wellspring_L_held_tones.wav` | `08_held_tones` | none | How a real tank builds up on held sounds |
+| M | `wellspring_M_pad.wav` | `10_pad_cminor` | none | The same, on a pad (compare with our sustain trim) |
+| N | `wellspring_N_silence.wav` | `16_silence_30s` | none: everything patched, nothing playing, don't touch | The hiss's level and colour (the green spectrogram background) |
+
+Tell Claude when they're in `test_audio/reference/`; `python3 tools/ingest_references.py test_audio/reference/` knows all of them.
+
 ## 6. Naming and notes
 
 Export each take as a stereo 48 kHz / 24-bit WAV into `test_audio/reference/`, named as in the takes table's **Export as** column (the pattern is `wellspring_<take>_<short-desc>.wav`; the analysis reads the take from the part between the first two underscores). Tip: name each recorded clip in Ableton the same way (without `.wav`) so the export name is already there.

@@ -33,8 +33,8 @@ THE CONTROLS (same places as on the module)
 
 MIX — dry / wet. Fully up = reverb only (best on a send).
 DECAY — how long the tail rings. Near the top it rings for ages; in KICKED it can feed back into a howl.
-TONE — left is dark and warm; right thins the lows out for a splashier, brighter tank.
-SPLASH — how hard each hit clangs the springs. Up = more "boing" on snares and rimshots.
+TONE — left is dark and warm; right is King Tubby's "Big Knob": a steep low cut that thins the sound before it hits the springs, more telephone-like the further you go, with a nasal ring on snares and rimshots.
+SPLASH — how hard each hit clangs the springs. Up = a brighter clang on snares and rimshots; the last quarter is much bigger. It works the same at any DRIVE, so it splashes on quiet sends too.
 TENSION — how tight the springs are. Down = loose and drippy; up = tight, with a higher-pitched ring.
 WOBBLE — noon is still. Left = tape wow and flutter that never repeats. Right = vibrato, getting faster and deeper.
 DRIVE — the input level, like the gain on an old tank's driver: from clean to gritty, and the tail gets a few dB louder as you push it.
@@ -55,7 +55,7 @@ THINGS TO TRY
 
 KNOWN ISSUES (already being fixed)
 
-- Very big held sounds (low pads, drones) at high TENSION can still briefly light the output red: the reverb gently holds them back, and the brief limiting that remains is kept clean.
+- Held sounds (low pads, drones) are gently turned down going into the springs so they stay clean; with DRIVE well up on hot material the output limiter can still catch them (the output light goes red).
 - It's a test build: expect the sound to keep changing between versions.
 
 
