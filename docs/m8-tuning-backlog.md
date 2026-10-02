@@ -850,3 +850,28 @@ Owner, on round 3's compare page: "the spring tension seems different, with the 
 - **TONE's range** shrinks (above).
 
 **Open (owner, by ear):** D (5): does it sound as muted and gentle as your Wellspring, and do the repeats now darken instead of staying metallic? E (6): is the width right, and still no left-right flicker? F (7): less boom without going thin? And does any step make the hits or the skank worse?
+
+## Wellspring F merge (2 Oct 2026, branch `proto/wellspring-fit-4`; ADR 0038 accepted, "Decision")
+Owner, on round 4's page: F ("+ a little less low end, level kept") on every row; "Overall liking 'plus gentler'". **Tank voicing 7 is the default** (`TankVoicing.h kDefaultVoicing`; firmware builds 7, `RV_TANKV_BUILT` 7), on top of `main`'s SPRINGS 3 coupled (merged in first: the coupled Loops now carry 7's diffusers, pickup and ring count, and "today's timing" is 7's own). As if 7 shipped the suite was at 63 % (12 of 19); now **100 % of 19**, no limit loosened. Fixes in 7 only (`tankv::hasShipFixes`), values in `TankVoicing.h` "7 as shipped". Measured with a C++ stand-in for `wf4.py` (no numpy on this machine; it reproduces round 4's numbers within 0.1 dB).
+
+**The picked sound at TONE 0.7** (closest settings, DECAY 0.665; round 4's F on this branch → shipped): 01_clicks onset brightness −24.7 → −24.6 dB (round 4 table −24.6), low-mid balance −6.7 → −6.6 (−6.7), L/R jump 1.2 → 1.2 (1.3), envelope correlation 0.98 → 0.98, repeat darkening −6.6 → −6.6, level −55.1 → −55.0 dBFS; 02_hits level −40.7 → −40.9, low-mid −4.6 → −4.6, top (> 4 kHz re 200 Hz–4 kHz) −36.8 → −36.9, L/R jump 2.9 → 2.9; 04_skank level −28.9 → −29.0, low-mid 5.3 → 5.3, top −52.8 → −52.3, jump 2.6 → 2.5. (A first cut moved F more: onset −24.0, low-mid −6.3, from the coil term's high-pass at 60–250 Hz and the pickup opening on a gentler curve; both pulled back.)
+
+**TONE re-map** (01_clicks, closest settings except TONE, DECAY 0.664; tail 2–6 kHz vs 300 Hz–1 kHz at TONE 0 / .25 / .5 / .75 / 1, dB; level re noon, dB):
+
+| | brightness | level re noon |
+|---|---|---|
+| today (0) | −29.2 / −20.2 / −12.1 / −7.4 / +0.2 | −2.7 / −1.8 / 0 / −0.3 / −1.3 |
+| round 4's 7 | −11.9 / −8.0 / −5.0 / −2.4 / +2.9 | −3.4 / −2.3 / 0 / −1.7 / −5.3 |
+| shipped 7 | **−30.3 / −16.3 / −5.1 / −2.5 / +5.2** | +3.7 / +4.1 / 0 / −1.6 / −4.5 |
+
+Snare hits (test_drive's rule, 2 Springs, DECAY 0.6, DRIVE 0.5, MIX 1): max from noon CLEAN 1.4, DRIVEN 1.0, KICKED 2.7 dB (limit 3; round 4 left of noon would have been −5 to −7 without a makeup). On clicks (all highs) the left half's makeup reaches its cap: +3.7 / +4.1 dB re noon; the right half on clicks is still 4.5 dB under noon (round 4 5.3, today 1.3), on snares within +1.4. Right of noon re noon: today +4.7 / +12.3 dB, round 4 +2.6 / +7.9, shipped +2.6 / +10.3. TONE CW: energy > 10 kHz +4.0 / +2.8 / +0.4 dB vs noon (must be > 0), lows < 150 Hz −18.6 / −20.4 / −14.0 dB (≤ −8).
+
+**Gates, before → after** (7 as default): DRIVE 0→1 KICKED +8.2 → +6.6 dB (today +6.7; CLEAN +6.2, DRIVEN +6.4); KICKED level-matched DRIVE 0 vs 1 null −6.1 → −5.5 dB (≥ −6; CLEAN −22.6, ≤ −15); SPLASH C / D DRIVE 0 vs 0.8 at SPLASH 0.75: CLEAN 3.1 / 4.1 → 0.7 / 1.8 dB, KICKED 4.3 / 3.9 → 2.9 / 2.3 (≤ 3); "SPLASH 1 audible on a rimshot" passes (DRIVEN rim −9 dBFS +3.8, was +3.0); WOBBLE steps in order, fully left / right at DECAY 1 1.61 → 1.43 (0.6–1.6); test_springs3 coupled steady tone 1 → 0; aliasing at DRIVE 1 passes (worst −66.9 dB DRIVEN, −70.2 KICKED; it did not fail after the merge). SPLASH vs SPLASH 0 (02_hits, 2 Springs, noon knobs, 2–8 kHz, 20–400 ms, SPLASH 0.75 / 1, dB): CLEAN DRIVE 0 today 5.3 / 8.1, round 4 4.8 / 7.4, shipped 7.2 / 10.3; CLEAN DRIVE 0.8 6.0 / 8.6, 7.0 / 9.1, 7.4 / 9.7; KICKED DRIVE 0 8.0 / 10.8, 7.6 / 10.1, 10.0 / 12.5; KICKED DRIVE 0.8 11.2 / 16.8, 11.8 / 17.0, 13.0 / 17.4. Still under today: KICKED, DRIVE 0, a −6 dBFS rim at SPLASH 0.7 (+6.8 vs +8.9 dB, test_m7_tank "DRIVE never reduces the splash"); at SPLASH 0.75 −0.7 dB, at SPLASH 1 +0.8.
+
+**Precondition changes** (stimulus or corner, not the bar): test_clicks held chord −9 → −5 dBFS (limiter at 7 of 31 settings, today's tank 9 at −9); test_led_meter chord into 3 Springs (−3.3 dB of limiter); test_sustain_trim teeth on the organ (4.6 dB without the trim, 1.8 with), let-go pad at −1 dBFS (held −5.0 dB); test_springs3 reference voicings on tank voicing 0 (second pass); test_tank_voicing default = 7.
+
+**M6** (7 as default; `docs/prototypes/wellspring-fit-3/m6_grid.sh "7"`): 270 Ringing cells 0 flagged, steady tone 0, worst ringing_db 8.5 dB (650 Hz, TENSION 1 TONE 0); Howl 54/54. SPRINGS 3 coupled (`tools/springs3_m6_grid.py --voicings 8`): 0 of 90, steady 0, worst 6.2 dB, Howl 18/18.
+
+**Firmware** (`make all-variants`): release 126,280 B (96 %), profile 130,496 B (99.6 %, 576 B spare), m0test 82,320 B; 7 and its fixes added ~10 KB (release was 2.6 KB over, profile ~10.6 KB). Fitted by -Os on set-up / per-tick housekeeping only, `Tank::process` without loop unswitching, printf / putchar / exit stubs (libDaisy's USB debug logs, crt0), no malloc in the firmware Tank, exp(log) for pow, a float divide in profile's report (`firmware/README.md`). Per-sample paths and the knob-move redesign stay -O3. **CPU unmeasured on the chip: M3 run 15 due** (desktop worst case 548 vs 545 ns/sample on today's tank).
+
+**Open:** the click take's left-half level (+4 dB re noon on clicks, within ±1.4 on snares) and right-half level (−4.5 dB on clicks); KICKED SPLASH at DRIVE 0 around SPLASH 0.7; the owner's round-5 notes (transient softer, resonance placement, centre vs wide), not chased here (ADR 0038 "Not done").

@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0037). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0038). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.27 — ADR 0038 (owner, 2 Oct 2026, "F, plus gentler"): the tank is the Wellspring fit, voicing 7. A shared Sweep in front of the Springs (every echo the same smooth pew), short diffusers on each Loop's feedback (repeats blur into a wash), the transducers (a resonant low-pass where the coil drives the springs and where the pickups hear them, with the coil's even-order colour: gentle highs from the first moment, repeats that darken slowly), the stereo from decorrelated mid and Spring difference (wide, no left-right flicker), a low cut in front of the Springs with a level makeup. TONE re-mapped: fully left about as dark as before, noon the fitted sound, right of noon the Big Knob. DRIVE still grows the tail ~+6 dB; SPLASH at least as strong as before relative to SPLASH 0. §3 P3, §4.2, §4.3, §4.8.
 - v1.0.26 — ADR 0037 (owner, 2 Oct 2026): SPRINGS position 3 is coupled. The three Springs share energy every round trip (an energy-preserving rotation of their Loop returns, let go in the Howl zone), so a hit's echoes multiply and bloom instead of dripping. Repeat timing, tail length and level as before; positions 1 and 2 unchanged. §3 SW0, §4.3.
 - v1.0.25 — ADR 0032 amendment (owner, 2 Oct 2026): SPLASH stronger. The top quarter of SPLASH is much bigger (up to ×3 the Clang, held a little longer), and SPLASH no longer depends on DRIVE: every hit is judged as at DRIVE 0.8, so SPLASH works fully with DRIVE down (line-level sends). A ceiling keeps a big splash off the output limiter, never below the old splash. SPLASH 0 unchanged.
 - v1.0.24 — ADR 0036 (owner, 2 Oct 2026): TONE's right side is King Tubby's Big Knob (Altec 9069B): an 18 dB/oct low cut sweeping 20 Hz at noon → 800 Hz fully right (was 12 dB/oct, → 300 Hz), with the coil's nasal bump above the cutoff on sharp hits only (chords, pads and held sounds get the plain cut); level kept within ±3 dB across TONE. Left of noon unchanged. §3 TONE row.
@@ -109,7 +110,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 |---|---|---|---|
 | P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
 | P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | T60 0.4 s → 9 s (exponential, §4.4), always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION up, i.e. tight). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
-| P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, tilt toward lows); noon = neutral; CW = bright/splashy and thinner: King Tubby's Big Knob, an 18 dB/oct low cut to 800 Hz with a nasal bump on sharp hits (ADR 0036) | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
+| P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, a darker input coil, tilt toward lows: as dark as before ADR 0038); noon = the Wellspring-fit sound (ADR 0038); CW = bright/splashy and thinner: King Tubby's Big Knob, an 18 dB/oct low cut to 800 Hz with a nasal bump on sharp hits (ADR 0036), the output pickup opening up | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop. CCW warm dub dark, CW splashy never harsh (ADR 0017) |
 | P4 | **SPLASH** | How hard the hits hit: a loud, sudden hit's own highs fed harder into the springs (Clang), and in DRIVEN/KICKED a short hit pushed harder into the input transducer (Bite) (§4.5, ADR 0032) | Nothing is added on a hit; ghost notes in a groove stay quiet. SPLASH 0 = only the small Jolt floor (DRIVEN/KICKED) |
 | P5 | **TENSION** | "Which tank": Loop delay L, transition fC, allpass `a` and stage count together (§4.4) | CW tight (short tank, small bright chirp, quick repeats; still a spring, ADR 0007), CCW loose (long tank, big darker chirp, slow repeats). More tension = tighter; turning it up raises the live tail's pitch, like tightening a string (ADR 0026) |
 | P6 | **WOBBLE** | Bipolar pitch movement of the tank delay (§4.7, ADR 0034): noon still; left = random wow + flutter (tape-like, with a faint flutter tremolo); right = sine vibrato | Noon ±3 % dead zone. Left: Drift, never repeating, grows to fully left. Right: Warble, a vibrato getting faster and deeper. Both end stops clearly out of tune, toned down from round 1 (ADR 0034 round 2). Min floor always on (§4.10). CV adds to the pot: fully left + CV sweeps random → still → LFO |
@@ -175,12 +176,13 @@ out_spring = DriveOut( C_lf + hf_level(tone) × C_hf )
 - **Spectral delay filter:** cascade of M interpolated stretched allpass sections. Each = Schroeder-style allpass with embedded delay K−1 samples + first-order fractional-delay allpass. K sets chirp spacing; `a` sets chirp steepness.
 - **DC blocker** in low-chirp loop (paper uses ~40 Hz).
 - **DriveIn / DriveOut / LoopSat** = drive chain (§4.9). **AntiRes** = resonance suppressor (§4.10).
+- **Tank voicing 7 (ADR 0038, the Wellspring fit)** around and inside that: after the Tilt a low cut (2nd-order high-pass 220 Hz + −3 dB shelf at 300 Hz, its level made up from the power it takes), then the **input coil** (the hit's Clang added first; a plain-square even-order term, then a resonant low-pass at 2.35 kHz, darker left of TONE noon, opening a little in KICKED with DRIVE), then the shared **Sweep** (≈40 "highs later" allpass sections at TENSION noon) into every Spring's Loop and high path; the Loops keep fewer sections, carry three short **diffusers** on their feedback (after the pickup) and lose less treble per trip (damping ×3.6 at noon and right of it, eased back toward ×1 at TONE fully left and ×1.5 at DECAY max); the high path is aligned on the Loop's first echo. On the way out the **pickups' treble loss** (a resonant low-pass at 4.5 kHz, opening toward 9 kHz at TONE fully right) comes before DriveOut, and the wet trim (−2.5 dB) after it.
 
 ### 4.3 Multiple springs (SW0)
 
 - 1/2/3 instances of §4.2 in parallel, **detuned** L, K, `a` per spring (±3–8%, tune by ear), and (ADR 0027) each a step darker and shorter than the one before (damping × 1 / 0.85 / 0.72, T60 × 1 / 0.93 / 0.865), so modes that line up between Springs die at different rates instead of singing. Detuning = beating + density, and helps prevent shared resonances (§4.10).
 - Position 3 (ADR 0037): the three Loops are **coupled**: each round trip their returns are turned by a 40° rotation about the axis (1, 2, 3)/√14 before going back in (energy in = energy out, each Loop's g < 1, so it always decays), keeping today's repeat timing. The coupling fades out across the Howl zone so the Springs howl apart.
-- Stereo: Spring A → L, B → R, C centre with small cross-feed. 1-spring mode: decorrelate R with short allpass diffuser.
+- Stereo (ADR 0038): no Spring is panned. L = mid + X, R = mid − X, where X is the bass-cut (150 Hz) sum of the mid through a decorrelator and the Springs' difference (A − B) through its own decorrelator: every echo reaches both ears at once (no left-right flicker), the fine detail differs (width), and mono is exactly the mid. (Before: Spring A → L, B → R, C centre; 1 Spring decorrelated R.)
 - Input summed to mono before tank (real tanks are mono). Dry path stays stereo.
 - ~20 ms crossfade on spring-count change.
 
@@ -231,7 +233,7 @@ Modulation of each Spring's Loop delay L, plus one shared Transport generator on
 
 ### 4.8 Output stage
 
-- Wet: gentle high-shelf cut + limiter.
+- Wet: the pickups' treble loss before DriveOut (§4.2, ADR 0038), the wet trim after it, gentle high-shelf cut + limiter.
 - MIX: equal-power.
 - Denormal protection (FTZ; tiny noise if needed).
 
