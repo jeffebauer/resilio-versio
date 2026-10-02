@@ -12,13 +12,14 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points (`docs/manual.md`, `docs/presets.md`) up to date with the sound as of `a8c64c7` |
 
-**Plugin in Ableton:** `8901296`, version **1.3.6**, a **candidate, not merged** (installed 2 Oct, evening): **Wellspring F** (your round 4 pick) on top of SPRINGS 3 coupled, Big Knob TONE, SPLASH C and everything before; AU validated. **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and use a **fresh** Resilio Versio. If you don't like it, Claude reinstalls `2ed84f2` (main, v1.2.89).
+**Plugin in Ableton (two side by side, installed 3 Oct for A/B):** **"Resilio Versio"** = `main` `77989d8` (v1.2.96): SPRINGS 3 coupled, Big Knob TONE, SPLASH C, without Wellspring F; your sets' devices use this one. **"Resilio Versio F"** = the Wellspring F candidate `cef6a77` (v1.3.11), the same build your friend gets. Both AU validated. **Rescan needed:** open Ableton, hold ⌥ and click Rescan; add "Resilio Versio F" on a second return track. Before merging F, Claude puts "Resilio Versio" back to a single plugin.
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin, Versio firmware, read-me. **New, for A/B:** [candidate F, v2026.10.02-cef6a77](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F) (pre-release, plugin only, no firmware yet): installs as **"Resilio Versio F"** next to the 1 Oct "Resilio Versio", so your friend can put both on return tracks and compare; its read-me says what changed and what to listen for. Download the zip there to send. Claude makes the next one with `tools/make_release.sh --publish` (or `--candidate <ref> <label>`).
 
 ## Now (suggested order)
 
 ### 0a. Play the Wellspring F candidate in Ableton (≈15 min) · before Claude merges it
+- Set-up: two return tracks, "Resilio Versio" (today's main) on one and "Resilio Versio F" on the other, same settings, same send; switch between them
 - [ ] **General feel:** does it sit further back and gentler, like your Wellspring, without going dull? Any setting where it sounds worse than before?
 - [ ] **SPLASH in KICKED with DRIVE down:** around 2 o'clock a rim hit splashes ~2 dB less than today (fully up it's slightly more). Still strong enough in the middle of the knob?
 - [ ] **TONE sweep on sharp clicks/rims:** the left half comes out ~4 dB louder than noon and fully right ~4.5 dB quieter on very sharp clicks (drum hits stay even). Does sweeping TONE feel like it jumps in level?
