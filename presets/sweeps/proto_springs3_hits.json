@@ -1,0 +1,9 @@
+{
+  "name": "proto_springs3_hits",
+  "note": "SPRINGS 3 palette (ADR 0037 proposed). Run once per version with --set: springs=2 (contrast) or springs3_voicing=0..4 (0 today, 1 long tank, 2 in series, 3 wide, 4 pan tank). MIX 1 (the tank alone); other knobs at their defaults. tools/springs3_palette.sh renders the whole page.",
+  "input": "test_audio/stimulus/02_hits.wav",
+  "base": { "springs": "3", "mix": 1.0 },
+  "grid": { "attitude": [0, 1], "decay": [0.5, 0.85] },
+  "tail_seconds": 6,
+  "ignore_flags": ["click_count", "max_step_db_100ms", "resonance_peak_db"]
+}

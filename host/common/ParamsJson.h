@@ -22,13 +22,16 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // "sustain_voicing" (0 = off, the limiter hold only; 1 = round 2; 2 = gentle;
 // core/params/DriveVoicing.h, ADR 0035 round 3), "splash_voicing" (0 =
 // today, 1 = stronger top, 2 = + DRIVE-free, 3 = bolder; core/params/
-// SplashVoicing.h, ADR 0032 "SPLASH stronger") and "tone_voicing" (0 =
-// today ... 5 = the bump on hits; the Big Knob, DriveVoicing.h, ADR 0036).
-// Returns false if `key` isn't one.
-inline constexpr const char* kWobbleVoicingKey  = "wobble_voicing";
-inline constexpr const char* kSustainVoicingKey = "sustain_voicing";
-inline constexpr const char* kSplashVoicingKey  = "splash_voicing";
-inline constexpr const char* kToneVoicingKey    = "tone_voicing";
+// SplashVoicing.h, ADR 0032 "SPLASH stronger"), "tone_voicing" (0 =
+// today ... 5 = the bump on hits; the Big Knob, DriveVoicing.h, ADR 0036)
+// and "springs3_voicing" (what SPRINGS position 3 does: 0 = today, 1 = long
+// tank, 2 = in series, 3 = wide, 4 = pan tank, 5-10 round 2; core/params/
+// Springs3Voicing.h, ADR 0037). Returns false if `key` isn't one.
+inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
+inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
+inline constexpr const char* kSplashVoicingKey   = "splash_voicing";
+inline constexpr const char* kToneVoicingKey     = "tone_voicing";
+inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 
