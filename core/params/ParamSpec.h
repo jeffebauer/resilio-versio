@@ -37,7 +37,11 @@ enum class Smoothing : uint8_t {
 
 struct ParamSpec {
     ParamId     id;
-    const char* key;  // stable identifier for presets, plugin params
+    // Stable identifier for presets and plugin params. Never rename one: hosts
+    // save a device's parameters by it (VST3 ID = a hash of the key), so a
+    // rename leaves a dead slot in every saved set (BOING -> TENSION, 29 Sep
+    // 2026: the owner's Ableton set kept a dead BOING). Change `name` instead.
+    const char* key;
     const char* name; // panel label
     ParamKind   kind;
     float       defaultValue; // Normalised
