@@ -12,7 +12,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points (`docs/manual.md`, `docs/presets.md`) up to date with the sound as of `a8c64c7` |
 
-**Plugin in Ableton:** `88f8a23` (installed 2 Oct, evening: **SPRINGS 3 coupled**, plus Big Knob TONE, SPLASH C and everything before; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one. Wellspring F isn't in it yet.
+**Plugin in Ableton:** `2ed84f2`, version **1.2.89** (installed 2 Oct, evening: SPRINGS 3 coupled, plus Big Knob TONE, SPLASH C and everything before; AU validated). Every install now gets its own version number, so Ableton re-reads the parameters: the dead BOING entry is gone and TENSION is listed. **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and use a **fresh** Resilio Versio (an old device in a set can keep BOING; redraw any BOING automation on TENSION). Wellspring F isn't in it yet.
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
 
@@ -106,7 +106,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
-- 2 Oct 2026: **SPRINGS 3 coupled merged** (your pick F "across the board", ADR 0037): position 3's three Springs share energy every round trip, so hits bloom instead of dripping; repeat timing and level as before. Firmware trimmed to fit (release 93 %, CPU-test 99.5 %). In Ableton (`88f8a23`, 2 Oct); not yet on the Versio: next release together with Wellspring F
+- 2 Oct 2026: **SPRINGS 3 coupled merged** (your pick F "across the board", ADR 0037): position 3's three Springs share energy every round trip, so hits bloom instead of dripping; repeat timing and level as before. Firmware trimmed to fit (release 93 %, CPU-test 99.5 %). In Ableton (`2ed84f2`, 2 Oct); not yet on the Versio: next release together with Wellspring F
 - 2 Oct 2026: **Wellspring round 4 listened:** F (+ gentler) on clicks, hits and skank. Still different: the Wellspring's transient is softer, the tail's resonance sits elsewhere, and different frequencies are centred vs wide
 - 2 Oct 2026: **Manual, starting points and the friends' read-me refreshed** for the new sound (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE). The six starting points re-checked on it: none reaches the output limiter on hits, skank or a held pad. Changing a preset is still by ear: tell Claude what you'd move
 - 1 Oct 2026: **Released** `1d18fce` as a GitHub Release (universal plugin, firmware, read-me) and installed it in Ableton; `tools/make_release.sh` makes the next one
