@@ -38,10 +38,11 @@ SHA="$(git rev-parse --short "$REF")"
 N="$(git rev-list --count "$SHA")"; PLUGIN_VERSION="1.$((N / 100)).$((N % 100))"   # always goes up (plugin/CMakeLists.txt)
 if [ -n "$LABEL" ]; then
     NAME="Resilio Versio $LABEL"
+    BUNDLE="com.Resilio.ResilioVersio$LABEL"
     CODE="RsV$(printf '%s' "$LABEL" | tr '[:lower:]' '[:upper:]' | cut -c1)"   # 4 characters, one per candidate letter
     TAG="v$(date +%Y.%m.%d)-$SHA-candidate-$LABEL"
 else
-    NAME="Resilio Versio" CODE="RsVs" TAG="v$(date +%Y.%m.%d)-$SHA"
+    NAME="Resilio Versio" CODE="RsVs" BUNDLE="com.Resilio.ResilioVersio" TAG="v$(date +%Y.%m.%d)-$SHA"
 fi
 OUT="dist/release/$TAG"
 mkdir -p "$OUT"
@@ -64,7 +65,7 @@ fi
 echo "== Universal plugin \"$NAME\" at $SHA (version $PLUGIN_VERSION)"
 cmake -S "$WT" -B "$WT/build-share" -G Ninja -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DRV_INSTALL_PLUGIN=OFF \
-    "-DRV_PLUGIN_VERSION=$PLUGIN_VERSION" "-DRV_PLUGIN_NAME=$NAME" "-DRV_PLUGIN_CODE=$CODE" >/dev/null
+    "-DRV_PLUGIN_VERSION=$PLUGIN_VERSION" "-DRV_PLUGIN_NAME=$NAME" "-DRV_PLUGIN_CODE=$CODE" "-DRV_PLUGIN_BUNDLE_ID=$BUNDLE" >/dev/null
 cmake --build "$WT/build-share" --target ResilioVersio_VST3 ResilioVersio_AU >/dev/null
 ART="$WT/build-share/plugin/ResilioVersio_artefacts/Release"
 rm -rf "$OUT/$NAME.vst3" "$OUT/$NAME.component"
