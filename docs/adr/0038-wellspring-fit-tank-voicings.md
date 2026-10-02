@@ -1,0 +1,24 @@
+# 0038 — Wellspring fit round 3: four tank fixes, one at a time
+
+**Status:** Proposed, 2 Oct 2026 (branch `proto/wellspring-fit-3`, not merged). Renderer key `tank_voicing`, default **0 = today**, bit for bit. Numbers, method and gates: `docs/m8-tuning-backlog.md` "Wellspring fit round 3"; scripts `docs/prototypes/wellspring-fit-3/`; page `renders/wellspring_fit3/page/`.
+
+**Context:** The owner, listening to their Wellspring next to our closest knob settings (2 Oct 2026, `renders/wellspring_fit2/page/`): the Wellspring "sounds more diffuse"; ours has "more low end/mids which makes it feel more present and forward, whilst the Wellspring sounds further away and gentler in tone"; "Wellspring repeats diffuse faster whilst ours flicker back and forth from left to right — sounds more delay-like rather than reverb-like". Measured on the click take at the closest settings (2 Springs, TENSION 0.875, TONE 0.8, CLEAN, SPLASH 0, WOBBLE noon, DRIVE 0.25), Wellspring vs ours: echo density at 300–500 ms 0.97 vs 0.66; tail low-mid balance −6.0 vs −1.7 dB; the L/R balance jumps 2.8 vs 10.2 dB every 10 ms, L/R envelope correlation 0.95 vs 0.51. In the previous round (`proto/wellspring-fit`, 30 Sep) the owner picked **B, the fitted Sweep**, and dropped C's tone dip.
+
+Why ours flickers: in 2 Springs the side signal is k·(A − B), so the left output is mostly Spring A and the right mostly Spring B; their Loops have different lengths, so each echo lands in one ear, then the other.
+
+**Decision (proposed): one of five voicings, each adding one fix to the one before** (`core/params/TankVoicing.h`):
+- **0 = today.**
+- **1 = Sweep:** B's Sweep, re-fitted on today's tank (B was fitted on the smooth-arc tank, whose Loop fC was higher). One chain of "highs later" allpass sections in front of every Spring, shared: 40 sections at noon, top 0.85 × the Loop's fC, a 0.35 (the fit returned B's own numbers: 41, 3.6 kHz, 0.37). The Loops keep fewer sections (B's shares), so the worst case costs what it costs today; B's high path (crossover 0.36 × fC, its pickup lined up on the Loop's first echo + 3.7 ms). The pickups move back by the Sweep's delay, so the first echo's body keeps its time (ADR 0029).
+- **2 = 1 + stereo together:** no Spring is panned (side 0); both outputs hear every Spring; the width comes from the decorrelator D alone (w 0.85), which cancels exactly in mono (SpringModes.h), with D's bass taken out below 150 Hz.
+- **3 = 2 + diffusion:** three short allpasses (0.85 / 1.45 / 2.15 ms, c 0.2, scaled per Spring) on each Loop's feedback after the pickup, so each trip smears the echo more; L shrinks by their delay (echo spacing unchanged); the first echo never passes them.
+- **4 = 3 + gentler:** a low cut in front of the Springs (high-pass 260 Hz, −3 dB shelf at 600 Hz), Loop damping × 1.5, the high path's T60 0.7 × DECAY (was 0.45).
+
+**Measured** (closest settings, DECAY re-fitted per voicing to the Wellspring's 3.13 s; Wellspring / 0 / 1 / 2 / 3 / 4): echo density 300–500 ms 0.97 / 0.66 / 0.67 / 0.67 / 0.96 / 1.02, 100–200 ms 0.77 / 0.64 / 0.70 / 0.70 / 0.83 / 0.88; tail low-mid balance −6.0 / −1.7 / −1.8 / −1.8 / −1.9 / −5.9 dB; L/R jump 2.8 / 10.2 / 9.3 / 1.2 / 1.6 / 1.6 dB; envelope correlation 0.95 / 0.51 / 0.58 / 0.98 / 0.98 / 0.98; T60 250 Hz–4 kHz Wellspring 4.66 / 3.83 / 3.27 / 2.68 / 1.88 s, today 3.29 / 3.48 / 3.14 / 2.22 / 1.04, 4: 3.76 / 3.59 / 3.34 / 2.60 / 1.18; echo spacing 40–41 ms throughout (Wellspring 36); first arc at 3.56 / 4.49 kHz 0.6 / 0.2 ms today, 7.3 / 7.7 with the Sweep (Wellspring 7.7 / 15.1).
+
+**Not done:** lows longer than DECAY asks (the Wellspring's 250 Hz octave rings 4.7 s): a Loop low shelf with the gain design allowing 1.5 × T60 below 250 Hz broke AntiRes layer 1 and stretched DECAY 1 to 12 s (ADR 0001), so it was dropped; the top octave stays short (the Loop's fC low-pass).
+
+**Consequences:**
+- Default 0: renders and the firmware's DSP code, Tank object and pool are today's (+8 B of flash); the full suite passes. The firmware compiles only its default voicing (`RV_TANKV_BUILT`, `RV_FIXED_VOICINGS`).
+- All five versions pass the M6 grid (0 Ringing flags, Howl 54/54) and the new `test_tank_voicing` (stability, first-echo time, together and wide, mono sum, echo density).
+- If the owner picks 1–4, `kDefaultVoicing` changes and the checks the backlog lists as failing with that voicing as default need fixing or re-reading before it ships: WOBBLE's left/right ratio (1–4), the aliasing floor at DRIVE 1 (1–3), SPLASH audibility on a rimshot (1–2), a few marginal level/limiter checks, and 4's lost level (a makeup like the Big Knob's).
+- Cost: the worst case stays the worst case (155 vs 156 Chirp sections); ~+1 point on the chip with the diffusers; noon gets ~28 more sections. Pool 28,719–29,386 of 30,000 floats. Flash as if picked: profile 127,700 B (1) to 130,004 B (4, 99.2 % of 128 KB).
