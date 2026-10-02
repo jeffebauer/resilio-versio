@@ -40,6 +40,20 @@
 // RV_TANKV_TUNE, used by docs/prototypes/wellspring-fit-3/ to fit them);
 // the firmware never can.
 
+// What this build can play, for the preprocessor (the voicings build on each
+// other, so one number says it): the firmware (RV_FIXED_VOICINGS) builds only
+// its default voicing's parts, so with the default 0 its code, its Tank
+// object and its pool are today's; desktop builds hold all of them.
+#ifdef RV_FIXED_VOICINGS
+#ifdef RV_TANK_DEFAULT_VOICING
+#define RV_TANKV_BUILT RV_TANK_DEFAULT_VOICING
+#else
+#define RV_TANKV_BUILT 0
+#endif
+#else
+#define RV_TANKV_BUILT 4
+#endif
+
 namespace rv::tankv {
 
 constexpr int kToday    = 0;
@@ -120,7 +134,7 @@ struct Tuning {
     // wellspring-fit-3/fit_diffusion.py (fit_diffusion.json): echo density
     // 0.84 / 0.97 at 100-200 / 300-500 ms (Wellspring 0.77 / 0.97; today
     // 0.64 / 0.66); c 0.3 or longer delays overshoot to a wash by 100 ms
-    // (0.94-1.0). 663 floats of pool for the three Springs.
+    // (0.94-1.0). 667 floats of pool for the three Springs.
     float diffMs[kNumDiffusers] = {0.85f, 1.45f, 2.15f};
     float diffSpringScale[3]    = {1.0f, 1.13f, 0.89f};
     float diffCoeff             = 0.2f;

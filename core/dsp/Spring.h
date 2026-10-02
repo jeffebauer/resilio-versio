@@ -71,6 +71,7 @@
 #include "dsp/Drive.h"
 #include "dsp/Filters.h"
 #include "params/Mappings.h"
+#include "params/TankVoicing.h"
 
 #include <array>
 #include <cstddef>
@@ -191,20 +192,24 @@ public:
     // together with the Loop's, plus alignMs (today: kHighPickup x L_hf, a
     // few ms ahead of the Loop's, which put an undispersed early copy on top
     // of the Sweep's arc). Redesigns on the next setSettings().
-    void setHighPathVoicing(float xoverRatio, bool align, float alignMs)
+    void setHighPathVoicing([[maybe_unused]] float xoverRatio, [[maybe_unused]] bool align, [[maybe_unused]] float alignMs)
     {
+#if RV_TANKV_BUILT >= 1
         hiXover_   = xoverRatio;
         hiAlignOn_ = align;
         hiAlignMs_ = alignMs;
         designFc_  = -1.0f;            // the crossover again
         settings_.t60Seconds = -1.0f;  // force the redesign
+#endif
     }
     // Voicing 4: the high path's T60 as a share of DECAY's (today
     // kHighT60Ratio). Redesigns on the next setSettings().
-    void setHighT60Ratio(float r)
+    void setHighT60Ratio([[maybe_unused]] float r)
     {
+#if RV_TANKV_BUILT >= 4
         hiT60Ratio_ = r;
         settings_.t60Seconds = -1.0f; // force the redesign
+#endif
     }
 
     // n samples of mono in -> mono Spring out. Real-time safe.
@@ -300,7 +305,11 @@ private:
     int   n_ = 5; // integer part of the embedded delay
     float mPos_ = 0.0f, mRate_ = 0.0f;
     int   mTarget_ = 0, mActive_ = 0;
-    int   maxStages_ = kMaxStages; // rings in the pool (prepare)
+#if RV_TANKV_BUILT >= 1
+    int   maxStages_ = kMaxStages; // rings in the pool (prepare; Tank voicing 1+ may need fewer)
+#else
+    static constexpr int maxStages_ = kMaxStages;
+#endif
     float g_ = 0.0f;
     dsp::LoopSat loopSat_;
     float satGate_ = 1.0f; // quiet-tail fade (setLoopSatGate)
@@ -310,9 +319,19 @@ private:
     dsp::Biquad         highpass_;
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
+#if RV_TANKV_BUILT >= 4
     float hiT60Ratio_ = kHighT60Ratio; // setHighT60Ratio (Tank voicing 4)
+    float hiT60() const { return hiT60Ratio_; }
+#else
+    static constexpr float hiT60() { return kHighT60Ratio; }
+#endif
+#if RV_TANKV_BUILT >= 1
     float hiXover_ = kHighPassRatio, hiAlignMs_ = 0.0f, hiPick_ = -1.0f; // setHighPathVoicing (voicing 1); hiPick_ < 0: kHighPickup
     bool  hiAlignOn_ = false;
+    float hiXover() const { return hiXover_; }
+#else
+    static constexpr float hiXover() { return kHighPassRatio; }
+#endif
     float tapRatio_ = 0.5f, tapOffset_ = 0.0f, tapOffsetTarget_ = 0.0f;
 
     // L modulation state (see "Micro-mod floor").
@@ -342,9 +361,16 @@ private:
         }
     };
     static constexpr int kMaxFbDiffusers = 3;
+#if RV_TANKV_BUILT >= 3
     std::array<FbDiffuser, kMaxFbDiffusers> fbDiff_{};
     int   numFbDiff_ = 0;
     float fbDiffC_ = 0.5f, fbDiffDelay_ = 0.0f; // total delay, samples
+    float diffDelay() const { return fbDiffDelay_; }
+    float withDiff(float x) const { return x + fbDiffDelay_; } // x + their delay
+#else
+    static constexpr float diffDelay() { return 0.0f; } // the firmware without voicing 3
+    static constexpr float withDiff(float x) { return x; }
+#endif
 
     // ---- Loop gain design (control rate only; kept after the per-sample
     // state so the hot members stay within short load offsets) ----

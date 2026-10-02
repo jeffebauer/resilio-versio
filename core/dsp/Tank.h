@@ -298,7 +298,6 @@ public:
     // before rendering: it clears the tails.
     void setTankVoicing(int v);
     int  tankVoicing() const { return tankVoicing_; }
-    const dsp::Sweep& sweep() const { return sweep_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -436,14 +435,24 @@ private:
 #else
     int tankVoicing_ = tankv::kDefaultVoicing; // setTankVoicing
 #endif
+    // Each part only where this build can play it (RV_TANKV_BUILT): the
+    // firmware with the default 0 carries none of them.
+#if RV_TANKV_BUILT >= 1
     dsp::Sweep          sweep_;          // voicing 1+: shared, in front of every Spring
-    float               sweepAlign_ = 0.0f; // its delay at modes::kPickupAlignHz (samples)
+    float               sweepAlign_ = 0.0f; // its pickup alignment (samples, updateBaseSettings)
+    bool                snapNow_ = false; // controlTick(snap) in progress (the Sweep's stage jump)
+#endif
+#if RV_TANKV_BUILT >= 2
     dsp::OnePoleLowpass dBass_{};        // voicing 2+: D's bass, taken out (bass centred)
-    dsp::Biquad         gentleHp_{};     // voicing 4: the low cut in front of the Springs
-    dsp::Biquad         gentleShelf_{};  // ... and its low-mid shelf
+#endif
+#if RV_TANKV_BUILT >= 3
     std::array<std::array<float*, tankv::kNumDiffusers>, kMaxSprings> diffBuf_{}; // voicing 3: Loop diffusers
     std::array<std::array<int, tankv::kNumDiffusers>, kMaxSprings>    diffSize_{};
-    bool snapNow_ = false; // controlTick(snap) in progress (updateBaseSettings: the Sweep's stage jump)
+#endif
+#if RV_TANKV_BUILT >= 4
+    dsp::Biquad         gentleHp_{};     // voicing 4: the low cut in front of the Springs
+    dsp::Biquad         gentleShelf_{};  // ... and its low-mid shelf
+#endif
 
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)

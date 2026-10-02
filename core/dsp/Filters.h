@@ -64,7 +64,7 @@ struct Biquad {
     // RBJ low shelf, shelf slope 1 (Tank voicing 4, params/TankVoicing.h).
     void setLowShelf(float hz, float gainDb, float sampleRate)
     {
-        const float A = std::pow(10.0f, gainDb / 40.0f);
+        const float A = std::exp(gainDb * (2.302585093f / 40.0f)); // 10^(dB/40); exp, not pow, for the Firmware's flash
         const float w = 2.0f * map::kPi * hz / sampleRate;
         const float cw = std::cos(w), alpha = std::sin(w) / 2.0f * std::sqrt(2.0f);
         const float sA = 2.0f * std::sqrt(A) * alpha;
