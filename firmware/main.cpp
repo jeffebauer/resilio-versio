@@ -48,6 +48,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <new>
 
 // Tightly-coupled data RAM (see "Memory placement" above).
 #define RV_DTCM __attribute__((section(".dtcmram_bss")))
@@ -66,7 +67,12 @@ namespace {
 
 DaisyVersio hw;
 #if !defined(RV_MODE_M0TEST)
-rv::Tank    tank;
+// The Tank is built at boot (placement new at the top of main), not as a
+// plain global: its default member values made it ~7.9 KB of .data, stored
+// in flash and copied to RAM at startup. Zeroed .bss storage costs no flash
+// (ADR 0011's 128 KB budget). Never destroyed (main never returns).
+alignas(rv::Tank) unsigned char gTankStorage[sizeof(rv::Tank)];
+rv::Tank& tank = *reinterpret_cast<rv::Tank*>(gTankStorage);
 #endif
 
 // Boot pattern shared by all three variants (NE convention: a unique colour
@@ -213,7 +219,6 @@ int main()
 
 #include "util/CpuLoadMeter.h"
 #include "dsp/ProfileHook.h"
-#include "m3_bench.h"
 
 #include <cstdint>
 #include <cstring>
@@ -299,7 +304,6 @@ int FracToPercentTenths(float frac)
 }
 
 constexpr size_t kLineBufSize = 640; // CORNER + SPLIT (+ BENCH) lines, sent in one transmit
-m3bench::Results gBench{};
 
 void TransmitLine(const char* buf, size_t len)
 {
@@ -505,12 +509,12 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
 
 int main()
 {
+    new (gTankStorage) rv::Tank(); // before anything touches it (see gTankStorage)
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
 
     gTankPrepared = PrepareTank();
     StartCycleCounter();
-    gBench = m3bench::Run(); // before audio starts: nothing else competing
     rv::prof::markHook = ProfMark;
     BuildCornerTable();
     ApplyCorner(0);
@@ -593,17 +597,16 @@ int main()
             }
             AppendStr(p, end, "\r\n");
             if (r.index == 0) { // once per pass through the corners
-                const m3bench::Results& b = gBench;
+                // Sanity check that the chip runs as configured (the
+                // multiply-add micro-benchmarks of runs 5-12, m3_bench.cpp,
+                // were dropped for flash on 1 Oct 2026: they had answered
+                // their question).
                 AppendStr(p, end, "BENCH clock ");
-                AppendUInt(p, end, unsigned(b.clockHz / 1000000u));
+                AppendUInt(p, end, unsigned(SystemCoreClock / 1000000u));
                 AppendStr(p, end, " MHz icache ");
-                AppendStr(p, end, b.icache ? "on" : "OFF");
+                AppendStr(p, end, (SCB->CCR & SCB_CCR_IC_Msk) ? "on" : "OFF");
                 AppendStr(p, end, " dcache ");
-                AppendStr(p, end, b.dcache ? "on" : "OFF");
-                AppendStr(p, end, " | mul-add latency");
-                AppendFixed1(p, end, b.fmaLatency, 5);
-                AppendStr(p, end, " throughput");
-                AppendFixed1(p, end, b.fmaThroughput, 5);
+                AppendStr(p, end, (SCB->CCR & SCB_CCR_DC_Msk) ? "on" : "OFF");
                 AppendStr(p, end, "\r\n");
             }
             TransmitLine(buf, size_t(p - buf));
@@ -957,6 +960,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
 
 int main()
 {
+    new (gTankStorage) rv::Tank(); // before anything touches it (see gTankStorage)
     hw.Init(true); // boost to 480 MHz
     hw.SetAudioBlockSize(kBlockSize);
     gTankPrepared = PrepareTank();

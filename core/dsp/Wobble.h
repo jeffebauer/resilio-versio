@@ -130,7 +130,11 @@ private:
     float    loopRatio_  = 1.0f;
     Role     role_       = Role::Loop;
     uint32_t seed_       = 1;
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int voicing_ = wobble::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+#else
     int      voicing_    = wobble::kDefaultVoicing;
+#endif
     Rng      rng_;
 
     float          amount_ = -1.0f, depthScale_ = -1.0f;

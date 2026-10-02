@@ -56,7 +56,8 @@ void HitEnvelope::prepare(float sampleRate)
 
 void HitEnvelope::reset()
 {
-    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = eh_ = 0.0f;
+    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = eh_ = hitMax_ = 0.0f;
+    loudRef_ = splash::kLoudRef; // as constructed (the voicing's scale is set again on the next tick)
     invRef2_ = 1.0f / (loudRef_ * loudRef_);
 }
 

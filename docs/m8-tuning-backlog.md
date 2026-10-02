@@ -477,6 +477,88 @@ python3 tools/review/make_review.py renders/proto_sustain_trim3 --no-level-match
 ```
 Listen for: the real pad (D: no dip and swell; at most one smooth settle if it grows into the limiter), the organ at TONE 0 / TENSION 1 (D vs A: as alive?), whether D's short limiter moments on arrivals sound driven (the hold should keep them clean; B is the hold with no trim at all), hits and skank identical. The level-match toggle separates level from character.
 
+## Big Knob TONE (1 Oct 2026, branch `proto/big-knob-tone`, not merged; ADR 0036 proposed)
+Owner: TONE's right side as King Tubby's "Big Knob" (the Altec 9069B high-pass on his MCI desk), smooth (no steps or clicks), exploring the coil's character. Brief: `docs/briefs/big-knob-tone.md`. Research: `docs/research/big-knob.md` (web sources seen through search text only: this cloud session's network policy blocked opening the pages). Numbers: `core/params/DriveVoicing.h` "Big Knob TONE voicings". Renderer key `tone_voicing` (default 0 = today; firmware and plugin unchanged).
+
+**Voiced from the research, not from taste:**
+- **Slope:** 3rd order, 18 dB/oct, as the Altec (sourced). Today's 2nd-order section becomes the flat 3rd-order Butterworth's pair (Q 0.707 → 1), times a 1st-order section that fades in from an exact pass-through at noon (k 0 → 1 by TONE 0.6), so nothing jumps.
+- **Cutoff:** smooth, 20 Hz at noon → 1.2 kHz fully right, same log curve as today's (u^0.7). **Departure:** the Altec's 10 steps (70 Hz–7.5 kHz) are out (owner: no steps), and nothing above 1.2 kHz: the Springs respond ~200 Hz–4 kHz, so the Altec's 2–7.5 kHz steps would just mute the tank.
+- **Bump:** `tools/research/big_knob_circuit.py` shows the Altec is flat when fed and loaded at 600 ohm, and peaks at ~1.3–1.4× the cutoff when a low-impedance output drives a higher-impedance input (+2 dB into 600 ohm, +5–7 into ~1 kohm, +16 into a bridging 10 kohm, coil Q ~10). Voicing 2 uses that circuit's own poles, moving from "matched" at noon to "~0 ohm into ~1 kohm" fully right. **Departure:** the real bump's size was fixed by the desk's wiring (undocumented); ours grows with TONE (brief). **Size:** the "medium" wiring, +5.6 dB fully right. The KTBK-style mild +2 dB would be hard to hear on a tank, a bridging +16 dB is a whistle, and +5.6 passes every guarantee below with margin.
+- **Coil saturation (voicing 3):** undocumented, probably slight on the original (+28 dBm rating). **A guess, offered because the owner asked:** the lows are pushed up to +4 dB harder into DriveIn's coil-flux saturator (highs and small signals unchanged, the automatic makeup keeps the level), so DRIVE adds the lows' harmonics, which the Big Knob lets through.
+
+**Per voicing, the low cut alone** (test_drive "bigknob"; −3 dB point, bump, slope over fc/8 → fc/4):
+| TONE | 0 today | 1 steep | 2 bump (and 3) |
+|---|---|---|---|
+| 0.5 | 20 Hz, 12 dB/oct | same (bit for bit) | same (bit for bit) |
+| 0.7 | 84 Hz, 12 | 174 Hz, 18 | 156 Hz, +2.2 dB at 235 Hz, 18 |
+| 0.85 | 166 Hz, 12 | 499 Hz, 18 | 445 Hz, +4.1 dB at 653 Hz, 18 |
+| 1 | 302 Hz, 12 | 1275 Hz, 18 | 1142 Hz, +5.6 dB at 1669 Hz, 18 |
+Voicing 3's DriveIn push: +1.6 / +2.8 / +4.0 dB at TONE 0.7 / 0.85 / 1.
+
+**Level (the hard part).** Thinning takes energy out, by material: fully right in voicing 1, with no makeup, skank −9.3 dB, held tones −3.5, hits −1.8 (CLEAN). No fixed makeup holds all three within ±3 dB. Tried in order:
+1. A fixed makeup (+6 dB × u^1.5): hits +4 to +6.4, skank −3.2. Out.
+2. An adaptive makeup, from slow followers of the power into and out of the Tilt (like the Excitation trim), giving back a share of what was cut: close, but KICKED hits came back up to +5.5 dB. A driven tank squashes on its lows (LoopSat, pickups), so removing them un-squashes hits; today's TONE 1 already reads +2.7 dB on KICKED hits at DRIVE 0.8. The bump adds energy where the tank and the ear are most sensitive.
+3. Plus two measured corrections (dB × u): −1.2 for the bump (voicings 2–3), and −(0.2 + 3.3 × DRIVE) for a driven tank (DRIVEN half, KICKED full).
+4. Then the Sustain trim check found a bass pad 4.5 dB hotter at TONE 0.7: its C2 fundamental (65 Hz) was cut, and the broadband followers made up for it, though the tank never hears 65 Hz. **Fix:** both followers use the Excitation trim's high-pass (~90 Hz), and the share went from 0.7 to 0.75.
+
+Result, loudness vs noon at TONE 0.7 / 0.85 / 1, owner's settings (2 Springs, DECAY / TENSION noon, SPLASH 0.3), worst of hits / skank / held tones, limit ±3 dB:
+| | CLEAN 0.25 | CLEAN 0.8 | DRIVEN 0.25 | DRIVEN 0.8 | KICKED 0.25 | KICKED 0.8 |
+|---|---|---|---|---|---|---|
+| 0 today | −2.1 | −1.9 | −2.0 | −1.9 | −1.7 | +2.7 |
+| 1 steep | +1.2 | +1.2 | −1.6 | −1.5 | −1.7 | −2.6 |
+| 2 bump | −1.2 | +1.5 | −1.6 | −1.5 | −2.2 | −2.5 |
+| 3 driven | −1.2 | +1.5 | −1.5 | −1.3 | −2.2 | +2.1 |
+(column = ATTITUDE and DRIVE.) The listening page is level-matched anyway; these are the absolute numbers.
+
+**Guarantees:**
+- **TONE ≤ 0.5 unchanged:** hits and skank, CLEAN and KICKED, DRIVE 0.25 (voicing 3 also 0.8), TONE 0 / 0.25 / 0.5: bit for bit voicing 0 in every voicing (48 of 48 identical).
+- **The Chirp at full CW:** highs still arrive after the 200–500 Hz band in every voicing, at TENSION 0 and 1 (e.g. voicing 2: 62.3 vs 46.8 ms; 16.9 vs 13.8 ms). It is still there at 1.2 kHz: the Chirp reaches up to TENSION's transition frequency (2.7–4.6 kHz), well above the cut.
+- **Sustain trim** (held pad / drone / organ at −6 dBFS peak, CLEAN, DRIVE 0, SPLASH 0, DECAY noon, 27 SPRINGS × TONE 0.7/0.85/1 × TENSION cells, default WOBBLE): worst limiter moment pad 2.21 / 2.26 / 2.26 dB (voicings 1/2/3) vs today's 1.26, never past 2.5 dB; red LED in 9 / 8 / 8 cells of 27 for at most 0.27 s (today 5, 0.21 s). Drone 0.67 / 0.43 / 0.42 (today 0.37), organ 1.56 / 1.69 / 1.69 (today 1.63). Within test_sustain_trim's limits (3 dB for a moment, ≤ 0.25 s past 2.5 dB), but held bass pads light red a little more than today. The Sustain trim may now also take back the Big Knob makeup, on top of its own 5 dB (0 dB in voicing 0, so the default is unchanged).
+- **M6 grid** (`presets/sweeps/proto_big_knob_m6_*.json`: the six M6 sweeps at TONE 0.7 / 0.85 / 1; TONE ≤ 0.5 is bit for bit today's): **does not fully pass.**
+  | | click Ringing (135) | bursts Ringing (135) | click Howl (27) | bursts Howl (27) |
+  |---|---|---|---|---|
+  | 0 today (bursts only, reference) | — | 6 `steady_tone`, 0 Ringing; max 6.4 dB | — | — |
+  | 1 steep | 0 flagged, max 3.6 dB | 1 Ringing + 1 `steady_tone` | 27/27 | 27/27 |
+  | 2 bump | 0 flagged, max 3.6 dB | 1 Ringing + 6 `steady_tone` | 27/27 | 26/27 |
+  | 3 driven | 0 flagged, max 3.6 dB | 1 Ringing + 6 `steady_tone` | 27/27 | 26/27 |
+  No clipping, NaN or Inf anywhere.
+  - **`steady_tone` is not new:** today's voicing flags it in 6 bursts cells at the same corner (CLEAN/DRIVEN, DECAY 1, TENSION 1, TONE ≥ 0.7, ~1.3–1.8 kHz, 4–6 dB out). `main`'s committed grid only had TONE 0 / 0.5 / 1, and the M6 calibration table predates later sound changes. Voicing 1 has fewer (1), voicings 2–3 about the same (6). A `main` issue to look at on its own.
+  - **New, and real: one Ringing cell in every voicing 1–3:** KICKED, DECAY 0.75, 3 Springs, TENSION 0 (loosest), TONE 1, noise bursts: 19–20 dB at 3.1 kHz (ratio 1.7–1.8; limit 15) vs today's 6.4 dB at 2.4 kHz. Isolated in single-cell renders: **not the makeup** (20.1 dB with it off), **not the bump** (voicing 1 flags too), and fine up to TONE 0.92 (~750 Hz cutoff). With the top cutoff at 900 Hz, voicing 2 passes (6.0 dB) but voicing 1 still flags (21.0). Only KICKED flags and click input doesn't, so the likely mechanism is KICKED's LoopSat. With the lows gone it is driven less (and its quiet-tail fade lets go sooner), and a ~3.1 kHz Loop mode it was holding down rings longer. Not fixed here. **Before any pick ships:** look at KICKED's Loop around 3.1 kHz at TENSION 0 / TONE 1 (AntiRes evenness), and listen to that cell on the page. TONE must not be needed to fight Ringing, and no limit was loosened.
+  - The bursts Howl miss in voicings 2–3 (KICKED DECAY 1, 1 Spring, TENSION 1, TONE 1) is the same kind as `main`'s known click-Howl misses (`docs/m6-metric-calibration.md` §6).
+
+**Costs:**
+- **Flash** (release firmware, this container's arm-none-eabi-gcc 13.2, `make -C firmware MODE=release`): `main` 124,728 B → branch 125,956 B, **+1,228 B**, with all four voicings compiled in (the owner's toolchain read 126.5 KB on `main`, so ~127.7 KB of 131,072). The profile variant overflows by ~5 KB with this toolchain on `main` too ("Profile firmware too big" in TASKS). Desktop objects: Drive.o +392 B, Tank.o +1,332 B.
+- **CPU:** the Tilt alone goes from 8.3 to 8.7 ns/sample (desktop, voicing 0 vs 2; test_drive "bigknob"). Whole Tank, worst case (DECAY / TONE / DRIVE 1, TENSION 0, 3 Springs, best of 4, interleaved): `main` 1286 / 1317 ns/sample (KICKED / CLEAN), branch voicing 0 1289 / 1310, voicing 2 1297 / 1307. Within this machine's noise (<1 %). Expected on the Versio: the extra 1st-order section, 4 one-pole followers and 2 multiply-adds per sample, ~20–30 cycles (~0.3 % of the budget). Confirm on the next M3 run if a voicing is picked.
+- **Voicing 3 vs 2** (DRIVE 0.8, TONE 0.85 / 1, difference re signal): CLEAN −30 to −48 dB (barely there), KICKED −5 to −18 dB (clearly different). At DRIVE 0.25 and in CLEAN, 3 is essentially 2.
+
+**Listening page** (on the Mac; renders stay out of git). From the main checkout, with the branch in a worktree (never touch `build/`):
+```bash
+git fetch origin proto/big-knob-tone
+git worktree add .claude/worktrees/big-knob proto/big-knob-tone
+cmake -S .claude/worktrees/big-knob -B .claude/worktrees/big-knob/build-r -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_BUILD_PLUGIN=OFF
+cmake --build .claude/worktrees/big-knob/build-r --target rv_render
+python3 tools/make_stimulus.py && python3 tools/make_sustain_stimulus.py
+R=.claude/worktrees/big-knob/build-r/rv_render; S=.claude/worktrees/big-knob/presets/sweeps
+for v in 0 1 2 3; do for m in hits skank chords clicks; do
+  $R --sweep $S/proto_big_knob_$m.json --out-dir renders/proto_big_knob/$m/v$v --set tone_voicing=$v
+done; done
+for v in 0 2 3; do for m in hits skank chords; do
+  $R --sweep $S/proto_big_knob_$m.json --out-dir renders/proto_big_knob/${m}_drive08/v$v --set tone_voicing=$v --set drive=0.8
+done; done
+# the flagged M6 cell, to hear it: KICKED DECAY 0.75 3 Springs TENSION 0, noise bursts
+for v in 0 1 2; do $R --sweep $S/proto_big_knob_m6_bursts_ringing_d075.json --out-dir renders/proto_big_knob_m6cell/v$v --set tone_voicing=$v; done
+python3 tools/review/make_review.py renders/proto_big_knob --columns attitude --variants tone_voicing \
+  --title "Big Knob TONE: 0 today, 1 steep, 2 bump, 3 driven"
+```
+Checked in the cloud session: 200 renders, page layout "rows: stimulus, tone, drive · columns: attitude (CLEAN, KICKED) · versions: tone_voicing (0–3)", level-matched by default.
+
+**What to listen for** (owner's words in the ADR): 1 = thinner, cleaner, "telephone" at the top; 2 = the same plus a nasal, honky edge that rises with the knob ("squawky", King Jammy's word); 3 = 2, plus grit on the lows when KICKED and driven. Open questions: is fully right too thin? Should the cut start earlier? Is the bump too nasal, or not enough?
+
+**Round 2 (1 Oct 2026, on the Mac).** Owner's first page: v2 nearly everywhere, v1 at TONE 1 on skank and KICKED hits, v3 only on pads at DRIVE 0.8 → asked for v2 with a gentler top (**voicing 4**: bump eased over u 0.5 → 1, +2.2 / +3.8 / +4.1 dB at TONE 0.7 / 0.85 / 1 vs v2's +2.2 / +4.1 / +5.6). **Correction:** `Tank::setToneVoicing` clamped to 0–3, so the check page's "v4" (`renders/proto_big_knob2/`) and the first "voicing 4" M6 grid were really voicing 3; the commit 1e64251 claim about voicing 4's grid is wrong. On that page (v1 / v2 / "v4" = v3) the owner picked the bump on every hit cell and no bump on pads, clicks and KICKED skank → **voicing 5: the bump on hits only.** The Tilt runs voicings 1 and 4 side by side and blends to 4 while the Splash's hit detector reads a sharp, cracking hit (sudden × loud × short, before the SPLASH knob), up at once, back over 0.15 s. Measured at TONE 1 (difference re signal): pad v5 = v1 exactly; skank / clicks −18 / −27 dB from v1; hits −15 dB from v4. **Top cutoff:** with the clamp fixed, v1, v4 and v5 rang at TONE 1 in the KICKED, 3 Springs, TENSION 0 corner (19–21 dB @ 3.1 kHz at a 1 or 0.9 kHz top; only the full bump, v2, escaped); 800 Hz passes (~6 dB). v5 at 800 Hz, all six M6 sweeps: ringing grids 0 flagged (max 6.8 / 10.0 dB), Howl grids as today's, every Howl cell moving ≥ 0.5 %. ctest 17/17. A proper fix for that corner (AntiRes on KICKED's Loop near 3.1 kHz) would let the top go back to ~1.2 kHz: later, if the owner wants it thinner.
+
+## Closest knob settings to the Wellspring (2 Oct 2026, `main` with Big Knob v5)
+`tools/wellspring_settings_fit.py` (owner: "compared against resilio's settings that are closest to emulating the wellspring"): SPRINGS × TENSION × TONE, CLEAN, SPLASH 0, WOBBLE noon, DRIVE 0.25, MIX 1, DECAY bisected to the Wellspring's broadband T60 (3.13 s) on take A (first three clicks); score = 10 × mean per-octave T60 error (250 Hz–4 kHz, floor-limited Schroeder fit) + tail tonal-balance RMS dB (1/3 oct, 30 ms–1 s) + echo-spacing error / 5 ms (first strong 1–4 kHz envelope repeat). Wellspring: T60 4.66 / 3.83 / 3.27 / 2.68 / 1.88 s, echo 36 ms. Best (two passes, 105 + 45 cells): **S1 TN 0.875 TO 0.8 D 0.664** (score 5.9: T60 18.8 %, balance 3.2 dB, echo 4 ms); S2 TN 0.875 TO 0.8 D 0.68 (6.1); S3 TN 0.875 TO 0.85 D 0.695 (6.3). Loose TENSION scores worst on echo spacing (111 ms vs 36). Remaining gap is the tank, not the knobs: the best cell's T60 3.40 / 3.56 / 3.19 / 2.27 / 1.09 s, short in the lows and the top octave. Page `renders/wellspring_fit2/page/` (A defaults, B/C/D the best per SPRINGS, SPLASH 0 / 0.3, the takes in "Compare with").
+
 ## SPLASH stronger (1 Oct 2026, branch `proto/splash-stronger`, not merged; ADR 0032 amendment, Proposed)
 Brief: `docs/briefs/splash-stronger.md`. Owner (plugin and module, a range of material): "the splash knob feels very subtle". Picked: **stronger at the top** and **less tied to DRIVE** (they often play with DRIVE fully down). Not picked: soft, dark attacks; evenness (kept anyway).
 

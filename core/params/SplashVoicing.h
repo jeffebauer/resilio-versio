@@ -247,7 +247,7 @@ inline constexpr std::array<Strong, 4> kStrong{{
     {  2.0f, 0.5f, 1.0f, kClangHz,  0.0f, 40.0f, 0.2f}, // 2 stronger top, DRIVE-free
     {  3.0f, 0.5f, 1.0f, 1200.0f, 40.0f, 40.0f, 0.2f}, // 3 bolder
 }};
-constexpr int   kDefaultVoicing = 0;
+constexpr int   kDefaultVoicing = 2; // owner pick, 2 Oct 2026: C (stronger top + DRIVE-free)
 constexpr float kTopStart       = 0.75f;
 // The Clang's ceiling rises with the pickups' push, by this share of it (in
 // dB) per ATTITUDE (CLEAN, DRIVEN, KICKED; blended by the Morph): KICKED's

@@ -58,6 +58,7 @@ struct Settings {
     int   att = 1, springs = 1;
     // M7: < 0 = leave the ParamSpec default (SPLASH 0.3, WOBBLE 0.45: a touch of shared Drift).
     float splash = -1.0f, wobble = -1.0f;
+    int   toneVoicing = rv::drive::kToneDefaultVoicing; // Big Knob (Renderer-only key)
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -71,6 +72,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     if (s.splash >= 0.0f) t.setParam(rv::ParamId::Splash, s.splash);
     if (s.wobble >= 0.0f) t.setParam(rv::ParamId::Wobble, s.wobble);
+    if (s.toneVoicing != rv::drive::kToneDefaultVoicing) t.setToneVoicing(s.toneVoicing);
 }
 
 struct Stereo {
@@ -751,6 +753,11 @@ void wetLevelVsMaterial()
             s.att   = att;
             s.decay = decay;
             s.drive = rv::spec(rv::ParamId::Drive).defaultValue;
+            // SPLASH 0: this is the tank's evenness across material; the
+            // splash adds to hits by design (SPLASH stronger C, ADR 0032,
+            // owner 2 Oct 2026, read +0.2-0.5 dB over the limit at the
+            // default SPLASH in KICKED).
+            s.splash = 0.0f;
             auto wetPower = [&s](const Buf& x) {
                 const Stereo o = renderWith(s, x);
                 return 0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size()));
@@ -1154,6 +1161,208 @@ void tone()
                       "(full CW <= -8, 3 o'clock between)",
                       kAttName[a], lf[3] - lf[2], lf[4] - lf[2]);
         check(lf[4] - lf[2] <= -8.0 && lf[3] < lf[2] && lf[3] > lf[4], msg);
+    }
+}
+
+// ---- 5b. Big Knob TONE voicings (prototype, ADR 0036 Proposed) ------------------------------
+// TONE's right half as King Tubby's Big Knob (DriveVoicing.h "Big Knob TONE
+// voicings"; docs/research/big-knob.md). Renderer-only key tone_voicing:
+// 0 = today, 1 = steep (18 dB/oct), 2 = steep + bump, 3 = + ringier when
+// driven. Checks the guarantees the brief keeps (ADR 0017, SPEC §2.3.4):
+//   response   the low cut's shape per voicing at TONE 0.5 / 0.7 / 0.85 / 1
+//              (cutoff, bump, slope): INFO, plus the voicings' defining
+//              traits (slope >= 16 dB/oct, the bump's size).
+//   identical  hits and skank at TONE 0 / 0.25 / 0.5 are bit for bit
+//              voicing 0's in every voicing (CLEAN and KICKED, DRIVE 0.25;
+//              voicing 3 also DRIVE 0.8).
+//   loudness   hits / skank / held chords at TONE 0.5 / 0.7 / 0.85 / 1
+//              within ±3 dB of noon, CLEAN and KICKED, the owner's settings
+//              (2 Springs, DECAY / TENSION noon, SPLASH 0.3, DRIVE 0.25, MIX 1;
+//              voicing 3 also DRIVE 0.8).
+//   chirp      the Chirp at full CW, every voicing (same measure as TONE 0).
+//   cpu        Tilt alone, ns/sample, voicing 0 vs 2 (INFO).
+double sectionDb(const rv::drive::BigKnob& b, double hz)
+{
+    rv::dsp::Biquad bq;
+    bq.setHighpass(b.hz, b.q, kFs);
+    rv::dsp::OnePoleLowpass lp;
+    lp.setCutoff(b.hz1, kFs);
+    const double w = 2.0 * rv::map::kPi * hz / kFs;
+    const std::complex<double> z1 = std::polar(1.0, -w);
+    // y = x - k LP(x): LP(z) = c / (1 - (1-c) z^-1)
+    const std::complex<double> h1 = 1.0 - double(b.k) * double(lp.c) / (1.0 - (1.0 - double(lp.c)) * z1);
+    return 10.0 * std::log10(double(bq.magnitudeSquared(float(std::cos(w))))) + 20.0 * std::log10(std::abs(h1));
+}
+
+void bigKnob()
+{
+    const float tones[] = {0.5f, 0.7f, 0.85f, 1.0f};
+    const char* const vName[5] = {"0 today", "1 steep", "2 bump", "3 driven", "4 gentle"};
+    for (int v = 0; v < 5; ++v)
+        for (float tn : tones) {
+            const rv::drive::BigKnob b = rv::drive::bigKnob(v, tn);
+            const double u = std::max(0.0f, 2.0f * tn - 1.0f);
+            const double fc = v == 0 ? b.hz : (tn > 0.5f ? rv::drive::bigKnobHz(float(u)) : b.hz);
+            double peak = -100, peakHz = 0, f3 = 0;
+            for (double f = 10.0; f < 20000.0; f *= 1.005) {
+                const double d = sectionDb(b, f);
+                if (d > peak) { peak = d; peakHz = f; }
+                if (f3 == 0 && d >= -3.0) f3 = f;
+            }
+            const double slope = sectionDb(b, fc / 4) - sectionDb(b, fc / 8);
+            std::printf("INFO  Big Knob voicing %-8s TONE %.2f: cutoff %6.0f Hz (-3 dB at %6.0f Hz), bump %+5.1f dB at "
+                        "%5.0f Hz, slope %4.1f dB/oct (fc/8 -> fc/4), DriveIn lows push %+4.1f dB\n",
+                        vName[v], tn, fc, f3, std::max(0.0, peak), peak > 0.05 ? peakHz : 0.0, slope, b.pushDb);
+            if (v >= 1 && tn >= 0.7f) {
+                std::snprintf(msg, sizeof msg, "Big Knob voicing %s TONE %.2f: slope %.1f dB/oct (>= 16, the Altec's 18)",
+                              vName[v], tn, slope);
+                check(slope >= 16.0, msg);
+            }
+            if (v == 1 && tn > 0.5f) {
+                std::snprintf(msg, sizeof msg, "Big Knob voicing 1 TONE %.2f: no bump (%+.2f dB, <= 0.1)", tn, peak);
+                check(peak <= 0.1, msg);
+            }
+            if (v >= 2 && tn == 1.0f) {
+                std::snprintf(msg, sizeof msg, "Big Knob voicing %s TONE 1: bump %+.1f dB at %.2f x cutoff (4-8 dB, 1.2-1.6 x)",
+                              vName[v], peak, peakHz / fc);
+                check(peak >= 4.0 && peak <= 8.0 && peakHz / fc >= 1.2 && peakHz / fc <= 1.6, msg);
+            }
+        }
+
+    // TONE <= 0.5: every voicing is today's, bit for bit.
+    rv::wav::Audio hitsA, skankA, heldA;
+    if (!readStimulus("02_hits.wav", hitsA) || !readStimulus("04_skank.wav", skankA) || !readStimulus("08_held_tones.wav", heldA)) {
+        check(false, "Big Knob: 02_hits / 04_skank / 08_held_tones readable");
+        return;
+    }
+    auto mono = [](const rv::wav::Audio& a, double seconds) {
+        Buf m(std::min(a.frames(), size_t(seconds * kFs)));
+        for (size_t i = 0; i < m.size(); ++i) {
+            float acc = 0;
+            for (const auto& c : a.channels) acc += c[i];
+            m[i] = acc / float(a.channels.size());
+        }
+        return m;
+    };
+    const Buf hits = mono(hitsA, 8.0), skank = mono(skankA, 8.0), held = mono(heldA, 12.0);
+    auto owner = [](int att, float drive, float tn, int v) {
+        Settings s;
+        s.att = att;
+        s.springs = 1;
+        s.decay = s.tension = 0.5f;
+        s.splash = 0.3f;
+        s.drive = drive;
+        s.mix = 1.0f;
+        s.tone = tn;
+        s.toneVoicing = v;
+        return s;
+    };
+    {
+        int cells = 0, diff = 0;
+        for (int att : {0, 2})
+            for (float drive : {0.25f, 0.8f})
+                for (float tn : {0.0f, 0.25f, 0.5f})
+                    for (const Buf* in : {&hits, &skank}) {
+                        const Stereo ref = renderWith(owner(att, drive, tn, 0), *in);
+                        for (int v = 1; v < 4; ++v) {
+                            if (drive > 0.5f && v != 3) continue;
+                            const Stereo o = renderWith(owner(att, drive, tn, v), *in);
+                            ++cells;
+                            if (o.l != ref.l || o.r != ref.r) ++diff;
+                        }
+                    }
+        std::snprintf(msg, sizeof msg,
+                      "Big Knob: hits and skank at TONE 0 / 0.25 / 0.5 are bit for bit today's in voicings 1-3 "
+                      "(CLEAN, KICKED; DRIVE 0.25, voicing 3 also 0.8): %d of %d differ",
+                      diff, cells);
+        check(diff == 0, msg);
+    }
+
+    // Loudness across the right half, per material.
+    const char* const matName[3] = {"hits", "skank", "held"};
+    const Buf* mats[3] = {&hits, &skank, &held};
+    for (int v = 0; v < 4; ++v)
+        for (int att : {0, 1, 2})
+            for (float drive : {0.25f, 0.8f}) {
+                double worst = 0;
+                char line[200] = {}, at[64] = {};
+                std::future<double> fut[3][4];
+                for (int m = 0; m < 3; ++m)
+                    for (int i = 0; i < 4; ++i)
+                        fut[m][i] = std::async(std::launch::async, [&, m, i] {
+                            return loudness(renderWith(owner(att, drive, tones[i], v), *mats[m]));
+                        });
+                for (int m = 0; m < 3; ++m) {
+                    double lev[4];
+                    for (int i = 0; i < 4; ++i) lev[i] = fut[m][i].get();
+                    char part[64];
+                    std::snprintf(part, sizeof part, " %s %+.1f/%+.1f/%+.1f", matName[m], lev[1] - lev[0], lev[2] - lev[0], lev[3] - lev[0]);
+                    std::strncat(line, part, sizeof line - std::strlen(line) - 1);
+                    for (int i = 1; i < 4; ++i)
+                        if (std::fabs(lev[i] - lev[0]) > std::fabs(worst)) {
+                            worst = lev[i] - lev[0];
+                            std::snprintf(at, sizeof at, "%s TONE %.2f", matName[m], tones[i]);
+                        }
+                }
+                std::snprintf(msg, sizeof msg,
+                              "Big Knob voicing %s %s DRIVE %.2f: loudness vs noon at TONE 0.7/0.85/1 (dB):%s; worst %+.1f (%s; limit ±3)",
+                              vName[v], kAttName[att], drive, line, worst, at);
+                check(std::fabs(worst) <= 3.0, msg);
+            }
+
+    // The Chirp at full CW (as tone(): highs after the 200-500 Hz band in the first echo).
+    for (int v = 0; v < 4; ++v)
+        for (float tension : {0.0f, 1.0f}) {
+            Settings s;
+            s.decay = 0.5f;
+            s.tension = tension;
+            s.tone = 1.0f;
+            s.att = 1;
+            s.springs = 0;
+            s.toneVoicing = v;
+            Buf imp(size_t(0.5f * kFs), 0.0f);
+            imp[0] = 1.0f;
+            const Stereo o = renderWith(s, imp);
+            Buf m(o.l.size());
+            for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
+            const float fC = rv::map::tensionTransitionHz(tension);
+            const size_t end = size_t((rv::modes::kPickupArrival + 0.98f) * rv::map::tensionLoopDelaySeconds(tension) * kFs);
+            const float hiLo = rv::map::kHighsLater ? 0.8f : 0.5f, hiHi = rv::map::kHighsLater ? 0.97f : 0.85f;
+            const double tHi = centroidSeconds(bandpass(m, hiLo * fC, hiHi * fC), end);
+            const double tLo = centroidSeconds(bandpass(m, 200.0f, 500.0f), end);
+            const double dir = rv::map::kHighsLater ? -1.0 : 1.0;
+            std::snprintf(msg, sizeof msg, "Big Knob voicing %s TONE 1 chirp, TENSION %.0f: highs at %.1f ms, lows at %.1f ms (%s later)",
+                          vName[v], tension, tHi * 1e3, tLo * 1e3, rv::map::kHighsLater ? "highs" : "lows");
+            check(dir * (tLo - tHi) > 0.001, msg);
+        }
+
+    // CPU: the Tilt alone at full CW, voicing 0 vs 2 (best of 5).
+    {
+        const size_t n = size_t(4.0f * kFs);
+        const Buf in = noise(n, 0.3f, 7u);
+        double ns[2];
+        for (int k = 0; k < 2; ++k) {
+            double best = 1e9;
+            for (int rep = 0; rep < 5; ++rep) {
+                rv::dsp::Tilt t;
+                t.prepare(kFs);
+                t.setVoicing(k ? rv::drive::kToneVoicingBump : rv::drive::kToneVoicingToday);
+                t.set(1.0f, true, 48);
+                volatile float sink = 0;
+                const auto t0 = std::chrono::steady_clock::now();
+                float acc = 0;
+                for (size_t i = 0; i < n; ++i) {
+                    if (i % 48 == 0) t.set(1.0f, false, 48);
+                    acc += t.process(in[i]);
+                }
+                sink = acc;
+                (void)sink;
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n));
+            }
+            ns[k] = best;
+        }
+        std::printf("INFO  Big Knob CPU: Tilt alone %.2f ns/sample (voicing 0) vs %.2f (voicing 2) desktop\n", ns[0], ns[1]);
     }
 }
 
@@ -1680,7 +1889,7 @@ int main(int argc, char** argv)
                        {"drive", driveSweep},      {"drive-audibility", driveAudibility},
                        {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit}, {"drive-tail", driveTail},
                        {"drive-held", driveLevelHeld}, {"audible", audibleAtDriveZero}, {"alias", aliasing},
-                       {"tone", tone},             {"morph", morphClickFree},     {"determinism", determinism},
+                       {"tone", tone},             {"bigknob", bigKnob},          {"morph", morphClickFree},     {"determinism", determinism},
                        {"howl", howl},             {"stability", stabilityGrid},  {"performance", performance}};
     for (const T& t : tests)
         if (only.empty() || std::string(t.name).find(only) != std::string::npos) t.fn();

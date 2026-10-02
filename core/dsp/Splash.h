@@ -144,6 +144,9 @@ public:
         }
         e_     = e;
         short_ = sh;
+        // A sharp hit before the SPLASH knob scales it (Big Knob voicing 5).
+        const float hit = sudden * (lf < 1.0f ? lf : 1.0f) * sh;
+        if (hit > hitMax_) hitMax_ = hit;
         clang  = (clang_ + clangShortDelta_ * sh) * eh_;
         bite   = biteGain_ * sh * e;
         if constexpr (splash::kVoicingsBuilt) {
@@ -155,6 +158,8 @@ public:
     }
     float envelope() const { return e_; }  // e of the last sample (tests, meters)
     float shortness() const { return short_; }
+    // The largest sharp-hit reading since the last call (SPLASH-independent).
+    float takeHitMax() { const float h = hitMax_; hitMax_ = 0.0f; return h; }
 
 private:
     float invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef), loudRef_ = splash::kLoudRef, hold_ = 0.0f, eh_ = 0.0f;
@@ -162,6 +167,7 @@ private:
     float fa_ = 1.0f, fr_ = 1.0f, sa_ = 1.0f, sr_ = 1.0f, lpC_ = 1.0f;
     float fast_ = 0.0f, slow_ = 0.0f, hiFast_ = 0.0f, lp_ = 0.0f;
     float splash_ = 0.0f, clang_ = 0.0f, clangShortDelta_ = 0.0f, biteGain_ = 0.0f, e_ = 0.0f, short_ = 0.0f;
+    float hitMax_ = 0.0f;
 };
 
 // Band-passed seeded sparse knocks (or noise) with an exponential burst
@@ -335,6 +341,7 @@ public:
     float joltEnvelope() const { return jolt_.envelope(); }
     float clatterEnvelope() const { return clatter_.envelope(); } // burst envelope (tests)
     float hitEnvelope() const { return envelope_.envelope(); }     // e (ADR 0032), last sample (tests)
+    float takeHitMax() { return envelope_.takeHitMax(); }          // sharp hits, SPLASH-independent
     int   impactCount() const { return impacts_; } // impacts fired since reset, rattle included (tests)
     int   strokeCount() const { return strokes_; } // primary impacts (one per stroke / strike)
     const splash::Voice& voice() const { return voice_; }

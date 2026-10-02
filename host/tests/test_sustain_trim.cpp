@@ -25,14 +25,18 @@
 //      settled, it stays within 1.5 dB (same WOBBLEs as 1).
 //   5. The Howl: a Kick into KICKED DECAY 1 is never trimmed; a pad into the
 //      Howl leaves it as loud as the Kick's alone, within 1 dB.
+//   6. The Big Knob (Renderer TONE voicings 1-3, ADR 0036 Proposed): the
+//      held sounds at TONE 0.7 / 0.85 / 1 meet 1.'s limiter limits.
 // `rv_test_sustain_trim --voicings` prints the same grids for every voicing
 // (0 off, 1 round 2, 2 gentle) for the backlog; ctest runs only the checks.
+// `--big-knob` runs 6. alone.
 
 #include "dsp/Tank.h"
 #include "params/DriveVoicing.h"
 #include "params/ParamSpec.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <future>
@@ -289,16 +293,22 @@ double loudest200(const Buf& w, double from, double to)
     return best;
 }
 
-Grid runGrid(const Stim& st, float wobble, int voicing, int ref)
+// toneVoicing >= 0: that Big Knob voicing (DriveVoicing.h, Renderer
+// voicings; 0 = today) on TONE's right half (0.7 / 0.85 / 1); < 0: today's,
+// at TONE 0 / 0.5 / 0.9.
+Grid runGrid(const Stim& st, float wobble, int voicing, int ref, int toneVoicing)
 {
     rv::Tank t, tr;
     t.prepare(kFs, kBlock);
     tr.prepare(kFs, kBlock);
     t.setSustainVoicing(voicing);
     tr.setSustainVoicing(ref);
+    t.setToneVoicing(std::max(0, toneVoicing));
+    tr.setToneVoicing(std::max(0, toneVoicing));
+    const std::array<float, 3> tones = toneVoicing >= 0 ? std::array<float, 3>{0.7f, 0.85f, 1.0f} : std::array<float, 3>{0.0f, 0.5f, 0.9f};
     Grid g;
     for (int sp = 0; sp < 3; ++sp)
-        for (float tone : {0.0f, 0.5f, 0.9f})
+        for (float tone : tones)
             for (float ten : {0.5f, 0.8f, 1.0f}) {
                 Set s;
                 s.springs = sp, s.tone = tone, s.tension = ten, s.wobble = wobble;
@@ -365,7 +375,7 @@ void reportVoicings()
     for (int v = 0; v < 3; ++v) {
         std::vector<std::future<Grid>> jobs;
         for (float w : kWobbles)
-            for (const Stim& st : stims) jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), w, v, 0));
+            for (const Stim& st : stims) jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), w, v, 0, -1));
         static const char* const kNames[] = {"0 off (limiter hold only)", "1 round 2", "2 gentle"};
         std::printf("INFO  sustain_voicing %s\n", kNames[v]);
         for (int wi = 0; wi < kNumWobbles; ++wi)
@@ -386,7 +396,7 @@ void heldSoundsAcrossWobble()
     std::vector<std::future<Grid>> jobs;
     for (float w : kWobbles)
         for (const Stim& st : stims)
-            jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), w, rv::drive::kSusDefaultVoicing, rv::drive::kSusDefaultVoicing));
+            jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), w, rv::drive::kSusDefaultVoicing, rv::drive::kSusDefaultVoicing, -1));
     Grid g[kNumWobbles][3];
     for (int wi = 0; wi < kNumWobbles; ++wi)
         for (int k = 0; k < 3; ++k) g[wi][k] = jobs[size_t(wi * 3 + k)].get();
@@ -451,6 +461,33 @@ void heldSoundsAcrossWobble()
     check(off > kMomentMaxDb, msg);
 }
 
+// The Big Knob (ADR 0036 Proposed, Renderer voicings 1-3): with the right
+// half thinned, made up and (voicings 2-3) bumped, held sounds still stay
+// off the limiter: the same limits as heldSoundsAcrossWobble, default WOBBLE,
+// TONE 0.7 / 0.85 / 1.
+void bigKnobHeld()
+{
+    const auto stims = heldStims();
+    std::vector<std::future<Grid>> jobs;
+    for (int tv = 0; tv <= 3; ++tv) // 0: today's, for reference (printed)
+        for (const Stim& st : stims)
+            jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), kWobbles[2], rv::drive::kSusDefaultVoicing,
+                                      rv::drive::kSusDefaultVoicing, tv));
+    for (int tv = 0; tv <= 3; ++tv)
+        for (size_t k = 0; k < stims.size(); ++k) {
+            const Grid g = jobs[size_t(tv) * stims.size() + k].get();
+            std::printf("INFO    tone_voicing %d", tv);
+            printGrid(stims[k].name, g);
+            std::printf("\n");
+            if (tv == 0) continue;
+            std::snprintf(msg, sizeof msg,
+                          "Big Knob voicing %d, held %s at TONE 0.7 / 0.85 / 1 (27 cells, default WOBBLE): the limiter pulls at most "
+                          "%.2f dB (%s; limit %.1f), past %.1f dB for %.2f s (limit %.2f s)",
+                          tv, stims[k].name, double(g.gr), g.at, double(kMomentMaxDb), double(kHardDb), double(g.over2), double(kHardMaxS));
+            check(g.gr <= kMomentMaxDb && g.over2 <= kHardMaxS, msg);
+        }
+}
+
 void hitsAreNeverTrimmed(rv::Tank& t)
 {
     const Buf h = hits(), k = stabs();
@@ -511,9 +548,15 @@ int main(int argc, char** argv)
         reportVoicings();
         return 0;
     }
+    if (argc > 1 && std::string(argv[1]) == "--big-knob") { // 6. alone
+        bigKnobHeld();
+        std::printf("%d failure(s)\n", failures);
+        return failures == 0 ? 0 : 1;
+    }
     rv::Tank t;
     t.prepare(kFs, kBlock);
     heldSoundsAcrossWobble();
+    bigKnobHeld();
     hitsAreNeverTrimmed(t);
     letsGoForTheNextHit(t);
     howlStaysLoud(t);
