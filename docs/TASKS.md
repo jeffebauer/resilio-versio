@@ -49,9 +49,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
 - [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
 - [x] **Listened (2 Oct):** a different-sized tank muddles TENSION and DECAY (long, pan); liked the pan tank's character but couldn't tell whether it was the shorter tank or the brighter, higher-chirp sound; wide sounded close to today but lopsided, leaning to a higher harmonic on chords
-- Round 2 being built (local agent): six versions that all keep today's repeat timing: pan **brighter only** and pan **higher chirp only** (to answer that question), **mixed wire gauges** (a chirp cluster, balanced stereo), **coupled springs** (hits bloom), **diffuse** (smoother tail), and your **cross-fed wide** (bright left / today centre / dark right, left and right feeding each other so both ears get both colours)
+- [x] Round 2 built (2 Oct): six versions, all at today's repeat timing (first echo and spacing within 0.5 ms), no extra memory, no ringing, the Howl unchanged
+- [ ] **Listen to SPRINGS 3 round 2 (≈15 min):** open `renders/springs3_palette2/index.html` (level-matched). **A** SPRINGS 2, **B** position 3 today, **C** pan brighter only (less bass, airier tail), **D** pan higher chirp only (higher, quicker, metallic boing), **E** mixed wire gauges (a small cluster of boings per hit, balanced L/R), **F** coupled (hits blur into a bloom instead of separate drips), **G** diffuse (smoother, softer echoes), **H** your cross-fed wide (bright left / today centre / dark right trading energy: roughly halves the lean, no upward pull on chords). C vs D answers "brightness or chirp?". Which makes position 3 its own thing?
 - [x] SPLASH built in the cloud (1 Oct)
-- [ ] **Listen to SPLASH (≈10 min):** open `renders/proto_splash_stronger/index.html` (not level-matched: the splash's size is the point). **A** today, **B** a much bigger top quarter (about 3× the clang at full), **C** B + independent of DRIVE (with DRIVE down, SPLASH works as if DRIVE were at 0.8), **D** C, bolder (the clang reaches lower into each hit's body and rings longer). Rows: hits, skank, clicks × DRIVE 0 / 0.8 × SPLASH steps; columns CLEAN / KICKED. A ceiling keeps a big splash off the output limiter, never below today's splash
+- [x] **SPLASH listened (2 Oct): C** (stronger top + works with DRIVE down) on every click and hit panel and most skank. **Merged** (SPEC v1.0.25). Not yet in Ableton or on the Versio: next install / release
 
 ### 3c. Today's sound next to your Wellspring (≈10 min)
 - [ ] Open `renders/wellspring_fit2/page/index.html` (level-matched). Columns: **A your Wellspring recording**, **B** Resilio default settings, then **C / D / E**, the knob settings that measure closest to your Wellspring with 1 / 2 / 3 Springs (TENSION ~7/8, TONE ~2:30, DECAY ~2/3, CLEAN). Each Resilio panel has SPLASH 0 and 0.3. How close is it now, and what's the biggest difference you hear?
@@ -77,7 +78,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-**Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
+**Next install** (plugin + release firmware) carries Big Knob and SPLASH C (ready: tell Claude when Ableton is closed)
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
