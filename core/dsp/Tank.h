@@ -121,6 +121,11 @@
 // path; 2 zeroes the side (no Spring panned) and widens with D alone, its
 // bass taken out; 3 adds the Loop diffusers (Spring::setDiffusion); 4 adds a
 // low cut before the Clang, less Loop damping and a longer high path T60.
+// Round 4: 5 = 3 + transducers (a resonant low-pass on what enters the
+// Springs, after the Clang, and on the wet before DriveOut; less Loop
+// damping, a longer, softer high path); 6 = 5 + wide (the Springs'
+// difference back, through its own decorrelator D2: L = mid + X, R = mid -
+// X); 7 = 6 + 4's low cut with a level makeup.
 // The firmware compiles only the default.
 //
 // Every parameter is used from M7 on.
@@ -465,6 +470,19 @@ private:
 #if RV_TANKV_BUILT >= 4
     dsp::Biquad         gentleHp_{};     // voicing 4: the low cut in front of the Springs
     dsp::Biquad         gentleShelf_{};  // ... and its low-mid shelf
+#endif
+#if RV_TANKV_BUILT >= 5
+    dsp::Biquad                tdIn_{};  // voicing 5+: the input coil's treble loss
+    std::array<dsp::Biquad, 2> tdOut_{}; // ... and the output pickup's, L and R
+#endif
+#if RV_TANKV_BUILT >= 6
+    std::array<Diffuser, 3> wideDecorr_{}; // voicing 6+: D2, the Springs' difference decorrelated
+#endif
+#if RV_TANKV_BUILT >= 7
+    // Voicing 7: the low cut's level makeup (power into / out of it above
+    // ~90 Hz, slow followers; gain, 1 = none).
+    std::array<dsp::OnePoleLowpass, 4> gmHp_{};
+    float gmAccIn_ = 0.0f, gmAccOut_ = 0.0f, gmIn_ = 0.0f, gmOut_ = 0.0f, gmGain_ = 1.0f;
 #endif
 
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).

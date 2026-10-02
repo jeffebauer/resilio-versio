@@ -23,6 +23,15 @@
 //      little even in CLEAN, and the limiter is linked).
 //   6. Voicing 3+: echoes blur sooner: more echo density 300-500 ms after a
 //      click than voicing 2 (normalised echo density, Abel & Huang).
+// Round 4 (docs/m8-tuning-backlog.md "Wellspring fit round 4"):
+//   7. Voicing 5+ (transducers): the first 60 ms after a click (energy above
+//      4 kHz vs 200 Hz-4 kHz) at least 12 dB darker than voicing 3's (the
+//      Wellspring sits ~16 dB under 3 at the closest settings).
+//   8. Voicing 6+ (wide): fine-structure L/R correlation <= 0.1 (2 and 3
+//      Springs; the Wellspring -0.04), and the mono sum is still the
+//      Springs' sum: voicing 6's (L + R) is voicing 5's times one gain.
+//   9. Voicing 7: the low cut's makeup keeps low material's level: a low,
+//      held chord within 1 dB of voicing 6's.
 
 #include "dsp/Tank.h"
 #include "params/ParamSpec.h"
@@ -303,6 +312,103 @@ void density()
     }
 }
 
+// ---- 7. Onset brightness (voicing 5+) -------------------------------------------------
+double onsetHfDb(const Out& o)
+{
+    const size_t a = size_t(0.05f * kFs), n = size_t(0.06f * kFs);
+    double hi = 0.0, mid = 0.0;
+    for (size_t b = 1; b < n / 2; ++b) {
+        const double f = double(b) * kFs / double(n);
+        if (f < 200.0) continue;
+        double re = 0.0, im = 0.0;
+        const double w = 2.0 * 3.14159265358979 * double(b) / double(n);
+        for (size_t i = 0; i < n; ++i) {
+            const double x = 0.5 * (double(o.l[a + i]) + o.r[a + i]);
+            re += x * std::cos(w * double(i));
+            im -= x * std::sin(w * double(i));
+        }
+        (f > 4000.0 ? hi : mid) += re * re + im * im;
+    }
+    return 10.0 * std::log10(hi / (mid + 1e-30) + 1e-30);
+}
+
+Knobs closest4()
+{
+    Knobs k; // round 4's closest settings (tools/wellspring_settings_fit.py, 2 Oct 2026)
+    k.tension = 0.5f;
+    k.tone    = 0.7f;
+    k.decay   = 0.664f;
+    k.springs = 1;
+    return k;
+}
+
+void onsetBrightness()
+{
+    const Buf   in = click(0.4f);
+    const Knobs k  = closest4();
+    const double ref = onsetHfDb(render(rv::tankv::kDiffuse, k, in));
+    for (int v = rv::tankv::kTransducers; v < rv::tankv::kNumVoicings; ++v) {
+        const double d = onsetHfDb(render(v, k, in));
+        std::snprintf(msg, sizeof msg, "voicing %d: onset brightness %.1f dB (voicing 3 %.1f; at least 12 dB darker)", v, d, ref);
+        check(d <= ref - 12.0, msg);
+    }
+}
+
+// ---- 8. Wide, and still mono-safe (voicing 6+) -----------------------------------------
+void wide()
+{
+    const Buf in = click(1.6f);
+    for (int springs : {1, 2}) {
+        Knobs k = closest4();
+        k.springs = springs;
+        const Out o5 = render(rv::tankv::kTransducers, k, in);
+        for (int v = rv::tankv::kWide; v < rv::tankv::kNumVoicings; ++v) {
+            const Out o = render(v, k, in);
+            double sl = 0, sr = 0, slr = 0;
+            for (size_t i = size_t(0.25f * kFs); i < size_t(1.55f * kFs); ++i) {
+                sl += double(o.l[i]) * o.l[i];
+                sr += double(o.r[i]) * o.r[i];
+                slr += double(o.l[i]) * o.r[i];
+            }
+            const double fine = slr / std::sqrt(sl * sr + 1e-30);
+            std::snprintf(msg, sizeof msg, "voicing %d, %d Springs: fine-structure L/R correlation %.2f (<= 0.1)", v, springs + 1, fine);
+            check(fine <= 0.1, msg);
+            if (v != rv::tankv::kWide) continue;
+            double s12 = 0, s11 = 0, s22 = 0;
+            for (size_t i = 0; i < in.size(); ++i) {
+                const double m1 = double(o5.l[i]) + o5.r[i], m2 = double(o.l[i]) + o.r[i];
+                s12 += m1 * m2;
+                s11 += m1 * m1;
+                s22 += m2 * m2;
+            }
+            const double c = s12 / std::sqrt(s11 * s22 + 1e-30);
+            std::snprintf(msg, sizeof msg, "%d Springs: voicing 6's mono sum is voicing 5's times one gain (correlation %.6f >= 0.9999, gain %+.2f dB)",
+                          springs + 1, c, 10.0 * std::log10(s22 / s11));
+            check(c >= 0.9999, msg);
+        }
+    }
+}
+
+// ---- 9. The low cut's makeup (voicing 7) ---------------------------------------------
+void lowCutMakeup()
+{
+    // A low, held chord: 2 s of 110 + 165 + 220 Hz (saw-like: 1/n harmonics), then silence.
+    Buf in(size_t(3.0f * kFs), 0.0f);
+    for (size_t i = 0; i < size_t(2.0f * kFs); ++i)
+        for (float f0 : {110.0f, 165.0f, 220.0f})
+            for (int h = 1; h <= 8; ++h)
+                in[i] += 0.06f / float(h) * std::sin(2.0f * 3.14159265f * f0 * float(h) * float(i) / kFs);
+    const Knobs k = closest4();
+    auto power = [](const Out& o) {
+        double p = 0.0;
+        for (size_t i = 0; i < o.l.size(); ++i) p += double(o.l[i]) * o.l[i] + double(o.r[i]) * o.r[i];
+        return 10.0 * std::log10(p + 1e-30);
+    };
+    const double p6 = power(render(rv::tankv::kWide, k, in)), p7 = power(render(rv::tankv::kGentleWide, k, in));
+    std::snprintf(msg, sizeof msg, "voicing 7: a low held chord %+.2f dB re voicing 6 (within 1 dB)", p7 - p6);
+    check(std::fabs(p7 - p6) <= 1.0, msg);
+}
+
 } // namespace
 
 int main()
@@ -313,6 +419,9 @@ int main()
     together();
     monoSum();
     density();
+    onsetBrightness();
+    wide();
+    lowCutMakeup();
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? 0 : 1;
 }

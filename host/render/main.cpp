@@ -311,7 +311,7 @@ int runRender(const std::string& inPath, const std::string& outPath, int block, 
 }
 
 // Tank voicing tuning override (prototype fitting only, docs/prototypes/
-// wellspring-fit-3/): RV_TANKV_TUNE="sweepStagesNoon=41,sweepCoeff=0.4,..."
+// wellspring-fit-3/, -4/): RV_TANKV_TUNE="sweepStagesNoon=41,sweepCoeff=0.4,..."
 // sets core/params/TankVoicing.h Tuning fields before any Tank is prepared.
 // Unset = the values in TankVoicing.h. Desktop only (the firmware has no such
 // hook).
@@ -333,6 +333,13 @@ void applyTankTuneEnv()
         {"gentleHpHz", &t.gentleHpHz}, {"gentleHpQ", &t.gentleHpQ}, {"gentleShelfHz", &t.gentleShelfHz},
         {"gentleShelfDb", &t.gentleShelfDb}, {"gentleHighT60Ratio", &t.gentleHighT60Ratio},
         {"gentleDampingScale", &t.gentleDampingScale},
+        {"tdInHz", &t.tdInHz}, {"tdInQ", &t.tdInQ}, {"tdOutHz", &t.tdOutHz}, {"tdOutQ", &t.tdOutQ},
+        {"tdDampingScale", &t.tdDampingScale}, {"tdHighT60Ratio", &t.tdHighT60Ratio}, {"tdHighCeilHz", &t.tdHighCeilHz},
+        {"tdHighLevel", &t.tdHighLevel},
+        {"wideW", &t.wideW}, {"wideSide", &t.wideSide}, {"wideSide3", &t.wideSide3},
+        {"wide0", &t.wideDecorrMs[0]}, {"wide1", &t.wideDecorrMs[1]}, {"wide2", &t.wideDecorrMs[2]},
+        {"wideDecorrCoeff", &t.wideDecorrCoeff}, {"gentleMakeupMaxDb", &t.gentleMakeupMaxDb},
+        {"lcHpHz", &t.lcHpHz}, {"lcHpQ", &t.lcHpQ}, {"lcShelfHz", &t.lcShelfHz}, {"lcShelfDb", &t.lcShelfDb},
     };
     std::string all = env;
     size_t pos = 0;

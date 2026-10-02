@@ -35,6 +35,33 @@
 //                    lasting a little longer (less Loop damping, a longer
 //                    high path), towards the Wellspring's T60 shape.
 //
+// Round 4 (docs/m8-tuning-backlog.md "Wellspring fit round 4"): the owner
+// heard the Wellspring "more muted with less highs", its repeats darkening
+// while ours "sound more metallic and bright", and its stereo wider. 5-7
+// build on 3 (not on 4), so the transducers can be heard without 4's low cut:
+//
+//   5 = 3 + transducers  a real tank drives the spring through a coil and a
+//                    magnet and picks it up the same way at the other end;
+//                    both lose treble (the coil's inductance, the magnet's
+//                    mass), so every sound and every echo is filtered twice
+//                    and the highs are gentle from the first moment. Ours was
+//                    nearly flat at both ends. Here: a resonant low-pass on
+//                    everything going into the Springs (after the Clang;
+//                    the Kick's knock bypasses it) and one on the wet coming
+//                    out (before the pickups' DriveOut), and inside the tank
+//                    the highs lose less per trip (less Loop damping, a
+//                    longer high path) so the tail keeps its balance and the
+//                    repeats darken gently instead of starting bright.
+//   6 = 5 + wide again   the tail as wide as the Wellspring's without the
+//                    flicker: the Springs' difference (A - B, panned in 0)
+//                    comes back, but through its own decorrelator, so it
+//                    widens the fine structure and never puts one Spring's
+//                    echo in one ear. Mono is still exactly the mid.
+//   7 = 6 + gentler      4's low cut (the tail's 150-800 Hz down) on top of
+//                    6, with a level makeup (power into / out of the low cut)
+//                    so low material isn't 3 dB quieter. (4's Loop damping
+//                    and high path T60 are 5's business here.)
+//
 // Every number for the new versions lives here. Desktop builds can override
 // them before a Tank is prepared (Tuning, mutableTuning(); the Renderer reads
 // RV_TANKV_TUNE, used by docs/prototypes/wellspring-fit-3/ to fit them);
@@ -51,7 +78,7 @@
 #define RV_TANKV_BUILT 0
 #endif
 #else
-#define RV_TANKV_BUILT 4
+#define RV_TANKV_BUILT 7
 #endif
 
 namespace rv::tankv {
@@ -61,7 +88,10 @@ constexpr int kSweep    = 1;
 constexpr int kTogether = 2;
 constexpr int kDiffuse  = 3;
 constexpr int kGentle   = 4;
-constexpr int kNumVoicings     = 5;
+constexpr int kTransducers = 5;
+constexpr int kWide        = 6;
+constexpr int kGentleWide  = 7;
+constexpr int kNumVoicings     = 8;
 // Until the owner picks. RV_TANK_DEFAULT_VOICING (a scratch build's
 // CMAKE_CXX_FLAGS) makes another voicing the default, so the whole test suite
 // can be run as if it shipped (docs/prototypes/wellspring-fit-3/).
@@ -74,7 +104,13 @@ constexpr int kDefaultVoicing  = kToday;
 constexpr bool hasSweep(int v) { return v >= kSweep; }
 constexpr bool hasTogether(int v) { return v >= kTogether; }
 constexpr bool hasDiffusion(int v) { return v >= kDiffuse; }
-constexpr bool hasGentle(int v) { return v >= kGentle; }
+// 5-7 build on 3: 4's low cut comes back in 7 (its Loop damping and high
+// path T60 don't: 5 has its own).
+constexpr bool hasGentle(int v) { return v == kGentle; }
+constexpr bool hasLowCut(int v) { return v == kGentle || v >= kGentleWide; }
+constexpr bool hasTransducers(int v) { return v >= kTransducers; }
+constexpr bool hasWide(int v) { return v >= kWide; }
+constexpr bool hasGentleMakeup(int v) { return v >= kGentleWide; }
 
 // Diffusers per Loop (voicing 3).
 constexpr int kNumDiffusers = 3;
@@ -166,6 +202,50 @@ struct Tuning {
     // TENSION 0.875) takes it on every trip, and moving fC is the Chirp's
     // business, not this voicing's.
     float gentleDampingScale = 1.5f;
+
+    // ---- 5 transducers ----
+    // Input coil: a 2nd-order low-pass (corner tdInHz, resonance tdInQ) on
+    // what enters the Springs (Loop and high path, after the Clang); output
+    // pickup: the same shape (tdOutHz, tdOutQ) on the wet L and R before
+    // DriveOut. Sized by docs/prototypes/wellspring-fit-4/fit_transducers.py
+    // (the Wellspring's onset and tail spectra; see fit_transducers.json).
+    float tdInHz  = 2700.0f;
+    float tdInQ   = 1.2f;
+    float tdOutHz = 2900.0f;
+    float tdOutQ  = 1.1f;
+    // Inside the tank: the Loop's damping cutoff x tdDampingScale and the
+    // high path's T60 at tdHighT60Ratio x DECAY's (today 1 / 0.45), so the
+    // highs the transducers let through last (the repeats darken slowly).
+    float tdDampingScale  = 2.4f;
+    float tdHighT60Ratio  = 1.4f;
+    // The high path's ceiling (today Spring::kHighCeilingHz, 9 kHz): its
+    // echoes start with the arc, not a click.
+    float tdHighCeilHz    = 9000.0f;
+    // The high path's level x this (TONE's, Mappings.h toneHighPathLevel).
+    float tdHighLevel     = 1.75f;
+
+    // ---- 6 wide again ----
+    // L = mid + X, R = mid - X, X = bass-cut(wideW x D(mid) + wideSide x D2(A - B)):
+    // the Springs' difference through its own decorrelator D2 (Schroeder
+    // allpasses, wideDecorrMs, coefficient wideDecorrCoeff), so its echoes
+    // are smeared across both ears instead of panned. wideSide is the side
+    // gain k (today's 2-Spring k 0.36; 3 Springs x wideSide3 / wideSide).
+    float wideW     = 0.55f;
+    float wideSide  = 0.45f;
+    float wideSide3 = 0.5f;
+    float wideDecorrMs[3] = {1.7f, 2.9f, 4.3f};
+    float wideDecorrCoeff = 0.5f;
+
+    // ---- 7 gentler, with makeup ----
+    // 4's low cut (same shape: high-pass + low shelf, after TONE's Tilt),
+    // re-sized on top of 6 (lc*), whose transducers already moved the
+    // low-mid balance most of the way. Power into and out of it (slow
+    // followers, drive::kExcSeconds) is made up, up to gentleMakeupMaxDb.
+    float lcHpHz    = 120.0f;
+    float lcHpQ     = 0.6f;
+    float lcShelfHz = 600.0f;
+    float lcShelfDb = -1.5f;
+    float gentleMakeupMaxDb = 4.0f;
 };
 
 #ifdef RV_FIXED_VOICINGS
