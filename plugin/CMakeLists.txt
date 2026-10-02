@@ -9,11 +9,13 @@ set(RV_PLUGIN_VERSION "${PROJECT_VERSION}" CACHE STRING "Plugin version shown to
 # and plugin code, so it installs next to the released plugin for A/B.
 set(RV_PLUGIN_NAME "Resilio Versio" CACHE STRING "Plugin name (and bundle name)")
 set(RV_PLUGIN_CODE "RsVs" CACHE STRING "4-character plugin code")
+set(RV_PLUGIN_BUNDLE_ID "com.Resilio.ResilioVersio" CACHE STRING "macOS bundle identifier")
 juce_add_plugin(ResilioVersio
     VERSION ${RV_PLUGIN_VERSION}
     COMPANY_NAME "Resilio"
     PLUGIN_MANUFACTURER_CODE Rslo
     PLUGIN_CODE ${RV_PLUGIN_CODE}
+    BUNDLE_ID ${RV_PLUGIN_BUNDLE_ID}
     PRODUCT_NAME "${RV_PLUGIN_NAME}"
     FORMATS AU VST3
     IS_SYNTH FALSE
