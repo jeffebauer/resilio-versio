@@ -85,8 +85,10 @@ def held_tones():
     return out + silence(2)
 
 
-def sweep():
-    """Exponential sine sweep 20 Hz-20 kHz, 10 s (Farina), 12 s silence after."""
+def sweep(level_db=-12.0):
+    """Exponential sine sweep 20 Hz-20 kHz, 10 s (Farina), 12 s silence after.
+    level_db: the sweep's peak (13_sweep_quiet / 14_sweep_hot: level series for
+    the reference session 2, how the tank's input stage changes with level)."""
     f1, f2, T = 20.0, 20000.0, 10.0
     n = int(T * SR)
     k = math.log(f2 / f1)
@@ -96,7 +98,7 @@ def sweep():
         t = i / SR
         s = math.sin(2 * math.pi * f1 * T / k * (math.exp(t * k / T) - 1))
         env = min(1.0, i / fade, (n - 1 - i) / fade)
-        out.append(db(-12) * s * env)
+        out.append(db(level_db) * s * env)
     return silence(1) + out + silence(12)
 
 
@@ -194,6 +196,21 @@ def pink_noise():
     return silence(1) + out + silence(1)
 
 
+
+def tone_bursts():
+    """One short sine burst per octave, 125 Hz-8 kHz (60 ms, Hann), -12 dBFS,
+    5 s apart, two passes: how each band decays and darkens per repeat, and
+    where a tank's metallic modes sit (reference session 2, take J)."""
+    out = silence(1)
+    n = int(0.06 * SR)
+    for _ in range(2):
+        for f in (125, 250, 500, 1000, 2000, 4000, 8000):
+            out += [db(-12) * math.sin(2 * math.pi * f * i / SR) * 0.5 * (1 - math.cos(2 * math.pi * i / (n - 1)))
+                    for i in range(n)]
+            out += silence(5)
+    return out
+
+
 if __name__ == "__main__":
     write("01_clicks.wav", clicks())
     write("02_hits.wav", hits())
@@ -204,3 +221,10 @@ if __name__ == "__main__":
     write("07_click_single.wav", click_single())
     write("08_held_tones.wav", held_tones())
     write("09_pink_noise.wav", pink_noise())
+    # Reference session 2 (docs/recording-recipe.md "Session 2"): level series,
+    # octave bursts, a noise-floor take. (10-12 are the sustain stimulus:
+    # tools/make_sustain_stimulus.py.)
+    write("13_sweep_quiet.wav", sweep(-30.0))
+    write("14_sweep_hot.wav", sweep(-3.0))
+    write("15_tone_bursts.wav", tone_bursts())
+    write("16_silence_30s.wav", silence(30))
