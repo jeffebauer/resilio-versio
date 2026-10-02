@@ -209,20 +209,26 @@ struct Tuning {
     // pickup: the same shape (tdOutHz, tdOutQ) on the wet L and R before
     // DriveOut. Sized by docs/prototypes/wellspring-fit-4/fit_transducers.py
     // (the Wellspring's onset and tail spectra; see fit_transducers.json).
-    float tdInHz  = 2700.0f;
-    float tdInQ   = 1.2f;
-    float tdOutHz = 2900.0f;
-    float tdOutQ  = 1.1f;
+    float tdInHz  = 2350.0f;
+    float tdInQ   = 1.0f;
+    float tdOutHz = 4500.0f;
+    float tdOutQ  = 0.67f;
+    // The coil's even-order colour (magnetic, transformer-like: the
+    // Wellspring's sweep take shows 2nd harmonic -25 dB, 3rd -36): u + tdEven
+    // x (q - its slow average, 20 Hz), q = u^2 / (1 + 4 u^2) (bounded on loud
+    // input), on what enters the Springs, before
+    // the coil's low-pass (which also takes the doubled highs). 0 = none.
+    float tdEven  = 0.85f;
     // Inside the tank: the Loop's damping cutoff x tdDampingScale and the
     // high path's T60 at tdHighT60Ratio x DECAY's (today 1 / 0.45), so the
     // highs the transducers let through last (the repeats darken slowly).
-    float tdDampingScale  = 2.4f;
-    float tdHighT60Ratio  = 1.4f;
+    float tdDampingScale  = 3.6f;
+    float tdHighT60Ratio  = 1.5f;
     // The high path's ceiling (today Spring::kHighCeilingHz, 9 kHz): its
     // echoes start with the arc, not a click.
     float tdHighCeilHz    = 9000.0f;
     // The high path's level x this (TONE's, Mappings.h toneHighPathLevel).
-    float tdHighLevel     = 1.75f;
+    float tdHighLevel     = 0.9f;
 
     // ---- 6 wide again ----
     // L = mid + X, R = mid - X, X = bass-cut(wideW x D(mid) + wideSide x D2(A - B)):
@@ -241,11 +247,16 @@ struct Tuning {
     // re-sized on top of 6 (lc*), whose transducers already moved the
     // low-mid balance most of the way. Power into and out of it (slow
     // followers, drive::kExcSeconds) is made up, up to gentleMakeupMaxDb.
-    float lcHpHz    = 120.0f;
+    float lcHpHz    = 220.0f;
     float lcHpQ     = 0.6f;
-    float lcShelfHz = 600.0f;
-    float lcShelfDb = -1.5f;
-    float gentleMakeupMaxDb = 4.0f;
+    float lcShelfHz = 300.0f;
+    float lcShelfDb = -3.0f;
+    float gentleMakeupMaxDb = 6.0f;
+    // The share of the measured loss given back (dB x this): the Springs
+    // ring their lowest notes louder than the rest (the response's 100-160 Hz
+    // bump), so the power going in under-reads what the low cut takes out
+    // of the tail.
+    float gentleMakeupShare = 1.0f;
 };
 
 #ifdef RV_FIXED_VOICINGS

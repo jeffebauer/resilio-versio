@@ -224,6 +224,7 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
 #if RV_TANKV_BUILT >= 5 // voicing 5+: the transducers
     tdIn_.setLowpass(std::min(tankv::tuning().tdInHz, 0.45f * sampleRate), tankv::tuning().tdInQ, sampleRate);
     for (auto& f : tdOut_) f.setLowpass(std::min(tankv::tuning().tdOutHz, 0.45f * sampleRate), tankv::tuning().tdOutQ, sampleRate);
+    tdEvenAvg_.setCutoff(20.0f, sampleRate);
 #endif
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
@@ -348,6 +349,7 @@ void Tank::reset()
 #if RV_TANKV_BUILT >= 5
     tdIn_.reset();
     for (auto& f : tdOut_) f.reset();
+    tdEvenAvg_.reset();
 #endif
 #if RV_TANKV_BUILT >= 6
     for (auto& d : wideDecorr_) {
@@ -658,7 +660,7 @@ void Tank::controlTick(bool snap)
             gmGain_ = 1.0f;
         } else if (gmIn_ > excGate_) {
             const float kMaxLog = tankv::tuning().gentleMakeupMaxDb * (2.302585093f / 20.0f);
-            gmGain_ = std::exp(std::clamp(0.5f * std::log(gmIn_ / std::max(gmOut_, 1.0e-12f)), 0.0f, kMaxLog));
+            gmGain_ = std::exp(std::clamp(0.5f * tankv::tuning().gentleMakeupShare * std::log(gmIn_ / std::max(gmOut_, 1.0e-12f)), 0.0f, kMaxLog));
         }
         trim *= gmGain_;
 #endif
@@ -1014,6 +1016,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // The Clang's ceiling rises with KICKED's pickup push (clangCeilPush_):
         // driven KICKED pickups squash a big splash on their own (SplashVoicing.h).
         const float clangCeil = splash_.clangCeiling() * clangCeilPush_;
+#if RV_TANKV_BUILT >= 5
+        const float tdEven = tankv::hasTransducers(tankVoicing_) ? tankv::tuning().tdEven : 0.0f;
+#endif
         for (int i = 0; i < n; ++i) {
             const float d  = driven[i];
             const float t  = tilt_.process(d);
@@ -1053,7 +1058,12 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             }
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the input coil (the Kick's knock bypasses it)
-                mono[i] = tdIn_.process(x + c * (x - lo)) + kickScale * kickLoop[i];
+                float u = x + c * (x - lo);
+                if (tdEven != 0.0f) { // the coil's even-order colour (its slow average out: no thump)
+                    const float u2 = u * u / (1.0f + 4.0f * u * u); // bounded: at most tdEven / 4 on loud input
+                    u += tdEven * (u2 - tdEvenAvg_.process(u2));
+                }
+                mono[i] = tdIn_.process(u) + kickScale * kickLoop[i];
                 continue;
             }
 #endif

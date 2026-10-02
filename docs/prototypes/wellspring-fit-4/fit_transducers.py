@@ -5,7 +5,8 @@ damping scale (tdDampingScale), the high path's T60 share (tdHighT60Ratio), ceil
 level (tdHighLevel).
 Score (click take, closest settings, DECAY 0.664; refitted afterwards by measure.py):
   |onset HF - W| / 2  +  tail balance (the fit tool's spectral rms, dB)  +  |darkening - W| / 2
-  + 5 x |T60 4 kHz - W| / W
+  + 5 x |T60 4 kHz - W| / W  +  the sweep's early response 1-8 kHz vs the Wellspring's take D (rms dB,
+  tools/sweep_ir.py; added 2 Oct 2026 when the sweep IR became available)
 Random search (seeded), then a coordinate refinement around the best. Writes fit_transducers.json.
 
   python3 fit_transducers.py [--n 240]
@@ -33,8 +34,13 @@ def evaluate(tune):
     dark = wf4.darkening(y.mean(1))
     o = f['onset_hf_db']
     t4 = f['t60'][4000]
-    score = abs(o - R['onset_hf_db']) / 2 + spec + abs(dark - WDARK) / 2 + 5 * abs(t4 - R['t60'][4000]) / R['t60'][4000]
-    return dict(tune=tune, score=score, onset=o, spec=spec, dark=dark, t60_4k=t4, t60_all=f['t60_all'])
+    # the sweep (tools/sweep_ir.py, take D): the early response 1-8 kHz vs the Wellspring's
+    wf3.render(dict(wf4.CLOSEST, decay=0.664, tank_voicing=VOICING), out, {k: f'{v:.4g}' for k, v in tune.items()}, stim=wf4.SWEEP)
+    sw = wf4.sweep_err(wf4.sweep(out))
+    os.unlink(out)
+    score = (abs(o - R['onset_hf_db']) / 2 + spec + abs(dark - WDARK) / 2 + 5 * abs(t4 - R['t60'][4000]) / R['t60'][4000]
+             + sw)
+    return dict(tune=tune, score=score, onset=o, spec=spec, dark=dark, t60_4k=t4, t60_all=f['t60_all'], sweep_err=sw)
 
 
 w, _ = sf.read(wf4.REF_A)
@@ -67,7 +73,7 @@ if __name__ == '__main__':
             print(f'round {rnd}: {best["score"]:.2f}', {k: round(v, 3) for k, v in best['tune'].items()}, flush=True)
     print('Wellspring: onset', round(wf4.ref()['onset_hf_db'], 1), 'dark', round(WDARK, 1), 't60 4k', round(wf4.ref()['t60'][4000], 2))
     for r in res[:8]:
-        print(f"{r['score']:.2f} onset {r['onset']:.1f} spec {r['spec']:.2f} dark {r['dark']:.1f} t60 4k {r['t60_4k']:.2f}",
+        print(f"{r['score']:.2f} onset {r['onset']:.1f} spec {r['spec']:.2f} dark {r['dark']:.1f} t60 4k {r['t60_4k']:.2f} sweep {r['sweep_err']:.1f}",
               {k: round(v, 3) for k, v in r['tune'].items()})
     json.dump(dict(wellspring=dict(onset=wf4.ref()['onset_hf_db'], dark=WDARK, t60_4k=wf4.ref()['t60'][4000]), ranking=res[:40]),
               open(os.path.join(wf4.HERE, 'fit_transducers.json'), 'w'), indent=1)

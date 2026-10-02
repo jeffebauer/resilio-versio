@@ -18,6 +18,7 @@ import numpy as np, soundfile as sf
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '../wellspring-fit-3'))
+sys.path.insert(0, os.path.join(HERE, '../../../tools'))
 import wf3                                    # noqa: E402
 from wf3 import WSF, WC, SR, REF_A, ROOT, WT  # noqa: E402,F401
 
@@ -102,3 +103,44 @@ def row(name, r):
             f"echo {r['echo_ms']:3.0f}  NED {c['ned50']:.2f}/{c['ned150']:.2f}/{c['ned400']:.2f}  lowmid {c['lowmid']:5.1f}  "
             f"jump {c['flicker_db']:4.1f}  envc {c['lr_env_corr']:.2f}  corr {r['stereo_corr']:5.2f}/{r['corr_wide']:5.2f}  "
             f"T60 {'/'.join(f'{t:.2f}' for t in r['t60'])} (all {r['t60_all']:.2f})")
+
+
+# ---- Round 4, the sweep (tools/sweep_ir.py on the Wellspring's sweep take D) ----
+import sweep_ir as SIR  # noqa: E402
+REF_D = os.path.join(ROOT, 'renders/references/wellspring/wellspring_D.wav')
+SWEEP = os.path.join(WT, 'test_audio/stimulus/03_sweep.wav')
+SIR_OUT = os.path.join(OUT, 'sweep_ir')
+_INV = None
+
+
+def sweep(path):
+    """tools/sweep_ir.py analyse(): early (0.5 s) 1/3-octave response re 500 Hz-1 kHz, -6 dB corner and
+    slope, first arrival per band, 2nd / 3rd harmonic, L/R IR correlation and level."""
+    global _INV
+    if _INV is None:
+        _INV = SIR.inverse_filter()
+    os.makedirs(SIR_OUT, exist_ok=True)
+    return SIR.analyse(path, _INV[0], _INV[1], SIR_OUT)
+
+
+REF_SWEEP = None
+
+
+def ref_sweep():
+    global REF_SWEEP
+    if REF_SWEEP is None:
+        REF_SWEEP = sweep(REF_D)
+    return REF_SWEEP
+
+
+def sweep_err(r, lo=1000, hi=8000):
+    """rms dB of the early response vs the Wellspring's between lo and hi Hz."""
+    R = ref_sweep()
+    m = (r['cents'] >= lo) & (r['cents'] <= hi)
+    return float(np.sqrt(np.mean((r['early'][m] - R['early'][m]) ** 2)))
+
+
+def sweep_row(name, r):
+    return (f"{name:16} corner {r['corner'] or 0:5.0f} slope {r['slope'] or 0:6.1f}  arr " +
+            '/'.join(f"{v:.1f}" for v in r['arr'].values()) +
+            f"  h2/h3 {r['h2']:.1f}/{r['h3']:.1f}  LRcorr {r['width']:.2f} LR {r['lr_db']:+.1f}  err1-8k {sweep_err(r):.1f} err63-1k {sweep_err(r, 60, 1000):.1f}")

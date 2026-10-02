@@ -474,6 +474,7 @@ private:
 #if RV_TANKV_BUILT >= 5
     dsp::Biquad                tdIn_{};  // voicing 5+: the input coil's treble loss
     std::array<dsp::Biquad, 2> tdOut_{}; // ... and the output pickup's, L and R
+    dsp::OnePoleLowpass        tdEvenAvg_{}; // ... the slow average of its even-order term
 #endif
 #if RV_TANKV_BUILT >= 6
     std::array<Diffuser, 3> wideDecorr_{}; // voicing 6+: D2, the Springs' difference decorrelated

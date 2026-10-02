@@ -335,10 +335,10 @@ void applyTankTuneEnv()
         {"gentleDampingScale", &t.gentleDampingScale},
         {"tdInHz", &t.tdInHz}, {"tdInQ", &t.tdInQ}, {"tdOutHz", &t.tdOutHz}, {"tdOutQ", &t.tdOutQ},
         {"tdDampingScale", &t.tdDampingScale}, {"tdHighT60Ratio", &t.tdHighT60Ratio}, {"tdHighCeilHz", &t.tdHighCeilHz},
-        {"tdHighLevel", &t.tdHighLevel},
+        {"tdHighLevel", &t.tdHighLevel}, {"tdEven", &t.tdEven},
         {"wideW", &t.wideW}, {"wideSide", &t.wideSide}, {"wideSide3", &t.wideSide3},
         {"wide0", &t.wideDecorrMs[0]}, {"wide1", &t.wideDecorrMs[1]}, {"wide2", &t.wideDecorrMs[2]},
-        {"wideDecorrCoeff", &t.wideDecorrCoeff}, {"gentleMakeupMaxDb", &t.gentleMakeupMaxDb},
+        {"wideDecorrCoeff", &t.wideDecorrCoeff}, {"gentleMakeupMaxDb", &t.gentleMakeupMaxDb}, {"gentleMakeupShare", &t.gentleMakeupShare},
         {"lcHpHz", &t.lcHpHz}, {"lcHpQ", &t.lcHpQ}, {"lcShelfHz", &t.lcShelfHz}, {"lcShelfDb", &t.lcShelfDb},
     };
     std::string all = env;
