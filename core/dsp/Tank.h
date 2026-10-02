@@ -114,6 +114,15 @@
 // a TENSION move), so an idle Spring's Chirp grows to full length over a few
 // hundred ms after it becomes audible.
 //
+// Tank voicings (Wellspring fit round 3, params/TankVoicing.h, ADR 0038
+// Proposed; Renderer key tank_voicing, default 0 = everything above, bit for
+// bit): 1 puts the shared Sweep after the Clang (mono -> Sweep -> every
+// Spring's Loop and high path), with fewer Loop sections and B's aligned high
+// path; 2 zeroes the side (no Spring panned) and widens with D alone, its
+// bass taken out; 3 adds the Loop diffusers (Spring::setDiffusion); 4 adds a
+// low cut before the Clang, less Loop damping and a longer high path T60.
+// The firmware compiles only the default.
+//
 // Every parameter is used from M7 on.
 //
 // AntiRes (M6, SPEC §4.10, ADR 0010; numbers in params/AntiRes.h): layer 1
@@ -143,10 +152,12 @@
 #include "dsp/Kick.h"
 #include "dsp/Splash.h"
 #include "dsp/Spring.h"
+#include "dsp/Sweep.h"
 #include "dsp/Wobble.h"
 #include "params/ParamSpec.h"
 #include "params/DriveVoicing.h"
 #include "params/SpringModes.h"
+#include "params/TankVoicing.h"
 
 #include <algorithm>
 #include <array>
@@ -192,6 +203,11 @@ public:
     void prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats);
 
     static size_t requiredPoolFloats(float sampleRate);
+    // What the pool would need if Tank voicing v (params/TankVoicing.h) were
+    // the only one compiled in (the firmware's RV_FIXED_VOICINGS layout):
+    // its Sweep, its Loop diffusers, and Loop rings only for the sections it
+    // uses. Desktop builds hold every voicing at once (requiredPoolFloats).
+    static size_t poolFloatsForVoicing(float sampleRate, int v);
 
     void setParam(ParamId id, float normalised)
     {
@@ -275,6 +291,14 @@ public:
         compDrive_ = -1.0f; // DriveIn settings again on the next tick (voicing 3)
     }
     int  toneVoicing() const { return tilt_.voicing(); }
+    // Renderer / test hook (not a panel control, ADR 0038 Proposed): which
+    // Tank voicing (params/TankVoicing.h: 0 = today, 1 = Sweep, 2 = + stereo
+    // together, 3 = + diffusion, 4 = + gentler). The firmware and plugin
+    // never call it (tankv::kDefaultVoicing). Set it after prepare() and
+    // before rendering: it clears the tails.
+    void setTankVoicing(int v);
+    int  tankVoicing() const { return tankVoicing_; }
+    const dsp::Sweep& sweep() const { return sweep_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -297,6 +321,8 @@ private:
     };
 
     void bindPool(float* pool);
+    void applyTankVoicing(); // per-Spring parts of the voicing (diffusers, high path T60)
+    modes::StereoMix stereoMixFor(int mode) const;
     void controlTick(bool snap);
     void updateBaseSettings(float decay, float tension, float tone, const drive::Voice& voice);
     void updateSpringSettings(size_t i);
@@ -404,6 +430,21 @@ private:
     float susGDownCoeff_ = 0.0f, susGUpCoeff_ = 0.0f, susGLetGoCoeff_ = 0.0f, susGTarget_ = 1.0f, susGNeedRelease_ = 0.0f;
     float susGNeed_ = kSusNoNeed, susGNeedHold_ = 0.0f;
     float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
+    // Tank voicings (params/TankVoicing.h; ADR 0038 Proposed).
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int tankVoicing_ = tankv::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+#else
+    int tankVoicing_ = tankv::kDefaultVoicing; // setTankVoicing
+#endif
+    dsp::Sweep          sweep_;          // voicing 1+: shared, in front of every Spring
+    float               sweepAlign_ = 0.0f; // its delay at modes::kPickupAlignHz (samples)
+    dsp::OnePoleLowpass dBass_{};        // voicing 2+: D's bass, taken out (bass centred)
+    dsp::Biquad         gentleHp_{};     // voicing 4: the low cut in front of the Springs
+    dsp::Biquad         gentleShelf_{};  // ... and its low-mid shelf
+    std::array<std::array<float*, tankv::kNumDiffusers>, kMaxSprings> diffBuf_{}; // voicing 3: Loop diffusers
+    std::array<std::array<int, tankv::kNumDiffusers>, kMaxSprings>    diffSize_{};
+    bool snapNow_ = false; // controlTick(snap) in progress (updateBaseSettings: the Sweep's stage jump)
+
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
     std::array<float, kClatterSideMax> clatBuf_{};

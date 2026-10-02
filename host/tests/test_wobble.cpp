@@ -478,10 +478,13 @@ int main()
                 for (float v : *b) worst = std::max(worst, double(std::fabs(v)));
         }
         const double bound = wobble::maxDepthSamples(kFs);
-        const size_t pool = Tank::requiredPoolFloats(kFs);
+        // What the firmware allocates: its default Tank voicing's layout
+        // (Tank::requiredPoolFloats there; desktop builds hold every
+        // Renderer voicing at once, malloc'd: params/TankVoicing.h).
+        const size_t pool = Tank::poolFloatsForVoicing(kFs, rv::tankv::kDefaultVoicing);
         std::snprintf(msg, sizeof msg,
                       "largest |modulation| %.0f samples (%.2f ms) over the knob, within the memory bound %.0f; Tank needs %zu "
-                      "floats at 48 kHz (firmware pool 30000)",
+                      "floats at 48 kHz with the firmware's voicing (firmware pool 30000)",
                       worst, 1000.0 * worst / kFs, bound, pool);
         check(worst <= bound && pool <= 30000, msg);
     }

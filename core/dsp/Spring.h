@@ -139,10 +139,13 @@ public:
     static constexpr float kTapSlewPerSample   = 0.02f;  // pickup offset glide: <= 2 % pitch bend, ~1 ms in 50 ms
     static constexpr float kDenormalNoise      = 1.0e-10f; // -200 dB seeded noise keeps state off denormals
 
-    // Pool floats needed at this sample rate (worst-case settings).
-    static size_t requiredFloats(float sampleRate);
+    // Pool floats needed at this sample rate (worst-case settings), with
+    // rings for maxStages Chirp sections (kMaxStages unless the Tank's
+    // voicing never asks for more: TankVoicing.h, the Sweep carries part of
+    // the Chirp).
+    static size_t requiredFloats(float sampleRate, int maxStages = kMaxStages);
 
-    void prepare(float sampleRate, float* pool, uint32_t noiseSeed);
+    void prepare(float sampleRate, float* pool, uint32_t noiseSeed, int maxStages = kMaxStages);
     void reset();
 
     // Control rate. snap = jump straight to the settings (first block, reset).
@@ -171,6 +174,38 @@ public:
     }
     // True between the two calls of a TENSION redesign (setSettings).
     bool redesignPending() const { return pending_; }
+
+    // ---- Tank voicings (params/TankVoicing.h, Renderer-only until picked) ----
+    // Voicing 3: short Schroeder allpasses on the Loop's feedback, after the
+    // pickup, so each trip round the Loop smears the echo a little more (the
+    // first echo never passes them). Buffers come from the Tank's pool
+    // (bufs[k] of sizes[k] floats); delays in samples (< size), coefficient
+    // c. The Loop's delay L shrinks by their total delay, so the echo spacing
+    // (and the Loop gain design's round trip) stays where it was, and the
+    // pickup keeps its place along the full round trip. n = 0: none (today).
+    // Set before the first process() (it resets the Spring's state).
+    void setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c);
+    // Voicing 1 (proto/wellspring-fit B's high path): the high path's
+    // high-pass at xoverRatio x fC (today kHighPassRatio), and, if align, its
+    // pickup placed so its first echo reaches the crossover frequency
+    // together with the Loop's, plus alignMs (today: kHighPickup x L_hf, a
+    // few ms ahead of the Loop's, which put an undispersed early copy on top
+    // of the Sweep's arc). Redesigns on the next setSettings().
+    void setHighPathVoicing(float xoverRatio, bool align, float alignMs)
+    {
+        hiXover_   = xoverRatio;
+        hiAlignOn_ = align;
+        hiAlignMs_ = alignMs;
+        designFc_  = -1.0f;            // the crossover again
+        settings_.t60Seconds = -1.0f;  // force the redesign
+    }
+    // Voicing 4: the high path's T60 as a share of DECAY's (today
+    // kHighT60Ratio). Redesigns on the next setSettings().
+    void setHighT60Ratio(float r)
+    {
+        hiT60Ratio_ = r;
+        settings_.t60Seconds = -1.0f; // force the redesign
+    }
 
     // n samples of mono in -> mono Spring out. Real-time safe.
     void process(const float* in, float* out, int n) { process(in, nullptr, nullptr, nullptr, nullptr, out, n); }
@@ -265,6 +300,7 @@ private:
     int   n_ = 5; // integer part of the embedded delay
     float mPos_ = 0.0f, mRate_ = 0.0f;
     int   mTarget_ = 0, mActive_ = 0;
+    int   maxStages_ = kMaxStages; // rings in the pool (prepare)
     float g_ = 0.0f;
     dsp::LoopSat loopSat_;
     float satGate_ = 1.0f; // quiet-tail fade (setLoopSatGate)
@@ -274,6 +310,9 @@ private:
     dsp::Biquad         highpass_;
     dsp::OnePoleLowpass highCeiling_;
     float lhCur_ = 0.0f, gHigh_ = 0.0f, highPathLevel_ = 0.0f;
+    float hiT60Ratio_ = kHighT60Ratio; // setHighT60Ratio (Tank voicing 4)
+    float hiXover_ = kHighPassRatio, hiAlignMs_ = 0.0f, hiPick_ = -1.0f; // setHighPathVoicing (voicing 1); hiPick_ < 0: kHighPickup
+    bool  hiAlignOn_ = false;
     float tapRatio_ = 0.5f, tapOffset_ = 0.0f, tapOffsetTarget_ = 0.0f;
 
     // L modulation state (see "Micro-mod floor").
@@ -285,6 +324,27 @@ private:
 
     dsp::Rng rng_;
     uint32_t seed_ = 1;
+
+    // Feedback diffusers (setDiffusion; Tank voicing 3). Schroeder allpass
+    // (c + z^-D)/(1 + c z^-D), integer D.
+    struct FbDiffuser {
+        float* buf = nullptr;
+        int    size = 0, w = 0, d = 1;
+        float process(float x, float c)
+        {
+            int r = w - d;
+            if (r < 0) r += size;
+            const float z = buf[r];
+            const float v = x - c * z;
+            buf[w] = v;
+            if (++w == size) w = 0;
+            return c * v + z;
+        }
+    };
+    static constexpr int kMaxFbDiffusers = 3;
+    std::array<FbDiffuser, kMaxFbDiffusers> fbDiff_{};
+    int   numFbDiff_ = 0;
+    float fbDiffC_ = 0.5f, fbDiffDelay_ = 0.0f; // total delay, samples
 
     // ---- Loop gain design (control rate only; kept after the per-sample
     // state so the hot members stay within short load offsets) ----

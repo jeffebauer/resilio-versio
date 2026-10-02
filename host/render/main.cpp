@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <string>
 #include <vector>
@@ -210,9 +211,11 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool voiced = setsKey(rv::paramsjson::kWobbleVoicingKey);
         bool susVoiced = setsKey(rv::paramsjson::kSustainVoicingKey);
         bool toneVoiced = setsKey(rv::paramsjson::kToneVoicingKey);
+        bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
             if (key == rv::paramsjson::kToneVoicingKey) toneVoiced = true;
+            if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
@@ -238,6 +241,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (voiced) params.set(rv::paramsjson::kWobbleVoicingKey, rv::json::Value::makeString(rv::paramsjson::wobbleVoicingLabel(tank)));
         if (susVoiced) params.set(rv::paramsjson::kSustainVoicingKey, rv::json::Value::makeNumber(tank.sustainVoicing()));
         if (toneVoiced) params.set(rv::paramsjson::kToneVoicingKey, rv::json::Value::makeNumber(tank.toneVoicing()));
+        if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }
@@ -302,11 +306,55 @@ int runRender(const std::string& inPath, const std::string& outPath, int block, 
     return 0;
 }
 
+// Tank voicing tuning override (prototype fitting only, docs/prototypes/
+// wellspring-fit-3/): RV_TANKV_TUNE="sweepStagesNoon=41,sweepCoeff=0.4,..."
+// sets core/params/TankVoicing.h Tuning fields before any Tank is prepared.
+// Unset = the values in TankVoicing.h. Desktop only (the firmware has no such
+// hook).
+void applyTankTuneEnv()
+{
+    const char* env = std::getenv("RV_TANKV_TUNE");
+    if (!env) return;
+    auto& t = rv::tankv::mutableTuning();
+    struct F { const char* key; float* v; };
+    const F fields[] = {
+        {"sweepStagesNoon", &t.sweepStagesNoon}, {"sweepTightScale", &t.sweepTightScale},
+        {"sweepLooseScale", &t.sweepLooseScale}, {"sweepFcRatio", &t.sweepFcRatio}, {"sweepCoeff", &t.sweepCoeff},
+        {"loopFracNoon", &t.loopFracNoon}, {"loopFracLoose", &t.loopFracLoose},
+        {"hiXoverRatio", &t.hiXoverRatio}, {"hiAlignMs", &t.hiAlignMs}, {"sweepAlignHz", &t.sweepAlignHz},
+        {"togetherW1", &t.togetherW1}, {"togetherW2", &t.togetherW2}, {"togetherW3", &t.togetherW3},
+        {"togetherBassHz", &t.togetherBassHz},
+        {"diff0", &t.diffMs[0]}, {"diff1", &t.diffMs[1]}, {"diff2", &t.diffMs[2]}, {"diffCoeff", &t.diffCoeff},
+        {"diffScaleB", &t.diffSpringScale[1]}, {"diffScaleC", &t.diffSpringScale[2]},
+        {"gentleHpHz", &t.gentleHpHz}, {"gentleHpQ", &t.gentleHpQ}, {"gentleShelfHz", &t.gentleShelfHz},
+        {"gentleShelfDb", &t.gentleShelfDb}, {"gentleHighT60Ratio", &t.gentleHighT60Ratio},
+        {"gentleDampingScale", &t.gentleDampingScale},
+    };
+    std::string all = env;
+    size_t pos = 0;
+    while (pos < all.size()) {
+        size_t end = all.find(',', pos);
+        if (end == std::string::npos) end = all.size();
+        const std::string item = all.substr(pos, end - pos);
+        const size_t eq = item.find('=');
+        bool found = false;
+        if (eq != std::string::npos)
+            for (const auto& f : fields)
+                if (item.compare(0, eq, f.key) == 0 && std::strlen(f.key) == eq) {
+                    *f.v = std::strtof(item.c_str() + eq + 1, nullptr);
+                    found = true;
+                }
+        if (!found) std::fprintf(stderr, "RV_TANKV_TUNE: unknown item '%s'\n", item.c_str());
+        pos = end + 1;
+    }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
     if (argc < 2) { usage(argv[0]); return 2; }
+    applyTankTuneEnv();
 
     const std::string first = argv[1];
     if (first == "--sweep") {
