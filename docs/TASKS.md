@@ -67,6 +67,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
 - Next round (one local agent, best after your weekly usage resets): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
 
+### 5. Wellspring recording session 2 (≈20 min, when convenient)
+- [ ] Follow `docs/recording-recipe.md` §5b: same patch and base INPUT as session 1; takes H–N (a quiet and a hot sweep, the sweep into each tank alone, octave tone bursts, pink noise, held tones, the pad, 30 s of silence). First run `python3 tools/make_stimulus.py` and `python3 tools/make_sustain_stimulus.py` for the new files. Then tell Claude: it tells us the transducers' exact treble roll-off, how the input changes with level, the full stereo picture, per-octave darkening, and the hiss
+
 ### Friends' feedback
 - When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
