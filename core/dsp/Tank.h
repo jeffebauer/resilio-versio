@@ -167,6 +167,7 @@ namespace rv {
 class Tank {
 public:
     static constexpr int   kMaxSprings      = 3;
+    using CoupleMatrix = std::array<float, size_t(kMaxSprings * kMaxSprings)>; // SPRINGS 3 coupled Loops (row-major)
     static constexpr int   kControlInterval = 32;      // samples between coefficient updates
     static constexpr float kWetGain         = 1.5f;     // +3.5 dB: wet ≈ dry level on noise at noon DECAY
     static constexpr float kShelfHz         = 5000.0f; // output high-shelf corner (SPEC §4.8)
@@ -256,9 +257,11 @@ public:
     // change. The firmware and plugin never call it (springs3::
     // kDefaultVoicing; the firmware doesn't even build it: springs3::
     // kPaletteBuilt). Set it before rendering.
-    void setSprings3Voicing(int v)
+    void setSprings3Voicing([[maybe_unused]] int v)
     {
+#ifndef RV_FIXED_VOICINGS
         s3Voicing_ = springs3::kPaletteBuilt ? std::clamp(v, 0, springs3::kNumVoicings - 1) : springs3::kToday;
+#endif
         keyMode_   = -1; // re-derive the Springs' settings and the mix on the next tick
     }
     int springs3Voicing() const { return s3Voicing_; }
@@ -330,6 +333,14 @@ private:
     modes::StereoMix modeMix(int mode) const;
     float            modeTrim(int mode) const;
     void             updateShapes();
+    // Round 2 (Springs3Voicing.h): today's repeat timing for Spring i
+    // (keepTiming), and the coupled Loops (couplingAngle / couplingKind).
+#ifndef RV_FIXED_VOICINGS
+    void keepTodaysTiming(size_t i, SpringSettings& s) const;
+    static CoupleMatrix coupleMatrix(float angle, int kind);
+    void processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
+                        float (*wet)[kControlInterval], int tick, int n);
+#endif
     void releaseOwnedPool();
 
     float sampleRate_   = 48000.0f;
@@ -463,7 +474,11 @@ private:
     // while position 3 with a voicing is selected (0 = today's settings,
     // bit for bit); shape_ is each Spring's shape at that blend; the series
     // feed (voicing 2) ramps from s3SeriesFrom_ to s3SeriesTo_ over a tick.
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int s3Voicing_ = springs3::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+#else
     int   s3Voicing_ = springs3::kDefaultVoicing;
+#endif
     float s3W_ = 0.0f, s3Step_ = 0.0f, keyS3W_ = -1.0f;
     float s3SeriesFrom_ = 0.0f, s3SeriesTo_ = 0.0f, s3SeriesSend_ = 1.0f;
     float s3WFrom_ = 0.0f;                    // s3W_ at the last tick (per-sample ramps)
@@ -471,6 +486,17 @@ private:
     dsp::OnePoleLowpass s3InLp_{}, s3SendLp_{}; // the voicing's low cuts (x - LP(x))
     std::array<springs3::Shape, kMaxSprings> shape_ = springs3::detuned();
     std::array<float, kMaxSprings>           springS3W_{}; // s3W_ springSet_ was worked out from
+#ifndef RV_FIXED_VOICINGS // round 2's state: not in the firmware (Drive.h RV_FIXED_VOICINGS)
+    // Round 2 (keepTiming): today's position 3 for the same knobs, the
+    // reference each Spring's round trip and first echo are held to: A's
+    // Chirp-chain delay (today's alignA_) and the stage count.
+    float alignToday_ = 0.0f;
+    int   todayStages_ = map::kMinStages;
+    // Coupled Loops (voicings 8, 10): the rotation that mixes the Loops'
+    // returns, at the last tick and this one (ramped per sample between).
+    CoupleMatrix s3CoupleFrom_{}, s3CoupleTo_{};
+    bool s3Coupled_ = false; // either end of the ramp is coupled (s3W_ > 0 in a coupled voicing)
+#endif
 };
 
 } // namespace rv

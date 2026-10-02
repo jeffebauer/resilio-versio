@@ -3,8 +3,10 @@
 // PASS/FAIL/INFO lines, returns nonzero on any failure. Optional argv[1]
 // filter by section name.
 //
-// For every voicing of position 3 (1 long tank, 2 in series, 3 wide, 4 pan
-// tank; 0 is today, covered by the other suites):
+// For every voicing of position 3 (round 1: 1 long tank, 2 in series, 3
+// wide, 4 pan tank; round 2: 5 pan brighter only, 6 pan higher Chirp only,
+// 7 mixed wire gauges, 8 coupled, 9 diffuse, 10 cross-fed wide; 0 is today,
+// covered by the other suites):
 //   identity  SPRINGS 1 and 2 are bit for bit what voicing 0 plays (hits and
 //             stabs, every ATTITUDE), so positions 1 and 2 never change.
 //   level     SPRINGS 3 as loud as SPRINGS 2 within +-1.5 dB, stereo and
@@ -27,10 +29,15 @@
 //             sustain() for why not one pitch), trim <= 5 dB.
 //   stability Extremes (DECAY 1, KICKED, DRIVE 1, TENSION/TONE 0 and 1):
 //             finite, peaks under 1.
+//   timing    Round 2 keeps today's repeat timing: every Spring's round
+//             trip and first echo at 800 Hz equal to voicing 0's (TENSION
+//             0..1); the echo spacing measured on the output, reported.
 //   arrivals  First arrivals (L, R, mono): spread, reported.
 //   character What each version is like, in numbers, for the plain-words
 //             descriptions (one click, CLEAN, defaults): T60, brightness
-//             (spectral centroid of the tail), width. Reported.
+//             (spectral centroid of the tail), width, left vs right
+//             brightness and level (lean), a held chord's brightness.
+//             Reported.
 //   cost      Desktop ns/sample per voicing vs voicing 0 at the SPRINGS 3
 //             worst case; memory (the longest L each voicing reaches vs the
 //             delay line). Reported.
@@ -69,7 +76,10 @@ using Buf = std::vector<float>;
 constexpr float  kFs = 48000.0f;
 constexpr double kPi = 3.14159265358979323846;
 const char* const kAttName[3]   = {"CLEAN", "DRIVEN", "KICKED"};
-const char* const kVoiceName[5] = {"0 today", "1 long tank", "2 in series", "3 wide", "4 pan tank"};
+const char* const kVoiceName[11] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
+                                    "4 pan tank",       "5 pan brighter",    "6 pan Chirp",  "7 wire gauges",
+                                    "8 coupled",        "9 diffuse",         "10 cross-fed wide"};
+static_assert(rv::springs3::kNumVoicings == 11, "name every voicing");
 constexpr int kNumVoicings = rv::springs3::kNumVoicings;
 
 size_t sec(double s) { return size_t(s * double(kFs)); }
@@ -762,6 +772,116 @@ void stability()
     }
 }
 
+// ---- timing (round 2) -------------------------------------------------------------------------
+// Owner, 2 Oct 2026: a different tank size moves the repeat timing and
+// muddles TENSION and DECAY, so round 2 keeps today's. Per Spring, at 800 Hz
+// (modes::kPickupAlignHz): the round trip (the echo spacing) and the first
+// echo, against voicing 0, at TENSION 0..1 x TONE 0 / noon / 1. Limits:
+// round trip within 0.05 %, first echo within 0.05 ms; except where the
+// delay memory caps a Spring (the loosest tank's right Spring with a
+// quicker Chirp): there the round trip may be up to 1.5 % short (reported).
+// Also measured on the output (reported): the echo spacing, the strongest
+// repeat of a click's < 1 kHz envelope between 20 and 150 ms.
+double echoSpacingMs(const Stereo& o, size_t clickAt)
+{
+    Buf m(o.l.size());
+    for (size_t i = 0; i < m.size(); ++i) m[i] = 0.5f * (o.l[i] + o.r[i]);
+    lowpass(m, 1000.0);
+    // Energy envelope, 1 ms smoothing, decimated to 0.5 ms steps.
+    const size_t hop = sec(0.0005);
+    std::vector<double> env;
+    double y = 0;
+    const double c = 1.0 - std::exp(-1.0 / (0.001 * kFs));
+    for (size_t i = clickAt + sec(0.005); i < std::min(m.size(), clickAt + sec(1.5)); ++i) {
+        y += c * (double(m[i]) * m[i] - y);
+        if ((i - clickAt) % hop == 0) env.push_back(std::sqrt(y));
+    }
+    double mean = 0;
+    for (double e : env) mean += e;
+    mean /= double(env.size());
+    for (double& e : env) e -= mean;
+    double best = -1e30;
+    size_t bestLag = 0;
+    for (size_t lag = size_t(0.020 / 0.0005); lag <= size_t(0.150 / 0.0005); ++lag) {
+        double acc = 0;
+        for (size_t i = 0; i + lag < env.size(); ++i) acc += env[i] * env[i + lag];
+        if (acc > best) best = acc, bestLag = lag;
+    }
+    return 1000.0 * double(bestLag) * 0.0005;
+}
+
+void timing()
+{
+    struct Res {
+        double rtWorst = 0, echoWorst = 0, capped = 0;
+        char   rtAt[100] = "-", echoAt[100] = "-", capAt[100] = "";
+        double spacing[3] = {0, 0, 0};
+    };
+    const float tensions[5] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+    auto settle = [](int v, float tension, float tone, double rt[3], double fe[3]) {
+        rv::Tank t;
+        t.prepare(kFs, 32);
+        Settings s;
+        s.voicing = v, s.tension = tension, s.tone = tone;
+        apply(t, s);
+        Buf z(sec(0.3), 0.0f), l(z.size()), r(z.size());
+        for (size_t pos = 0; pos < z.size(); pos += 32) t.process(z.data() + pos, z.data() + pos, l.data() + pos, r.data() + pos, 32);
+        for (int k = 0; k < 3; ++k) {
+            rt[k] = t.spring(k).roundTripSamples(rv::modes::kPickupAlignHz);
+            fe[k] = t.spring(k).firstEchoSamples(rv::modes::kPickupAlignHz);
+        }
+    };
+    const Buf in = click(3.0);
+    std::vector<std::future<Res>> jobs;
+    for (int v = 0; v < kNumVoicings; ++v)
+        jobs.push_back(std::async(std::launch::async, [&, v] {
+            Res r;
+            for (float tension : tensions)
+                for (float tone : {0.0f, 0.5f, 1.0f}) {
+                    double rt0[3], fe0[3], rt[3], fe[3];
+                    settle(0, tension, tone, rt0, fe0);
+                    settle(v, tension, tone, rt, fe);
+                    for (int k = 0; k < 3; ++k) {
+                        const double drt = 100.0 * (rt[k] / rt0[k] - 1.0), dfe = 1000.0 * (fe[k] - fe0[k]) / kFs;
+                        const bool capped = k == 1 && tension == 0.0f && drt < -0.05;
+                        if (capped && std::fabs(drt) > std::fabs(r.capped)) {
+                            r.capped = drt;
+                            std::snprintf(r.capAt, sizeof r.capAt, "Spring B, TENSION 0, TONE %.1f", double(tone));
+                        }
+                        if (!capped && std::fabs(drt) > std::fabs(r.rtWorst)) {
+                            r.rtWorst = drt;
+                            std::snprintf(r.rtAt, sizeof r.rtAt, "Spring %c, TENSION %.2f, TONE %.1f", 'A' + k, double(tension), double(tone));
+                        }
+                        if (std::fabs(dfe) > std::fabs(r.echoWorst)) {
+                            r.echoWorst = dfe;
+                            std::snprintf(r.echoAt, sizeof r.echoAt, "Spring %c, TENSION %.2f, TONE %.1f", 'A' + k, double(tension), double(tone));
+                        }
+                    }
+                }
+            for (int k = 0; k < 3; ++k) {
+                Settings s;
+                s.voicing = v, s.tension = tensions[k * 2];
+                r.spacing[k] = echoSpacingMs(render(s, in), sec(1.0));
+            }
+            return r;
+        }));
+    std::vector<Res> res;
+    for (auto& j : jobs) res.push_back(j.get());
+    for (int v = 0; v < kNumVoicings; ++v) {
+        const Res& r = res[size_t(v)];
+        const Res& t = res[0];
+        std::snprintf(msg, sizeof msg,
+                      "Timing, voicing %s vs today, every Spring at 800 Hz, TENSION 0..1 x TONE 0/.5/1: round trip %+.3f %% (%s; "
+                      "limit 0.05), first echo %+.3f ms (%s; limit 0.05)%s%.2f %%%s%s. Echo spacing on the output, TENSION 0 / "
+                      ".5 / 1: %.1f / %.1f / %.1f ms (today %.1f / %.1f / %.1f)",
+                      kVoiceName[v], r.rtWorst, r.rtAt, r.echoWorst, r.echoAt,
+                      r.capAt[0] ? "; memory cap: round trip " : "", r.capped, r.capAt[0] ? ", " : "", r.capAt, r.spacing[0],
+                      r.spacing[1], r.spacing[2], t.spacing[0], t.spacing[1], t.spacing[2]);
+        if (!rv::springs3::kVoicings[size_t(v)].keepTiming) std::printf("INFO  %s\n", msg); // round 1: changes it on purpose
+        else check(std::fabs(r.rtWorst) <= 0.05 && std::fabs(r.echoWorst) <= 0.05 && r.capped >= -1.5, msg);
+    }
+}
+
 // ---- first arrivals (reported) ----------------------------------------------------------------
 void arrivals()
 {
@@ -797,6 +917,46 @@ void arrivals()
 }
 
 // ---- character (reported) ---------------------------------------------------------------------
+// Power-weighted mean frequency (50 Hz-12 kHz) of x[from, to), 4096-point
+// Hann frames; and the shares of power under 400 Hz and over 1 kHz.
+struct Centroid {
+    double hz = 0, low = 0, high = 0, powerDb = 0;
+};
+Centroid centroid(const Buf& x, size_t from, size_t to)
+{
+    constexpr size_t kN = 4096;
+    std::vector<double> acc(kN / 2 + 1, 0.0);
+    for (size_t at = from; at + kN <= std::min(to, x.size()); at += kN / 2) {
+        const auto mag = rv::fft::magnitudeSpectrum(x.data() + at, kN, kN);
+        for (size_t k = 0; k < mag.size(); ++k) acc[k] += double(mag[k]) * mag[k];
+    }
+    double sum = 0, moment = 0, low = 0, high = 0;
+    for (size_t k = 0; k < acc.size(); ++k) {
+        const double hz = double(k) * kFs / kN;
+        if (hz < 50.0 || hz > 12000.0) continue;
+        sum += acc[k], moment += acc[k] * hz;
+        if (hz < 400.0) low += acc[k];
+        if (hz > 1000.0) high += acc[k];
+    }
+    return {moment / sum, 100.0 * low / sum, 100.0 * high / sum, db(power(x, from, to))};
+}
+
+// How "drippy" vs smooth a click's first half second is: the 2 ms RMS
+// envelope of the mono output (full band), 50-500 ms after the click, as
+// its standard deviation over its mean (dB-free). Discrete drips with
+// silence between read high; a dense, blooming wash reads low.
+double dripIndex(const Buf& mono, size_t clickAt)
+{
+    const size_t w = sec(0.002);
+    std::vector<double> env;
+    for (size_t at = clickAt + sec(0.05); at + w <= clickAt + sec(0.5); at += w) env.push_back(std::sqrt(power(mono, at, at + w)));
+    double mean = 0, var = 0;
+    for (double e : env) mean += e;
+    mean /= double(env.size());
+    for (double e : env) var += (e - mean) * (e - mean);
+    return std::sqrt(var / double(env.size())) / mean;
+}
+
 void character()
 {
     const Buf in = click(8.0);
@@ -808,28 +968,35 @@ void character()
             else s.voicing = v;
             const Stereo o = render(s, in);
             const auto m = rv::metrics::compute({o.l, o.r}, kFs);
-            // Brightness: power-weighted mean frequency of the tail 0.1-1.5 s
-            // after the click (mono, 4096-point Hann frames, 50 Hz-12 kHz).
-            constexpr size_t kN = 4096;
-            std::vector<double> acc(kN / 2 + 1, 0.0);
+            // Brightness: the tail 0.1-1.5 s after the click (mono), and each
+            // side alone (a lean: one ear brighter or louder than the other).
             Buf mono(o.l.size());
             for (size_t i = 0; i < mono.size(); ++i) mono[i] = 0.5f * (o.l[i] + o.r[i]);
-            for (size_t at = sec(1.1); at + kN <= sec(2.5); at += kN / 2) {
-                const auto mag = rv::fft::magnitudeSpectrum(mono.data() + at, kN, kN);
-                for (size_t k = 0; k < mag.size(); ++k) acc[k] += double(mag[k]) * mag[k];
-            }
-            double sum = 0, moment = 0, low = 0;
-            for (size_t k = 0; k < acc.size(); ++k) {
-                const double hz = double(k) * kFs / kN;
-                if (hz < 50.0 || hz > 12000.0) continue;
-                sum += acc[k], moment += acc[k] * hz;
-                if (hz < 400.0) low += acc[k];
-            }
+            const Centroid c = centroid(mono, sec(1.1), sec(2.5)), cl = centroid(o.l, sec(1.1), sec(2.5)),
+                           cr = centroid(o.r, sec(1.1), sec(2.5));
             std::printf("INFO  Character, %s, one click, CLEAN, DECAY %.2f, other knobs default: T60 %.2f s, tail centroid "
-                        "%.0f Hz (share under 400 Hz %.0f %%), L/R correlation %.2f, mono_loss %+.2f dB\n",
-                        v < 0 ? "SPRINGS 2" : kVoiceName[v], double(decay), m.t60S, moment / sum, 100.0 * low / sum,
-                        m.stereoCorrelation, m.monoLossDb);
+                        "%.0f Hz (share under 400 Hz %.0f %%), L/R correlation %.2f, mono_loss %+.2f dB; left vs right: "
+                        "centroid %.0f / %.0f Hz, level L-R %+.1f dB; drip index (0.05-0.5 s) %.2f\n",
+                        v < 0 ? "SPRINGS 2" : kVoiceName[v], double(decay), m.t60S, c.hz, c.low, m.stereoCorrelation,
+                        m.monoLossDb, cl.hz, cr.hz, cl.powerDb - cr.powerDb, dripIndex(mono, sec(1.0)));
         }
+    // A held chord (the C minor pad, as written), CLEAN, defaults: does it
+    // lean to the higher harmonics (owner on round 1's wide)? Mono and each
+    // side, while it's held (4-8 s).
+    const Buf p = pad(1.0);
+    for (int v = -1; v < kNumVoicings; ++v) {
+        Settings s;
+        if (v < 0) s.springs = 1;
+        else s.voicing = v;
+        const Stereo o = render(s, p);
+        Buf mono(o.l.size());
+        for (size_t i = 0; i < mono.size(); ++i) mono[i] = 0.5f * (o.l[i] + o.r[i]);
+        const Centroid c = centroid(mono, sec(4.0), sec(8.0)), cl = centroid(o.l, sec(4.0), sec(8.0)),
+                       cr = centroid(o.r, sec(4.0), sec(8.0));
+        std::printf("INFO  Held chord, %s, pad, CLEAN, defaults: centroid %.0f Hz (over 1 kHz %.1f %%, under 400 Hz %.0f %%); "
+                    "left / right %.0f / %.0f Hz, level L-R %+.1f dB\n",
+                    v < 0 ? "SPRINGS 2" : kVoiceName[v], c.hz, c.high, c.low, cl.hz, cr.hz, cl.powerDb - cr.powerDb);
+    }
 }
 
 // ---- cost -------------------------------------------------------------------------------------
@@ -841,21 +1008,26 @@ void cost()
     const size_t n = sec(6.0);
     const Buf in = noise(n, 0.3f, 5u);
     constexpr int kRuns = 7;
-    double best[kNumVoicings];
+    // Also at noon TENSION (diffuse runs more stages there; the loosest tank,
+    // the worst case, is unchanged).
+    double best[kNumVoicings], bestNoon[kNumVoicings];
     std::fill(best, best + kNumVoicings, 1e30);
+    std::fill(bestNoon, bestNoon + kNumVoicings, 1e30);
     Buf l(n), r(n);
     for (int run = 0; run < kRuns; ++run)
-        for (int v = 0; v < kNumVoicings; ++v) {
-            rv::Tank t;
-            t.prepare(kFs, 48);
-            Settings s;
-            s.voicing = v, s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = 0.0f;
-            apply(t, s);
-            const auto t0 = std::chrono::steady_clock::now();
-            for (size_t pos = 0; pos < n; pos += 48) t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
-            const auto t1 = std::chrono::steady_clock::now();
-            best[v] = std::min(best[v], std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n));
-        }
+        for (int v = 0; v < kNumVoicings; ++v)
+            for (int noon = 0; noon < 2; ++noon) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings s;
+                s.voicing = v, s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = noon ? 0.5f : 0.0f;
+                apply(t, s);
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < n; pos += 48) t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                double& b = noon ? bestNoon[v] : best[v];
+                b = std::min(b, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(n));
+            }
     for (int v = 0; v < kNumVoicings; ++v) {
         rv::Tank t;
         t.prepare(kFs, 48);
@@ -877,9 +1049,10 @@ void cost()
         float noonL = 0;
         for (int k = 0; k < 3; ++k) noonL = std::max(noonL, t.spring(k).loopDelaySamples());
         std::printf("INFO  Cost, voicing %s, SPRINGS 3 worst case (KICKED DRIVE 1 DECAY/TONE 1 TENSION 0): %.1f ns/sample "
-                    "desktop (%+.1f %% vs voicing 0), %d stages; longest L %.1f ms at TENSION 0, %.1f ms at noon\n",
-                    kVoiceName[v], best[v], 100.0 * (best[v] / best[0] - 1.0), stages, 1000.0 * double(maxL) / kFs,
-                    1000.0 * double(noonL) / kFs);
+                    "desktop (%+.1f %% vs voicing 0), %d stages; at noon TENSION %.1f ns/sample (%+.1f %%); longest L %.1f ms "
+                    "at TENSION 0, %.1f ms at noon\n",
+                    kVoiceName[v], best[v], 100.0 * (best[v] / best[0] - 1.0), stages, bestNoon[v],
+                    100.0 * (bestNoon[v] / bestNoon[0] - 1.0), 1000.0 * double(maxL) / kFs, 1000.0 * double(noonL) / kFs);
     }
     std::printf("INFO  Memory: pool %zu floats at 48 kHz (firmware 30000), every voicing; Tank object %zu bytes\n",
                 rv::Tank::requiredPoolFloats(kFs), sizeof(rv::Tank));
@@ -901,6 +1074,7 @@ int main(int argc, char** argv)
     run("switching", switching);
     run("sustain", sustain);
     run("stability", stability);
+    run("timing", timing);
     run("arrivals", arrivals);
     run("character", character);
     run("cost", cost);

@@ -276,6 +276,13 @@ void Tank::controlTick(bool snap)
                                   : drive::kSusGentleMaxDb;
         s3SeriesFrom_ = snap ? series : s3SeriesTo_;
         s3SeriesTo_   = series;
+#ifndef RV_FIXED_VOICINGS
+        // Coupled Loops (voicings 8, 10): the rotation follows the glide.
+        const CoupleMatrix m = coupleMatrix(s3W_ * v3.couplingAngle, v3.couplingKind);
+        s3CoupleFrom_ = snap ? m : s3CoupleTo_;
+        s3CoupleTo_   = m;
+        s3Coupled_    = v3.couplingKind != springs3::kCoupleNone && (s3WFrom_ > 0.0f || s3W_ > 0.0f);
+#endif
     }
 
     // ATTITUDE Morph: glide the weights linearly toward the switch position
@@ -683,8 +690,22 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
                                      / (sampleRate_ * std::max(drive::kSusGentleDownSeconds,
                                                                drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
     int cap = modes::kStageCap[size_t(mode_)];
+#ifndef RV_FIXED_VOICINGS
+    if (springs3::kPaletteBuilt) {
+        // Today's position (stages, A's Chirp-chain delay): round 2's
+        // reference for the repeat timing (updateSpringSettings).
+        todayStages_ = modes::tensionStages(tension, cap);
+        alignToday_  = modes::pickupChainSamples(base.allpassCoeff * modes::kDetune[0].allpassCoeff,
+                                                 map::tensionTransitionHz(tension) * modes::kDetune[0].transition,
+                                                 todayStages_, sampleRate_);
+    }
+#endif
     if (springs3::kPaletteBuilt && mode_ == 2 && s3W_ > 0.0f) cap += int(std::lround(s3W_ * float(v3.stageCap - cap)));
     activeStages_ = modes::tensionStages(tension, cap);
+    // Diffuse (voicing 9): more stages where TENSION runs fewer than the cap,
+    // so the loosest tank (the CPU worst case) is unchanged.
+    if (springs3::kPaletteBuilt && mode_ == 2 && s3W_ > 0.0f && v3.stageBoost > 0.0f)
+        activeStages_ += int(std::lround(s3W_ * v3.stageBoost * float(cap - activeStages_)));
     // Spring A's Chirp-chain delay at the pickup alignment frequency: B and C
     // line their first echoes up on it (1 Spring = A alone, unchanged).
     alignA_ = modes::pickupChainSamples(base.allpassCoeff * shape_[0].allpassCoeff,
@@ -715,6 +736,10 @@ void Tank::updateSpringSettings(size_t i)
     const float aNoJolt = baseSet_.allpassCoeff * sh.allpassCoeff;
     s.tapOffsetSeconds  = sh.pickupOffset
                        + (alignA_ - modes::pickupChainSamples(aNoJolt, s.transitionHz, s.stages, sampleRate_)) / sampleRate_;
+#ifndef RV_FIXED_VOICINGS
+    if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::kVoicings[size_t(s3Voicing_)].keepTiming)
+        keepTodaysTiming(i, s);
+#endif
     s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
     springSet_[i]       = s;
     springGen_[i]       = baseGen_;
@@ -722,6 +747,112 @@ void Tank::updateSpringSettings(size_t i)
     springTone_[i]      = keyTone_;
     springS3W_[i]       = keyS3W_;
 }
+
+#ifndef RV_FIXED_VOICINGS
+namespace {
+// One-pole low-pass group delay (samples) at kPickupAlignHz, as the Spring's
+// damping filter (dsp::OnePoleLowpass, clamped at 0.45 fs as Spring.cpp).
+float dampingDelayAtAlign(float dampingHz, float sampleRate)
+{
+    dsp::OnePoleLowpass lp;
+    lp.setCutoff(std::min(dampingHz, 0.45f * sampleRate), sampleRate);
+    return lp.groupDelay(std::cos(2.0f * map::kPi * modes::kPickupAlignHz / sampleRate));
+}
+} // namespace
+
+void Tank::keepTodaysTiming(size_t i, SpringSettings& s) const
+{
+    // Round 2 (Springs3Voicing.h keepTiming): the Spring keeps today's
+    // round trip and first echo at kPickupAlignHz. The voicing changed the
+    // time its Chirp chain (+ fC low-pass + damping) takes there by dX
+    // samples: the delay takes dX back, and the pickup moves so the first
+    // echo (chain + tapRatio x L + offset) lands where today's does.
+    const modes::Detune& d = modes::kDetune[i];
+    const float a0     = baseSet_.allpassCoeff * d.allpassCoeff;
+    const float fc0    = map::tensionTransitionHz(keyTension_) * d.transition;
+    const int   m0     = modes::springActive(mode_, int(i)) ? todayStages_ : modes::kIdleStages;
+    const float chain0 = modes::pickupChainSamples(a0, fc0, m0, sampleRate_);
+    const float x0     = chain0 + dampingDelayAtAlign(map::toneDampingHz(keyTone_) * d.damping, sampleRate_);
+    const float aV     = baseSet_.allpassCoeff * shape_[i].allpassCoeff;
+    const float xV     = modes::pickupChainSamples(aV, s.transitionHz, s.stages, sampleRate_)
+                   + dampingDelayAtAlign(s.dampingHz, sampleRate_);
+    const float dX     = x0 - xV;
+    // Today's L (the voicing keeps the detuned length) plus dX, within the
+    // delay memory (the loosest right Spring can't grow: it then repeats up
+    // to ~1 % early, reported by test_springs3 "timing").
+    const float l0   = s.loopDelaySeconds;
+    const float lMax = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
+    s.loopDelaySeconds = std::min(l0 + dX / sampleRate_, std::max(l0, lMax));
+    const float dL   = (s.loopDelaySeconds - l0) * sampleRate_;
+    const float off0 = modes::kPickupOffsetSeconds[i] + (alignToday_ - chain0) / sampleRate_;
+    s.tapOffsetSeconds = off0 + (dX - s.tapRatio * dL) / sampleRate_;
+}
+
+Tank::CoupleMatrix Tank::coupleMatrix(float angle, int kind)
+{
+    CoupleMatrix m{};
+    m[0] = m[4] = m[8] = 1.0f;
+    if (angle == 0.0f || kind == springs3::kCoupleNone) return m;
+    const float c = std::cos(angle), sn = std::sin(angle);
+    if (kind == springs3::kCoupleLeftRight) {
+        // A (0) and B (1) turn into each other; C keeps its own.
+        m[0] = c, m[1] = -sn;
+        m[3] = sn, m[4] = c;
+        return m;
+    }
+    // Rodrigues: a rotation by `angle` about the axis u (springs3::
+    // kCoupleAxis). A lopsided axis, so every blend of the three returns
+    // turns, their sum too: about (1, 1, 1) the sum stayed put, and a
+    // resonance the three Springs share held on while the rest decayed
+    // (test_springs3 "ringing": a steady tone at 680 Hz).
+    const auto& u = springs3::kCoupleAxis;
+    const float k = 1.0f - c;
+    const float cross[3][3] = {{0.0f, -u[2], u[1]}, {u[2], 0.0f, -u[0]}, {-u[1], u[0], 0.0f}};
+    for (int r = 0; r < 3; ++r)
+        for (int col = 0; col < 3; ++col)
+            m[size_t(r * 3 + col)] = (r == col ? c : 0.0f) + sn * cross[r][col] + k * u[r] * u[col];
+    return m;
+}
+#endif
+
+#ifndef RV_FIXED_VOICINGS
+void Tank::processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
+                          float (*wet)[kControlInterval], int tick, int n)
+{
+    // The Springs' inputs as in process() (same order of the WOBBLE calls),
+    // then one sample at a time across the three Springs: each Loop's return
+    // (g x LoopSat(feedback)), turned by the coupling rotation, goes into the
+    // Loops' inputs. The rotation ramps per sample from the last tick's to
+    // this one's (a blend of two rotations never gains: |blend| <= 1).
+    float lFrac[kMaxSprings][kControlInterval], lSamples[kMaxSprings][kControlInterval];
+    float loopIn[kMaxSprings][kControlInterval], high[kMaxSprings][kControlInterval];
+    for (size_t s = 0; s < springs_.size(); ++s) {
+        const float scale = splash::kJoltSpringScale[s];
+        const float* c = clat[s];
+        for (int i = 0; i < n; ++i) {
+            lFrac[s][i]    = scale * jolt[i];
+            lSamples[s][i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]);
+            loopIn[s][i]   = mono[i] + splash::kClatterLoop * c[i];
+            high[s][i]     = mono[i] + splash::kClatterHigh * c[i];
+        }
+    }
+    const float inv = 1.0f / float(kControlInterval);
+    for (int i = 0; i < n; ++i) {
+        const float t = float(tick + i) * inv;
+        float r[kMaxSprings];
+        for (size_t s = 0; s < springs_.size(); ++s)
+            r[s] = springs_[s].coupledReturn(lFrac[s][i], lSamples[s][i], tapSamples[i]);
+        for (size_t s = 0; s < springs_.size(); ++s) {
+            float mixed = 0.0f;
+            for (size_t k = 0; k < springs_.size(); ++k) {
+                const size_t e = s * size_t(kMaxSprings) + k;
+                mixed += (s3CoupleFrom_[e] + t * (s3CoupleTo_[e] - s3CoupleFrom_[e])) * r[k];
+            }
+            wet[s][i] = springs_[s].coupledFinish(loopIn[s][i], high[s][i], mixed);
+        }
+    }
+}
+#endif
 
 modes::StereoMix Tank::modeMix(int mode) const
 {
@@ -885,6 +1016,12 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             const float step = (s3W_ - s3WFrom_) * (1.0f / float(kControlInterval));
             for (int i = 0; i < n; ++i) mono[i] -= (s3WFrom_ + step * float(tick_ + i)) * s3InLp_.process(mono[i]);
         }
+#ifndef RV_FIXED_VOICINGS
+        if (springs3::kPaletteBuilt && s3Coupled_) {
+            processCoupled(mono, clat, jolt, tapSamples, wobA, wet, tick_, n);
+        } else
+#endif
+        {
         for (size_t s = 0; s < springs_.size(); ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
@@ -907,6 +1044,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             }
             springs_[s].process(loopIn, high, lFrac, lSamples, tapSamples, wet[s], n);
             prof::mark(prof::Section(prof::kSpringA + int(s)));
+        }
         }
 
         for (int i = 0; i < n; ++i) {

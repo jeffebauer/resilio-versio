@@ -323,6 +323,15 @@ float Spring::roundTripAt(float freqHz, float cw, float loopSatLatency) const
     return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + loopSatLatency;
 }
 
+#ifndef RV_FIXED_VOICINGS // analysis and the SPRINGS 3 palette's coupled Loops: not in the firmware (Drive.h)
+float Spring::firstEchoSamples(float freqHz) const
+{
+    const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
+    const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
+    return chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + tapRatio_ * lCur_ + tapOffset_;
+}
+#endif
+
 float Spring::loopMagnitude(float freqHz) const
 {
     return loopMagnitudeAt(std::cos(2.0f * map::kPi * freqHz / sampleRate_));
@@ -468,6 +477,63 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     return tap;
 }
 
+#ifndef RV_FIXED_VOICINGS
+// The Loop after its input sum, for the coupled Loops (coupledFinish): the
+// same arithmetic as processLow's, kept as a copy so the firmware's hot loop
+// (processLow, which never sees the coupling) compiles exactly as before.
+void Spring::loopWrite(float x)
+{
+    // Spectral delay filter: M stretched allpass sections, each
+    //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
+    // Schroeder form: v = x - a·D{v}, y = a·v + D{v}.
+    const int   full = int(mPos_);
+    const float frac = mPos_ - float(full);
+    const int   iw   = ringW_;
+    const int   ir0  = (iw - n_) & ringMask_;
+    const int   ir1  = (iw - n_ - 1) & ringMask_;
+    const size_t stride = size_t(ringMask_ + 1);
+    const float a = a_, eta = eta_;
+    // D{v} of a section needs only last sample's state, not this sample's x.
+    // So the next section's D{v} is worked out while this section's x chain
+    // waits on its multiply-adds (the M7 issues in order: without other work
+    // in between, a section was a 7-step chain at ~21 cycles; this way ~14,
+    // firmware/m3_bench.cpp "pipe"). Same arithmetic, same order per value.
+    if (full > 0) {
+        float* ring = rings_;
+        float  d    = eta * (ring[ir0] - thiranY1_[0]) + ring[ir1];
+        for (int j = 0; j < full - 1; ++j) {
+            float* const next = ring + stride;
+            const float  dn   = eta * (next[ir0] - thiranY1_[size_t(j + 1)]) + next[ir1];
+            thiranY1_[size_t(j)] = d;
+            const float v = x - a * d;
+            ring[iw] = v;
+            x = a * v + d;
+            d    = dn;
+            ring = next;
+        }
+        thiranY1_[size_t(full - 1)] = d;
+        const float v = x - a * d;
+        ring[iw] = v;
+        x = a * v + d;
+    }
+    if (frac > 0.0f && full < kMaxStages) {
+        float* ring = rings_ + size_t(full) * stride;
+        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
+        thiranY1_[size_t(full)] = dOut;
+        const float v = x - a * dOut;
+        ring[iw] = v;
+        x += frac * (a * v + dOut - x);
+    }
+    ringW_ = (iw + 1) & ringMask_;
+
+    x = chirpLowpass_.process(x);
+    x = damping_.process(x);
+
+    lowBuf_[lowW_] = x;
+    if (++lowW_ == lowSize_) lowW_ = 0;
+}
+#endif
+
 inline float Spring::processHigh(float in, float lhMod)
 {
     const int   di = int(lhMod);
@@ -501,6 +567,32 @@ inline float Spring::processHigh(float in, float lhMod)
     if (++highW_ == highSize_) highW_ = 0;
     return out;
 }
+
+#ifndef RV_FIXED_VOICINGS
+float Spring::coupledReturn(float lFrac, float lSamples, float tapSamples)
+{
+    // As process(), one sample, up to the Loop's input sum.
+    advanceGlides();
+    cNoise_         = kDenormalNoise * rng_.bipolar();
+    const float mod = advanceModulation() + lFrac;
+    float lMod      = lCur_ * mod + lSamples;
+    const float lMax = float(lowSize_ - 2);
+    lMod = lMod < 2.0f ? 2.0f : (lMod > lMax ? lMax : lMod);
+    const float fb = readLow(lMod);
+    float tapAt = tapRatio_ * lMod + tapOffset_ + tapSamples;
+    tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
+    cTap_ = readLow(tapAt);
+    return g_ * loopSat_.process(fb);
+}
+
+float Spring::coupledFinish(float in, float highIn, float loopReturn)
+{
+    const float x = in + cNoise_;
+    loopWrite(dc_.process(x + loopReturn));
+    const float high = processHigh(highIn + cNoise_, lhCur_);
+    return cTap_ + highPathLevel_ * high;
+}
+#endif
 
 void Spring::process(const float* in, const float* highIn, const float* lFrac, const float* lSamples,
                      const float* tapSamples, float* out, int n)
