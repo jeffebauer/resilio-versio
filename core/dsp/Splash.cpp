@@ -1,5 +1,7 @@
 #include "dsp/Splash.h"
 
+#include "params/DriveVoicing.h"
+
 #include <cmath>
 
 namespace rv::dsp {
@@ -54,8 +56,9 @@ void HitEnvelope::prepare(float sampleRate)
 
 void HitEnvelope::reset()
 {
-    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = 0.0f;
-    invRef2_ = 1.0f / (splash::kLoudRef * splash::kLoudRef);
+    fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = eh_ = hitMax_ = 0.0f;
+    loudRef_ = splash::kLoudRef; // as constructed (the voicing's scale is set again on the next tick)
+    invRef2_ = 1.0f / (loudRef_ * loudRef_);
 }
 
 // ---- Clatter -----------------------------------------------------------------------
@@ -152,7 +155,9 @@ void Splash::prepare(float sampleRate, uint32_t seed)
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
     maxRiseTicks_  = int(splash::kMaxRiseMs * 0.001f * sampleRate / every + 0.5f);
     attW_   = {{-1.0f, -1.0f, -1.0f}};
-    splash_ = driveGain_ = -1.0f;
+    splash_ = driveGain_ = inputGain_ = -1.0f;
+    invInputRef_ = 1.0f / drive::dbToGain(drive::inputGainDb(splash::kSplashRefDrive));
+    setVoicing(voicing_);
     set({{0.0f, 1.0f, 0.0f}}, 0.3f);
     reset();
 }
@@ -177,15 +182,43 @@ void Splash::reset()
     numStrikes_ = 0;
 }
 
-void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain)
+void Splash::setVoicing(int v)
 {
-    if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_) return; // blend + exp only on change
-    attW_      = attitudeWeights;
-    splash_    = splash;
-    driveGain_ = driveGain;
-    voice_     = splash::blendVoice(attitudeWeights);
-    envelope_.set(splash, voice_.clang, voice_.clangShort, voice_.bite, driveGain);
-    detector_.setThresholds(splash::hitThreshold(splash), splash::relThreshold(splash));
+    voicing_ = splash::kVoicingsBuilt ? (v < 0 ? 0 : (v > 3 ? 3 : v)) : splash::kDefaultVoicing;
+    splash_ = -1.0f; // set() recomputes
+}
+
+void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain, float inputGain)
+{
+    if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_ && inputGain == inputGain_)
+        return; // blend + exp only on change
+    attW_       = attitudeWeights;
+    splash_     = splash;
+    driveGain_  = driveGain;
+    inputGain_  = inputGain;
+    voice_      = splash::blendVoice(attitudeWeights);
+    // SPLASH stronger (SplashVoicing.h): a bigger, longer top quarter;
+    // DRIVE-free voicings keep DRIVE 0.8's gain and judge levels as DRIVE
+    // 0.8 would.
+    float dg = driveGain, level = 1.0f, cb = 1.0f, bb = 1.0f;
+    if constexpr (splash::kVoicingsBuilt) {
+        const splash::Strong& sv = splash::strong(voicing_);
+        const bool free = sv.driveFree > 0.0f;
+        if (free) { // eased in over SPLASH 0 .. kFreeRampSplash: SPLASH 0 (the Jolt floor) stays today's
+            dg    = 1.0f;
+            const float full = inputGain * invInputRef_, r = splash * (1.0f / splash::kFreeRampSplash);
+            level = r >= 1.0f ? full : map::expLerp(1.0f, full, r);
+        }
+        cb = splash::topBoost(splash, sv.topClang);
+        bb = splash::topBoost(splash, sv.topBite);
+        const float holdMs = sv.holdMs + sv.topHoldMs * (splash::topBoost(splash, 1.0f) - 1.0f);
+        envelope_.setHold(holdMs > 0.0f ? decayPerStep(holdMs, sampleRate_) : 0.0f);
+        envelope_.setLoudScale(level);
+        clangCeil_ = sv.clangCeil;
+        envelope_.setToday(voice_.clang * driveGain, voice_.clangShort * driveGain);
+    }
+    envelope_.set(splash, voice_.clang * cb, voice_.clangShort * cb, voice_.bite * bb, dg);
+    detector_.setThresholds(splash::hitThreshold(splash) * level, splash::relThreshold(splash));
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
 
@@ -273,7 +306,7 @@ void Splash::controlTick()
 }
 
 void Splash::process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
-                     float* joltLoopOut, int n)
+                     float* joltLoopOut, int n, float* clangTodayOut)
 {
     const int streams = clatterB && clatterC ? Clatter::kStreams : 1;
     for (int i = 0; i < n; ++i) {
@@ -294,8 +327,9 @@ void Splash::process(const float* in, float* clangOut, float* biteOut, float* cl
         if (sinceStroke_ < (1 << 30)) ++sinceStroke_;
         const float h = in[i] - hpLp_.process(in[i]); // one high-pass for both detectors
         detector_.pushHighpassed(h);
-        float clang, bite;
-        envelope_.push(h, clang, bite);
+        float clang, bite, today;
+        envelope_.push(h, clang, bite, today);
+        if (clangTodayOut) clangTodayOut[i] = today;
         if (clangOut) clangOut[i] = clang;
         if (biteOut) biteOut[i] = bite;
         float cy[Clatter::kStreams];

@@ -240,6 +240,16 @@ public:
         transport_.setVoicing(v);
     }
     int wobbleVoicing() const { return transport_.voicing(); }
+    // Renderer / test hook (not a panel control, ADR 0032 "SPLASH stronger",
+    // Proposed): which SPLASH voicing (SplashVoicing.h: 0 = today, 1 = stronger
+    // top, 2 = + DRIVE-free, 3 = bolder). The firmware and plugin never call it
+    // (splash::kDefaultVoicing). Set it after prepare(), before rendering.
+    void setSplashVoicing(int v)
+    {
+        splash_.setVoicing(v);
+        clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate_);
+    }
+    int splashVoicing() const { return splash_.voicing(); }
     // M7 components, read-only (tests, meters).
     const dsp::Splash&    splash() const { return splash_; }
     const dsp::KickVoice& kickVoice() const { return kick_; }
@@ -359,6 +369,9 @@ private:
     dsp::Splash                        splash_;
     dsp::OnePoleLowpass                clangLp_{}; // the Clang's split at splash::kClangHz (ADR 0032)
     float splashDrive_ = 1.0f;                        // DRIVE's gain on the Clang / Bite (splash::splashDriveGain)
+    float clangEnv_ = 0.0f, clangAtt_ = 1.0f, clangRel_ = 1.0f; // the Clang's ceiling: peak follower of the springs' input highs
+    float clangCeilPush_ = 1.0f; // its credit for the pickups' push (splash::kCeilPushShare)
+    float splashInput_ = 1.0f;                        // the INPUT gain G, for the Splash (SPLASH stronger voicings)
     float dcNoon_ = 0.4f, dcRef_ = 0.75f;             // driveCurve at noon and at splash::kSplashRefDrive
     dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
