@@ -18,6 +18,7 @@ PUBLISH=0
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "Run on main." >&2; exit 1; }
 git diff --quiet HEAD -- core firmware plugin host CMakeLists.txt || { echo "Uncommitted changes in code: commit first." >&2; exit 1; }
 SHA="$(git rev-parse --short HEAD)"
+N="$(git rev-list --count "$SHA")"; PLUGIN_VERSION="1.$((N / 100)).$((N % 100))"   # always goes up (plugin/CMakeLists.txt)
 TAG="v$(date +%Y.%m.%d)-$SHA"
 OUT="dist/release/$TAG"
 mkdir -p "$OUT"
@@ -35,7 +36,7 @@ WT=".claude/worktrees/share"
 if [ -d "$WT" ]; then git -C "$WT" checkout -q --detach "$SHA"; else git worktree add -q --detach "$WT" "$SHA"; fi
 [ -L "$WT/libs/JUCE" ] || { rmdir "$WT/libs/JUCE" 2>/dev/null || true; ln -s "$REPO/libs/JUCE" "$WT/libs/JUCE"; }
 cmake -S "$WT" -B "$WT/build-share" -G Ninja -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DRV_INSTALL_PLUGIN=OFF >/dev/null
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64" -DRV_INSTALL_PLUGIN=OFF "-DRV_PLUGIN_VERSION=$PLUGIN_VERSION" >/dev/null
 cmake --build "$WT/build-share" --target ResilioVersio_VST3 ResilioVersio_AU >/dev/null
 ART="$WT/build-share/plugin/ResilioVersio_artefacts/Release"
 rm -rf "$OUT/Resilio Versio.vst3" "$OUT/Resilio Versio.component"
