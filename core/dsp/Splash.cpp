@@ -1,4 +1,5 @@
 #include "dsp/Splash.h"
+#include "dsp/SizeOpt.h"
 
 #include "params/DriveVoicing.h"
 
@@ -23,7 +24,7 @@ float smoothstep(float t) { return t * t * (3.0f - 2.0f * t); }
 
 // ---- HitDetector -----------------------------------------------------------------
 
-void HitDetector::prepare(float sampleRate)
+RV_SIZE_OPT void HitDetector::prepare(float sampleRate)
 {
     hpLp_.setCutoff(splash::kDetectorHpHz, sampleRate);
     fastAtt_ = onePole(splash::kFastAttackMs, sampleRate);
@@ -36,7 +37,7 @@ void HitDetector::prepare(float sampleRate)
     reset();
 }
 
-void HitDetector::reset()
+RV_SIZE_OPT void HitDetector::reset()
 {
     hpLp_.reset();
     fast_ = slow_ = dMax_ = lastD_ = prog_ = 0.0f;
@@ -44,7 +45,7 @@ void HitDetector::reset()
 
 // ---- HitEnvelope -------------------------------------------------------------------
 
-void HitEnvelope::prepare(float sampleRate)
+RV_SIZE_OPT void HitEnvelope::prepare(float sampleRate)
 {
     fa_  = onePole(splash::kEnvFastAttackMs, sampleRate);
     fr_  = onePole(splash::kEnvFastReleaseMs, sampleRate);
@@ -54,7 +55,7 @@ void HitEnvelope::prepare(float sampleRate)
     reset();
 }
 
-void HitEnvelope::reset()
+RV_SIZE_OPT void HitEnvelope::reset()
 {
     fast_ = slow_ = hiFast_ = lp_ = e_ = short_ = eh_ = hitMax_ = 0.0f;
     loudRef_ = splash::kLoudRef; // as constructed (the voicing's scale is set again on the next tick)
@@ -63,7 +64,7 @@ void HitEnvelope::reset()
 
 // ---- Clatter -----------------------------------------------------------------------
 
-void Clatter::prepare(float sampleRate, uint32_t seed)
+RV_SIZE_OPT void Clatter::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_ = sampleRate;
     seed_       = seed;
@@ -73,7 +74,7 @@ void Clatter::prepare(float sampleRate, uint32_t seed)
     reset();
 }
 
-void Clatter::reset()
+RV_SIZE_OPT void Clatter::reset()
 {
     for (auto& f : hp_) f.reset();
     for (auto& f : lp_) f.reset();
@@ -98,7 +99,7 @@ void Clatter::impact(float amplitude, float decayMs)
 
 // ---- Jolt ----------------------------------------------------------------------------
 
-void Jolt::prepare(float sampleRate, uint32_t seed)
+RV_SIZE_OPT void Jolt::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_ = sampleRate;
     seed_       = seed;
@@ -108,7 +109,7 @@ void Jolt::prepare(float sampleRate, uint32_t seed)
     reset();
 }
 
-void Jolt::reset()
+RV_SIZE_OPT void Jolt::reset()
 {
     target_ = j_ = 0.0f;
     rng_.seed(seed_);
@@ -126,7 +127,7 @@ void Jolt::set(float decayMs, float loopFrac, float allpass, float rattleDepth)
     rattleDepth_ = rattleDepth;
 }
 
-void Jolt::tick(float tankLevel)
+RV_SIZE_OPT void Jolt::tick(float tankLevel)
 {
     rPos_ += rStep_;
     if (rPos_ >= 1.0f) {
@@ -142,7 +143,7 @@ void Jolt::tick(float tankLevel)
 
 // ---- Splash ----------------------------------------------------------------------------
 
-void Splash::prepare(float sampleRate, uint32_t seed)
+RV_SIZE_OPT void Splash::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_ = sampleRate;
     seed_       = mixSeed(seed);
@@ -162,7 +163,7 @@ void Splash::prepare(float sampleRate, uint32_t seed)
     reset();
 }
 
-void Splash::reset()
+RV_SIZE_OPT void Splash::reset()
 {
     hpLp_.reset();
     detector_.reset();
@@ -188,7 +189,7 @@ void Splash::setVoicing(int v)
     splash_ = -1.0f; // set() recomputes
 }
 
-void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain, float inputGain)
+RV_SIZE_OPT void Splash::set(const std::array<float, 3>& attitudeWeights, float splash, float driveGain, float inputGain)
 {
     if (attitudeWeights == attW_ && splash == splash_ && driveGain == driveGain_ && inputGain == inputGain_)
         return; // blend + exp only on change
@@ -230,7 +231,7 @@ void Splash::strike(float strength, int sampleOffset)
     ++numStrikes_;
 }
 
-void Splash::fire()
+RV_SIZE_OPT void Splash::fire()
 {
     const float s = strength_;
     // The Clatter is the Kick's crash only (ADR 0032): a hit's splash is its
@@ -263,7 +264,7 @@ void Splash::fire()
     }
 }
 
-void Splash::controlTick()
+RV_SIZE_OPT void Splash::controlTick()
 {
     const float h = detector_.take();
     hit_ = h;

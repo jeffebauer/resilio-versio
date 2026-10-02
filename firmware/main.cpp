@@ -584,7 +584,8 @@ int main()
             for (int k = 0; k < kNumSections; ++k) {
                 AppendStr(p, end, " ");
                 AppendStr(p, end, kSectionNames[k]);
-                AppendFixed1(p, end, r.samples ? int(r.split[k] / (uint64_t(r.samples) * 10u)) : 0, 5);
+                // (float, not a 64-bit divide: __aeabi_uldivmod is ~850 B of flash)
+                AppendFixed1(p, end, r.samples ? int(float(r.split[k]) / (float(r.samples) * 10.0f)) : 0, 5);
             }
             AppendStr(p, end, "  (% of budget)\r\n");
             // The worst single block per section (% of one block's budget): what

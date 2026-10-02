@@ -64,7 +64,9 @@ Tank::~Tank() { releaseOwnedPool(); }
 
 void Tank::releaseOwnedPool()
 {
+#ifndef RV_FIXED_VOICINGS // the firmware hands the Tank its pool (main.cpp): no malloc / free linked (flash)
     std::free(ownedPool_);
+#endif
     ownedPool_   = nullptr;
     ownedFloats_ = 0;
 }
@@ -93,7 +95,7 @@ int diffBufSize(float sampleRate, size_t s, size_t k)
     const auto& t = tankv::tuning();
     return int(std::ceil(t.diffMs[k] * t.diffSpringScale[s] * 0.001f * sampleRate)) + 2;
 }
-size_t diffFloats(float sampleRate)
+RV_SIZE_OPT size_t diffFloats(float sampleRate)
 {
     size_t n = 0;
     for (size_t s = 0; s < size_t(Tank::kMaxSprings); ++s)
@@ -111,7 +113,7 @@ size_t wideFloats(float sampleRate)
     for (size_t k = 0; k < 3; ++k) n += size_t(wideBufSize(sampleRate, k));
     return n;
 }
-size_t layoutFloats(float sampleRate, int loopStages, bool sweep, bool diffusers, bool wide)
+RV_SIZE_OPT size_t layoutFloats(float sampleRate, int loopStages, bool sweep, bool diffusers, bool wide)
 {
     size_t n = size_t(Tank::kMaxSprings) * Spring::requiredFloats(sampleRate, loopStages);
     for (size_t i = 0; i < kDiffuserSeconds.size(); ++i) n += size_t(diffuserSize(sampleRate, i));
@@ -132,25 +134,27 @@ int poolLoopStages() { return Spring::kMaxStages; }
 #endif
 } // namespace
 
-size_t Tank::requiredPoolFloats(float sampleRate)
+RV_SIZE_OPT size_t Tank::requiredPoolFloats(float sampleRate)
 {
     return layoutFloats(sampleRate, poolLoopStages(), kPoolSweep, kPoolDiffusers, kPoolWide);
 }
 
-size_t Tank::poolFloatsForVoicing(float sampleRate, int v)
+RV_SIZE_OPT size_t Tank::poolFloatsForVoicing(float sampleRate, int v)
 {
     return layoutFloats(sampleRate, loopMaxStages(v), tankv::hasSweep(v), tankv::hasDiffusion(v), tankv::hasWide(v));
 }
 
 RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize)
 {
+#ifndef RV_FIXED_VOICINGS
     const size_t need = requiredPoolFloats(sampleRate);
     if (need > ownedFloats_) {
         releaseOwnedPool();
-        // malloc (not new/vector): no exceptions on the Firmware, returns null on failure.
+        // malloc (not new/vector): no exceptions, returns null on failure.
         ownedPool_ = static_cast<float*>(std::malloc(need * sizeof(float)));
         if (ownedPool_) ownedFloats_ = need;
     }
+#endif // the firmware passes its own pool (below); without one the Tank stays silent
     prepare(sampleRate, maxBlockSize, ownedPool_, ownedFloats_);
 }
 
@@ -231,7 +235,6 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
 #endif
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
-    for (auto& f : gmShHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     lcShHp_.setHighpass(tankv::tuning().lcHpHz, tankv::tuning().lcHpQ, sampleRate);
     lcShShelf_.setLowShelf(tankv::tuning().lcShelfHz, tankv::tuning().lcShelfDb, sampleRate);
     tdEvenHp_.setHighpass(std::max(tankv::tuning().tdEvenHpHz, 1.0f), 0.7071f, sampleRate);
@@ -245,7 +248,7 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     reset();
 }
 
-void Tank::bindPool(float* pool)
+RV_SIZE_OPT void Tank::bindPool(float* pool)
 {
     float* p = pool;
     const int loopStages = poolLoopStages();
@@ -293,7 +296,7 @@ void Tank::setTankVoicing([[maybe_unused]] int v)
 #endif
 }
 
-void Tank::applyTankVoicing()
+RV_SIZE_OPT void Tank::applyTankVoicing()
 {
 #if RV_TANKV_BUILT >= 1
     const auto& t = tankv::tuning();
@@ -348,7 +351,7 @@ float Tank::loopDampingScale() const
     return 1.0f;
 }
 
-modes::StereoMix Tank::stereoMixFor(int mode) const
+RV_SIZE_OPT modes::StereoMix Tank::stereoMixFor(int mode) const
 {
     // The SPRINGS 3 voicing's mix (modeMix), then the tank voicing's width.
     modes::StereoMix m = modeMix(mode);
@@ -399,7 +402,6 @@ RV_SIZE_OPT void Tank::reset()
     gmGain_ = 1.0f;
     lcShHp_.reset();
     lcShShelf_.reset();
-    for (auto& f : gmShHp_) f.reset();
     gmShAccIn_ = gmShAccOut_ = gmShIn_ = gmShOut_ = 0.0f;
     tdEvenHp_.reset();
     tdDarkLp_.reset();
@@ -760,6 +762,8 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                 // The same reading on the raw input (before DRIVE: KICKED's
                 // own low products, which the low cut removes, made the makeup
                 // grow with DRIVE): the smaller of the two.
+                // The raw input above ~90 Hz (the Excitation trim's high-
+                // passes), into and out of a copy of the low cut.
                 gmShIn_ += excCoeff_ * (gmShAccIn_ * kInv - gmShIn_);
                 gmShOut_ += excCoeff_ * (gmShAccOut_ * kInv - gmShOut_);
                 l = std::min(l, std::log(gmShIn_ / std::max(gmShOut_, 1.0e-12f)));
@@ -1120,7 +1124,7 @@ void Tank::updateSpringSettings(size_t i)
 namespace {
 // One-pole low-pass group delay (samples) at kPickupAlignHz, as the Spring's
 // damping filter (dsp::OnePoleLowpass, clamped at 0.45 fs as Spring.cpp).
-float dampingDelayAtAlign(float dampingHz, float sampleRate)
+RV_SIZE_OPT float dampingDelayAtAlign(float dampingHz, float sampleRate)
 {
     dsp::OnePoleLowpass lp;
     lp.setCutoff(std::min(dampingHz, 0.45f * sampleRate), sampleRate);
@@ -1222,13 +1226,13 @@ void Tank::processCoupled(const float* mono, float* const* clat, const float* jo
     }
 }
 
-modes::StereoMix Tank::modeMix(int mode) const
+RV_SIZE_OPT modes::StereoMix Tank::modeMix(int mode) const
 {
     return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday ? springs3::voicing(s3Voicing_).mix
                                                         : modes::stereoMix(mode);
 }
 
-float Tank::modeTrim(int mode) const
+RV_SIZE_OPT float Tank::modeTrim(int mode) const
 {
     return springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday
                ? modes::kModeTrim[size_t(mode)] * springs3::voicing(s3Voicing_).trim
@@ -1260,7 +1264,7 @@ RV_SIZE_OPT void Tank::updateShapes()
     }
 }
 
-void Tank::process(const float* inL, const float* inR, float* outL, float* outR, int numSamples)
+RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* outL, float* outR, int numSamples)
 {
     if (!ok_) { // no memory: stay a clean passthrough rather than fail silently into noise
         for (int i = 0; i < numSamples; ++i) {
@@ -1299,6 +1303,13 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // carries), full band and weighted like the whole chain's response.
             float w = x - excHp_[0].process(x);
             w -= excHp_[1].process(w);
+#if RV_TANKV_BUILT >= 7
+            if (tankv::hasShipFixes(tankVoicing_)) { // 7: the low cut's makeup, read on the raw input too (controlTick)
+                const float sh = lcShShelf_.process(lcShHp_.process(w)); // above ~90 Hz, as its followers
+                gmShAccIn_ += w * w;
+                gmShAccOut_ += sh * sh;
+            }
+#endif
             w = excLp_[1].process(excLp_[0].process(w));
             excAccBroad_ += x * x;
             excAccBand_ += w * w;
@@ -1397,16 +1408,6 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 go -= gmHp_[3].process(go);
                 gmAccIn_ += gi * gi;
                 gmAccOut_ += go * go;
-                if (tankv::hasShipFixes(tankVoicing_)) { // ... and on the raw input (controlTick)
-                    const float si = xin[i];
-                    const float so = lcShShelf_.process(lcShHp_.process(si));
-                    float hi = si - gmShHp_[0].process(si);
-                    hi -= gmShHp_[1].process(hi);
-                    float ho = so - gmShHp_[2].process(so);
-                    ho -= gmShHp_[3].process(ho);
-                    gmShAccIn_ += hi * hi;
-                    gmShAccOut_ += ho * ho;
-                }
 #else
                 (void)in;
 #endif

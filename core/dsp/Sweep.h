@@ -18,6 +18,7 @@
 // from the caller's pool.
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <algorithm>
 #include <cmath>
@@ -40,7 +41,7 @@ public:
         return maxStages > 0 ? size_t(maxStages) * size_t(ringSize(minFcHz, sampleRate)) : 0;
     }
 
-    void prepare(float sampleRate, float* pool, int maxStages, float minFcHz)
+    RV_SIZE_OPT void prepare(float sampleRate, float* pool, int maxStages, float minFcHz)
     {
         sampleRate_ = sampleRate;
         rings_      = pool;

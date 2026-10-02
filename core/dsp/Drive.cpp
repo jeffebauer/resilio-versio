@@ -1,11 +1,12 @@
 #include "dsp/Drive.h"
+#include "dsp/SizeOpt.h"
 
 #include <algorithm>
 #include <cmath>
 
 namespace rv::dsp {
 
-drive::Voice blendVoice(const std::array<float, 3>& w)
+RV_SIZE_OPT drive::Voice blendVoice(const std::array<float, 3>& w)
 {
     using V = drive::Voice;
     static constexpr float V::*kFields[] = {
@@ -36,7 +37,7 @@ DriveInSettings driveInSettings(const drive::Voice& v, float drive)
 
 // ---- DriveIn ------------------------------------------------------------------
 
-void DriveIn::prepare(float sampleRate)
+RV_SIZE_OPT void DriveIn::prepare(float sampleRate)
 {
     sampleRate_ = sampleRate;
     dc_.setCutoff(drive::kDriveDcHz, sampleRate);
@@ -46,7 +47,7 @@ void DriveIn::prepare(float sampleRate)
     reset();
 }
 
-void DriveIn::reset()
+RV_SIZE_OPT void DriveIn::reset()
 {
     hp_.reset();
     lp1_.reset();
@@ -160,7 +161,7 @@ void Tilt::set(float tone, bool snap, int interval)
 
 // ---- DriveOut -----------------------------------------------------------------
 
-void DriveOut::prepare(float sampleRate)
+RV_SIZE_OPT void DriveOut::prepare(float sampleRate)
 {
     sampleRate_ = sampleRate;
     hp_.setCutoff(drive::kOutHpHz, sampleRate);
@@ -172,7 +173,7 @@ void DriveOut::prepare(float sampleRate)
     reset();
 }
 
-void DriveOut::reset()
+RV_SIZE_OPT void DriveOut::reset()
 {
     os_.reset();
     fluxPre_.reset();

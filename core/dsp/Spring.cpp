@@ -44,18 +44,18 @@ int nextPow2(int v)
 // kJoltMaxLoopFrac of L) and WOBBLE (at most wobble::maxDepthSamples()).
 constexpr float kLongestLoopSeconds = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
 constexpr float kJoltMaxLoopFrac    = 0.0125f;
-int lowDelaySize(float sampleRate)
+RV_SIZE_OPT int lowDelaySize(float sampleRate)
 {
     return int(std::ceil(kLongestLoopSeconds * sampleRate * (1.02f + kJoltMaxLoopFrac)))
          + int(std::ceil(wobble::maxDepthSamples(sampleRate))) + 8;
 }
-int highDelaySize(float sampleRate)
+RV_SIZE_OPT int highDelaySize(float sampleRate)
 {
     return int(std::ceil(Spring::kHighDelayRatio * kLongestLoopSeconds * sampleRate * 1.02f)) + 8;
 }
 // Each stretched section's ring holds K+1 samples; K is largest at the lowest
 // (detuned) fC.
-int ringSize(float sampleRate)
+RV_SIZE_OPT int ringSize(float sampleRate)
 {
     const float kMax = map::stretchK(map::kTransitionMinHz * modes::kMinTransitionDetune, sampleRate);
     return nextPow2(int(std::ceil(kMax * 1.1f)) + 3);
@@ -63,7 +63,7 @@ int ringSize(float sampleRate)
 
 } // namespace
 
-size_t Spring::requiredFloats(float sampleRate, [[maybe_unused]] int maxStages)
+RV_SIZE_OPT size_t Spring::requiredFloats(float sampleRate, [[maybe_unused]] int maxStages)
 {
 #if RV_TANKV_BUILT >= 1
     const int rings = std::clamp(maxStages, 1, kMaxStages);
@@ -385,7 +385,7 @@ float Spring::t60AtSeconds(float freqHz) const
     return -3.0f * roundTripSamples(freqHz) / (sampleRate_ * std::log10(perTrip));
 }
 
-void Spring::setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c)
+RV_SIZE_OPT void Spring::setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c)
 {
 #if RV_TANKV_BUILT >= 3
     numFbDiff_   = std::clamp(n, 0, kMaxFbDiffusers);

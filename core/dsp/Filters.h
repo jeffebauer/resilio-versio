@@ -4,6 +4,7 @@
 // per-sample process() calls never do.
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <cmath>
 #include <cstdint>
@@ -62,7 +63,7 @@ struct Biquad {
     void setLowpass(float hz, float q, float sampleRate) { design(hz, q, sampleRate, true); }
     void setHighpass(float hz, float q, float sampleRate) { design(hz, q, sampleRate, false); }
     // RBJ low shelf, shelf slope 1 (Tank voicing 4, params/TankVoicing.h).
-    void setLowShelf(float hz, float gainDb, float sampleRate)
+    RV_SIZE_OPT void setLowShelf(float hz, float gainDb, float sampleRate) // set-up only
     {
         const float A = std::exp(gainDb * (2.302585093f / 40.0f)); // 10^(dB/40); exp, not pow, for the Firmware's flash
         const float w = 2.0f * map::kPi * hz / sampleRate;

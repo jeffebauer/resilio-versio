@@ -14,6 +14,7 @@
 // step. Filter coefficients change per tick in small steps (inaudible).
 
 #include "dsp/Filters.h"
+#include "dsp/SizeOpt.h"
 #include "dsp/Oversampler.h"
 #include "params/DriveVoicing.h"
 
@@ -217,7 +218,7 @@ private:
 // ---- Tilt: TONE's pre-tank tilt EQ (DriveVoicing.h "TONE tilt") ------------------
 class Tilt {
 public:
-    void prepare(float sampleRate)
+    RV_SIZE_OPT void prepare(float sampleRate)
     {
         split_.setCutoff(drive::kTiltPivotHz, sampleRate);
         ceiling_.setCutoff(std::min(drive::kTiltCeilingHz, 0.45f * sampleRate), sampleRate);
@@ -314,7 +315,7 @@ class LoopSat {
 public:
     // Designs the flux shelves. Without it (standalone tests) they pass
     // everything unchanged.
-    void prepare(float sampleRate)
+    RV_SIZE_OPT void prepare(float sampleRate)
     {
         fluxPre_.setHighShelf(drive::kLoopFluxHz, -drive::kLoopFluxDb, sampleRate);
         fluxPost_ = fluxPre_;

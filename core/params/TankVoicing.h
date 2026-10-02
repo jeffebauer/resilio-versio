@@ -355,12 +355,12 @@ struct Tuning {
 inline float toneDarkWeight(float tone, float curve)
 {
     const float u = 1.0f - 2.0f * tone;
-    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::pow(u, curve);
+    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::exp(curve * std::log(u)); // u^curve (exp, not pow: flash)
 }
 inline float toneBrightWeight(float tone, float curve)
 {
     const float u = 2.0f * tone - 1.0f;
-    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::pow(u, curve);
+    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::exp(curve * std::log(u));
 }
 
 #ifdef RV_FIXED_VOICINGS

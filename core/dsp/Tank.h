@@ -524,10 +524,10 @@ private:
     // ~90 Hz, slow followers; gain, 1 = none).
     std::array<dsp::OnePoleLowpass, 4> gmHp_{};
     float gmAccIn_ = 0.0f, gmAccOut_ = 0.0f, gmIn_ = 0.0f, gmOut_ = 0.0f, gmGain_ = 1.0f;
-    // ... read a second time on the raw input through a copy of the low cut
-    // (the material, before DRIVE colours it); the makeup is the smaller.
+    // ... read a second time on the raw input above ~90 Hz (the Excitation
+    // trim's high-passes), through a copy of the low cut: the material before
+    // DRIVE colours it; the makeup is the smaller.
     dsp::Biquad lcShHp_{}, lcShShelf_{};
-    std::array<dsp::OnePoleLowpass, 4> gmShHp_{};
     float gmShAccIn_ = 0.0f, gmShAccOut_ = 0.0f, gmShIn_ = 0.0f, gmShOut_ = 0.0f;
     dsp::Biquad tdEvenHp_{};          // the coil's square term, high-passed (tdEvenHpHz)
     float tdTone_   = -1.0f;          // TONE the coil and pickup corners were set for
