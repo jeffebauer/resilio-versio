@@ -14,7 +14,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 **Plugin in Ableton:** `8901296`, version **1.3.6**, a **candidate, not merged** (installed 2 Oct, evening): **Wellspring F** (your round 4 pick) on top of SPRINGS 3 coupled, Big Knob TONE, SPLASH C and everything before; AU validated. **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and use a **fresh** Resilio Versio. If you don't like it, Claude reinstalls `2ed84f2` (main, v1.2.89).
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin, Versio firmware, read-me. **New, for A/B:** [candidate F, v2026.10.02-cef6a77](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F) (pre-release, plugin only, no firmware yet): installs as **"Resilio Versio F"** next to the 1 Oct "Resilio Versio", so your friend can put both on return tracks and compare; its read-me says what changed and what to listen for. Download the zip there to send. Claude makes the next one with `tools/make_release.sh --publish` (or `--candidate <ref> <label>`).
 
 ## Now (suggested order)
 
@@ -80,6 +80,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Follow `docs/recording-recipe.md` §5b: same patch and base INPUT as session 1; takes H–N (a quiet and a hot sweep, the sweep into each tank alone, octave tone bursts, pink noise, held tones, the pad, 30 s of silence). First run `python3 tools/make_stimulus.py` and `python3 tools/make_sustain_stimulus.py` for the new files. Then tell Claude: it tells us the transducers' exact treble roll-off, how the input changes with level, the full stereo picture, per-octave darkening, and the hiss
 
 ### Friends' feedback
+- [ ] Send your friend the candidate F zip (link above, in Share package). They compare "Resilio Versio F" with the 1 Oct "Resilio Versio" they already have
 - When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
