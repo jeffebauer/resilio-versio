@@ -1059,9 +1059,14 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the input coil (the Kick's knock bypasses it)
                 float u = x + c * (x - lo);
-                if (tdEven != 0.0f) { // the coil's even-order colour (its slow average out: no thump)
-                    const float u2 = u * u / (1.0f + 4.0f * u * u); // bounded: at most tdEven / 4 on loud input
-                    u += tdEven * (u2 - tdEvenAvg_.process(u2));
+                if (tdEven != 0.0f) { // the coil's even-order colour
+                    // A plain square (only doubled frequencies: nothing above
+                    // Nyquist for what DriveIn lets through) less its slow
+                    // average (no thump), at a gain that eases off as the
+                    // slow level rises (so loud input isn't torn up).
+                    const float u2  = u * u;
+                    const float avg = tdEvenAvg_.process(u2);
+                    u += tdEven / (1.0f + tankv::tuning().tdEvenEase * avg) * (u2 - avg);
                 }
                 mono[i] = tdIn_.process(u) + kickScale * kickLoop[i];
                 continue;

@@ -214,11 +214,14 @@ struct Tuning {
     float tdOutHz = 4500.0f;
     float tdOutQ  = 0.67f;
     // The coil's even-order colour (magnetic, transformer-like: the
-    // Wellspring's sweep take shows 2nd harmonic -25 dB, 3rd -36): u + tdEven
-    // x (q - its slow average, 20 Hz), q = u^2 / (1 + 4 u^2) (bounded on loud
-    // input), on what enters the Springs, before
-    // the coil's low-pass (which also takes the doubled highs). 0 = none.
-    float tdEven  = 0.85f;
+    // Wellspring's sweep take shows 2nd harmonic -25 dB, 3rd -36): u + g x
+    // (u^2 - m), m = the slow average of u^2 (20 Hz), g = tdEven / (1 +
+    // tdEvenEase x m): a plain square (only doubled frequencies, nothing
+    // aliases), no thump, easing off on loud input (at DRIVE 1 its
+    // intermodulation otherwise reached -47 dB in test_drive's aliasing
+    // check). On what enters the Springs, before the coil's low-pass. 0 = none.
+    float tdEven     = 1.1f;
+    float tdEvenEase = 32.0f;
     // Inside the tank: the Loop's damping cutoff x tdDampingScale and the
     // high path's T60 at tdHighT60Ratio x DECAY's (today 1 / 0.45), so the
     // highs the transducers let through last (the repeats darken slowly).
@@ -236,9 +239,9 @@ struct Tuning {
     // allpasses, wideDecorrMs, coefficient wideDecorrCoeff), so its echoes
     // are smeared across both ears instead of panned. wideSide is the side
     // gain k (today's 2-Spring k 0.36; 3 Springs x wideSide3 / wideSide).
-    float wideW     = 0.55f;
-    float wideSide  = 0.45f;
-    float wideSide3 = 0.5f;
+    float wideW     = 0.7f;
+    float wideSide  = 0.38f;
+    float wideSide3 = 0.45f;
     float wideDecorrMs[3] = {1.7f, 2.9f, 4.3f};
     float wideDecorrCoeff = 0.5f;
 
