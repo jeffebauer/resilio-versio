@@ -2,13 +2,13 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 2 Oct 2026, session 6 (manual, starting points and the friends' read-me refreshed for the new sound; SPRINGS 3 round 2 and Wellspring round 4 still waiting for your listen)
+**Last updated:** 2 Oct 2026, session 6 (SPRINGS 3 coupled merged; your Wellspring pick F (+ gentler) being built for merging; docs refreshed)
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | M0 passed. Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. **Run 14 is ready** (§0): measures everything since (bipolar WOBBLE, sustain trim, Big Knob, SPLASH C) |
+| M0 hardware · M3 CPU | M0 passed. Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. **Next: run 15** once Wellspring F is merged, measuring everything since run 13 at once (run 14 skipped unless the red LEDs bother you sooner) |
 | Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_a8c64c7.bin` (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE; 91 % of flash; also the first release with the engine built at power-up and the USB-host stub). Do CPU run 14 first (§0), then flash this and the click check |
-| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE, sustain trim, Big Knob TONE and SPLASH C merged (1–2 Oct). Waiting on your picks: SPRINGS 3 round 2 (§3b), Wellspring round 4 (§3c) |
+| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE, sustain trim, Big Knob TONE, SPLASH C and **SPRINGS 3 coupled** merged (1–2 Oct). Wellspring round 4 pick F being built for merging (Claude) |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points (`docs/manual.md`, `docs/presets.md`) up to date with the sound as of `a8c64c7` |
 
@@ -50,7 +50,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
 - [x] **Listened (2 Oct):** a different-sized tank muddles TENSION and DECAY (long, pan); liked the pan tank's character but couldn't tell whether it was the shorter tank or the brighter, higher-chirp sound; wide sounded close to today but lopsided, leaning to a higher harmonic on chords
 - [x] Round 2 built (2 Oct): six versions, all at today's repeat timing (first echo and spacing within 0.5 ms), no extra memory, no ringing, the Howl unchanged
-- [ ] **Listen to SPRINGS 3 round 2 (≈15 min):** open `renders/springs3_palette2/index.html` (level-matched). **A** SPRINGS 2, **B** position 3 today, **C** pan brighter only (less bass, airier tail), **D** pan higher chirp only (higher, quicker, metallic boing), **E** mixed wire gauges (a small cluster of boings per hit, balanced L/R), **F** coupled (hits blur into a bloom instead of separate drips), **G** diffuse (smoother, softer echoes), **H** your cross-fed wide (bright left / today centre / dark right trading energy: roughly halves the lean, no upward pull on chords). C vs D answers "brightness or chirp?". Which makes position 3 its own thing?
+- [x] **Listen to SPRINGS 3 round 2 (≈15 min):** open `renders/springs3_palette2/index.html` (level-matched). **A** SPRINGS 2, **B** position 3 today, **C** pan brighter only (less bass, airier tail), **D** pan higher chirp only (higher, quicker, metallic boing), **E** mixed wire gauges (a small cluster of boings per hit, balanced L/R), **F** coupled (hits blur into a bloom instead of separate drips), **G** diffuse (smoother, softer echoes), **H** your cross-fed wide (bright left / today centre / dark right trading energy: roughly halves the lean, no upward pull on chords). C vs D answers "brightness or chirp?". Which makes position 3 its own thing?
 - [x] SPLASH built in the cloud (1 Oct)
 - [x] **SPLASH listened (2 Oct): C** (stronger top + works with DRIVE down) on every click and hit panel and most skank. **Merged** (SPEC v1.0.25). Not yet in Ableton or on the Versio: next install / release
 
@@ -61,7 +61,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Wellspring fit round 3 built (2 Oct): no ringing in any version, Howl unchanged
 - [x] **Round 3 listened (2 Oct):** still different: the Wellspring's echoes are further apart; it's more muted (less highs), wider, more diffuse; its repeats darken while ours sound metallic and bright. Measured: Claude's settings search had matched the Wellspring's fast high-only arcs (36 ms) instead of its main echoes (65 ms), so every comparison used TENSION far too tight: fixed, the closest is **TENSION noon**. And ours is ~17 dB brighter in the first 60 ms after a hit at every knob setting: the Wellspring's coil-and-magnet transducers filter the treble going in and coming out; ours barely do
 - [x] Round 4 built (2 Oct), fitted to your sweep recording (take D): the transducers bring the onset brightness to your Wellspring's exactly (−25.7 dB), the treble falls steeply above ~3 kHz, the coil's warm even-order colour matches (2nd harmonic −25 dB); the tail as wide as yours with no flicker; the low end cut to your Wellspring's curve
-- [ ] **Listen (≈10 min):** open `renders/wellspring_fit4/compare/index.html`. One panel per sound, buttons switching in sync: **A your Wellspring**, **B** Resilio today, **C** round 3's best (sweep + stereo together + diffusion), **D** + transducers, **E** + wide, **F** + gentler low end. Level-matched, corrected settings (TENSION noon, TONE 2 o'clock). "My pick" per panel, then "Copy results for Claude". (Round 3's page `renders/wellspring_fit3/compare/` is now reference only)
+- [x] **Listen (≈10 min):** open `renders/wellspring_fit4/compare/index.html`. One panel per sound, buttons switching in sync: **A your Wellspring**, **B** Resilio today, **C** round 3's best (sweep + stereo together + diffusion), **D** + transducers, **E** + wide, **F** + gentler low end. Level-matched, corrected settings (TENSION noon, TONE 2 o'clock). "My pick" per panel, then "Copy results for Claude". (Round 3's page `renders/wellspring_fit3/compare/` is now reference only)
 - Known open after round 4: each echo's rise is sharper than the Wellspring's; the lowest octave rings shorter (3.3 vs 4.7 s); if picked, TONE needs re-mapping (its dark half gets much less dark), several tests need re-tuning, and the CPU-test firmware would be 1.3–3.1 KB over flash (needs trimming)
 - Still different after round 3 (measured): the lowest octave rings shorter (3.8 vs 4.7 s; making it longer stretches DECAY past its range: a question for you later), the top octave too (1.2 vs 1.9 s), and the "pew" stops a bit lower than the Wellspring's
 
@@ -86,7 +86,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **After your picks:** merge SPRINGS 3 round 2's pick and Wellspring round 4's pick (round 4 needs TONE re-mapped, tests re-tuned, the CPU-test firmware trimmed, then a CPU run on the module)
+- **Wellspring F merge** (your pick, 2 Oct): built on top of SPRINGS 3 coupled; needs TONE re-mapped (keep today's dark left side), tests re-tuned, the firmware trimmed to fit. Then a new plugin install, CPU run 15 and a release
+- **Wellspring round 5** from your notes: a softer transient (each echo's front), the tail's resonance in a different place, which frequencies sit in the centre vs wide. Session 2 recordings (§5) would help measure the last two
 - **After session 2 recordings:** ingest, the level series (how the input stage changes with level), the full stereo picture, per-octave darkening; feeds the next Wellspring round
 - **Friends' share release** is still `1d18fce`: republish with `tools/make_release.sh --publish` when you want to send the new sound round
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
@@ -105,6 +106,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 2 Oct 2026: **SPRINGS 3 coupled merged** (your pick F "across the board", ADR 0037): position 3's three Springs share energy every round trip, so hits bloom instead of dripping; repeat timing and level as before. Firmware trimmed to fit (release 93 %, CPU-test 99.5 %). Not yet in Ableton or on the Versio: next install / release together with Wellspring F
+- 2 Oct 2026: **Wellspring round 4 listened:** F (+ gentler) on clicks, hits and skank. Still different: the Wellspring's transient is softer, the tail's resonance sits elsewhere, and different frequencies are centred vs wide
 - 2 Oct 2026: **Manual, starting points and the friends' read-me refreshed** for the new sound (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE). The six starting points re-checked on it: none reaches the output limiter on hits, skank or a held pad. Changing a preset is still by ear: tell Claude what you'd move
 - 1 Oct 2026: **Released** `1d18fce` as a GitHub Release (universal plugin, firmware, read-me) and installed it in Ableton; `tools/make_release.sh` makes the next one
 - 1 Oct 2026: **Sustain trim merged** (ADR 0035, your pick D after three rounds): a gentle safety net on held sounds (pads, drones, organs) so they rarely reach the output limiter, plus a 30 ms limiter hold so light limiting sounds clean, not driven. Hits and skank unchanged. Found by you on the Versio: a low-mid pad lit the output red and sounded overdriven
