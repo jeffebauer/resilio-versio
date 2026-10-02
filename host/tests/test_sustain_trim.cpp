@@ -449,16 +449,26 @@ void heldSoundsAcrossWobble()
     std::snprintf(msg, sizeof msg, "The trim cuts at most %.2f dB (every WOBBLE; limit %.1f)", double(-deepest),
                   double(rv::drive::kSusGentleMaxDb));
     check(-deepest <= rv::drive::kSusGentleMaxDb + 0.01f, msg);
-    // Teeth: the drone's worst cell without the trim.
+    // Teeth: the drone's worst cell without the trim. Since tank voicing 7
+    // (ADR 0038) the low cut in front of the Springs takes the C2 drone's
+    // 65 / 131 Hz, so it no longer reaches the limiter with or without the
+    // trim and this check had nothing to show (0.00 dB). The organ (the same
+    // chord with harmonics, which the tank hears) in the same cell shows the
+    // trim's teeth: well past the bar without it, under it with it.
     rv::Tank t;
     t.prepare(kFs, kBlock);
     t.setSustainVoicing(rv::drive::kSusVoicingOff);
     Set s;
     s.springs = 2, s.tone = 0.0f, s.tension = 1.0f;
-    const float off = -20.0f * std::log10(render(t, s, stims[1].x).minLimGain);
-    std::snprintf(msg, sizeof msg, "... and it is the Sustain trim: the drone at SPRINGS 3 TONE 0 TENSION 1 without it pulls %.2f dB (> %.1f)",
-                  double(off), double(kMomentMaxDb));
-    check(off > kMomentMaxDb, msg);
+    const float off = -20.0f * std::log10(render(t, s, stims[2].x).minLimGain);
+    rv::Tank tOn;
+    tOn.prepare(kFs, kBlock);
+    const float on = -20.0f * std::log10(render(tOn, s, stims[2].x).minLimGain);
+    std::snprintf(msg, sizeof msg,
+                  "... and it is the Sustain trim: the organ at SPRINGS 3 TONE 0 TENSION 1 without it pulls %.2f dB (> %.1f), "
+                  "with it %.2f",
+                  double(off), double(kMomentMaxDb), double(on));
+    check(off > kMomentMaxDb && on <= kMomentMaxDb, msg);
 }
 
 // The Big Knob (ADR 0036 Proposed, Renderer voicings 1-3): with the right
@@ -507,8 +517,12 @@ void hitsAreNeverTrimmed(rv::Tank& t)
 
 void letsGoForTheNextHit(rv::Tank& t)
 {
-    // The pad, then a hit 0.4 s after its release ends (13.4 s).
+    // The pad, then a hit 0.4 s after its release ends (13.4 s). The pad at
+    // -1 dBFS peak: since tank voicing 7 (ADR 0038: the wet -2.5 dB, the low
+    // cut) the -6 dBFS pad no longer needs the trim here (held -0.3 dB), so
+    // there was nothing to let go of.
     Buf x = pad();
+    normalise(x, -1.0f);
     const Buf h = hits();
     x.resize(sec(16.0), 0.0f);
     for (size_t i = 0; i < sec(0.3); ++i) x[sec(13.4) + i] = h[sec(1.0) + i];

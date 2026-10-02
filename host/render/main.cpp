@@ -344,6 +344,10 @@ void applyTankTuneEnv()
         {"wide0", &t.wideDecorrMs[0]}, {"wide1", &t.wideDecorrMs[1]}, {"wide2", &t.wideDecorrMs[2]},
         {"wideDecorrCoeff", &t.wideDecorrCoeff}, {"gentleMakeupMaxDb", &t.gentleMakeupMaxDb}, {"gentleMakeupShare", &t.gentleMakeupShare},
         {"lcHpHz", &t.lcHpHz}, {"lcHpQ", &t.lcHpQ}, {"lcShelfHz", &t.lcShelfHz}, {"lcShelfDb", &t.lcShelfDb},
+        {"tdEvenHpHz", &t.tdEvenHpHz}, {"toneBrightEvenHpHz", &t.toneBrightEvenHpHz}, {"toneDarkDampingScale", &t.toneDarkDampingScale}, {"tdDampingDecayFrom", &t.tdDampingDecayFrom}, {"tdDampingDecayMaxScale", &t.tdDampingDecayMaxScale}, {"tdWobbleLeftDecayMax", &t.tdWobbleLeftDecayMax},
+        {"toneDarkHighT60Ratio", &t.toneDarkHighT60Ratio}, {"toneDarkInHz", &t.toneDarkInHz}, {"toneDarkDb", &t.toneDarkDb}, {"toneDarkShare", &t.toneDarkShare}, {"toneDarkLpHz", &t.toneDarkLpHz},
+        {"toneDarkCurve", &t.toneDarkCurve}, {"toneBrightOutHz", &t.toneBrightOutHz}, {"toneBrightDb", &t.toneBrightDb},
+        {"toneBrightCurve", &t.toneBrightCurve}, {"tdDriveOpenOct", &t.tdDriveOpenOct}, {"tdDriveOpenDb", &t.tdDriveOpenDb}, {"tdSplashLiftDb", &t.tdSplashLiftDb}, {"tdSplashLiftFrom", &t.tdSplashLiftFrom}, {"tdSplashLiftTo", &t.tdSplashLiftTo}, {"tdSplashLiftKickedDb", &t.tdSplashLiftKickedDb},
     };
     std::string all = env;
     size_t pos = 0;

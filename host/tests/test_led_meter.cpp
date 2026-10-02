@@ -147,11 +147,12 @@ void limiterFromTank()
         bool  red     = false;
     };
     // test_clicks' "limiter pushed" case: a held chord (220 / 261.63 / 329.63
-    // Hz, 4 s) into 2 Springs, CLEAN, DECAY 0.62, fully wet. At -3 dBFS its
-    // modes build up into the limiter; at -30 dBFS they stay well under it.
+    // Hz, 4 s) into 3 Springs (2 before tank voicing 7, below), CLEAN, DECAY
+    // 0.62, fully wet. At -3 dBFS its modes build up into the limiter; at
+    // -30 dBFS they stay well under it.
     // Sustain trim off (ADR 0035): it would keep this held chord under the
     // limiter, and this checks the LEDs when the limiter does pull.
-    auto run = [&](float gainDb) {
+    auto run = [&](float gainDb, int springs) {
         t.reset();
         t.setSustainTrimEnabled(false);
         t.setParam(rv::ParamId::Decay, 0.62f);
@@ -160,7 +161,7 @@ void limiterFromTank()
         t.setParam(rv::ParamId::Splash, 0.0f);
         t.setParam(rv::ParamId::Wobble, 0.5f); // noon: still
         t.setParam(rv::ParamId::Mix, 1.0f);
-        t.setParam(rv::ParamId::Springs, rv::switchToNormalised(1));
+        t.setParam(rv::ParamId::Springs, rv::switchToNormalised(springs - 1));
         t.setParam(rv::ParamId::Attitude, 0.0f);
         t.setParam(rv::ParamId::Drive, 0.0f);
         const double g = std::pow(10.0, double(gainDb) / 20.0), f[3] = {220.0, 261.63, 329.63};
@@ -191,13 +192,17 @@ void limiterFromTank()
         return res;
     };
 
-    const Run hot = run(-3.0f);
-    std::snprintf(msg, sizeof msg, "held chord -3 dBFS: limiter pulls down (lowest gain %.3f = %.1f dB)",
+    // Since tank voicing 7 (ADR 0038: the wet -2.5 dB, the transducers, the
+    // low cut) the chord into 2 Springs no longer reached the limiter (0.0 dB),
+    // so the red-LED check had nothing to show; into 3 Springs (their modes
+    // add up) it pulls about as hard as it did into 2 before (-3.3 vs -2.7 dB).
+    const Run hot = run(-3.0f, 3);
+    std::snprintf(msg, sizeof msg, "held chord -3 dBFS, 3 Springs: limiter pulls down (lowest gain %.3f = %.1f dB)",
                   double(hot.minGain), double(20.0f * std::log10(hot.minGain)));
     check(hot.minGain <= rvled::dbToGain(-rvled::kLimiterRedDb), msg);
     check(hot.red, "  ... and both output LEDs turn red");
 
-    const Run quiet = run(-30.0f);
+    const Run quiet = run(-30.0f, 3);
     std::snprintf(msg, sizeof msg, "held chord -30 dBFS: limiter at unity (lowest gain %.4f), output LEDs never red",
                   double(quiet.minGain));
     check(quiet.minGain == 1.0f && !quiet.red, msg);

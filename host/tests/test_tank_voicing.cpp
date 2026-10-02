@@ -2,12 +2,12 @@
 // Proposed). Dependency-free: prints PASS/FAIL / INFO lines, returns nonzero
 // on any failure.
 //
-// The voicings are Renderer-only until the owner picks; the whole suite runs
-// on the default (0 = today). What a voicing does to everything else (mono
+// The owner picked 7 (ADR 0038 Decision, 2 Oct 2026): the whole suite runs on
+// it; 0-6 stay as Renderer-only references. What a voicing does to everything else (mono
 // sum, SPRINGS switching, levels, the M6 grids...) is checked by running the
 // full suite with that voicing as the default (RV_TANK_DEFAULT_VOICING,
 // docs/prototypes/wellspring-fit-3/). Here, what each voicing promises:
-//   1. The default is today's (0), and the firmware's pool for any voicing
+//   1. The default is the owner's pick (7), and the firmware's pool for any voicing
 //      stays within its 30,000 floats (firmware/main.cpp kTankPoolFloats).
 //   2. Stability at the corners (KICKED, DECAY / DRIVE / SPLASH 1, 3
 //      Springs, TENSION 0 and 1, TONE 0 and 1): an impulse, 1 s of
@@ -104,8 +104,9 @@ void defaultAndPool()
 #ifdef RV_TANK_DEFAULT_VOICING // a scratch build running the suite as if voicing N shipped
     std::printf("INFO  this build's default voicing is %d (RV_TANK_DEFAULT_VOICING)\n", t.tankVoicing());
 #else
-    std::snprintf(msg, sizeof msg, "a new Tank plays the default voicing (%d) and it is today's, 0", t.tankVoicing());
-    check(t.tankVoicing() == rv::tankv::kDefaultVoicing && rv::tankv::kDefaultVoicing == rv::tankv::kToday, msg);
+    // The owner's pick (ADR 0038 Decision, 2 Oct 2026): 7, "plus gentler".
+    std::snprintf(msg, sizeof msg, "a new Tank plays the default voicing (%d), the owner's pick, 7", t.tankVoicing());
+    check(t.tankVoicing() == rv::tankv::kDefaultVoicing && rv::tankv::kDefaultVoicing == rv::tankv::kGentleWide, msg);
 #endif
     for (int v = 0; v < rv::tankv::kNumVoicings; ++v) {
         const size_t need = rv::Tank::poolFloatsForVoicing(kFs, v);

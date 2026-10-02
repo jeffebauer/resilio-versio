@@ -524,6 +524,19 @@ private:
     // ~90 Hz, slow followers; gain, 1 = none).
     std::array<dsp::OnePoleLowpass, 4> gmHp_{};
     float gmAccIn_ = 0.0f, gmAccOut_ = 0.0f, gmIn_ = 0.0f, gmOut_ = 0.0f, gmGain_ = 1.0f;
+    // ... read a second time on the raw input through a copy of the low cut
+    // (the material, before DRIVE colours it); the makeup is the smaller.
+    dsp::Biquad lcShHp_{}, lcShShelf_{};
+    std::array<dsp::OnePoleLowpass, 4> gmShHp_{};
+    float gmShAccIn_ = 0.0f, gmShAccOut_ = 0.0f, gmShIn_ = 0.0f, gmShOut_ = 0.0f;
+    dsp::Biquad tdEvenHp_{};          // the coil's square term, high-passed (tdEvenHpHz)
+    float tdTone_   = -1.0f;          // TONE the coil and pickup corners were set for
+    float tdDrive_  = -1.0f;          // ... and KICKED x DRIVE^3 (the coil's corner opens with it)
+    float toneTrim_ = 1.0f;           // TONE re-map's level right of noon, on the Springs' input
+    dsp::OnePoleLowpass tdDarkLp_{};  // ... left of noon: the input's highs (toneDarkLpHz) ...
+    float tdAccAll_ = 0.0f, tdAccLp_ = 0.0f, tdAll_ = 0.0f, tdLp_ = 0.0f, tdDarkDb_ = 0.0f, tdWd_ = 0.0f; // ... and its makeup
+    float splashLift_ = 1.0f;         // the Clang and Clatter at low DRIVE (tdSplashLiftDb)
+    std::array<float, kMaxSprings> hiT60Set_{{-1.0f, -1.0f, -1.0f}}; // high path T60 ratio sent to each Spring
 #endif
 
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).

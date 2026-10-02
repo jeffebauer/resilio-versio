@@ -115,8 +115,10 @@ void tensionScan()
     // longer reached the limiter often enough for the scan to test it.
     // Sustain trim off (ADR 0035): it keeps this held chord under the
     // limiter (0 of 31 settings reached it), and the scan is about the
-    // limiter's clicks, so it has to be driven into it.
-    const Buf in = heldChord(-9.0f);
+    // limiter's clicks, so it has to be driven into it. -6 dBFS since tank
+    // voicing 7 (ADR 0038: the wet -2.5 dB, the transducers, the diffusers'
+    // softer peaks): at -9 the chord reached the limiter at 1 of 31.
+    const Buf in = heldChord(-6.0f);
     long worst = 0, total = 0, limited = 0;
     float worstAt = 0.0f;
     for (int k = 0; k <= 30; ++k) {

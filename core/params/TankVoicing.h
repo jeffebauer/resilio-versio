@@ -1,9 +1,13 @@
 #pragma once
-// Tank voicings: Wellspring fit round 3 (docs/m8-tuning-backlog.md "Wellspring
-// fit round 3", ADR 0038 Proposed). Renderer-only until the owner picks:
-// Tank::setTankVoicing(v), the hidden "tank_voicing" key (host/common/
-// ParamsJson.h). The firmware and the plugin keep kDefaultVoicing, and the
-// firmware compiles only that one (RV_FIXED_VOICINGS, core/dsp/Drive.h).
+#include <cmath>
+// Tank voicings: Wellspring fit rounds 3 and 4 (docs/m8-tuning-backlog.md
+// "Wellspring fit round 3" / "round 4" / "Wellspring F merge", ADR 0038,
+// accepted 2 Oct 2026). The owner picked 7 ("F, plus gentler"): the plugin
+// and the firmware play kDefaultVoicing, and the firmware compiles only that
+// one (RV_FIXED_VOICINGS, core/dsp/Drive.h); 0-6 are Renderer-only references
+// (Tank::setTankVoicing(v), the hidden "tank_voicing" key, host/common/
+// ParamsJson.h). What 7 took on to ship is at the end of Tuning ("7 as
+// shipped").
 //
 // What the owner hears (2 Oct 2026, their Wellspring next to our closest
 // knob settings): the Wellspring "sounds more diffuse", "further away and
@@ -69,13 +73,13 @@
 
 // What this build can play, for the preprocessor (the voicings build on each
 // other, so one number says it): the firmware (RV_FIXED_VOICINGS) builds only
-// its default voicing's parts, so with the default 0 its code, its Tank
-// object and its pool are today's; desktop builds hold all of them.
+// its default voicing's parts (7: everything up to 7); desktop builds hold
+// all of them.
 #ifdef RV_FIXED_VOICINGS
 #ifdef RV_TANK_DEFAULT_VOICING
 #define RV_TANKV_BUILT RV_TANK_DEFAULT_VOICING
 #else
-#define RV_TANKV_BUILT 0
+#define RV_TANKV_BUILT 7 // the default, kGentleWide (ADR 0038 Decision)
 #endif
 #else
 #define RV_TANKV_BUILT 7
@@ -92,13 +96,15 @@ constexpr int kTransducers = 5;
 constexpr int kWide        = 6;
 constexpr int kGentleWide  = 7;
 constexpr int kNumVoicings     = 8;
-// Until the owner picks. RV_TANK_DEFAULT_VOICING (a scratch build's
-// CMAKE_CXX_FLAGS) makes another voicing the default, so the whole test suite
-// can be run as if it shipped (docs/prototypes/wellspring-fit-3/).
+// The owner's pick (2 Oct 2026, Wellspring fit round 4, "F, plus gentler";
+// ADR 0038 Decision): 7. The plugin and the firmware play it; 0-6 stay as
+// Renderer-only references (tank_voicing). RV_TANK_DEFAULT_VOICING (a scratch
+// build's CMAKE_CXX_FLAGS) makes another voicing the default, so the whole
+// test suite can be run as if it shipped (docs/prototypes/wellspring-fit-3/).
 #ifdef RV_TANK_DEFAULT_VOICING
 constexpr int kDefaultVoicing = RV_TANK_DEFAULT_VOICING;
 #else
-constexpr int kDefaultVoicing  = kToday;
+constexpr int kDefaultVoicing  = kGentleWide;
 #endif
 
 constexpr bool hasSweep(int v) { return v >= kSweep; }
@@ -111,6 +117,10 @@ constexpr bool hasLowCut(int v) { return v == kGentle || v >= kGentleWide; }
 constexpr bool hasTransducers(int v) { return v >= kTransducers; }
 constexpr bool hasWide(int v) { return v >= kWide; }
 constexpr bool hasGentleMakeup(int v) { return v >= kGentleWide; }
+// What 7 took on to ship (ADR 0038 Decision): TONE's re-map, the coil's
+// square term high-passed, the low cut's makeup read on the input too, and
+// the wet trim after the pickups. 5 and 6 stay as round 4 played them.
+constexpr bool hasShipFixes(int v) { return v >= kGentleWide; }
 
 // Diffusers per Loop (voicing 3).
 constexpr int kNumDiffusers = 3;
@@ -265,7 +275,93 @@ struct Tuning {
     // bump), so the power going in under-reads what the low cut takes out
     // of the tail.
     float gentleMakeupShare = 1.0f;
+
+    // ---- 7 as shipped (ADR 0038 Decision) ----
+    // The coil's square term through a high-pass at tdEvenHpHz (noon and
+    // left), rising to toneBrightEvenHpHz at TONE fully right (weight
+    // toneBrightWeight): it keeps the doubled frequencies (the 2nd harmonic of
+    // anything the low cut lets through) and drops the difference tones
+    // between them, which landed in the Springs' loudest low notes. With the
+    // Big Knob thinning the input, they were most of what was left below
+    // 150 Hz (TONE fully right: lows -5.5 dB re noon, test_drive's bar -8).
+    // Higher at noon it moves the picked sound (250 Hz: the click take's
+    // low-mid balance +1.4 dB), so it rises with the Big Knob. 0 = none.
+    float tdEvenHpHz         = 60.0f;
+    float toneBrightEvenHpHz = 250.0f;
+    // TONE re-map. Round 4's numbers are noon's and everything right of it;
+    // left of noon they ease, by toneDarkWeight (1 at TONE 0, 0 from noon,
+    // shape toneDarkCurve), toward TONE fully left's: today's Loop damping
+    // (x toneDarkDampingScale), today's short high path (toneDarkHighT60Ratio
+    // x DECAY), a darker coil (toneDarkInHz), so TONE fully left is about as
+    // dark as today's. Its level: the darker tank takes the highs, so it gives
+    // back toneDarkShare x the dB a one-pole low-pass at toneDarkLpHz takes
+    // out of the input (slow followers, as the Big Knob's makeup), up to
+    // toneDarkDb, x the weight: a snare comes back about as loud as at noon, a
+    // held pad (nothing to lose up there) isn't pushed at the limiter. A fixed
+    // +5 dB did both. Right of noon (weight
+    // toneBrightWeight, shape toneBrightCurve) the output pickup opens toward
+    // toneBrightOutHz, so the Big Knob's top comes through as today's does,
+    // and toneBrightDb keeps the level. Both levels on the Springs' input.
+    float toneDarkDampingScale = 1.0f;
+    // At the top of DECAY the Loop damping scale eases (smoothstep from
+    // tdDampingDecayFrom) to tdDampingDecayMaxScale at DECAY 1: x3.6 let
+    // 1-2 kHz ring as long as a DECAY-max tail (8-10 s), so a mode held on
+    // (SPRINGS 3 coupled: a steady 2.1 kHz tone, test_springs3 "Ringing")
+    // and a held tone's tail beat so deeply that WOBBLE's steps read out of
+    // order (test_m7_tank). Real springs' highs always fade first. DECAY up
+    // to 0.7 (the picked 0.665 too) is round 4's.
+    float tdDampingDecayFrom     = 0.7f;
+    float tdDampingDecayMaxScale = 1.5f;
+    // WOBBLE's left side (random wow, in the Loops) at the top of DECAY
+    // (same easing): x this at DECAY 1. In 7's denser DECAY-max tail the wow
+    // builds up over more round trips than the right side's vibrato: fully
+    // left read 1.6x fully right there (test_m7_tank, limit 1.6; today 1.47).
+    float tdWobbleLeftDecayMax   = 0.9f;
+    float toneDarkHighT60Ratio = 0.45f;
+    float toneDarkInHz         = 1800.0f;
+    float toneDarkDb           = 9.0f;  // the makeup's cap at TONE 0
+    float toneDarkShare        = 1.6f;  // dB back per dB the low-pass takes from the input
+    float toneDarkLpHz         = 500.0f;
+    float toneDarkCurve        = 0.5f;
+    float toneBrightOutHz      = 9000.0f;
+    float toneBrightDb         = 0.0f;
+    float toneBrightCurve      = 2.0f;
+    // KICKED drives the coil hard enough to saturate it: its core loses
+    // inductance, so it loses less treble. In KICKED (ATTITUDE weight) the
+    // coil's corner rises by up to tdDriveOpenOct octaves with DRIVE (weight
+    // DRIVE^3: DRIVE 0.25 moves it 1 %), so DRIVE's grit still comes through
+    // (test_drive "DRIVE audibility" KICKED: the coil had made DRIVE 1 sound
+    // like a louder DRIVE 0), and it gives up tdDriveOpenDb of level at
+    // DRIVE 1, so the tail grows by DRIVE's +6 dB and no more (ADR 0033).
+    // CLEAN and DRIVEN keep the coil as it is (CLEAN stays mild, ADR 0022).
+    float tdDriveOpenOct       = 0.6f;
+    float tdDriveOpenDb        = 1.5f;
+    // SPLASH at low DRIVE: the transducers darken the crash against the
+    // tail around it, most with DRIVE fully down (test_m7_tank "SPLASH
+    // stronger", KICKED DRIVE 0: -2.3 dB re today). The Clang and the
+    // Clatter are lifted by this at DRIVE 0, easing to none by DRIVE 0.8
+    // ((1 - DRIVE / 0.8)^2), the Clang past its ceiling (a lift under the
+    // ceiling did nothing: the ceiling took it back).
+    // 4 dB: KICKED at DRIVE 0 splashes as today's (+10.3 vs +10.4 dB on the
+    // -6 dBFS rim, SPLASH 0.75), CLEAN 2 dB more; DRIVE 0 and 0.8 within
+    // 3 dB of each other for SPLASH voicings 2 and 3 (they were 3.1-4.3).
+    float tdSplashLiftDb       = 4.0f;
+    float tdSplashLiftFrom     = 0.5f;
+    float tdSplashLiftTo       = 0.8f;
+    float tdSplashLiftKickedDb = 3.0f;
 };
+
+// TONE re-map weights (7): left of noon 1 -> 0, right of noon 0 -> 1.
+inline float toneDarkWeight(float tone, float curve)
+{
+    const float u = 1.0f - 2.0f * tone;
+    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::pow(u, curve);
+}
+inline float toneBrightWeight(float tone, float curve)
+{
+    const float u = 2.0f * tone - 1.0f;
+    return u <= 0.0f ? 0.0f : u >= 1.0f ? 1.0f : std::pow(u, curve);
+}
 
 #ifdef RV_FIXED_VOICINGS
 inline constexpr Tuning kTuning{};

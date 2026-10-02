@@ -231,6 +231,11 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
 #endif
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
+    for (auto& f : gmShHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
+    lcShHp_.setHighpass(tankv::tuning().lcHpHz, tankv::tuning().lcHpQ, sampleRate);
+    lcShShelf_.setLowShelf(tankv::tuning().lcShelfHz, tankv::tuning().lcShelfDb, sampleRate);
+    tdEvenHp_.setHighpass(std::max(tankv::tuning().tdEvenHpHz, 1.0f), 0.7071f, sampleRate);
+    tdDarkLp_.setCutoff(tankv::tuning().toneDarkLpHz, sampleRate);
 #endif
 
     ok_ = pool != nullptr && poolFloats >= requiredPoolFloats(sampleRate);
@@ -312,6 +317,10 @@ void Tank::applyTankVoicing()
     gentleHp_.setHighpass(lc7 ? t.lcHpHz : t.gentleHpHz, lc7 ? t.lcHpQ : t.gentleHpQ, sampleRate_);
     gentleShelf_.setLowShelf(lc7 ? t.lcShelfHz : t.gentleShelfHz, lc7 ? t.lcShelfDb : t.gentleShelfDb, sampleRate_);
 #endif
+#if RV_TANKV_BUILT >= 7
+    tdTone_ = -1.0f; // the coil and pickup corners again (controlTick)
+    hiT60Set_.fill(-1.0f);
+#endif
     keyMode_ = -1; // the Springs' settings again (stage counts, pickups)
 #endif
 }
@@ -319,6 +328,17 @@ void Tank::applyTankVoicing()
 float Tank::loopDampingScale() const
 {
     // The tank voicing's Loop damping (TankVoicing.h): 4's x1.5, 5+'s x3.6.
+#if RV_TANKV_BUILT >= 7
+    if (tankv::hasShipFixes(tankVoicing_)) { // TONE re-map: today's damping fully left, easing to 5's by noon
+        const auto& t = tankv::tuning();
+        const float w = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
+        // ... and toward tdDampingDecayMaxScale at the top of DECAY (the
+        // highs never ring as long as a DECAY-max tail).
+        const float u = std::clamp((keyDecay_ - t.tdDampingDecayFrom) / (1.0f - t.tdDampingDecayFrom), 0.0f, 1.0f);
+        const float sc = t.tdDampingScale * std::exp(u * u * (3.0f - 2.0f * u) * std::log(t.tdDampingDecayMaxScale / t.tdDampingScale));
+        return sc * std::exp(w * std::log(t.toneDarkDampingScale / sc));
+    }
+#endif
 #if RV_TANKV_BUILT >= 5
     if (tankv::hasTransducers(tankVoicing_)) return tankv::tuning().tdDampingScale;
 #endif
@@ -377,6 +397,13 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& f : gmHp_) f.reset();
     gmAccIn_ = gmAccOut_ = gmIn_ = gmOut_ = 0.0f;
     gmGain_ = 1.0f;
+    lcShHp_.reset();
+    lcShShelf_.reset();
+    for (auto& f : gmShHp_) f.reset();
+    gmShAccIn_ = gmShAccOut_ = gmShIn_ = gmShOut_ = 0.0f;
+    tdEvenHp_.reset();
+    tdDarkLp_.reset();
+    tdAccAll_ = tdAccLp_ = tdAll_ = tdLp_ = tdDarkDb_ = 0.0f;
 #endif
     for (auto& d : decorrelator_) {
         std::fill(d.buf, d.buf + d.size, 0.0f);
@@ -524,8 +551,28 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
+#if RV_TANKV_BUILT >= 7
+    if (tankv::hasShipFixes(tankVoicing_)) {
+        // 7: the transducers darken the crash against the tail most at low
+        // DRIVE; the Clang and the Clatter are lifted there (TankVoicing.h
+        // tdSplashLiftDb), easing to none by DRIVE 0.8 (process()).
+        const auto& t = tankv::tuning();
+        const float u = std::clamp((t.tdSplashLiftTo - smoothed_[size_t(ParamId::Drive)]) / (t.tdSplashLiftTo - t.tdSplashLiftFrom), 0.0f, 1.0f);
+        splashLift_ = drive::dbToGain((1.0f - attW_[2]) * t.tdSplashLiftDb * u + attW_[2] * t.tdSplashLiftKickedDb);
+    }
+#endif
     splash_.set(attW_, splashAmt, splashDrive_, splashInput_); // DRIVE's gain on the Clang / Bite, the INPUT gain (below, on DRIVE moves)
-    const float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
+    float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
+#if RV_TANKV_BUILT >= 7
+    if (tankv::hasShipFixes(tankVoicing_) && smoothed_[size_t(ParamId::Wobble)] < 0.5f) {
+        // 7: WOBBLE's left side (random wow, in the Loops) a little gentler
+        // at the top of DECAY, where its wow builds up over more round trips
+        // in 7's denser tail than the right side's (TankVoicing.h).
+        const auto& t = tankv::tuning();
+        const float u = std::clamp((decay - t.tdDampingDecayFrom) / (1.0f - t.tdDampingDecayFrom), 0.0f, 1.0f);
+        wobbleScale *= 1.0f + u * u * (3.0f - 2.0f * u) * (t.tdWobbleLeftDecayMax - 1.0f);
+    }
+#endif
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
     // Tank level for KICKED's energy-dependent rattle (and the LoopSat fade
@@ -708,9 +755,54 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             gmGain_ = 1.0f;
         } else if (gmIn_ > excGate_) {
             const float kMaxLog = tankv::tuning().gentleMakeupMaxDb * (2.302585093f / 20.0f);
-            gmGain_ = std::exp(std::clamp(0.5f * tankv::tuning().gentleMakeupShare * std::log(gmIn_ / std::max(gmOut_, 1.0e-12f)), 0.0f, kMaxLog));
+            float l = std::log(gmIn_ / std::max(gmOut_, 1.0e-12f));
+            if (tankv::hasShipFixes(tankVoicing_)) {
+                // The same reading on the raw input (before DRIVE: KICKED's
+                // own low products, which the low cut removes, made the makeup
+                // grow with DRIVE): the smaller of the two.
+                gmShIn_ += excCoeff_ * (gmShAccIn_ * kInv - gmShIn_);
+                gmShOut_ += excCoeff_ * (gmShAccOut_ * kInv - gmShOut_);
+                l = std::min(l, std::log(gmShIn_ / std::max(gmShOut_, 1.0e-12f)));
+            }
+            gmGain_ = std::exp(std::clamp(0.5f * tankv::tuning().gentleMakeupShare * l, 0.0f, kMaxLog));
         }
+        gmShAccIn_ = gmShAccOut_ = 0.0f;
         trim *= gmGain_;
+        // TONE re-map (7): the coil darker left of noon, the pickup open right
+        // of it, and the level that keeps (on the Springs' input, ramped).
+        if (tankv::hasShipFixes(tankVoicing_)) {
+            const float driveNow = smoothed_[size_t(ParamId::Drive)];
+            const float kickedOpen = attW_[2] * driveNow * driveNow * driveNow; // KICKED's coil saturation
+            if (snap || tone != tdTone_ || kickedOpen != tdDrive_) {
+                const auto& t = tankv::tuning();
+                const float wd = tankv::toneDarkWeight(tone, t.toneDarkCurve);
+                const float wb = tankv::toneBrightWeight(tone, t.toneBrightCurve);
+                const float inHz  = t.tdInHz * std::exp(wd * std::log(t.toneDarkInHz / t.tdInHz)
+                                                        + 0.693147f * t.tdDriveOpenOct * kickedOpen);
+                const float outHz = t.tdOutHz * std::exp(wb * std::log(t.toneBrightOutHz / t.tdOutHz));
+                tdIn_.setLowpass(std::min(inHz, 0.45f * sampleRate_), t.tdInQ, sampleRate_);
+                for (auto& f : tdOut_) f.setLowpass(std::min(outHz, 0.45f * sampleRate_), t.tdOutQ, sampleRate_);
+                if (t.tdEvenHpHz > 0.0f)
+                    tdEvenHp_.setHighpass(t.tdEvenHpHz * std::exp(wb * std::log(t.toneBrightEvenHpHz / t.tdEvenHpHz)), 0.7071f, sampleRate_);
+                toneTrim_ = drive::dbToGain(wb * t.toneBrightDb);
+                tdWd_     = wd;
+                tdTone_   = tone;
+                tdDrive_  = kickedOpen;
+            }
+            const auto& t = tankv::tuning();
+            // Left of noon the tank darkens: give back what it takes, by how
+            // much of the input is highs (power in / out of a low-pass at
+            // toneDarkLpHz, x toneDarkShare, up to toneDarkDb): a snare gets
+            // most of it back, a held pad (little up there) next to nothing.
+            tdAll_ += excCoeff_ * (tdAccAll_ * kInv - tdAll_);
+            tdLp_ += excCoeff_ * (tdAccLp_ * kInv - tdLp_);
+            tdAccAll_ = tdAccLp_ = 0.0f;
+            if (tdAll_ > excGate_) {
+                const float lossDb = (10.0f / 2.302585093f) * std::log(tdAll_ / std::max(tdLp_, 1.0e-12f));
+                tdDarkDb_ = tdWd_ * std::min(t.toneDarkDb, t.toneDarkShare * lossDb);
+            }
+            trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen);
+        }
 #endif
         inTrimFrom_ = snap ? trim : inTrimTo_;
         inTrimTo_   = trim;
@@ -1006,6 +1098,17 @@ void Tank::updateSpringSettings(size_t i)
         ;
     if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).keepTiming)
         keepTodaysTiming(i, s);
+#if RV_TANKV_BUILT >= 7
+    if (tankv::hasShipFixes(tankVoicing_)) { // TONE re-map: the high path today's length fully left
+        const auto& t = tankv::tuning();
+        const float w = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
+        const float r = t.tdHighT60Ratio + w * (t.toneDarkHighT60Ratio - t.tdHighT60Ratio);
+        if (r != hiT60Set_[i]) {
+            springs_[i].setHighT60Ratio(r);
+            hiT60Set_[i] = r;
+        }
+    }
+#endif
     s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
     springSet_[i]       = s;
     springGen_[i]       = baseGen_;
@@ -1217,6 +1320,16 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             std::fill(bite, bite + n, 0.0f);
         }
         if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
+#if RV_TANKV_BUILT >= 7
+        if (splashLift_ != 1.0f) { // 7: SPLASH at low DRIVE (controlTick)
+            const float k = splashLift_;
+            for (int i = 0; i < n; ++i) {
+                clatter[i] *= k;
+                clatterB[i] *= k;
+                clatterC[i] *= k;
+            }
+        }
+#endif
         prof::mark(prof::kSplash);
 
         // DriveIn (transducer -> tape). The Bite (ADR 0032, SplashVoicing.h):
@@ -1265,6 +1378,13 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             wo -= bkHp_[3].process(wo);
             bkAccIn_ += wi * wi;
             bkAccOut_ += wo * wo;
+#if RV_TANKV_BUILT >= 7
+            if (tankv::hasShipFixes(tankVoicing_)) { // TONE re-map's makeup: how much of the input is highs (controlTick)
+                const float lp = tdDarkLp_.process(wi);
+                tdAccAll_ += wi * wi;
+                tdAccLp_ += lp * lp;
+            }
+#endif
             float x = t * (inTrimFrom_ + excStep * float(tick_ + i));
 #if RV_TANKV_BUILT >= 4
             if (tankv::hasLowCut(tankVoicing_)) {      // voicings 4, 7: the low cut
@@ -1277,6 +1397,16 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 go -= gmHp_[3].process(go);
                 gmAccIn_ += gi * gi;
                 gmAccOut_ += go * go;
+                if (tankv::hasShipFixes(tankVoicing_)) { // ... and on the raw input (controlTick)
+                    const float si = xin[i];
+                    const float so = lcShShelf_.process(lcShHp_.process(si));
+                    float hi = si - gmShHp_[0].process(si);
+                    hi -= gmShHp_[1].process(hi);
+                    float ho = so - gmShHp_[2].process(so);
+                    ho -= gmShHp_[3].process(ho);
+                    gmShAccIn_ += hi * hi;
+                    gmShAccOut_ += ho * ho;
+                }
 #else
                 (void)in;
 #endif
@@ -1291,6 +1421,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 c = c < cmax ? c : cmax;
                 c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
             }
+#if RV_TANKV_BUILT >= 7
+            c *= splashLift_; // 7: SPLASH at low DRIVE (controlTick), past the ceiling
+#endif
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the input coil (the Kick's knock bypasses it)
                 float u = x + c * (x - lo);
@@ -1301,7 +1434,13 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                     // slow level rises (so loud input isn't torn up).
                     const float u2  = u * u;
                     const float avg = tdEvenAvg_.process(u2);
-                    u += tdEven / (1.0f + tankv::tuning().tdEvenEase * avg) * (u2 - avg);
+                    float sq = u2 - avg;
+#if RV_TANKV_BUILT >= 7
+                    // 7: the doubled frequencies only, not the difference
+                    // tones between them (tdEvenHpHz).
+                    if (tankv::hasShipFixes(tankVoicing_) && tankv::tuning().tdEvenHpHz > 0.0f) sq = tdEvenHp_.process(sq);
+#endif
+                    u += tdEven / (1.0f + tankv::tuning().tdEvenEase * avg) * sq;
                 }
                 mono[i] = tdIn_.process(u) + kickScale * kickLoop[i];
                 continue;
@@ -1364,9 +1503,17 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
 #if RV_TANKV_BUILT >= 5
         // Voicing 5+: the Springs keep more of their highs (less Loop damping),
         // so their tail comes back louder; tdTrimDb takes that back.
-        const float wetGain = kWetGain * (tankv::hasTransducers(tankVoicing_) ? tdTrim_ : 1.0f);
+        // 7: after the pickups instead (below), so DriveOut squashes the
+        // tail as it does today: before them, the trimmed tail met DRIVE's
+        // pickups 2.5 dB lower, so DRIVE grew it and its splash more.
+        const bool  trimAfter = tankv::hasShipFixes(tankVoicing_);
+        const float wetGain = kWetGain * (tankv::hasTransducers(tankVoicing_) && !trimAfter ? tdTrim_ : 1.0f);
+        const float outTrim = trimAfter ? tdTrim_ : 1.0f;
+        const float kickIn  = trimAfter ? kWetGain / tdTrim_ : kWetGain; // the Kick's thump comes out as before
 #else
         constexpr float wetGain = kWetGain;
+        constexpr float outTrim = 1.0f;
+        constexpr float kickIn  = kWetGain;
 #endif
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
@@ -1429,7 +1576,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             // Output pickup (DriveOut), one per channel.
             // The Kick's direct thump joins the mid here: centred, mono-safe,
             // coloured by the pickups like the tank body moving under them.
-            const float body = mid + kWetGain * kickDirect[i];
+            const float body = mid + kickIn * kickDirect[i];
             float inl = body + sd + d, inr = body - sd - d;
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the output pickup's treble loss
@@ -1437,8 +1584,8 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
                 inr = tdOut_[1].process(inr);
             }
 #endif
-            float wl = driveOut_[0].process(inl);
-            float wr = driveOut_[1].process(inr);
+            float wl = outTrim * driveOut_[0].process(inl);
+            float wr = outTrim * driveOut_[1].process(inr);
             // Clatter share straight to the wet (M8 round 1; 0 since round 2,
             // splash::kClatterWet: it read as a hi-hat on top of the reverb):
             // the crash on top of the tail, after the pickups (an asymmetric
