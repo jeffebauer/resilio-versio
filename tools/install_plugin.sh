@@ -6,6 +6,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 REF="${1:-HEAD}"
 SHA="$(git -C "$REPO" rev-parse --short "$REF")"
+# A version that always goes up, so hosts re-read the parameters (plugin/CMakeLists.txt).
+N="$(git -C "$REPO" rev-list --count "$SHA")"; PLUGIN_VERSION="1.$((N / 100)).$((N % 100))"
 WT="$(mktemp -d)/rv-plugin-$SHA"
 trap 'git -C "$REPO" worktree remove --force "$WT" >/dev/null 2>&1 || true' EXIT
 
@@ -13,7 +15,7 @@ git -C "$REPO" worktree add -q --detach "$WT" "$SHA"
 rmdir "$WT/libs/JUCE" 2>/dev/null || true
 ln -s "$REPO/libs/JUCE" "$WT/libs/JUCE"   # reuse the checked-out JUCE submodule
 
-cmake -S "$WT" -B "$WT/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_INSTALL_PLUGIN=OFF >/dev/null
+cmake -S "$WT" -B "$WT/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DRV_INSTALL_PLUGIN=OFF "-DRV_PLUGIN_VERSION=$PLUGIN_VERSION" >/dev/null
 cmake --build "$WT/build" --target ResilioVersio_AU ResilioVersio_VST3 >/dev/null
 
 ART="$WT/build/plugin/ResilioVersio_artefacts/Release"

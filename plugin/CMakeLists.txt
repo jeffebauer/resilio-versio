@@ -1,5 +1,12 @@
 # Plugin Host: JUCE AU + VST3 test bench (ADR 0004).
+# Each installed build gets its own version (tools/install_plugin.sh and
+# make_release.sh pass 1.<commits / 100>.<commits % 100>): Ableton re-reads a
+# plugin's parameter list only when its version changes. With every build at
+# 0.0.1 it kept showing BOING (renamed TENSION on 29 Sep) as a dead parameter.
+# Keep parameter keys (ParamSpec) stable: hosts save automation by them.
+set(RV_PLUGIN_VERSION "${PROJECT_VERSION}" CACHE STRING "Plugin version shown to hosts")
 juce_add_plugin(ResilioVersio
+    VERSION ${RV_PLUGIN_VERSION}
     COMPANY_NAME "Resilio"
     PLUGIN_MANUFACTURER_CODE Rslo
     PLUGIN_CODE RsVs
