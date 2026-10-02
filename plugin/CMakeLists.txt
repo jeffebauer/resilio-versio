@@ -5,12 +5,16 @@
 # 0.0.1 it kept showing BOING (renamed TENSION on 29 Sep) as a dead parameter.
 # Keep parameter keys (ParamSpec) stable: hosts save automation by them.
 set(RV_PLUGIN_VERSION "${PROJECT_VERSION}" CACHE STRING "Plugin version shown to hosts")
+# A candidate build for friends (make_release.sh --candidate) gets its own name
+# and plugin code, so it installs next to the released plugin for A/B.
+set(RV_PLUGIN_NAME "Resilio Versio" CACHE STRING "Plugin name (and bundle name)")
+set(RV_PLUGIN_CODE "RsVs" CACHE STRING "4-character plugin code")
 juce_add_plugin(ResilioVersio
     VERSION ${RV_PLUGIN_VERSION}
     COMPANY_NAME "Resilio"
     PLUGIN_MANUFACTURER_CODE Rslo
-    PLUGIN_CODE RsVs
-    PRODUCT_NAME "Resilio Versio"
+    PLUGIN_CODE ${RV_PLUGIN_CODE}
+    PRODUCT_NAME "${RV_PLUGIN_NAME}"
     FORMATS AU VST3
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE   # MIDI notes trigger Kick (ADR 0005)
