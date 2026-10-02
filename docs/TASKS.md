@@ -7,12 +7,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | Milestone | State |
 |---|---|
 | M0 hardware · M3 CPU | **Done.** Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. A new run is due for bipolar WOBBLE + the sustain trim (small costs) once the profile firmware fits again |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §1 |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_a8c64c7.bin` (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE; 91 % of flash; also the first release with the engine built at power-up and the USB-host stub). Do CPU run 14 first (§0), then flash this and the click check |
 | M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE and the sustain trim merged (1 Oct). Next: Big Knob TONE experiment; the Wellspring fit round |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`; need updating for the new SPLASH/DRIVE/WOBBLE) |
 
-**Plugin in Ableton:** `1d18fce` (installed 1 Oct, evening: the gentle sustain trim + limiter hold, bipolar WOBBLE, the panel interface; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
+**Plugin in Ableton:** `a8c64c7` (installed 2 Oct: Big Knob TONE (bump on hits), SPLASH C, plus everything before; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
 
@@ -22,10 +22,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
 - [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
 - Why: WOBBLE and the sustain trim have never been measured on the chip, and knob moves are the CPU peaks: the lead for the red input LEDs. This build is also the first with the engine built at power-up (frees flash): the run checks that on the hardware too
-- Then flash the release back (`dist/resilio_versio_release_1d18fce.bin`) and do §1
+- Then flash the new release (`dist/resilio_versio_release_a8c64c7.bin`) and do §1
 
 ### 1. Flash the Versio and play (≈2 min + play)
-- [ ] Flash `dist/resilio_versio_release_1d18fce.bin` and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
+- [ ] Flash `dist/resilio_versio_release_a8c64c7.bin` (after run 14) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -78,7 +78,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-**Next install** (plugin + release firmware) carries Big Knob and SPLASH C (ready: tell Claude when Ableton is closed)
+**Next install** (plugin + release firmware) carries Big Knob and SPLASH C (installed 2 Oct)
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections
