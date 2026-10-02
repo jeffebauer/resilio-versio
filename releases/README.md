@@ -3,19 +3,21 @@ RESILIO VERSIO {{VERSION}} — a dub spring reverb (test build)
 Hi! This is a spring reverb I'm building as firmware for the Noise Engineering Versio Eurorack module. The plugin is my desktop test bench: it runs the exact same sound engine as the module, laid out like its panel. It's a work in progress, so I'd love your honest ears on it.
 
 Think King Tubby / Lee Perry: a send effect you throw snares and skanks into, kick for crashes, and push into feedback.
+{{NOTES}}
 
 
 INSTALL (Mac, macOS 12 or newer, Apple Silicon or Intel)
 
-1. Unzip. You get two files: "Resilio Versio.vst3" (VST3) and "Resilio Versio.component" (Audio Unit, for Logic or Ableton). Install whichever your DAW uses, or both.
+1. Unzip. You get two files: "{{NAME}}.vst3" (VST3) and "{{NAME}}.component" (Audio Unit, for Logic or Ableton). Install whichever your DAW uses, or both.
 2. In Finder, Go > Go to Folder... and paste:
      ~/Library/Audio/Plug-Ins/
-   Drag "Resilio Versio.vst3" into the VST3 folder and "Resilio Versio.component" into the Components folder (create the folder if it's missing).
+   Drag "{{NAME}}.vst3" into the VST3 folder and "{{NAME}}.component" into the Components folder (create the folder if it's missing).
 3. It isn't signed by Apple (it's a test build), so macOS will block it at first. Open Terminal and paste these two lines (each one is a single line):
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Resilio Versio.vst3"
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Resilio Versio.component"
-4. Restart your DAW and rescan plug-ins. In Ableton: Settings > Plug-Ins, turn on the VST3 / Audio Units system folders, then hold Option and click Rescan. It shows up as "Resilio Versio".
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"{{NAME}}.vst3"
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"{{NAME}}.component"
+4. Restart your DAW and rescan plug-ins. In Ableton: Settings > Plug-Ins, turn on the VST3 / Audio Units system folders, then hold Option and click Rescan. It shows up as "{{NAME}}".
 
+{{FIRMWARE_START}}
 FIRMWARE FOR THE VERSIO (only if you have a Noise Engineering Versio)
 
 The same sound runs on the module. File: {{FIRMWARE}}
@@ -25,6 +27,7 @@ The same sound runs on the module. File: {{FIRMWARE}}
 4. Unplug USB, reconnect rack power.
 To go back, use the same app to install any stock Noise Engineering firmware.
 On the module: P1 MIX, P2 DECAY, P3 TONE, P4 SPLASH, P5 TENSION, P6 WOBBLE, P7 DRIVE; the top toggle is SPRINGS, the bottom ATTITUDE; the button and the gate input KICK the tank; the four LEDs are the meters described below.
+{{FIRMWARE_END}}
 
 Use the plugin on a return track (MIX fully up) or as an insert (MIX to taste).
 

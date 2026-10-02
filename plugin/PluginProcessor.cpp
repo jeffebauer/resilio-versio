@@ -88,7 +88,7 @@ public:
     juce::AudioProcessorEditor* createEditor() override { return new rv::plugin::PanelEditor(*this, state_, panel_); }
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return "Resilio Versio"; }
+    const juce::String getName() const override { return JucePlugin_Name; }
     bool acceptsMidi() const override { return true; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
