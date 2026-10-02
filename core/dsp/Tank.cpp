@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 
 namespace rv {
 
@@ -164,7 +163,9 @@ void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolF
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
     kick_.prepare(sampleRate, kKickSeed);
-    clangLp_.setCutoff(splash::kClangHz, sampleRate);
+    clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate);
+    clangAtt_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastAttackMs * sampleRate));
+    clangRel_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastReleaseMs * sampleRate));
     dcNoon_ = drive::driveCurve(0.5f);
     dcRef_  = drive::driveCurve(splash::kSplashRefDrive);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
@@ -311,6 +312,9 @@ void Tank::reset()
     for (auto& d : driveOut_) d.reset();
     splash_.reset();
     clangLp_.reset();
+    clangEnv_ = 0.0f;
+    clangCeilPush_ = 1.0f;
+    splashInput_ = 1.0f;
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
@@ -413,7 +417,7 @@ void Tank::controlTick(bool snap)
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
     // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
-    splash_.set(attW_, splashAmt, splashDrive_); // splashDrive_: DRIVE's gain on the Clang / Bite (below, on DRIVE moves)
+    splash_.set(attW_, splashAmt, splashDrive_, splashInput_); // DRIVE's gain on the Clang / Bite, the INPUT gain (below, on DRIVE moves)
     const float wobbleScale = splash::wobbleDecayScale(decay); // Loop depth eased at long DECAYs
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
@@ -609,7 +613,13 @@ void Tank::controlTick(bool snap)
         }
         compTone_  = tone;
         push_      = drive::push(voice, drive);
+        if constexpr (splash::kVoicingsBuilt) { // the Clang's ceiling credit for the pickups' push (SplashVoicing.h)
+            const float share = attW_[0] * splash::kCeilPushShare[0] + attW_[1] * splash::kCeilPushShare[1]
+                              + attW_[2] * splash::kCeilPushShare[2];
+            clangCeilPush_ = std::exp(share * std::log(push_.out));
+        }
         splashDrive_ = splash::splashDriveGain(drive::driveCurve(drive), dcNoon_, dcRef_);
+        splashInput_ = driveInSettings_.inputGain;
         compDrive_ = drive;
         compW_     = attW_;
     }
@@ -848,7 +858,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
     }
 
     float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
-    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval];
+    float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval], clangToday[kControlInterval];
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
@@ -884,7 +894,7 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
         if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
         float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
-        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n);
+        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n, splash::kVoicingsBuilt ? clangToday : nullptr);
         if (!splashOn_) { // test hooks (Tank.h)
             for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
@@ -922,6 +932,9 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
         // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
         const float kickScale = 1.0f / driveInSettings_.heard;
+        // The Clang's ceiling rises with KICKED's pickup push (clangCeilPush_):
+        // driven KICKED pickups squash a big splash on their own (SplashVoicing.h).
+        const float clangCeil = splash_.clangCeiling() * clangCeilPush_;
         for (int i = 0; i < n; ++i) {
             const float d  = driven[i];
             const float t  = tilt_.process(d);
@@ -938,7 +951,15 @@ void Tank::process(const float* inL, const float* inR, float* outL, float* outR,
             if (tankv::hasGentle(tankVoicing_)) x = gentleShelf_.process(gentleHp_.process(x)); // voicing 4: the low cut
 #endif
             const float lo = clangLp_.process(x);
-            mono[i] = x + clang[i] * (x - lo) + kickScale * kickLoop[i];
+            float c = clang[i];
+            if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
+                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
+                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
+                c = c < cmax ? c : cmax;
+                c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
+            }
+            mono[i] = x + c * (x - lo) + kickScale * kickLoop[i];
         }
         // Voicing 1: the shared Sweep, once for every Spring (Loop and high path).
 #if RV_TANKV_BUILT >= 1

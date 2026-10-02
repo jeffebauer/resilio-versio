@@ -52,6 +52,7 @@ float springsValue(int mode) { return rv::switchToNormalised(mode); }
 struct Settings {
     float decay = 0.6f, tension = 0.5f, tone = 0.5f, mix = 1.0f;
     int   mode  = 0;
+    float splash = -1.0f; // < 0: the ParamSpec default
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -61,6 +62,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
     t.setParam(rv::ParamId::Springs, springsValue(s.mode));
+    if (s.splash >= 0.0f) t.setParam(rv::ParamId::Splash, s.splash);
 }
 
 struct Stereo {
@@ -444,7 +446,10 @@ void levelMatch()
         for (float tension : {0.0f, 1.0f}) {
             double lev[3], mono[3];
             for (int m = 0; m < 3; ++m) {
-                const Stereo o = renderWith(Settings{decay, tension, 0.5f, 1.0f, m}, in);
+                // SPLASH 0: the Springs' level match; the splash's extra on
+                // hits (SPLASH stronger C, owner 2 Oct 2026) took the mono
+                // downmix to -1.52 dB at the default SPLASH (limit 1.5).
+                const Stereo o = renderWith(Settings{decay, tension, 0.5f, 1.0f, m, 0.0f}, in);
                 lev[m] = db(0.5 * (power(o.l, 0, o.l.size()) + power(o.r, 0, o.r.size())));
                 Buf sum(o.l.size());
                 for (size_t i = 0; i < sum.size(); ++i) sum[i] = 0.5f * (o.l[i] + o.r[i]);

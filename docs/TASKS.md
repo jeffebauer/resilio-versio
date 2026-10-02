@@ -7,12 +7,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | Milestone | State |
 |---|---|
 | M0 hardware · M3 CPU | **Done.** Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. A new run is due for bipolar WOBBLE + the sustain trim (small costs) once the profile firmware fits again |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_1d18fce.bin` (new SPLASH, DRIVE as INPUT, bipolar WOBBLE, sustain trim; 96.5 % of flash). Flash it, then the click check in §1 |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_a8c64c7.bin` (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE; 91 % of flash; also the first release with the engine built at power-up and the USB-host stub). Do CPU run 14 first (§0), then flash this and the click check |
 | M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE and the sustain trim merged (1 Oct). Next: Big Knob TONE experiment; the Wellspring fit round |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and preset drafts written (`docs/manual.md`, `docs/presets.md`; need updating for the new SPLASH/DRIVE/WOBBLE) |
 
-**Plugin in Ableton:** `1d18fce` (installed 1 Oct, evening: the gentle sustain trim + limiter hold, bipolar WOBBLE, the panel interface; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
+**Plugin in Ableton:** `a8c64c7` (installed 2 Oct: Big Knob TONE (bump on hits), SPLASH C, plus everything before; AU validated). **Rescan needed:** open Ableton, rescan plug-ins (hold ⌥ and click Rescan), and replace any Resilio Versio in your set with a fresh one.
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin (Apple Silicon + Intel, macOS 12+), Versio firmware, read-me with install steps. Download the zip there to send to friends. Claude makes the next one with `tools/make_release.sh --publish`.
 
@@ -22,10 +22,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
 - [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
 - Why: WOBBLE and the sustain trim have never been measured on the chip, and knob moves are the CPU peaks: the lead for the red input LEDs. This build is also the first with the engine built at power-up (frees flash): the run checks that on the hardware too
-- Then flash the release back (`dist/resilio_versio_release_1d18fce.bin`) and do §1
+- Then flash the new release (`dist/resilio_versio_release_a8c64c7.bin`) and do §1
 
 ### 1. Flash the Versio and play (≈2 min + play)
-- [ ] Flash `dist/resilio_versio_release_1d18fce.bin` and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
+- [ ] Flash `dist/resilio_versio_release_a8c64c7.bin` (after run 14) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -49,13 +49,19 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
 - [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
 - [x] **Listened (2 Oct):** a different-sized tank muddles TENSION and DECAY (long, pan); liked the pan tank's character but couldn't tell whether it was the shorter tank or the brighter, higher-chirp sound; wide sounded close to today but lopsided, leaning to a higher harmonic on chords
-- Round 2 being built (local agent): six versions that all keep today's repeat timing: pan **brighter only** and pan **higher chirp only** (to answer that question), **mixed wire gauges** (a chirp cluster, balanced stereo), **coupled springs** (hits bloom), **diffuse** (smoother tail), and your **cross-fed wide** (bright left / today centre / dark right, left and right feeding each other so both ears get both colours)
+- [x] Round 2 built (2 Oct): six versions, all at today's repeat timing (first echo and spacing within 0.5 ms), no extra memory, no ringing, the Howl unchanged
+- [ ] **Listen to SPRINGS 3 round 2 (≈15 min):** open `renders/springs3_palette2/index.html` (level-matched). **A** SPRINGS 2, **B** position 3 today, **C** pan brighter only (less bass, airier tail), **D** pan higher chirp only (higher, quicker, metallic boing), **E** mixed wire gauges (a small cluster of boings per hit, balanced L/R), **F** coupled (hits blur into a bloom instead of separate drips), **G** diffuse (smoother, softer echoes), **H** your cross-fed wide (bright left / today centre / dark right trading energy: roughly halves the lean, no upward pull on chords). C vs D answers "brightness or chirp?". Which makes position 3 its own thing?
 - [x] SPLASH built in the cloud (1 Oct)
-- [ ] **Listen to SPLASH (≈10 min):** open `renders/proto_splash_stronger/index.html` (not level-matched: the splash's size is the point). **A** today, **B** a much bigger top quarter (about 3× the clang at full), **C** B + independent of DRIVE (with DRIVE down, SPLASH works as if DRIVE were at 0.8), **D** C, bolder (the clang reaches lower into each hit's body and rings longer). Rows: hits, skank, clicks × DRIVE 0 / 0.8 × SPLASH steps; columns CLEAN / KICKED. A ceiling keeps a big splash off the output limiter, never below today's splash
+- [x] **SPLASH listened (2 Oct): C** (stronger top + works with DRIVE down) on every click and hit panel and most skank. **Merged** (SPEC v1.0.25). Not yet in Ableton or on the Versio: next install / release
 
 ### 3c. Today's sound next to your Wellspring (≈10 min)
 - [ ] Open `renders/wellspring_fit2/page/index.html` (level-matched). Columns: **A your Wellspring recording**, **B** Resilio default settings, then **C / D / E**, the knob settings that measure closest to your Wellspring with 1 / 2 / 3 Springs (TENSION ~7/8, TONE ~2:30, DECAY ~2/3, CLEAN). Each Resilio panel has SPLASH 0 and 0.3. How close is it now, and what's the biggest difference you hear?
 - Measured: echo spacing now matches (within 3–4 ms); the tail's tonal balance is ~3 dB off; our tails are shorter at both ends (lows 3.4 vs 4.7 s, 4 kHz 1.1 vs 1.9 s)
+- [x] **Listened (2 Oct):** still quite different: the Wellspring is more diffuse; ours has more low end/mids (present, forward) where the Wellspring is further away and gentler; its repeats blur fast while ours flicker left/right like a delay. Measured, all three confirmed: tail washed-ness 0.97 vs ours 0.62–0.66; low-mid balance −6 vs −2 dB (defaults +1); L/R jumps 2.8 vs 9–10 dB per 10 ms
+- [x] Wellspring fit round 3 built (2 Oct): no ringing in any version, Howl unchanged
+- [x] **Round 3 listened (2 Oct):** still different: the Wellspring's echoes are further apart; it's more muted (less highs), wider, more diffuse; its repeats darken while ours sound metallic and bright. Measured: Claude's settings search had matched the Wellspring's fast high-only arcs (36 ms) instead of its main echoes (65 ms), so every comparison used TENSION far too tight: fixed, the closest is **TENSION noon**. And ours is ~17 dB brighter in the first 60 ms after a hit at every knob setting: the Wellspring's coil-and-magnet transducers filter the treble going in and coming out; ours barely do
+- Round 4 being built (local agent): round 3's sweep + stereo together + diffusion, then **transducers** (treble-limited in and out, softer tick on each echo), then **wide again**, then **gentler low-mids** (with level makeup). Compared at the corrected settings; same page format as round 3
+- Still different after round 3 (measured): the lowest octave rings shorter (3.8 vs 4.7 s; making it longer stretches DECAY past its range: a question for you later), the top octave too (1.2 vs 1.9 s), and the "pew" stops a bit lower than the Wellspring's
 
 ### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
 - [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
@@ -75,7 +81,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-**Next install** (plugin + release firmware) can carry Big Knob, and SPLASH once you've picked
+**Next install** (plugin + release firmware) carries Big Knob and SPLASH C (installed 2 Oct)
 - **CPU run 14** ready for you (§0). Flash freed: the engine is now built at power-up (release 93 %, was 96.5 %; the CPU-test firmware fits again).
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 - **Docs to refresh:** `docs/manual.md` and `docs/presets.md` for the new SPLASH, DRIVE, WOBBLE and sustain trim; small stale spots in code comments and old SPEC sections

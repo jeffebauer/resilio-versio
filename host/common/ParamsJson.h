@@ -20,13 +20,16 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // prototype pages to compare voicings in one sweep: "wobble_voicing" (0 = A,
 // 1 = B, 2 = C, 3 = D; core/params/WobbleVoicing.h, ADR 0034 round 2) and
 // "sustain_voicing" (0 = off, the limiter hold only; 1 = round 2; 2 = gentle;
-// core/params/DriveVoicing.h, ADR 0035 round 3) and "tone_voicing" (0 =
-// today, 1 = steep, 2 = steep + bump, 3 = + ringier when driven; the Big
-// Knob, DriveVoicing.h, ADR 0036 Proposed) and "tank_voicing" (0 = today,
-// 1 = Sweep, 2 = + stereo together, 3 = + diffusion, 4 = + gentler;
-// core/params/TankVoicing.h, ADR 0038 Proposed). Returns false if `key` isn't one.
+// core/params/DriveVoicing.h, ADR 0035 round 3), "splash_voicing" (0 =
+// today, 1 = stronger top, 2 = + DRIVE-free, 3 = bolder; core/params/
+// SplashVoicing.h, ADR 0032 "SPLASH stronger"), "tone_voicing" (0 =
+// today ... 5 = the bump on hits; the Big Knob, DriveVoicing.h, ADR 0036)
+// and "tank_voicing" (0 = today, 1 = Sweep, 2 = + stereo together, 3 = +
+// diffusion, 4 = + gentler; core/params/TankVoicing.h, ADR 0038 Proposed).
+// Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey  = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey = "sustain_voicing";
+inline constexpr const char* kSplashVoicingKey  = "splash_voicing";
 inline constexpr const char* kToneVoicingKey    = "tone_voicing";
 inline constexpr const char* kTankVoicingKey    = "tank_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);

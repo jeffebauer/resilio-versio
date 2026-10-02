@@ -60,6 +60,7 @@ struct Settings {
     int   att = 1, springs = 1;
     bool  clatterOn = true, joltOn = true; // Tank::setSplashParts (clatterOn: the Splash's sound, Clang + Bite + Clatter)
     bool  sustainOn = true;                // Tank::setSustainTrimEnabled
+    int   voicing = 0;                     // Tank::setSplashVoicing (SplashVoicing.h "SPLASH stronger")
 };
 
 struct Out {
@@ -67,6 +68,7 @@ struct Out {
     Buf jolt; // Splash Jolt envelope after each block
     Buf clat; // Splash Clatter burst envelope after each block
     Buf env;  // Splash hit envelope e (ADR 0032) after each block
+    float limitMinGain = 1.0f; // the output limiter's deepest pull (linear gain)
 };
 
 Out render(const Settings& s, const Buf& in, int block = 48)
@@ -84,6 +86,7 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSplashParts(s.clatterOn, s.joltOn);
     t.setSustainTrimEnabled(s.sustainOn);
+    t.setSplashVoicing(s.voicing);
     Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
@@ -93,6 +96,7 @@ Out render(const Settings& s, const Buf& in, int block = 48)
             o.clat[pos + size_t(i)] = s.clatterOn ? t.splash().clatterEnvelope() : 0.0f;
             o.env[pos + size_t(i)]  = t.splash().hitEnvelope();
         }
+        o.limitMinGain = std::min(o.limitMinGain, t.limiterGain());
     }
     return o;
 }
@@ -381,7 +385,8 @@ void splashAudible()
 // e energy is >= 12 dB under a backbeat's. (The splash itself rings in the
 // tank, so a backbeat's is still sounding under the ghost and a render
 // difference cannot isolate the ghost's.) Every ATTITUDE, SPLASH 1, at the
-// default DRIVE and at DRIVE 1.
+// default DRIVE and at DRIVE 1; the DRIVE-free SPLASH voicings 2 and 3
+// ("SPLASH stronger", which judge levels as DRIVE 0.8 does) at DRIVE 0 too.
 void ghostGroove()
 {
     const size_t len = size_t(5.0f * kFs);
@@ -406,12 +411,15 @@ void ghostGroove()
         for (size_t i = 0; i < sn.size(); ++i) x[b + i] += 0.5012f / pk * sn[i];
         for (size_t i = 0; i < ghost.size(); ++i) x[g + i] += ghost[i];
     }
-    for (float drive : {rv::spec(rv::ParamId::Drive).defaultValue, 1.0f})
+    for (int voicing : {0, 2, 3})
+    for (float drive : {0.0f, rv::spec(rv::ParamId::Drive).defaultValue, 1.0f})
         for (int att : {0, 1, 2}) {
+            if (voicing == 0 && drive == 0.0f) continue;
             Settings s;
             s.att    = att;
             s.splash = 1.0f;
             s.drive  = drive;
+            s.voicing = voicing;
             const Out on = render(s, x, 8);
             double worstShare = -300, worstPeak = 0;
             const size_t w = size_t(0.15f * kFs);
@@ -429,9 +437,9 @@ void ghostGroove()
                 worstPeak  = std::max(worstPeak, double(pg) / double(pb));
             }
             std::snprintf(msg, sizeof msg,
-                          "%s SPLASH 1 groove, DRIVE %.2f: ghost notes (-18 dBFS between -6 dBFS backbeats) barely trigger: "
+                          "voicing %d %s SPLASH 1 groove, DRIVE %.2f: ghost notes (-18 dBFS between -6 dBFS backbeats) barely trigger: "
                           "hit envelope energy %.1f dB re a backbeat's (<= -12), peak %.2f of a backbeat's (< 0.25)",
-                          kAttName[att], drive, worstShare, worstPeak);
+                          voicing, kAttName[att], drive, worstShare, worstPeak);
             check(worstShare <= -12.0 && worstPeak < 0.25, msg);
         }
 }
@@ -448,9 +456,10 @@ void ghostGroove()
 // TENSION / TONE noon, WOBBLE 0.45 (default), MIX 1, DRIVE 0 / 0.25 / 0.5 / 0.75 / 1.
 // Gate: no step lower than the step before by more than 0.5 dB, and DRIVE 1
 // not under DRIVE 0, every ATTITUDE.
-double splash28(const Buf& x, int att, float drive, float splash, const std::vector<double>& at)
+double splash28(const Buf& x, int att, float drive, float splash, const std::vector<double>& at, int voicing = 0)
 {
     Settings s;
+    s.voicing = voicing;
     s.att = att;
     s.drive = drive;
     s.decay = 0.6f;
@@ -517,6 +526,75 @@ void splashAtSendLevel()
                       ">= that and >= +3)",
                       kAttName[att], s1, s0, daw);
         check(s1 >= daw && s1 >= 3.0, msg);
+    }
+}
+
+// ---- 1f. SPLASH stronger: the voicings (ADR 0032 amendment, Proposed) ----------------------
+// Owner, 1 Oct 2026: "the splash knob feels very subtle"; wanted stronger at
+// the top and less tied to DRIVE (SplashVoicing.h "SPLASH stronger"). On the
+// -6 dBFS rim (as 1d), SPLASH 1, CLEAN and KICKED:
+//  - voicing 1 renders bit for bit as today at SPLASH 0.75;
+//  - every voicing's top (SPLASH 1, DRIVE 0.8) splashes at least as much as
+//    today's, KICKED's >= +2 dB more (CLEAN's extra is mostly held back by
+//    the Clang's ceiling on this lone loud rim: the limiter's headroom);
+//  - voicings 2 and 3 splash at DRIVE 0 within 3 dB of DRIVE 0.8 at SPLASH
+//    0.75, and at DRIVE 0 at least as much as today's DRIVE 0;
+//  - the output limiter's deepest pull (MIX 1) stays <= 9 dB (printed with
+//    today's; the Clang's ceiling, SplashVoicing.h).
+// The ghost-note guard for 2 and 3 is in ghostGroove.
+double splashLim(const Buf& x, int att, float drive, float splash, int voicing, double& limDb)
+{
+    Settings s;
+    s.att = att;
+    s.drive = drive;
+    s.decay = 0.6f;
+    s.wobble = 0.45f;
+    s.voicing = voicing;
+    s.splash = 0.0f;
+    const Buf h0 = band(mono(render(s, x)), 2000.0f, 8000.0f);
+    s.splash = splash;
+    const Out on = render(s, x);
+    limDb = -20.0 * std::log10(double(on.limitMinGain));
+    const Buf h1 = band(mono(on), 2000.0f, 8000.0f);
+    const size_t a = size_t(1.02 * kFs), b = size_t(1.4 * kFs);
+    return db(energy(h1, a, b) / energy(h0, a, b));
+}
+
+void splashStronger()
+{
+    Buf hits;
+    if (!load("02_hits.wav", hits)) return;
+    const Buf rim(hits.begin() + long(18.0f * kFs), hits.begin() + long(22.0f * kFs)); // the -6 dBFS rim at 1.0 s
+    for (int att : {0, 2}) {
+        // Voicing 1 below the top: bit for bit today.
+        {
+            Settings s;
+            s.att = att;
+            s.drive = 0.8f;
+            s.splash = 0.75f;
+            const Out a = render(s, rim);
+            s.voicing = 1;
+            const Out b = render(s, rim);
+            std::snprintf(msg, sizeof msg, "%s voicing 1 at SPLASH 0.75, DRIVE 0.8: bit for bit today's", kAttName[att]);
+            check(a.l == b.l && a.r == b.r, msg);
+        }
+        double lim0[2], top0[2], mid0, unused0;
+        for (int d = 0; d < 2; ++d) top0[d] = splashLim(rim, att, d == 0 ? 0.0f : 0.8f, 1.0f, 0, lim0[d]);
+        mid0 = splashLim(rim, att, 0.0f, 0.75f, 0, unused0);
+        for (int v : {1, 2, 3}) {
+            double lim[2], top[2], mid[2], unused;
+            for (int d = 0; d < 2; ++d) {
+                top[d] = splashLim(rim, att, d == 0 ? 0.0f : 0.8f, 1.0f, v, lim[d]);
+                mid[d] = splashLim(rim, att, d == 0 ? 0.0f : 0.8f, 0.75f, v, unused);
+            }
+            std::snprintf(msg, sizeof msg,
+                          "%s voicing %d, -6 dBFS rim: splash at SPLASH 0.75 / 1, DRIVE 0 %+.1f / %+.1f, DRIVE 0.8 %+.1f / %+.1f dB "
+                          "(today's: DRIVE 0 %+.1f / %+.1f, DRIVE 0.8 SPLASH 1 %+.1f); limiter <= 9 dB: %.1f / %.1f (today %.1f / %.1f)",
+                          kAttName[att], v, mid[0], top[0], mid[1], top[1], mid0, top0[0], top0[1], lim[0], lim[1], lim0[0], lim0[1]);
+            bool ok = lim[0] <= 9.0 && lim[1] <= 9.0 && top[1] >= top0[1] + (att == 2 ? 2.0 : 0.0);
+            if (v >= 2) ok &= std::fabs(mid[0] - mid[1]) <= 3.0 && mid[0] >= mid0 && top[0] >= top0[0];
+            check(ok, msg);
+        }
     }
 }
 
@@ -772,6 +850,7 @@ int main()
     ghostGroove();
     splashVsDrive();
     splashAtSendLevel();
+    splashStronger();
     wobbleOnHeldTones();
     morph();
     determinism();

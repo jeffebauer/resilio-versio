@@ -9,8 +9,9 @@
 //   rv_render --analyze <in.wav> [--sidecar-out x.json] [--channel L|R|mix]
 //   Hidden, Renderer-only keys (ParamsJson.h): wobble_voicing = 0 / 1 / 2 / 3 (A / B / C / D,
 //   core/params/WobbleVoicing.h), sustain_voicing = 0 / 1 / 2 (off / round 2 / gentle,
-//   core/params/DriveVoicing.h) and tone_voicing = 0 / 1 / 2 / 3 (today / steep / bump /
-//   driven, the Big Knob, DriveVoicing.h), in --set, a --preset, or a sweep base / grid. A sweep's
+//   core/params/DriveVoicing.h), splash_voicing = 0 / 1 / 2 / 3 (today / stronger top / + DRIVE-free /
+//   bolder, core/params/SplashVoicing.h) and tone_voicing = 0..5 (the Big Knob, DriveVoicing.h),
+//   in --set, a --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
 
 #include "Automation.h"
@@ -210,10 +211,12 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         };
         bool voiced = setsKey(rv::paramsjson::kWobbleVoicingKey);
         bool susVoiced = setsKey(rv::paramsjson::kSustainVoicingKey);
+        bool splVoiced = setsKey(rv::paramsjson::kSplashVoicingKey);
         bool toneVoiced = setsKey(rv::paramsjson::kToneVoicingKey);
         bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
+            if (key == rv::paramsjson::kSplashVoicingKey) splVoiced = true;
             if (key == rv::paramsjson::kToneVoicingKey) toneVoiced = true;
             if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
@@ -240,6 +243,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         // review page's A / B / C versions).
         if (voiced) params.set(rv::paramsjson::kWobbleVoicingKey, rv::json::Value::makeString(rv::paramsjson::wobbleVoicingLabel(tank)));
         if (susVoiced) params.set(rv::paramsjson::kSustainVoicingKey, rv::json::Value::makeNumber(tank.sustainVoicing()));
+        if (splVoiced) params.set(rv::paramsjson::kSplashVoicingKey, rv::json::Value::makeNumber(tank.splashVoicing()));
         if (toneVoiced) params.set(rv::paramsjson::kToneVoicingKey, rv::json::Value::makeNumber(tank.toneVoicing()));
         if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
