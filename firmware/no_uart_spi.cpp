@@ -143,3 +143,20 @@ daisy::QSPIHandle::Result daisy::QSPIHandle::Init(const daisy::QSPIHandle::Confi
     return daisy::QSPIHandle::Result::OK;
 }
 #endif
+
+// USB device, release only (4 Oct 2026, flash): the release firmware never
+// starts USB (no serial; DaisySeed::Init leaves usb_handle alone, and
+// firmware installs go through the chip's own DFU loader, not this app).
+// libDaisy's OTG_HS IRQ handler (src/sys/system.cpp) still references the
+// device handle hpcd_USB_OTG_HS (usbd_conf.o) and HAL_PCD_IRQHandler, which
+// drag in the USB device stack (~7.6 KB: hal_pcd, ll_usb, usbd_core,
+// usbd_ctlreq, usbd_conf). Same pattern as the host stubs above: a zeroed
+// handle keeps the handler's `if (hpcd_USB_OTG_HS.Instance)` guard false,
+// and the interrupt is never enabled in release anyway. Profile (USB
+// serial) and m0test (Logger) keep the real stack.
+#if defined(RV_MODE_RELEASE)
+extern "C" {
+PCD_HandleTypeDef hpcd_USB_OTG_HS;
+void HAL_PCD_IRQHandler(PCD_HandleTypeDef*) {}
+}
+#endif
