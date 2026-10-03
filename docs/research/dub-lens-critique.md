@@ -225,6 +225,17 @@ All three share the normalling problem (In R copies In L when unplugged). A "Ret
 
 ---
 
+### Owner's answers (3 Oct 2026)
+1. **The throw:** the gate throws, the button kicks (direction A). Unpatched behaves as today.
+2. **Filter timing:** hear all three first (pre / post / split on a sweep over a ringing tail).
+3. **Feedback:** no. Keep the KICKED Howl; In R is not the feedback return (direction C parked).
+4. **SPRINGS 3:** prototype tape echo into two springs in the Renderer, decide by ear.
+5. **Hold:** yes. Near-infinite tail at the top of DECAY in CLEAN and DRIVEN, ducked under new hits (reopens ADR 0001 for those modes; KICKED keeps the Howl).
+6. **Hiss:** hear a few levels first.
+7. **Method:** Wellspring round 5 is the last fit; after it, rounds are judged with gesture renders inside a dry drum loop, next to records.
+
+Still open: what In R is for, now that it isn't the feedback return (a duck key, a second send, or plain stereo).
+
 ## 9. Corrections to our own docs (found by this research)
 
 - **ADR 0036, Context:** "He swept it on the reverb and echo sends" is only plugin and gear copy [A]. What's documented is that Tubby's filter worked on any channel. The Altec model and slope are well supported. Scientist adds that the "phaser" people hear at Tubby's was this filter [D]. The decision doesn't change; only the confidence of that sentence.

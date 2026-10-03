@@ -78,7 +78,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [ ] **Dub-lens critique (3 Oct):** read [research/dub-lens-critique.md](research/dub-lens-critique.md) and answer its §8 questions (the throw on the gate, filter on the return, feedback through In R, echo into springs as SPRINGS 3, hold, hiss, and whether to stop chasing the Wellspring after round 5). Ideas only, nothing built yet
+- [x] **Dub-lens critique (3 Oct):** answered ([research/dub-lens-critique.md](research/dub-lens-critique.md) §8): gate = throw, button = Kick; hold at DECAY's top (CLEAN/DRIVEN, ducked); Howl stays KICKED-only, no feedback return; round 5 is the last Wellspring fit. To hear first: TONE filter pre / post / split, tape echo into springs for SPRINGS 3, hiss levels. Still open: what In R is for (duck key, second send, or stereo)
 - [ ] **What should make you reach for 3 Springs instead of 2?** Three rounds keeping today's repeat timing all came out subtle (wire gauges shipped). Options: a bigger, longer-ringing darker tank (rings longer than DECAY says); two tanks in a row (thicker, washed, a doubled boing); a brighter, splashier tank (sparse → classic → splashy); or leave it as "slightly denser"
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
