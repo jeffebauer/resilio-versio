@@ -40,9 +40,9 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 126,280 B (96%) (2 Oct 2026: tank voicing 7, the Wellspring fit, ADR 0038, on top of SPRINGS 3 coupled, ADR 0037. 7 added ~10 KB of code (the Sweep, the Loop diffusers, the transducers, the second decorrelator, the low cut and its makeup, the TONE re-map); see "Flash-budget techniques" below for how it fits. Before 7: 122,392 B)
+- release 112,628 B (85%, 18.4 KB free) on `main` `327af86` (4 Oct 2026, flash study: no QSPI chip set-up, no USB device stack in release; `docs/prototypes/flash-study/README.md`). Before: 126,280 B (96%, tank voicing 7, ADR 0038). Binary: `dist/resilio_versio_release_327af86.bin`
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 130,496 B (99.6%, 576 B headroom) on `main` `340b542` (Wellspring F + low cut D + SPRINGS 3 wire gauges). **Run 15 binary: `dist/resilio_versio_m3_profile_run15.bin`** (built 3 Oct from `340b542`; first chip measurement since run 13). Release binary for after it: `dist/resilio_versio_release_340b542.bin`
+- profile 114,600 B (87%, 16.5 KB free) on `main` `327af86` (flash study: also skips the ADC/controls and the Seed 1.1 codec set-up; audio code byte-identical, so run 15's numbers hold). Binary: `dist/resilio_versio_m3_profile_327af86.bin`. Before: 130,496 B (99.6%) at `340b542`, **run 15 binary `dist/resilio_versio_m3_profile_run15.bin`** (first chip measurement since run 13), release for after it `dist/resilio_versio_release_340b542.bin`
 
 ### Flash-budget techniques in use (ADR 0011)
 

@@ -78,8 +78,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
 ### 1b. Flash room for the new features (4 Oct) · your OK to merge
-- [ ] **OK to merge the flash study?** (`proto/flash-study`, [README](https://github.com/jeffebauer/resilio-versio/blob/proto/flash-study/docs/prototypes/flash-study/README.md)). It frees **18.4 KB** in the release firmware and **16.5 KB** in the CPU-test one (was 4.8 KB and 576 B) by not setting up hardware we never use: the Seed's QSPI flash chip, USB in the release (you flash through Firmware Swap, which doesn't need it), and in the CPU-test build the knobs/ADC and the old codec. No sound change; the audio code is byte-for-byte the same, so run 15's numbers stay valid. Firmware stays one-click Firmware Swap (the bootloader route was studied and rejected: friends couldn't install it easily)
-- [ ] After merging, one check on the module: the release boots, plays, LEDs meter, knobs work; the CPU-test build prints its CORNER lines
+- [x] **Flash study merged** (4 Oct, `327af86`): release 18.4 KB free, CPU-test 16.5 KB free (were 4.8 KB and 576 B). No sound change
+- [ ] **Module check (≈5 min, after run 15 and the click check):** flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [x] **Dub-lens critique (3 Oct):** answered ([research/dub-lens-critique.md](research/dub-lens-critique.md) §8): gate = throw, button = Kick; hold at DECAY's top (CLEAN/DRIVEN, ducked); Howl stays KICKED-only, no feedback return; round 5 is the last Wellspring fit. To hear first: TONE filter pre / post / split, tape echo into springs for SPRINGS 3, hiss levels. Still open: what In R is for (duck key, second send, or stereo).

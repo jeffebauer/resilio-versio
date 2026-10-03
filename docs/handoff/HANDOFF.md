@@ -54,7 +54,7 @@ Nothing running. No agents, no uncommitted work. Worktrees removed this session:
 - Friends' feedback on candidate F, if it comes.
 
 ## Will bite
-- **Flash:** profile 99.6 % (576 B). Any code added to the firmware path will overflow it. The levers, all firmware-only:
+- **Flash (eased 4 Oct, flash study merged at `327af86`):** release 85 % (18.4 KB free), profile 87 % (16.5 KB free), by not setting up unused hardware (QSPI chip; USB in release; ADC/codec in profile). Needs one module check (boots, plays, LEDs, knobs; profile prints CORNER lines). Planned features (TONE after the springs, gate throw, hold, echo mode) need ~6–8 KB; dropping SPRINGS 3's coupled code frees ~3.8 KB. Reserve levers if needed later: LED DMA registers (~1 KB, release), and (not recommended) -Os on the knob-move redesign (~4 KB). The older levers, all firmware-only:
   - `RV_SIZE_OPT` (set-up and per-tick housekeeping only);
   - one-entry voicing tables (`springs3::voicing()`, the fParts table);
   - Renderer-only voicings behind `RV_FIXED_VOICINGS`;
