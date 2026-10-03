@@ -27,6 +27,11 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **TONE fully left:** as warm and dark as you're used to?
 - Then tell Claude: merge as is, or what to fix first
 
+### 0b. F round 2: two short listens (≈15 min) · then Claude merges F with your picks
+- [ ] **Low end at TONE noon:** open `renders/f2_lowend/index.html` (level-matched). **A** today's main, **B** candidate F as you played it, **C** a touch more body, **D** a little more, **E** the most (still well under today's). Which has the right amount of low end at noon?
+- [ ] **What should 3 Springs be?** open `renders/f2_springs3/index.html`. **A** 2 Springs, **B** 3 Springs as in F (coupled), **C** stronger coupling, **D** wide (more of the Springs' differences in the sides, still no left-right flicker), **E** wire gauges (a cluster of boings per hit), **F** swell (the tail grows for ~0.1 s after a hit, then fades; held sounds aren't swelled). Which makes 3 Springs its own thing? Same repeat timing in all
+- "Copy results for Claude" on each page, or plain words
+
 ### 0. CPU run 14 on the module (≈10 min, USB only) · ready
 - [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
 - [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
