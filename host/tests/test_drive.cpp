@@ -971,6 +971,39 @@ void accumulate(AliasResult& r, const Buf& y, float f0, double absFloorDb = -100
     }
 }
 
+// The whole Tank: what its nonlinear stages add, judged against the same
+// Tank, same settings, same tone played 40 dB quieter (where every stage is
+// linear), relative to the fundamental. F's darker tank (ADR 0038) keeps the
+// lows and loses the 5-15 kHz tone by ~30 dB, so a product the tank only
+// shapes (the same share of the tone at -40 dB) is not counted; anything the
+// drive, coil, Loop or pickup stages add is, at the same -60 dB / absolute
+// bars. (ADR 0038 Round F2: with the gentler low cut and the coupled wire
+// gauges together, a 104 Hz product read -53.7 dB re a 7 kHz tone the tank
+// had darkened, -93.9 dBFS.)
+void accumulateVsLinear(AliasResult& r, const Buf& y, const Buf& yLin, float f0, double absFloorDb)
+{
+    constexpr size_t N = 32768;
+    const auto p = spectrum(y, y.size() - N, N), q = spectrum(yLin, yLin.size() - N, N);
+    const double binHz = kFs / double(N);
+    double fp = 0, fq = 0;
+    for (long k = long(f0 / binHz) - 3; k <= long(f0 / binHz) + 3; ++k) fp = std::max(fp, p[size_t(k)]), fq = std::max(fq, q[size_t(k)]);
+    const double fundDbfs = db(fp) - 20.0 * std::log10(0.35875 * double(N) / 2.0);
+    for (size_t k = size_t(20.0 / binHz); k <= size_t(20000.0 / binHz); ++k) {
+        const double hz = double(k) * binHz;
+        bool harmonic = false;
+        for (int h = 1; h * f0 < kFs / 2 + 7 * binHz; ++h)
+            if (std::fabs(hz - h * f0) <= 6.5 * binHz) harmonic = true;
+        if (harmonic) continue;
+        const double added = p[k] / fp - q[k] / fq; // re the fundamental, power: what the loud tone adds
+        if (added <= 0.0) continue;
+        const double rel = db(added), absDb = fundDbfs + rel;
+        const bool good = rel <= -60.0 || absDb <= absFloorDb;
+        r.ok &= good;
+        const double excess = std::min(rel + 60.0, absDb - absFloorDb);
+        if (excess > r.excess) r.excess = excess, r.worst = rel, r.atHz = hz, r.fromHz = f0, r.absDb = absDb;
+    }
+}
+
 Buf fadedSine(size_t n, float hz, float amp)
 {
     Buf b = sine(n, hz, amp);
@@ -1014,9 +1047,10 @@ void aliasing()
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.5f; // noon: still
-            accumulate(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l, f0, -100.0 + heardDb(s.drive));
+            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l,
+                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f)).l, f0, -100.0 + heardDb(s.drive));
         }
-        report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS (abs floor -100 dBFS + the +6 dB DRIVE adds)", r);
+        report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS, what it adds over the same tone at -40 dBFS (abs floor -100 dBFS + the +6 dB DRIVE adds)", r);
     }
     for (float amp : {1.0f, 0.5f}) {
         AliasResult r;
@@ -1029,11 +1063,11 @@ void aliasing()
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.5f; // noon: still
-            const Stereo o = renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp));
-            accumulate(r, o.l, f0, -100.0 + heardDb(s.drive));
+            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp)).l,
+                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f * amp)).l, f0, -100.0 + heardDb(s.drive));
         }
-        report(amp == 1.0f ? "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS"
-                           : "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at -6 dBFS",
+        report(amp == 1.0f ? "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS, what it adds over the same tone 40 dB down"
+                           : "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at -6 dBFS, what it adds over the same tone 40 dB down",
                r);
     }
     // LoopSat sees the Loop's own band (< fC ~4.4 kHz: the chirp low-pass is

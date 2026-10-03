@@ -323,6 +323,16 @@ constexpr float kStrongTrim  = kCoupledTrim;
 // 13: round 2's wire gauges (7), coupled: a hit is a little cluster of
 // different boings that then share their energy.
 constexpr float kCoupledGaugesTrim = kCoupledTrim;
+// The centre Spring (C, the thin wire's high boing) a touch louder in the
+// middle than today's 3 Springs (kCentre3): with the gentler low cut (ADR
+// 0038 Round F2) the three Springs' first echoes combed in mono on chords at
+// DECAY 0, TENSION 0 (-4.9 dB at 1.8 kHz, test_tank's margin -4.5; 0.45 read
+// -4.8, 0.5 -4.5, 0.52 -4.3, 0.55 -4.1). Louder still narrows the image (tank
+// voicing 6's fine-structure L/R correlation 0.10 at 0.55, bar 0.1; 0.09 at
+// 0.52). Level vs 0.40 at the page settings: hits / skank / clicks / pad
+// +0.04 / -0.10 / -0.01 / +0.23 dB stereo, mono +0.21 / 0.00 / +0.16 / +0.34.
+constexpr float kGaugesCentre = 0.52f;
+constexpr modes::StereoMix kGaugesMix{{0.5f, 0.5f, kGaugesCentre}, {modes::kSide3, -modes::kSide3, 0.0f}, modes::kDecorr3};
 // 12: coupled, wider: more of the Springs' difference through F's second
 // decorrelator, Spring C's included (F's 3 Springs: A - B at 0.45). Wider
 // fine structure, still no flicker (both ears hear every echo), mono
@@ -409,7 +419,7 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
      kCoupledAngle, kCoupleAll},
     // 13 coupled wire gauges
-    {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kCoupledGaugesTrim, true,
+    {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kGaugesMix, kCoupledGaugesTrim, true,
      0.0f, kCoupledAngle, kCoupleAll},
     // 14 coupled swell
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kSwellMix, kSwellTrim, true, 0.0f,
