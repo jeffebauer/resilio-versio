@@ -236,6 +236,11 @@ All three share the normalling problem (In R copies In L when unplugged). A "Ret
 
 Still open: what In R is for, now that it isn't the feedback return (a duck key, a second send, or plain stereo).
 
+### Listening picks (4 Oct 2026)
+- **TONE placement: B, after the springs.** The Big Knob moves to the tank's return, so turning TONE right thins the ringing tail at once (branch `proto/tone-place`, `7dc535c`; `docs/prototypes/tone-place/`). Costs: ~+4 % desktop CPU, ~3 KB flash if it became the default. The Kick's thump is thinned with the wet too.
+- **SPRINGS 3: B, tape echo into the springs** (each repeat splashes into the tank; branch `proto/echo-springs`, `c2fb5b3`). Owner, if it ships: more control over the delay. In position 3, **DECAY becomes the echo feedback, TENSION the echo time, and the gate a clock input**, with TENSION then picking straight and dotted divisions/multiplications of the clock.
+- **Hiss: inaudible at every level.** Measured on the sparse-rims renders, the floor sits 84 / 70 / 63 dB under the hits' peaks (faint / Wellspring-like / audible). The Wellspring's "−37 dB" was a narrow-band figure (2–4 kHz floor against the tail's mids), not what the ear hears. So the hiss isn't what made the Wellspring sound diffuse, and a hiss at a realistic level isn't worth its flash (branch `worktree-agent-a294f20caa9a6d3da`, `30bbe94`, kept for reference).
+
 ## 9. Corrections to our own docs (found by this research)
 
 - **ADR 0036, Context:** "He swept it on the reverb and echo sends" is only plugin and gear copy [A]. What's documented is that Tubby's filter worked on any channel. The Altec model and slope are well supported. Scientist adds that the "phaser" people hear at Tubby's was this filter [D]. The decision doesn't change; only the confidence of that sentence.
