@@ -201,9 +201,6 @@ struct Voicing {
     float couplingAngle = 0.0f; // the Loops share energy: a rotation by this angle (radians) of their returns, every trip
     int   couplingKind  = 0;    // kCoupleNone, kCoupleAll (A, B, C) or kCoupleLeftRight (A and B)
     float dampingCapHz  = 0.0f; // a Spring's damping cutoff never above this x its detune (0 = no cap)
-    // F round 2 (tank voicing 6+ only; nothing on the other tanks):
-    std::array<float, 3> wideSides{}; // the side gains into F's second decorrelator, Springs A, B, C (all 0 = the tank's: wideSide3, -wideSide3, 0)
-    std::array<float, 3> inputWeight{}; // coupled only: each Spring's share of the input (all 0 = 1 each, today's)
 };
 constexpr int kCoupleNone = 0, kCoupleAll = 1, kCoupleLeftRight = 2;
 
@@ -409,16 +406,26 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
      kStrongAngle, kCoupleAll},
     // 12 coupled wide
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
-     kCoupledAngle, kCoupleAll, 0.0f, kWideSides},
+     kCoupledAngle, kCoupleAll},
     // 13 coupled wire gauges
     {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kCoupledGaugesTrim, true,
      0.0f, kCoupledAngle, kCoupleAll},
     // 14 coupled swell
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kSwellMix, kSwellTrim, true, 0.0f,
-     kSwellAngle, kCoupleAll, 0.0f, kSwellSides, kSwellInput},
+     kSwellAngle, kCoupleAll},
 }};
 
-constexpr bool hasInputWeights(const Voicing& v) { return v.inputWeight[0] > 0.0f || v.inputWeight[1] > 0.0f || v.inputWeight[2] > 0.0f; }
+// F round 2's own parts (Renderer-only: the firmware builds none of them,
+// RV_FIXED_VOICINGS; only voicings 12 and 14 use them).
+struct FParts {
+    std::array<float, 3> wideSides{};   // the side gains into F's second decorrelator, Springs A, B, C (all 0 = the tank's: wideSide3, -wideSide3, 0)
+    std::array<float, 3> inputWeight{}; // coupled only: each Spring's share of a hit (all 0 = 1 each, today's)
+};
+constexpr FParts fParts(int v)
+{
+    return v == kCoupledWide ? FParts{kWideSides, {}} : v == kCoupledSwell ? FParts{kSwellSides, kSwellInput} : FParts{};
+}
+constexpr bool hasInputWeights(int v) { return v == kCoupledSwell; }
 
 // The voicing Tank reads. The firmware plays only the default, so it keeps
 // that one entry rather than the whole table (~1.9 KB of flash).

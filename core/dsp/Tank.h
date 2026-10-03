@@ -598,10 +598,12 @@ private:
     // returns, at the last tick and this one (ramped per sample between).
     CoupleMatrix s3CoupleFrom_{}, s3CoupleTo_{};
     bool s3Coupled_ = false; // either end of the ramp is coupled (s3W_ > 0 in a coupled voicing)
-    float s3SwellAmt_ = 0.0f, s3SwellFrom_ = 0.0f, s3SwellTo_ = 0.0f; // "coupled swell" input split (F round 2)
+#ifndef RV_FIXED_VOICINGS // F round 2's SPRINGS 3 voicings: Renderer-only
+    float s3SwellAmt_ = 0.0f, s3SwellFrom_ = 0.0f, s3SwellTo_ = 0.0f; // "coupled swell" input split
     float s3SwellTurn_ = 1.0f;                                         // ... its turn per trip re noon TENSION's
     float swFast_ = 0.0f, swSlow_ = 0.0f, swHold_ = 0.0f;              // ... its hit detector
     float swFastAtt_ = 1.0f, swSlowC_ = 1.0f, swHoldStep_ = 1.0f;
+#endif
 };
 
 } // namespace rv
