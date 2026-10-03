@@ -19,6 +19,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (suggested order)
 
 ### 0a. Play the Wellspring F candidate in Ableton (≈15 min) · before Claude merges it
+- [x] **Played (3 Oct):** sounding good overall. Two notes: at TONE noon it's just a tad too thin / high-passed, and 2 vs 3 Springs barely differ. Claude is building two short pages (gentler low end at noon; ways to make SPRINGS 3 stand out on F). F merges with your picks from those
 - Set-up: two return tracks, "Resilio Versio" (today's main) on one and "Resilio Versio F" on the other, same settings, same send; switch between them
 - [ ] **General feel:** does it sit further back and gentler, like your Wellspring, without going dull? Any setting where it sounds worse than before?
 - [ ] **SPLASH in KICKED with DRIVE down:** around 2 o'clock a rim hit splashes ~2 dB less than today (fully up it's slightly more). Still strong enough in the middle of the knob?
