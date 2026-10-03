@@ -22,7 +22,7 @@
 ## In flight
 Nothing running. No agents, no uncommitted work. Worktrees removed this session: springs3b, wfit4, wf2 (all merged).
 - **Kept on purpose:** locked worktrees `agent-a5c8…` (proto/splash-round4) and `agent-adce…` (proto/diffuse-tank); `.claude/worktrees/share` (make_release.sh reuses it); `nifty-shtern-b943cb` (owner archiving it). Unmerged reference branches: `proto/low-tail`, `smooth-arc`, `sweet-tank`, `tension`, `tight-ringing`, `wellspring-fit`, `wobble-hang`, plus the two above. Merged and deletable when convenient: `proto/springs3-palette*`, `proto/wellspring-fit-3/-4`, `proto/wellspring-f2`.
-- **Renders whose picks are done** (deletable, ask the owner first): `springs3_palette2`, `wellspring_fit3`, `wellspring_fit4`, `f2_lowend`, `f2_springs3`. Keep `references`, `ir_library`, `sweep_ir`.
+- **Renders:** the finished listening pages were deleted (owner, 3 Oct: springs3_palette2, wellspring_fit3, wellspring_fit4, f2_lowend, f2_springs3; ~4 GB; their numbers live in the backlog and ADRs, the prototype scripts can rebuild them). Kept: `references`, `ir_library`, `sweep_ir`.
 
 ## Next steps (in order)
 1. **Run 15 results** (owner pastes the serial output). Compare with run 13 per corner (`firmware/README.md` has the table format). Target ≤ 70 % peak. Watch the knob-move peaks: that's the lead for the owner's red input LEDs. Two firmware changes this session could move CPU:
