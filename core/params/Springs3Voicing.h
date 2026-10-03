@@ -124,13 +124,14 @@ constexpr int kPanBright = 5, kPanChirp = 6, kGauges = 7, kCoupled = 8, kDiffuse
 constexpr int kCoupledStrong = 11, kCoupledWide = 12, kCoupledGauges = 13, kCoupledSwell = 14;
 constexpr int kFirstFVoicing  = kCoupledStrong;
 constexpr int kNumVoicings    = 15;
-// Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board" (ADR 0037).
+// Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board"; F round 2
+// (3 Oct 2026): E, 13 coupled wire gauges, on every row (ADR 0037 "Round F2").
 // RV_SPRINGS3_DEFAULT_VOICING (a scratch build's CMAKE_CXX_FLAGS) makes
 // another voicing the default, so the suite can run as if it shipped.
 #ifdef RV_SPRINGS3_DEFAULT_VOICING
 constexpr int kDefaultVoicing = RV_SPRINGS3_DEFAULT_VOICING;
 #else
-constexpr int kDefaultVoicing = kCoupled; // firmware + plugin
+constexpr int kDefaultVoicing = kCoupledGauges; // firmware + plugin
 #endif
 
 #if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)

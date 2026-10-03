@@ -6,10 +6,11 @@
 // For every voicing of position 3 (round 1: 1 long tank, 2 in series, 3
 // wide, 4 pan tank; round 2: 5 pan brighter only, 6 pan higher Chirp only,
 // 7 mixed wire gauges, 8 coupled, 9 diffuse, 10 cross-fed wide; 0 is today,
-// covered by the other suites). Two passes since tank voicing 7 shipped (ADR
-// 0038): the default (8 coupled) on tank voicing 7, the reference voicings on
-// tank voicing 0, which they were made on; F round 2's (11-14, ADR 0037
-// "Round F2") in the first pass, on tank voicing 7 (see inPass()):
+// covered by the other suites; F round 2: 11 stronger, 12 wide, 13 coupled
+// wire gauges, 14 swell). Three passes (see inPass()): the default (13,
+// ADR 0037 "Round F2") on the shipped tank (voicing 7, low cut step 2); the
+// round 1 / 2 references on tank voicing 0, which they were made on; F round
+// 2's references on tank voicing 7 with F's own low cut, which they were made on:
 //   identity  SPRINGS 1 and 2 are bit for bit what voicing 0 plays (hits and
 //             stabs, every ATTITUDE), so positions 1 and 2 never change.
 //   level     SPRINGS 3 as loud as SPRINGS 2 within +-1.5 dB, stereo and
@@ -83,15 +84,20 @@ void check(bool ok, const char* what)
 // second pass on tank voicing 0, today's baselines (voicing 0) included, so
 // each reference is still held to its own bars against the tank it was made
 // for. Each pass reports the other pass's voicings as INFO, uncounted.
-// F round 2's voicings (11+, made on tank voicing 7) are checked in the
-// first pass, on the tank they were made for.
+// Three passes: 1 the shipped tank (tank voicing 7 with its default low cut)
+// with today's position 3 (0) and the default; 2 tank voicing 0 with the
+// round 1 / 2 references (made on it); 3 tank voicing 7 with F's own low cut
+// (f_lowcut_voicing 0) with F round 2's references (11+, made on it; ADR 0037
+// "Round F2"). The default is checked in pass 1 only.
 int  gTankVoicing = rv::tankv::kDefaultVoicing;
-bool gReferencePass = false;
+int  gFLowCut     = rv::tankv::kDefaultFLowCut;
+int  gPass        = 1;
 bool inPass(int v)
 {
     const bool madeOnF = v >= rv::springs3::kFirstFVoicing;
-    return gReferencePass ? v != rv::springs3::kDefaultVoicing && !madeOnF
-                          : (v == 0 || v == rv::springs3::kDefaultVoicing || madeOnF);
+    if (v == rv::springs3::kDefaultVoicing) return gPass == 1;
+    if (gPass == 1) return v == 0;
+    return gPass == 2 ? !madeOnF : (madeOnF || v == 0); // 0: each pass's own baseline (today's position 3 on that tank)
 }
 void checkV(int v, bool ok, const char* what)
 {
@@ -133,6 +139,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSprings3Voicing(s.voicing);
     t.setTankVoicing(gTankVoicing); // the pass's tank (above)
+    t.setFLowCutVoicing(gFLowCut);
 }
 
 struct Stereo {
@@ -1119,12 +1126,17 @@ int main(int argc, char** argv)
         run("character", character);
         run("cost", cost);
     };
-    std::printf("== Pass 1: tank voicing %d (as shipped): SPRINGS 3 voicing 0, the default (%s) and F round 2's 11-14\n",
-                gTankVoicing, kVoiceName[rv::springs3::kDefaultVoicing]);
+    std::printf("== Pass 1: tank voicing %d, low cut step %d (as shipped): SPRINGS 3 voicing 0 and the default, %s\n",
+                gTankVoicing, gFLowCut, kVoiceName[rv::springs3::kDefaultVoicing]);
     all();
-    gTankVoicing   = rv::tankv::kToday;
-    gReferencePass = true;
-    std::printf("== Pass 2: tank voicing 0 (what they were made on): the reference SPRINGS 3 voicings\n");
+    gTankVoicing = rv::tankv::kToday;
+    gPass        = 2;
+    std::printf("== Pass 2: tank voicing 0 (what they were made on): the round 1 / 2 reference SPRINGS 3 voicings\n");
+    all();
+    gTankVoicing = rv::tankv::kGentleWide;
+    gFLowCut     = 0;
+    gPass        = 3;
+    std::printf("== Pass 3: tank voicing 7 with F's own low cut (what they were made on): F round 2's references\n");
     all();
     std::printf("%s\n", failures ? "FAILED" : "ALL PASSED");
     return failures ? 1 : 0;
