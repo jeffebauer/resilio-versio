@@ -29,7 +29,10 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // Springs3Voicing.h, ADR 0037) and "tank_voicing" (0 = round 3's today,
 // 1-4 round 3, 5-7 round 4; core/params/TankVoicing.h, ADR 0038) and
 // "f_lowcut_voicing" (tank voicing 7's low cut: 0 = F's own, 1-3 gentler
-// steps; TankVoicing.h kFLowCutSteps, ADR 0038 "Round F2").
+// steps; TankVoicing.h kFLowCutSteps, ADR 0038 "Round F2") and
+// "tone_place_voicing" (where the Big Knob acts: 0 = before the Springs,
+// today; 1 = on the wet; 2 = split; DriveVoicing.h "TONE placement",
+// PROTOTYPE docs/prototypes/tone-place/).
 // Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
@@ -38,6 +41,7 @@ inline constexpr const char* kToneVoicingKey     = "tone_voicing";
 inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
+inline constexpr const char* kTonePlaceVoicingKey = "tone_place_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 

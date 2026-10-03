@@ -132,14 +132,14 @@ void Tilt::set(float tone, bool snap, int interval)
 {
     if (tone != tone_) { // two pow() per TONE move, none at rest
         const float t    = drive::toneTiltDb(tone);
-        const drive::BigKnob b = drive::bigKnob(voicing_, tone);
+        const drive::BigKnob b = drive::bigKnobPre(place_, voicing_, tone);
         const float comp = drive::toneTiltCompDb(tone);
         loGain_ = drive::dbToGain((comp - 0.5f * t));
         hiGain_ = drive::dbToGain((comp + 0.5f * t));
         lowCut_.setHighpass(b.hz, b.q, sampleRate_);
         order_.setCutoff(b.hz1, sampleRate_);
         if (voicing_ == drive::kToneVoicingHits) {
-            const drive::BigKnob g = drive::bigKnob(drive::kToneVoicingGentle, tone);
+            const drive::BigKnob g = drive::bigKnobPre(place_, drive::kToneVoicingGentle, tone);
             lowCutB_.setHighpass(g.hz, g.q, sampleRate_);
             orderB_.setCutoff(g.hz1, sampleRate_);
         }

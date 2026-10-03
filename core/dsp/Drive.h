@@ -247,6 +247,17 @@ public:
         tone_    = -1.0f; // redesign on the next set()
     }
     int voicing() const { return voicing_; }
+    // TONE placement (DriveVoicing.h "TONE placement"; Renderer only, the
+    // firmware and plugin keep drive::kTonePlaceDefault): which of the Big
+    // Knob's sections run here, before the Springs.
+    void setPlace([[maybe_unused]] int p)
+    {
+#ifndef RV_FIXED_VOICINGS
+        place_ = p;
+#endif
+        tone_ = -1.0f;
+    }
+    int place() const { return place_; }
     float process(float x)
     {
         const float lo = split_.process(x);
@@ -285,9 +296,93 @@ private:
 #else
     int voicing_ = drive::kToneDefaultVoicing;
 #endif
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int place_ = drive::kTonePlaceDefault;
+#else
+    int place_ = drive::kTonePlaceDefault;
+#endif
     float kTarget_ = 0.0f;
     bool boost_ = false;
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;
+};
+
+// ---- ToneReturn: the Big Knob on the wet (TONE placement 1-2, PROTOTYPE) -----
+// DriveVoicing.h "TONE placement". Stereo, after the pickups and the shelf,
+// before the limiter: the Big Knob's sections the placement puts on the
+// return (bigKnobPost), the same coefficients the Tilt would use, redesigned
+// once per control tick while TONE moves (TONE is smoothed over ~5 ms first,
+// as for the Tilt). Each section is crossfaded from an exact pass-through
+// (depth, k ramped per sample), so noon and below are bit-for-bit dry here.
+// Voicing 5 (bump on hits): the gentle-bump path runs beside the plain one
+// and is blended in while a hit lasts, as in the Tilt.
+// Not built into the firmware (Tank: #ifndef RV_FIXED_VOICINGS).
+class ToneReturn {
+public:
+    void prepare(float sampleRate)
+    {
+        sampleRate_ = sampleRate;
+        tone_ = -1.0f;
+        reset();
+    }
+    void reset()
+    {
+        for (auto& f : lc_) f.reset();
+        for (auto& f : lcB_) f.reset();
+        for (auto& f : ord_) f.reset();
+        for (auto& f : ordB_) f.reset();
+        depth_.snap(0.0f);
+        k_.snap(0.0f);
+        hit_.snap(0.0f);
+    }
+    void set(int place, int voicing, float tone, bool snap, int interval)
+    {
+        if (tone != tone_ || place != place_ || voicing != voicing_) {
+            const drive::PostKnob p = drive::bigKnobPost(place, voicing, tone);
+            for (auto& f : lc_) f.setHighpass(p.b.hz, p.b.q, sampleRate_);
+            for (auto& f : ord_) f.setCutoff(p.b.hz1, sampleRate_);
+            if (voicing == drive::kToneVoicingHits) {
+                const drive::PostKnob g = drive::bigKnobPost(place, drive::kToneVoicingGentle, tone);
+                for (auto& f : lcB_) f.setHighpass(g.b.hz, g.b.q, sampleRate_);
+                for (auto& f : ordB_) f.setCutoff(g.b.hz1, sampleRate_);
+            }
+            depthTo_ = p.depth;
+            kTo_     = p.b.k;
+            tone_    = tone;
+            place_   = place;
+            voicing_ = voicing;
+        }
+        if (snap) {
+            depth_.snap(depthTo_);
+            k_.snap(kTo_);
+        } else {
+            depth_.aim(depthTo_, interval);
+            k_.aim(kTo_, interval);
+        }
+    }
+    void setHitBlend(float target, int interval) { hit_.aim(target, interval); }
+    void process(float& l, float& r)
+    {
+        const float d = depth_.next(), k = k_.next();
+        const float hb = voicing_ == drive::kToneVoicingHits ? hit_.next() : 0.0f;
+        l = one(l, 0, d, k, hb);
+        r = one(r, 1, d, k, hb);
+    }
+
+private:
+    float one(float x, int c, float d, float k, float hb)
+    {
+        const float y1 = x + d * (lc_[c].process(x) - x);
+        const float y  = y1 - k * ord_[c].process(y1);
+        if (voicing_ != drive::kToneVoicingHits) return y;
+        const float b1 = x + d * (lcB_[c].process(x) - x);
+        const float yb = b1 - k * ordB_[c].process(b1);
+        return y + hb * (yb - y);
+    }
+    std::array<Biquad, 2> lc_{}, lcB_{};
+    std::array<OnePoleLowpass, 2> ord_{}, ordB_{};
+    Ramp depth_, k_, hit_;
+    float sampleRate_ = 48000.0f, tone_ = -1.0f, depthTo_ = 0.0f, kTo_ = 0.0f;
+    int place_ = -1, voicing_ = -1;
 };
 
 // ---- LoopSat: inside a Spring's feedback path -------------------------------

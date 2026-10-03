@@ -667,6 +667,94 @@ inline float bigKnobTrimDb(int voicing, float v, const std::array<float, 3>& w, 
     return -u * (bump + (0.5f * w[1] + w[2]) * (kBigKnobSquashDb + kBigKnobSquashDriveDb * drive));
 }
 
+// ---- TONE placement (PROTOTYPE, owner 3 Oct 2026; docs/research/
+// dub-lens-critique.md §3.2 and direction B; docs/prototypes/tone-place/) ----
+// "When you turn TONE right during a ringing tail, what should thin out?"
+// Where the Big Knob (TONE's right half: the low cut above, with its bump on
+// hits) acts. Everything else TONE does (the tilt, the Loop damping, the
+// high path, tank voicing 7's coil and pickup) stays where it is, and left
+// of noon every placement is today's, bit for bit.
+//   0 pre:   today. The low cut before the Springs: the next hit goes in
+//            thin, the tail already ringing changes only slowly.
+//   1 post:  the same low cut (slope, cutoff curve, bump on hits) on the
+//            stereo wet, after the Springs and pickups, before the limiter
+//            and MIX (Black Ark's low cut on the spring's return; dub
+//            techno's filter on the wet): the tail you hear thins at once.
+//   2 split: the Big Knob's 3rd-order slope split in two: its 1st-order
+//            section (6 dB/oct) before the Springs, its 2nd-order section
+//            (12 dB/oct, carrying most of the bump) on the wet. A new hit
+//            passes both, so its total is today's 18 dB/oct curve (never
+//            double-thinned); a tail already ringing thins at once by the
+//            steeper share, and the tank is fed only 6 dB/oct thinner, so
+//            its LoopSat sees most of its lows (less ringing risk than pre).
+// Level, post (the wet, not the Springs' input, so the makeup has to be
+// its own; ADR 0036 risk): slow followers of the wet's power into and out of
+// the post filter above ~90 Hz (the Excitation trim's weighting, so the
+// Kick's sub thump doesn't count), give back kPostMakeupShare of what it
+// took (in dB, at most kPostMakeupMaxDb either way), held while the wet
+// is silent. It reads the wet itself, so it follows a ringing tail too:
+// a sweep thins the tail at once and the level catches up over
+// kExcSeconds (a gentle swell back, not a jump; ramped per sample). The
+// squash correction (a driven tank squashing on the lows the pre cut fed
+// it) doesn't apply after the tank; the bump correction does, on the wet.
+// Renderer-only key "tone_place_voicing" (Tank::setTonePlaceVoicing); the
+// firmware and the plugin keep kTonePlaceDefault (RV_FIXED_VOICINGS
+// compiles the post stage out).
+constexpr int   kTonePlacePre     = 0;
+constexpr int   kTonePlacePost    = 1;
+constexpr int   kTonePlaceSplit   = 2;
+constexpr int   kNumTonePlaces    = 3;
+constexpr int   kTonePlaceDefault = kTonePlacePre;
+constexpr float kPostMakeupShare  = 0.75f;
+constexpr float kPostMakeupMaxDb  = 12.0f;
+// The Big Knob's sections before the Springs, per placement: post leaves
+// noon's (a 20 Hz 2nd-order guard, no 1st-order section); split keeps only
+// the 1st-order section.
+inline BigKnob bigKnobPre(int place, int voicing, float v)
+{
+    if (place == kTonePlacePre || v <= 0.5f) return bigKnob(voicing, v);
+    BigKnob b = bigKnob(voicing, 0.5f); // noon's, exactly
+    const BigKnob f = bigKnob(voicing, v);
+    b.pushDb = f.pushDb;
+    if (place == kTonePlaceSplit) {
+        b.hz1 = f.hz1;
+        b.k   = f.k;
+    }
+    return b;
+}
+// ... and on the wet. depth crossfades the 2nd-order section in from an
+// exact pass-through at noon (as k does the 1st-order one), so crossing
+// noon never jumps; split zeroes the 1st-order section here.
+struct PostKnob {
+    BigKnob b;
+    float   depth = 0.0f;
+};
+inline PostKnob bigKnobPost(int place, int voicing, float v)
+{
+    PostKnob p;
+    if (place == kTonePlacePre || v <= 0.5f) return p; // pass-through
+    p.b     = bigKnob(voicing, v);
+    p.depth = std::min(1.0f, (2.0f * v - 1.0f) / kBigKnobOrderIn);
+    p.b.pushDb = 0.0f;
+    if (place == kTonePlaceSplit) p.b.k = 0.0f;
+    return p;
+}
+// The pre makeup's measured corrections, per placement: post has no pre cut
+// (none); split keeps the squash share in proportion to the slope it still
+// feeds the tank (a third) and moves the bump correction to the wet.
+inline float bigKnobPreTrimDb(int place, int voicing, float v, const std::array<float, 3>& w, float drive)
+{
+    if (place == kTonePlacePre) return bigKnobTrimDb(voicing, v, w, drive);
+    if (place == kTonePlacePost) return 0.0f;
+    return bigKnobTrimDb(kToneVoicingSteep, v, w, drive) * (1.0f / 3.0f);
+}
+inline float bigKnobPostTrimDb(int place, int voicing, float v)
+{
+    if (place == kTonePlacePre || v <= 0.5f) return 0.0f;
+    const float u = std::min(1.0f, 2.0f * v - 1.0f);
+    return voicing >= kToneVoicingBump ? -u * kBigKnobBumpTrimDb : 0.0f;
+}
+
 // Tilt level compensation, dB per dB of tilt. A spring tank's loudness sits
 // mostly *below* the pivot (the Loop is dark and its low-mids ring longest),
 // so tilting toward the lows makes it louder: CCW gets pulled down. Keeps

@@ -1,0 +1,24 @@
+{
+  "breakpoints": [
+    {
+      "t": 0.0,
+      "key": "tone",
+      "value": 0.5
+    },
+    {
+      "t": 2.0,
+      "key": "tone",
+      "value": 0.5
+    },
+    {
+      "t": 6.0,
+      "key": "tone",
+      "value": 1.0
+    },
+    {
+      "t": 10.0,
+      "key": "tone",
+      "value": 0.5
+    }
+  ]
+}
