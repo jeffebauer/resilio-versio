@@ -8,7 +8,8 @@
 // 7 mixed wire gauges, 8 coupled, 9 diffuse, 10 cross-fed wide; 0 is today,
 // covered by the other suites). Two passes since tank voicing 7 shipped (ADR
 // 0038): the default (8 coupled) on tank voicing 7, the reference voicings on
-// tank voicing 0, which they were made on (see inPass()):
+// tank voicing 0, which they were made on; F round 2's (11-14, ADR 0037
+// "Round F2") in the first pass, on tank voicing 7 (see inPass()):
 //   identity  SPRINGS 1 and 2 are bit for bit what voicing 0 plays (hits and
 //             stabs, every ATTITUDE), so positions 1 and 2 never change.
 //   level     SPRINGS 3 as loud as SPRINGS 2 within +-1.5 dB, stereo and
@@ -82,11 +83,15 @@ void check(bool ok, const char* what)
 // second pass on tank voicing 0, today's baselines (voicing 0) included, so
 // each reference is still held to its own bars against the tank it was made
 // for. Each pass reports the other pass's voicings as INFO, uncounted.
+// F round 2's voicings (11+, made on tank voicing 7) are checked in the
+// first pass, on the tank they were made for.
 int  gTankVoicing = rv::tankv::kDefaultVoicing;
 bool gReferencePass = false;
 bool inPass(int v)
 {
-    return gReferencePass ? v != rv::springs3::kDefaultVoicing : (v == 0 || v == rv::springs3::kDefaultVoicing);
+    const bool madeOnF = v >= rv::springs3::kFirstFVoicing;
+    return gReferencePass ? v != rv::springs3::kDefaultVoicing && !madeOnF
+                          : (v == 0 || v == rv::springs3::kDefaultVoicing || madeOnF);
 }
 void checkV(int v, bool ok, const char* what)
 {
@@ -97,10 +102,11 @@ using Buf = std::vector<float>;
 constexpr float  kFs = 48000.0f;
 constexpr double kPi = 3.14159265358979323846;
 const char* const kAttName[3]   = {"CLEAN", "DRIVEN", "KICKED"};
-const char* const kVoiceName[11] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
+const char* const kVoiceName[15] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
                                     "4 pan tank",       "5 pan brighter",    "6 pan Chirp",  "7 wire gauges",
-                                    "8 coupled",        "9 diffuse",         "10 cross-fed wide"};
-static_assert(rv::springs3::kNumVoicings == 11, "name every voicing");
+                                    "8 coupled",        "9 diffuse",         "10 cross-fed wide",
+                                    "11 coupled stronger", "12 coupled bloom", "13 coupled gauges", "14 coupled wide"};
+static_assert(rv::springs3::kNumVoicings == 15, "name every voicing");
 constexpr int kNumVoicings = rv::springs3::kNumVoicings;
 
 size_t sec(double s) { return size_t(s * double(kFs)); }
@@ -1113,8 +1119,8 @@ int main(int argc, char** argv)
         run("character", character);
         run("cost", cost);
     };
-    std::printf("== Pass 1: tank voicing %d (as shipped): SPRINGS 3 voicing 0 and the default, %s\n", gTankVoicing,
-                kVoiceName[rv::springs3::kDefaultVoicing]);
+    std::printf("== Pass 1: tank voicing %d (as shipped): SPRINGS 3 voicing 0, the default (%s) and F round 2's 11-14\n",
+                gTankVoicing, kVoiceName[rv::springs3::kDefaultVoicing]);
     all();
     gTankVoicing   = rv::tankv::kToday;
     gReferencePass = true;

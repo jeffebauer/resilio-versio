@@ -352,6 +352,32 @@ struct Tuning {
     float tdSplashLiftKickedDb = 3.0f;
 };
 
+// ---- F round 2: the low cut at TONE noon (proto/wellspring-f2; ADR 0038
+// "Round F2, proposed"; docs/m8-tuning-backlog.md "F round 2") ----
+// Owner, 3 Oct 2026, candidate F in Ableton: "with tone at 50%, it's just a
+// tad too thin/high passed". A hidden, Renderer-only key ("f_lowcut_voicing",
+// Tank::setFLowCutVoicing) eases 7's low cut in three small steps; 0 is F
+// exactly (lc* above, bit for bit). The makeup is unchanged (it gives back
+// what each step still takes). The firmware never builds the steps
+// (RV_FIXED_VOICINGS: Tank::fLowCut_ is a constant 0). Measured at TONE noon
+// (sweep 63 / 100 / 126 / 159 / 200 Hz re 0.5-1 kHz, dB): F -18.0 / -10.7 /
+// -7.8 / -3.8 / -2.7; the Wellspring (round 4) -21.2 / -11.8 / -6.6 / -5.6 /
+// -3.3; today's tank +4.4 / +3.7 / +4.1 / +5.0 / +2.2.
+struct LowCutStep {
+    float hpHz, hpQ, shelfHz, shelfDb;
+};
+constexpr int kNumFLowCuts = 4; // 0 = F, 1-3 the gentler steps
+inline constexpr LowCutStep kFLowCutSteps[kNumFLowCuts - 1] = {
+    {185.0f, 0.6f, 300.0f, -2.5f}, // 1 a touch more body: about the Wellspring's 100-160 Hz
+    {155.0f, 0.6f, 300.0f, -2.0f}, // 2 a little more
+    {130.0f, 0.6f, 300.0f, -1.5f}, // 3 the most: 126 Hz flat, still well under today's bump
+};
+// The low cut a Tank playing 7 uses at step `s` (0 = F's own, lc* above).
+inline LowCutStep fLowCut(const Tuning& t, int s)
+{
+    return s <= 0 ? LowCutStep{t.lcHpHz, t.lcHpQ, t.lcShelfHz, t.lcShelfDb} : kFLowCutSteps[s - 1];
+}
+
 // TONE re-map weights (7): left of noon 1 -> 0, right of noon 0 -> 1.
 inline float toneDarkWeight(float tone, float curve)
 {

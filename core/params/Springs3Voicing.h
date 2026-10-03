@@ -119,9 +119,19 @@ namespace rv::springs3 {
 // a second guard.
 constexpr int kToday = 0, kLong = 1, kSeries = 2, kWide = 3, kPan = 4;
 constexpr int kPanBright = 5, kPanChirp = 6, kGauges = 7, kCoupled = 8, kDiffuse = 9, kCrossWide = 10;
-constexpr int kNumVoicings    = 11;
+// F round 2 (proto/wellspring-f2; ADR 0037 "Round F2", proposed): made on
+// tank voicing 7 (Wellspring F), see the end of this file.
+constexpr int kCoupledStrong = 11, kCoupledBloom = 12, kCoupledGauges = 13, kCoupledWide = 14;
+constexpr int kFirstFVoicing  = kCoupledStrong;
+constexpr int kNumVoicings    = 15;
 // Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board" (ADR 0037).
+// RV_SPRINGS3_DEFAULT_VOICING (a scratch build's CMAKE_CXX_FLAGS) makes
+// another voicing the default, so the suite can run as if it shipped.
+#ifdef RV_SPRINGS3_DEFAULT_VOICING
+constexpr int kDefaultVoicing = RV_SPRINGS3_DEFAULT_VOICING;
+#else
 constexpr int kDefaultVoicing = kCoupled; // firmware + plugin
+#endif
 
 #if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
 // The firmware's voicing is fixed (Tank::s3Voicing_ is constexpr), so only the
@@ -191,6 +201,10 @@ struct Voicing {
     float couplingAngle = 0.0f; // the Loops share energy: a rotation by this angle (radians) of their returns, every trip
     int   couplingKind  = 0;    // kCoupleNone, kCoupleAll (A, B, C) or kCoupleLeftRight (A and B)
     float dampingCapHz  = 0.0f; // a Spring's damping cutoff never above this x its detune (0 = no cap)
+    // F round 2 (tank voicing 6+ only; nothing on the other tanks):
+    float diffusionCut  = 0.0f; // share of the tank's per-trip Loop diffusion taken out (its allpasses' c x (1 - this)); their delay stays, so the timing does
+    float wideSide      = 0.0f; // the side gain into F's second decorrelator, Springs A / B (0 = the tank's wideSide3)
+    float wideSideC     = 0.0f; // ... and Spring C's share of it
 };
 constexpr int kCoupleNone = 0, kCoupleAll = 1, kCoupleLeftRight = 2;
 
@@ -297,6 +311,35 @@ inline constexpr std::array<Shape, modes::kNumSprings> kCrossWideSprings{{
 constexpr float kCrossWideAngle = -0.785f;
 constexpr float kCrossWideTrim  = 1.0f;
 
+// ---- F round 2 numbers (made on tank voicing 7, F) ----
+// Owner, 3 Oct 2026, on candidate F: "there isn't much of a noticeable
+// difference between 2 and 3 springs". On F, SPRINGS 2 is already smooth and
+// dense (F's per-trip diffusers) and together in both ears (no flicker), so
+// what the coupling added on today's tank (a smoother bloom, half the
+// left-right flicker) is mostly there in 2 already. Each keeps today's
+// repeat timing (keepTiming) and 3's coupled energy sharing.
+// 11: the Loops turn into each other by more per trip (round 2 kept 0.7 rad:
+// smoothest by the drip index on today's tank); a bigger turn spreads a
+// hit's energy faster, so the swell is quicker and bigger.
+constexpr float kStrongAngle = 1.2f;
+constexpr float kStrongTrim  = kCoupledTrim;
+// 12: position 3 lets go of F's per-trip diffusers (their allpasses become
+// plain delays: same timing), so the echoes start as drips and the
+// coupling, not the smear, turns them into a bloom: drip, then swell.
+constexpr float kBloomAngle        = 0.9f;
+constexpr float kBloomDiffusionCut = 1.0f;
+constexpr float kBloomTrim         = kCoupledTrim;
+// 13: round 2's wire gauges (7), coupled: a hit is a little cluster of
+// different boings that then share their energy.
+constexpr float kCoupledGaugesTrim = kCoupledTrim;
+// 14: coupled, wider: more of the Springs' difference through F's second
+// decorrelator, Spring C's included (F's 3 Springs: A - B at 0.45). Wider
+// fine structure, still no flicker (both ears hear every echo), mono
+// unchanged in shape (the difference cancels).
+constexpr float kWideSide  = 0.75f;
+constexpr float kWideSideC = 0.0f;
+constexpr float kWideTrim  = kCoupledTrim;
+
 inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 0 today: never applied (the Tank plays SpringModes.h as on main).
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, 1.0f},
@@ -345,6 +388,19 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 10 cross-fed wide
     {1.0f, 0.0f, 1.0f, kCrossWideSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 8.0f, kTodayMix, kCrossWideTrim,
      true, 0.0f, kCrossWideAngle, kCoupleLeftRight},
+    // ---- F round 2: made on tank voicing 7 (F); today's repeat timing ----
+    // 11 coupled, stronger
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kStrongTrim, true, 0.0f,
+     kStrongAngle, kCoupleAll},
+    // 12 coupled bloom: the coupling without F's per-trip smear
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kBloomTrim, true, 0.0f,
+     kBloomAngle, kCoupleAll, 0.0f, kBloomDiffusionCut},
+    // 13 coupled wire gauges
+    {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kCoupledGaugesTrim, true,
+     0.0f, kCoupledAngle, kCoupleAll},
+    // 14 coupled wide
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
+     kCoupledAngle, kCoupleAll, 0.0f, 0.0f, kWideSide, kWideSideC},
 }};
 
 // The voicing Tank reads. The firmware plays only the default, so it keeps

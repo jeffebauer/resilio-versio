@@ -296,6 +296,16 @@ void Tank::setTankVoicing([[maybe_unused]] int v)
 #endif
 }
 
+void Tank::setFLowCutVoicing([[maybe_unused]] int v)
+{
+#ifndef RV_FIXED_VOICINGS
+    fLowCut_ = std::clamp(v, 0, tankv::kNumFLowCuts - 1);
+    if (!ok_) return;
+    applyTankVoicing();
+    reset();
+#endif
+}
+
 RV_SIZE_OPT void Tank::applyTankVoicing()
 {
 #if RV_TANKV_BUILT >= 1
@@ -315,10 +325,18 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
         else springs_[s].setHighPathVoicing(Spring::kHighPassRatio, false, 0.0f);
     }
 #if RV_TANKV_BUILT >= 4
-    // The low cut: 4's, or 7's re-sized one.
+    // The low cut: 4's, or 7's re-sized one (F round 2: one of its gentler
+    // steps, Renderer-only; 0 = F's own).
     const bool lc7 = tankv::hasGentleMakeup(tankVoicing_);
-    gentleHp_.setHighpass(lc7 ? t.lcHpHz : t.gentleHpHz, lc7 ? t.lcHpQ : t.gentleHpQ, sampleRate_);
-    gentleShelf_.setLowShelf(lc7 ? t.lcShelfHz : t.gentleShelfHz, lc7 ? t.lcShelfDb : t.gentleShelfDb, sampleRate_);
+    const tankv::LowCutStep lc = tankv::fLowCut(t, fLowCut_);
+    gentleHp_.setHighpass(lc7 ? lc.hpHz : t.gentleHpHz, lc7 ? lc.hpQ : t.gentleHpQ, sampleRate_);
+    gentleShelf_.setLowShelf(lc7 ? lc.shelfHz : t.gentleShelfHz, lc7 ? lc.shelfDb : t.gentleShelfDb, sampleRate_);
+#endif
+#if RV_TANKV_BUILT >= 7 && !defined(RV_FIXED_VOICINGS)
+    // ... and the makeup's copy of it on the raw input (prepare(); the
+    // firmware's step never changes).
+    lcShHp_.setHighpass(lc.hpHz, lc.hpQ, sampleRate_);
+    lcShShelf_.setLowShelf(lc.shelfHz, lc.shelfDb, sampleRate_);
 #endif
 #if RV_TANKV_BUILT >= 7
     tdTone_ = -1.0f; // the coil and pickup corners again (controlTick)
@@ -366,6 +384,15 @@ RV_SIZE_OPT modes::StereoMix Tank::stereoMixFor(int mode) const
             m.side[0] = mode == 2 ? t.wideSide3 : t.wideSide;
             m.side[1] = -m.side[0];
             m.decorr  = t.wideW;
+            // F round 2 "coupled wide" (Springs3Voicing.h): position 3's own
+            // side gains into D2.
+            if (springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday
+                && springs3::voicing(s3Voicing_).wideSide > 0.0f) {
+                const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
+                m.side[0] = v3.wideSide;
+                m.side[1] = -v3.wideSide;
+                m.side[2] = v3.wideSideC;
+            }
         }
     }
     return m;
@@ -524,6 +551,15 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         s3CoupleFrom_ = snap ? m : s3CoupleTo_;
         s3CoupleTo_   = m;
         s3Coupled_    = v3.couplingKind != springs3::kCoupleNone && (s3WFrom_ > 0.0f || s3W_ > 0.0f);
+#if RV_TANKV_BUILT >= 3
+        // F round 2 "coupled bloom": position 3 takes the tank's per-trip
+        // diffusion out with the glide (their allpasses' c toward 0: plain
+        // delays, the round trip unchanged). Only voicings that ask for it.
+        if (v3.diffusionCut > 0.0f && tankv::hasDiffusion(tankVoicing_)) {
+            const float c = tankv::tuning().diffCoeff * (1.0f - s3W_ * v3.diffusionCut);
+            for (auto& sp : springs_) sp.setDiffusionCoeff(c);
+        }
+#endif
     }
 
     // ATTITUDE Morph: glide the weights linearly toward the switch position

@@ -340,6 +340,13 @@ public:
     // before rendering: it clears the tails.
     void setTankVoicing(int v);
     int  tankVoicing() const { return tankVoicing_; }
+    // Renderer / test hook (not a panel control, ADR 0038 "Round F2",
+    // proposed): which step of 7's low cut (TankVoicing.h kFLowCutSteps: 0 =
+    // F's own, 1-3 gentler). Only tank voicing 7 hears it. The firmware and
+    // plugin never call it. Set it after prepare(), before rendering: it
+    // clears the tails.
+    void setFLowCutVoicing(int v);
+    int  fLowCutVoicing() const { return fLowCut_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -489,8 +496,10 @@ private:
     // Tank voicings (params/TankVoicing.h; ADR 0038 Proposed).
 #ifdef RV_FIXED_VOICINGS
     static constexpr int tankVoicing_ = tankv::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+    static constexpr int fLowCut_ = 0; // F round 2's low cut steps: Renderer-only
 #else
     int tankVoicing_ = tankv::kDefaultVoicing; // setTankVoicing
+    int fLowCut_ = 0;                          // setFLowCutVoicing (TankVoicing.h kFLowCutSteps)
 #endif
     // Each part only where this build can play it (RV_TANKV_BUILT): the
     // firmware with the default 0 carries none of them.
