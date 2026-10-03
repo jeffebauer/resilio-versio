@@ -160,3 +160,28 @@ PCD_HandleTypeDef hpcd_USB_OTG_HS;
 void HAL_PCD_IRQHandler(PCD_HandleTypeDef*) {}
 }
 #endif
+
+// Seed 1.1 codec, profile only (4 Oct 2026, flash): DaisySeed's audio set-up
+// configures a WM8731 codec over I2C when it finds a Seed rev 1.1 (the
+// owner's Versio carries a Seed 2 DFM, whose PCM3060 needs no I2C). The
+// CPU-test build listens to nothing and plays nothing anyone hears: it
+// measures the audio callback, which the SAI (the chip is the clock
+// master) runs whether or not a codec is configured. So here the codec
+// and I2C set-up are empty, which keeps the I2C driver and the WM8731
+// driver out of profile (~4.8 KB). Release and m0test keep them: a
+// friend's Versio may well be a Seed 1.1. System::Init's
+// dsy_i2c_global_init only resets I2C's DMA job queue (like the UART and
+// SPI ones above), and nothing in profile ever queues an I2C transfer.
+#if defined(RV_MODE_PROFILE)
+#include "per/i2c.h"
+#include "dev/codec_wm8731.h"
+extern "C" void dsy_i2c_global_init() {}
+daisy::I2CHandle::Result daisy::I2CHandle::Init(const daisy::I2CHandle::Config&)
+{
+    return daisy::I2CHandle::Result::OK;
+}
+daisy::Wm8731::Result daisy::Wm8731::Init(const daisy::Wm8731::Config&, daisy::I2CHandle)
+{
+    return daisy::Wm8731::Result::OK;
+}
+#endif
