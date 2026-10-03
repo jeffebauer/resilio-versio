@@ -1078,9 +1078,12 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     susDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
                                     / (sampleRate_ * std::max(drive::kSusDownSeconds,
                                                               drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
-    susGDownCoeff_ = 1.0f - std::exp(-float(kControlInterval)
-                                     / (sampleRate_ * std::max(drive::kSusGentleDownSeconds,
-                                                               drive::kSusDownPerFill * base.t60Seconds / 13.8f)));
+    float susGlide = std::max(drive::kSusGentleDownSeconds, drive::kSusDownPerFill * base.t60Seconds / 13.8f);
+#if RV_TANKV_BUILT >= 7
+    // F round 2's gentler low cut: held sounds trimmed a little sooner (TankVoicing.h kFSusGlideScale).
+    if (tankv::hasShipFixes(tankVoicing_)) susGlide *= tankv::fLowCut(tankv::tuning(), fLowCut_).susGlideScale;
+#endif
+    susGDownCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (sampleRate_ * susGlide));
     int cap = modes::kStageCap[size_t(mode_)];
     activeStages_ = modes::tensionStages(tension, cap);
 #if RV_TANKV_BUILT >= 1

@@ -365,6 +365,7 @@ struct Tuning {
 // -3.3; today's tank +4.4 / +3.7 / +4.1 / +5.0 / +2.2.
 struct LowCutStep {
     float hpHz, hpQ, shelfHz, shelfDb;
+    float susGlideScale; // held sounds only: the Sustain trim's glide down x this (DriveVoicing.h kSusGentleDownSeconds)
 };
 constexpr int kNumFLowCuts = 4; // 0 = F, 1-3 the gentler steps
 // RV_F_LOWCUT_DEFAULT (a scratch build's CMAKE_CXX_FLAGS) makes a step the
@@ -372,17 +373,23 @@ constexpr int kNumFLowCuts = 4; // 0 = F, 1-3 the gentler steps
 #ifdef RV_F_LOWCUT_DEFAULT
 constexpr int kDefaultFLowCut = RV_F_LOWCUT_DEFAULT;
 #else
-constexpr int kDefaultFLowCut = 0;
+constexpr int kDefaultFLowCut = 2; // the owner's pick, 3 Oct 2026: "F, a little more" on every row (ADR 0038 Round F2)
 #endif
+// More bass into the Springs gives a held pad's loudest moment more to meet
+// the limiter with: it comes as the pad swells in, while the Sustain trim is
+// still gliding down (test_sustain_trim, bar 3.0 dB: F 2.74, step 2 3.11).
+// With the gentler steps the trim glides down this much faster on held
+// sounds; hits, stabs and clicks are never held, so they never move.
+constexpr float kFSusGlideScale = 0.6f;
 inline constexpr LowCutStep kFLowCutSteps[kNumFLowCuts - 1] = {
-    {185.0f, 0.6f, 300.0f, -2.5f}, // 1 a touch more body: about the Wellspring's 100-160 Hz
-    {155.0f, 0.6f, 300.0f, -2.0f}, // 2 a little more
-    {130.0f, 0.6f, 300.0f, -1.5f}, // 3 the most: 126 Hz flat, still well under today's bump
+    {185.0f, 0.6f, 300.0f, -2.5f, kFSusGlideScale}, // 1 a touch more body: about the Wellspring's 100-160 Hz
+    {155.0f, 0.6f, 300.0f, -2.0f, kFSusGlideScale}, // 2 a little more
+    {130.0f, 0.6f, 300.0f, -1.5f, kFSusGlideScale}, // 3 the most: 126 Hz flat, still well under today's bump
 };
 // The low cut a Tank playing 7 uses at step `s` (0 = F's own, lc* above).
 inline LowCutStep fLowCut(const Tuning& t, int s)
 {
-    return s <= 0 ? LowCutStep{t.lcHpHz, t.lcHpQ, t.lcShelfHz, t.lcShelfDb} : kFLowCutSteps[s - 1];
+    return s <= 0 ? LowCutStep{t.lcHpHz, t.lcHpQ, t.lcShelfHz, t.lcShelfDb, 1.0f} : kFLowCutSteps[s - 1];
 }
 
 // TONE re-map weights (7): left of noon 1 -> 0, right of noon 0 -> 1.
