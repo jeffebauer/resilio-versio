@@ -186,14 +186,6 @@ public:
     // pickup keeps its place along the full round trip. n = 0: none (today).
     // Set before the first process() (it resets the Spring's state).
     void setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c);
-    // The feedback diffusers' coefficient alone (SPRINGS 3 "coupled bloom",
-    // Springs3Voicing.h): 0 makes them plain delays, so the round trip (and
-    // L, worked out from their delay) stays as it is. No reset.
-#if RV_TANKV_BUILT >= 3
-    void setDiffusionCoeff(float c) { fbDiffC_ = c; }
-#else
-    void setDiffusionCoeff(float) {}
-#endif
     // Voicing 1 (proto/wellspring-fit B's high path): the high path's
     // high-pass at xoverRatio x fC (today kHighPassRatio), and, if align, its
     // pickup placed so its first echo reaches the crossover frequency

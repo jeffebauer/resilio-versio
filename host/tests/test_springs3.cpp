@@ -105,7 +105,7 @@ const char* const kAttName[3]   = {"CLEAN", "DRIVEN", "KICKED"};
 const char* const kVoiceName[15] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
                                     "4 pan tank",       "5 pan brighter",    "6 pan Chirp",  "7 wire gauges",
                                     "8 coupled",        "9 diffuse",         "10 cross-fed wide",
-                                    "11 coupled stronger", "12 coupled bloom", "13 coupled gauges", "14 coupled wide"};
+                                    "11 coupled stronger", "12 coupled wide", "13 coupled gauges", "14 coupled swell"};
 static_assert(rv::springs3::kNumVoicings == 15, "name every voicing");
 constexpr int kNumVoicings = rv::springs3::kNumVoicings;
 

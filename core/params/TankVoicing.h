@@ -367,6 +367,13 @@ struct LowCutStep {
     float hpHz, hpQ, shelfHz, shelfDb;
 };
 constexpr int kNumFLowCuts = 4; // 0 = F, 1-3 the gentler steps
+// RV_F_LOWCUT_DEFAULT (a scratch build's CMAKE_CXX_FLAGS) makes a step the
+// default, so the suite can run as if it shipped.
+#ifdef RV_F_LOWCUT_DEFAULT
+constexpr int kDefaultFLowCut = RV_F_LOWCUT_DEFAULT;
+#else
+constexpr int kDefaultFLowCut = 0;
+#endif
 inline constexpr LowCutStep kFLowCutSteps[kNumFLowCuts - 1] = {
     {185.0f, 0.6f, 300.0f, -2.5f}, // 1 a touch more body: about the Wellspring's 100-160 Hz
     {155.0f, 0.6f, 300.0f, -2.0f}, // 2 a little more

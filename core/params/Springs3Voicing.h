@@ -121,7 +121,7 @@ constexpr int kToday = 0, kLong = 1, kSeries = 2, kWide = 3, kPan = 4;
 constexpr int kPanBright = 5, kPanChirp = 6, kGauges = 7, kCoupled = 8, kDiffuse = 9, kCrossWide = 10;
 // F round 2 (proto/wellspring-f2; ADR 0037 "Round F2", proposed): made on
 // tank voicing 7 (Wellspring F), see the end of this file.
-constexpr int kCoupledStrong = 11, kCoupledBloom = 12, kCoupledGauges = 13, kCoupledWide = 14;
+constexpr int kCoupledStrong = 11, kCoupledWide = 12, kCoupledGauges = 13, kCoupledSwell = 14;
 constexpr int kFirstFVoicing  = kCoupledStrong;
 constexpr int kNumVoicings    = 15;
 // Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board" (ADR 0037).
@@ -202,9 +202,8 @@ struct Voicing {
     int   couplingKind  = 0;    // kCoupleNone, kCoupleAll (A, B, C) or kCoupleLeftRight (A and B)
     float dampingCapHz  = 0.0f; // a Spring's damping cutoff never above this x its detune (0 = no cap)
     // F round 2 (tank voicing 6+ only; nothing on the other tanks):
-    float diffusionCut  = 0.0f; // share of the tank's per-trip Loop diffusion taken out (its allpasses' c x (1 - this)); their delay stays, so the timing does
-    float wideSide      = 0.0f; // the side gain into F's second decorrelator, Springs A / B (0 = the tank's wideSide3)
-    float wideSideC     = 0.0f; // ... and Spring C's share of it
+    std::array<float, 3> wideSides{}; // the side gains into F's second decorrelator, Springs A, B, C (all 0 = the tank's: wideSide3, -wideSide3, 0)
+    std::array<float, 3> inputWeight{}; // coupled only: each Spring's share of the input (all 0 = 1 each, today's)
 };
 constexpr int kCoupleNone = 0, kCoupleAll = 1, kCoupleLeftRight = 2;
 
@@ -323,22 +322,38 @@ constexpr float kCrossWideTrim  = 1.0f;
 // hit's energy faster, so the swell is quicker and bigger.
 constexpr float kStrongAngle = 1.2f;
 constexpr float kStrongTrim  = kCoupledTrim;
-// 12: position 3 lets go of F's per-trip diffusers (their allpasses become
-// plain delays: same timing), so the echoes start as drips and the
-// coupling, not the smear, turns them into a bloom: drip, then swell.
-constexpr float kBloomAngle        = 0.9f;
-constexpr float kBloomDiffusionCut = 1.0f;
-constexpr float kBloomTrim         = kCoupledTrim;
 // 13: round 2's wire gauges (7), coupled: a hit is a little cluster of
 // different boings that then share their energy.
 constexpr float kCoupledGaugesTrim = kCoupledTrim;
-// 14: coupled, wider: more of the Springs' difference through F's second
+// 12: coupled, wider: more of the Springs' difference through F's second
 // decorrelator, Spring C's included (F's 3 Springs: A - B at 0.45). Wider
 // fine structure, still no flicker (both ears hear every echo), mono
 // unchanged in shape (the difference cancels).
-constexpr float kWideSide  = 0.75f;
-constexpr float kWideSideC = 0.0f;
-constexpr float kWideTrim  = kCoupledTrim;
+inline constexpr std::array<float, 3> kWideSides{{0.6f, -0.6f, 0.3f}};
+constexpr float kWideTrim  = 0.99f; // -0.4 dB re coupled: wider is a touch louder held (SPRINGS 3 -> 2 level step)
+// 14: a swell. The input goes mostly into Spring A, you hear mostly B and
+// C, and the coupling hands A's energy to them trip by trip, so after a hit
+// the tail grows for a moment before it fades.
+inline constexpr std::array<float, 3> kSwellInput{{1.7f, 0.1f, 0.1f}};
+constexpr float kSwellAngle = 0.45f;
+constexpr modes::StereoMix kSwellMix{{0.15f, 0.65f, 0.5f}, {modes::kSide3, -modes::kSide3, 0.0f}, modes::kDecorr3};
+// The split follows the tail's round trips (T60 / L, DECAY over TENSION):
+// none up to kSwellTripsFrom (a short or loose tail has no time to hand the
+// energy over: it would only be quieter), all of it from kSwellTripsTo.
+constexpr float kSwellTripsFrom = 14.0f, kSwellTripsTo = 26.0f;
+// Its sides from B and C only (B - C): A, the Spring the hit goes into, sits
+// in the middle, so the hit doesn't fall away in mono.
+inline constexpr std::array<float, 3> kSwellSides{{0.0f, 0.45f, -0.45f}};
+constexpr float kSwellTrim = 1.07f; // +0.3 dB re coupled: Spring A, which you hear least, holds a share of every hit
+// Hits only (a held pad goes into all three evenly, so it keeps today's
+// level): the split opens when the input's power over kSwellFastAttS runs
+// kSwellRatioFrom..To x (in power: x^2) its power over kSwellSlowS, and holds,
+// falling over kSwellHoldS, while the hit rings in. On a hit A gets the input
+// x kSwellInputGain: what waits in A is lost to its own damping until the
+// coupling hands it on.
+constexpr float kSwellFastAttS = 0.005f, kSwellSlowS = 0.3f, kSwellHoldS = 0.3f;
+constexpr float kSwellRatioFrom = 2.0f, kSwellRatioTo = 6.0f;
+constexpr float kSwellInputGain = 1.7f;
 
 inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 0 today: never applied (the Tank plays SpringModes.h as on main).
@@ -392,16 +407,18 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 11 coupled, stronger
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kStrongTrim, true, 0.0f,
      kStrongAngle, kCoupleAll},
-    // 12 coupled bloom: the coupling without F's per-trip smear
-    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kBloomTrim, true, 0.0f,
-     kBloomAngle, kCoupleAll, 0.0f, kBloomDiffusionCut},
+    // 12 coupled wide
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
+     kCoupledAngle, kCoupleAll, 0.0f, kWideSides},
     // 13 coupled wire gauges
     {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kCoupledGaugesTrim, true,
      0.0f, kCoupledAngle, kCoupleAll},
-    // 14 coupled wide
-    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
-     kCoupledAngle, kCoupleAll, 0.0f, 0.0f, kWideSide, kWideSideC},
+    // 14 coupled swell
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kSwellMix, kSwellTrim, true, 0.0f,
+     kSwellAngle, kCoupleAll, 0.0f, kSwellSides, kSwellInput},
 }};
+
+constexpr bool hasInputWeights(const Voicing& v) { return v.inputWeight[0] > 0.0f || v.inputWeight[1] > 0.0f || v.inputWeight[2] > 0.0f; }
 
 // The voicing Tank reads. The firmware plays only the default, so it keeps
 // that one entry rather than the whole table (~1.9 KB of flash).

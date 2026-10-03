@@ -235,8 +235,11 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
 #endif
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
-    lcShHp_.setHighpass(tankv::tuning().lcHpHz, tankv::tuning().lcHpQ, sampleRate);
-    lcShShelf_.setLowShelf(tankv::tuning().lcShelfHz, tankv::tuning().lcShelfDb, sampleRate);
+    {
+        const tankv::LowCutStep lc = tankv::fLowCut(tankv::tuning(), fLowCut_);
+        lcShHp_.setHighpass(lc.hpHz, lc.hpQ, sampleRate);
+        lcShShelf_.setLowShelf(lc.shelfHz, lc.shelfDb, sampleRate);
+    }
     tdEvenHp_.setHighpass(std::max(tankv::tuning().tdEvenHpHz, 1.0f), 0.7071f, sampleRate);
     tdDarkLp_.setCutoff(tankv::tuning().toneDarkLpHz, sampleRate);
 #endif
@@ -386,12 +389,10 @@ RV_SIZE_OPT modes::StereoMix Tank::stereoMixFor(int mode) const
             m.decorr  = t.wideW;
             // F round 2 "coupled wide" (Springs3Voicing.h): position 3's own
             // side gains into D2.
-            if (springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday
-                && springs3::voicing(s3Voicing_).wideSide > 0.0f) {
-                const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
-                m.side[0] = v3.wideSide;
-                m.side[1] = -v3.wideSide;
-                m.side[2] = v3.wideSideC;
+            if (springs3::kPaletteBuilt && mode == 2 && s3Voicing_ != springs3::kToday) {
+                const auto& ws = springs3::voicing(s3Voicing_).wideSides;
+                if (ws[0] != 0.0f || ws[1] != 0.0f || ws[2] != 0.0f)
+                    for (size_t k = 0; k < 3; ++k) m.side[k] = ws[k];
             }
         }
     }
@@ -401,6 +402,7 @@ RV_SIZE_OPT modes::StereoMix Tank::stereoMixFor(int mode) const
 RV_SIZE_OPT void Tank::reset()
 {
     if (!ok_) return;
+    swFast_ = swSlow_ = swHold_ = 0.0f; // SPRINGS 3 "coupled swell"'s hit detector
     for (auto& s : springs_) s.reset();
 #if RV_TANKV_BUILT >= 1
     sweep_.reset();
@@ -547,19 +549,15 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         // movement check failed 3 of 18), so there the Springs howl apart,
         // as today.
         const float howl = drive::howlZone(decay) * attW_[2];
-        const CoupleMatrix m = coupleMatrix(s3W_ * (1.0f - howl) * v3.couplingAngle, v3.couplingKind);
+        const float turn = springs3::hasInputWeights(v3) ? s3SwellTurn_ : 1.0f; // "coupled swell" (updateBaseSettings)
+        const CoupleMatrix m = coupleMatrix(s3W_ * (1.0f - howl) * v3.couplingAngle * turn, v3.couplingKind);
         s3CoupleFrom_ = snap ? m : s3CoupleTo_;
         s3CoupleTo_   = m;
         s3Coupled_    = v3.couplingKind != springs3::kCoupleNone && (s3WFrom_ > 0.0f || s3W_ > 0.0f);
-#if RV_TANKV_BUILT >= 3
-        // F round 2 "coupled bloom": position 3 takes the tank's per-trip
-        // diffusion out with the glide (their allpasses' c toward 0: plain
-        // delays, the round trip unchanged). Only voicings that ask for it.
-        if (v3.diffusionCut > 0.0f && tankv::hasDiffusion(tankVoicing_)) {
-            const float c = tankv::tuning().diffCoeff * (1.0f - s3W_ * v3.diffusionCut);
-            for (auto& sp : springs_) sp.setDiffusionCoeff(c);
+        if (springs3::hasInputWeights(v3)) { // "coupled swell": the input split, ramped per sample (processCoupled)
+            s3SwellFrom_ = snap ? s3W_ * s3SwellAmt_ : s3SwellTo_;
+            s3SwellTo_   = s3W_ * s3SwellAmt_;
         }
-#endif
     }
 
     // ATTITUDE Morph: glide the weights linearly toward the switch position
@@ -1016,6 +1014,21 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
         base.loopDelaySeconds = l + s3W_ * (lv - l);
         base.transitionHz *= 1.0f + s3W_ * (v3.transitionScale - 1.0f);
     }
+    // F round 2 "coupled swell": how much of the input goes into Spring A
+    // follows how many round trips the tail lasts (T60 / L): a short or
+    // loose tank has no time to hand it over (Springs3Voicing.h).
+    if (springs3::kPaletteBuilt && springs3::hasInputWeights(v3)) {
+        const float u = std::clamp((base.t60Seconds / base.loopDelaySeconds - springs3::kSwellTripsFrom)
+                                       / (springs3::kSwellTripsTo - springs3::kSwellTripsFrom), 0.0f, 1.0f);
+        s3SwellAmt_ = u * u * (3.0f - 2.0f * u);
+        // ... and the turn per trip grows with the trip's length (square
+        // root): a loose tank hands A's energy over in fewer, bigger turns,
+        // so the swell takes less different times across TENSION.
+        s3SwellTurn_ = std::min(1.0f, std::sqrt(base.loopDelaySeconds / map::kTensionMidLoopDelaySeconds));
+        swFastAtt_  = 1.0f - std::exp(-1.0f / (springs3::kSwellFastAttS * sampleRate_));
+        swSlowC_    = 1.0f - std::exp(-1.0f / (springs3::kSwellSlowS * sampleRate_));
+        swHoldStep_ = 1.0f / (springs3::kSwellHoldS * sampleRate_);
+    }
     // In series: the send into the second tank follows DECAY (Springs3Voicing.h).
     if (springs3::kPaletteBuilt && v3.series > 0.0f)
         s3SeriesSend_ = v3.seriesSend
@@ -1235,6 +1248,11 @@ void Tank::processCoupled(const float* mono, float* const* clat, const float* jo
     // this one's (a blend of two rotations never gains: |blend| <= 1).
     float lFrac[kMaxSprings][kControlInterval], lSamples[kMaxSprings][kControlInterval];
     float loopIn[kMaxSprings][kControlInterval], high[kMaxSprings][kControlInterval];
+    const float inv = 1.0f / float(kControlInterval);
+    // F round 2 "coupled swell" (Springs3Voicing.h inputWeight): each Spring
+    // its own share of the input, gliding in with the voicing.
+    const auto& iw = springs3::voicing(s3Voicing_).inputWeight;
+    const bool  weighted = springs3::hasInputWeights(springs3::voicing(s3Voicing_));
     for (size_t s = 0; s < springs_.size(); ++s) {
         const float scale = splash::kJoltSpringScale[s];
         const float* c = clat[s];
@@ -1245,7 +1263,31 @@ void Tank::processCoupled(const float* mono, float* const* clat, const float* jo
             high[s][i]     = mono[i] + splash::kClatterHigh * c[i];
         }
     }
-    const float inv = 1.0f / float(kControlInterval);
+    if (weighted) {
+        // Hits only: short power against long power opens the split on an
+        // attack and holds it while the hit rings into the Springs; a held
+        // sound (fast = slow) goes into all three evenly, as coupled does, so
+        // its level is today's. On a hit Spring A gets the input, louder by
+        // kSwellInputGain (what waits in A is lost to its own damping until
+        // the coupling hands it on), B and C a trace.
+        float a[kControlInterval];
+        for (int i = 0; i < n; ++i) {
+            const float x2 = mono[i] * mono[i]; // short and long power (a held sound: equal)
+            swFast_ += swFastAtt_ * (x2 - swFast_);
+            swSlow_ += swSlowC_ * (x2 - swSlow_);
+            const float tr = std::clamp((swFast_ / (swSlow_ + 1.0e-10f) - springs3::kSwellRatioFrom)
+                                            / (springs3::kSwellRatioTo - springs3::kSwellRatioFrom), 0.0f, 1.0f);
+            swHold_ = std::max(tr, swHold_ - swHoldStep_);
+            a[i] = (s3SwellFrom_ + (s3SwellTo_ - s3SwellFrom_) * float(tick + i) * inv) * swHold_;
+        }
+        for (size_t s = 0; s < springs_.size(); ++s) {
+            const float k = iw[s] * springs3::kSwellInputGain - 1.0f;
+            for (int i = 0; i < n; ++i) {
+                loopIn[s][i] += a[i] * k * mono[i];
+                high[s][i] += a[i] * k * mono[i];
+            }
+        }
+    }
     for (int i = 0; i < n; ++i) {
         const float t = float(tick + i) * inv;
         float r[kMaxSprings];

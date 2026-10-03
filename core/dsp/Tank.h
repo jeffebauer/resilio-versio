@@ -496,10 +496,10 @@ private:
     // Tank voicings (params/TankVoicing.h; ADR 0038 Proposed).
 #ifdef RV_FIXED_VOICINGS
     static constexpr int tankVoicing_ = tankv::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
-    static constexpr int fLowCut_ = 0; // F round 2's low cut steps: Renderer-only
+    static constexpr int fLowCut_ = tankv::kDefaultFLowCut; // F round 2's low cut steps: Renderer-only
 #else
     int tankVoicing_ = tankv::kDefaultVoicing; // setTankVoicing
-    int fLowCut_ = 0;                          // setFLowCutVoicing (TankVoicing.h kFLowCutSteps)
+    int fLowCut_ = tankv::kDefaultFLowCut;     // setFLowCutVoicing (TankVoicing.h kFLowCutSteps)
 #endif
     // Each part only where this build can play it (RV_TANKV_BUILT): the
     // firmware with the default 0 carries none of them.
@@ -598,6 +598,10 @@ private:
     // returns, at the last tick and this one (ramped per sample between).
     CoupleMatrix s3CoupleFrom_{}, s3CoupleTo_{};
     bool s3Coupled_ = false; // either end of the ramp is coupled (s3W_ > 0 in a coupled voicing)
+    float s3SwellAmt_ = 0.0f, s3SwellFrom_ = 0.0f, s3SwellTo_ = 0.0f; // "coupled swell" input split (F round 2)
+    float s3SwellTurn_ = 1.0f;                                         // ... its turn per trip re noon TENSION's
+    float swFast_ = 0.0f, swSlow_ = 0.0f, swHold_ = 0.0f;              // ... its hit detector
+    float swFastAtt_ = 1.0f, swSlowC_ = 1.0f, swHoldStep_ = 1.0f;
 };
 
 } // namespace rv
