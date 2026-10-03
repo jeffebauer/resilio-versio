@@ -510,8 +510,24 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
 int main()
 {
     new (gTankStorage) rv::Tank(); // before anything touches it (see gTankStorage)
-    hw.Init(true); // boost to 480 MHz
-    hw.SetAudioBlockSize(kBlockSize);
+    // DaisyVersio::Init minus the parts this build never uses (flash, 4 Oct
+    // 2026): the knob/CV ADC (it was set up but never started here), the two
+    // switches, the button and the gate. Same Seed set-up (clocks at 480 MHz,
+    // caches, SDRAM, audio codec and SAI) and the same four LEDs, so the
+    // audio callback, and with it the CPU measurement, is unchanged.
+    hw.seed.Configure();
+    hw.seed.Init(true); // boost to 480 MHz
+    {
+        constexpr Pin kLedPins[DaisyVersio::LED_LAST][3] = {
+            {seed::D10, seed::D3, seed::D4},
+            {seed::D12, seed::D13, seed::D11},
+            {seed::D25, seed::D26, seed::D14},
+            {seed::D29, seed::D27, seed::D15},
+        }; // libDaisy src/daisy_versio.cpp PIN_LEDn_R/G/B
+        for (int i = 0; i < DaisyVersio::LED_LAST; ++i)
+            hw.leds[i].Init(kLedPins[i][0], kLedPins[i][1], kLedPins[i][2], true);
+    }
+    hw.seed.SetAudioBlockSize(kBlockSize);
 
     gTankPrepared = PrepareTank();
     StartCycleCounter();
