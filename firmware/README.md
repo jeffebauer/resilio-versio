@@ -42,7 +42,7 @@ shift slightly as DSP work continues):
 
 - release 126,280 B (96%) (2 Oct 2026: tank voicing 7, the Wellspring fit, ADR 0038, on top of SPRINGS 3 coupled, ADR 0037. 7 added ~10 KB of code (the Sweep, the Loop diffusers, the transducers, the second decorrelator, the low cut and its makeup, the TONE re-map); see "Flash-budget techniques" below for how it fits. Before 7: 122,392 B)
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 130,496 B (99.6%, 576 B headroom) with tank voicing 7 and SPRINGS 3 coupled (before 7: 130,396 B). Run 14 binary (before coupled): `dist/resilio_versio_m3_profile_run14.bin`. Run 15 (this build: coupled and 7's per-sample paths, the -Os housekeeping) is due before a release
+- profile 130,496 B (99.6%, 576 B headroom) on `main` `340b542` (Wellspring F + low cut D + SPRINGS 3 wire gauges). **Run 15 binary: `dist/resilio_versio_m3_profile_run15.bin`** (built 3 Oct from `340b542`; first chip measurement since run 13). Release binary for after it: `dist/resilio_versio_release_340b542.bin`
 
 ### Flash-budget techniques in use (ADR 0011)
 

@@ -1,6 +1,6 @@
 # Handoff
 
-**Written:** 2 Oct 2026, end of session 5 (1–2 Oct). Start the next session with `/resilio-start`. The owner's weekly usage reset during this session: local agents are fine again (cloud sessions launched by the owner at claude.ai/code also work: see memory `remote-agent-ran-locally`).
+**Written:** 3 Oct 2026, end of session 6 (2–3 Oct). Start the next session with `/resilio-start`. The owner is doing **CPU run 15 and the Versio click check tomorrow morning** (4 Oct): expect the serial output pasted in.
 
 ## State
 
@@ -8,45 +8,70 @@
 |---|---|
 | M0 hardware | Passed |
 | M1 Spring + Renderer · M4–M7 | Built |
-| M2 plugin | Built; panel interface (knobs, toggles, KICK, LED meters) merged. Owner's M2 Ableton check still pending |
-| M3 CPU | Run 13 was the last chip run (63.4 % avg / 66.3 % peak, target 70 %). **Run 14 is ready and not yet run**: everything since run 13 (bipolar WOBBLE, sustain trim + limiter hold, Big Knob, SPLASH C, engine built at boot, USB-host stub) is unmeasured on the chip |
-| M8 tuning | In progress. Merged this session: SPLASH/DRIVE (ADR 0032/0033), bipolar WOBBLE voicing D (0034), sustain trim gentle + limiter hold (0035), Big Knob TONE v5 (0036), SPLASH stronger C (0032 amendment), `rv_render --set` labels fix. Prototypes waiting on the owner: SPRINGS 3 round 2 (0037 Proposed), Wellspring fit round 4 (0038 Proposed) |
-| M9 polish | LED meters done (module and plugin); share releases via `tools/make_release.sh`; manual/presets need refreshing for the new sound |
+| M2 plugin | Built; panel interface merged. Owner's M2 Ableton check still pending |
+| M3 CPU | Run 13 was the last chip run (63.4 % avg / 66.3 % peak, target 70 %). **Run 15 is built** (`dist/resilio_versio_m3_profile_run15.bin`, from `340b542`) and covers everything since run 13: bipolar WOBBLE, sustain trim, Big Knob, SPLASH C, SPRINGS 3 coupled wire gauges, the Wellspring F tank, and the flash savings. Run 14 was skipped |
+| M8 tuning | In progress. Merged this session: SPRINGS 3 coupled (ADR 0037), then **Wellspring F** (ADR 0038: tank voicing 7, fitted to the owner's Wellspring) with the owner's Round F2 picks: low cut D (`f_lowcut_voicing` 2, HP 155 Hz, −2 dB shelf at 300 Hz) and SPRINGS 3 = coupled wire gauges (`springs3_voicing` 13). SPEC v1.0.28 |
+| M9 polish | LED meters, panel UI done. Manual / starting points / share read-me were refreshed for `a8c64c7` this session, and are **stale again** for the F sound |
 
-- `main` HEAD: this handoff's commit (code last changed at `a8c64c7`, the SPLASH C merge; since then tools and docs only). SPEC v1.0.25.
-- **Gates (wrap run on `main`, 2 Oct):** ctest **100 % of 18** (incl. plugin_host_test), read from the log. Firmware: release 120,504 B (91 %), m0test 82,320 B (62 %), profile 128,556 B (98 %, warning; ~2.5 KB left).
-- **Plugin in Ableton:** `a8c64c7` (installed 2 Oct 12:32: Big Knob v5 + SPLASH C + everything before). = `main`'s sound.
-- **On the Versio:** probably `1d18fce` or older. Ready: `dist/resilio_versio_m3_profile_run14.bin` (run 14, rebuilt with SPLASH C) and `dist/resilio_versio_release_a8c64c7.bin` (same sound as the plugin). Both are the first hardware runs of the Tank built at boot (placement new, `firmware/main.cpp`) and the USB-host stub (`firmware/no_uart_spi.cpp`): if the module misbehaves on boot or USB, suspect those first.
-- **Friends' share:** GitHub Release `v2026.10.01-1d18fce` (private repo) is the older sound; `tools/make_release.sh --publish` makes a new one (universal plugin + firmware + read-me from `releases/README.md`).
+- `main` HEAD: this handoff's commit. Code last changed at `340b542` (the F merge); since then docs only.
+- **Gates (on `main`, 3 Oct, at `340b542`):** ctest **100 % of 20** (incl. plugin_host_test and test_tank_voicing), read from the log. Firmware: release **126,280 B (96 %)**, profile **130,496 B (99.6 %, 576 B headroom)**, m0test 82,320 B (62 %).
+- **Plugin in Ableton:** `340b542`, version 1.3.29 = `main`'s sound. The only Resilio installed ("Resilio Versio F" removed).
+- **On the Versio:** still an old release (`1d18fce` or older). Ready: run 15 (above), then `dist/resilio_versio_release_340b542.bin`.
+- **Friends' share:** `v2026.10.01-1d18fce` (old sound, with firmware) and the pre-release `v2026.10.02-cef6a77-candidate-F`. The candidate installs as "Resilio Versio F", plugin only, and is F *before* the owner's D + wire-gauge picks. No release with the merged sound yet.
 
-## In flight (read before touching anything)
-1. **SPRINGS 3 round 2** (`proto/springs3-palette-2`, pushed; worktree `.claude/worktrees/springs3b`). Six position-3 voicings at today's repeat timing (`springs3_voicing` 5–10: pan brighter, pan chirp, mixed gauges, coupled, diffuse, cross-fed wide). Page `renders/springs3_palette2/index.html` (labels verified). ctest 18/18 at default. **Waiting for the owner's pick.** On a pick: make it the default (`core/params/Springs3Voicing.h`), merge `main` in (Big Knob / SPLASH / tank voicings touch Tank.cpp), full gates, flash (round 1 plumbing adds ~0.4 KB), CPU run if 8 or 10 (new per-sample path). Round 1 (`proto/springs3-palette`) stays as reference.
-2. **Wellspring fit round 4** (`proto/wellspring-fit-4`, pushed; worktree `.claude/worktrees/wfit4`; builds on `proto/wellspring-fit-3`). `tank_voicing` 0–7: 1 Sweep, 2 stereo together, 3 faster diffusion, 4 gentler (round 3), 5 = 3 + transducers (fitted to the sweep IR), 6 = 5 + wide again, 7 = 6 + gentler low cut with makeup. Page `renders/wellspring_fit4/compare/index.html` (A = the Wellspring). Default 0: ctest 18/18, renders bit-identical to `main`. **Waiting for the owner's pick.** If 5–7 is picked: TONE needs re-mapping (its dark half becomes much less dark), ~5 suites need re-tuning (listed in the backlog section "Wellspring fit round 4"), the profile firmware overflows by 1.3–3.1 KB (trim first), CPU run. Open after round 4: echo rise too sharp (1 ms vs 9.4: the Chirp's echo front), first arc ~2× at noon (Sweep fitted at TENSION 0.875), 3rd harmonic −24 vs −36 dB (pickups), lowest octave 3.3 vs 4.7 s (stretching it breaks ADR 0001's DECAY range: ask the owner what DECAY should set).
-3. **Kept on purpose:** `proto/wellspring-fit-3` (round 3, base of round 4), `proto/wellspring-fit` (round 1 Sweep), `proto/springs3-palette` (round 1), older prototypes (`proto/tension`, `low-tail`, `smooth-arc`, `sweet-tank`, `diffuse-tank`, `splash-round4`, `tight-ringing`, `wobble-hang`). Locked worktrees `agent-a5c8…` (splash-round4) and `agent-adce…` (diffuse-tank): leave. `nifty-shtern-b943cb`: the owner is archiving it in the app (its only content is a build folder; its commit is in `main`).
-4. **Renders kept** (owner purged ~19 GB of decided pages on 2 Oct): `renders/references` (aligned recordings), `ir_library`, `springs3_palette2`, `wellspring_fit3/compare`, `wellspring_fit4`. Disk was full (3 GB); now ~23 GB free. Delete pages once the owner has picked from them.
+## In flight
+Nothing running. No agents, no uncommitted work. Worktrees removed this session: springs3b, wfit4, wf2 (all merged).
+- **Kept on purpose:** locked worktrees `agent-a5c8…` (proto/splash-round4) and `agent-adce…` (proto/diffuse-tank); `.claude/worktrees/share` (make_release.sh reuses it); `nifty-shtern-b943cb` (owner archiving it). Unmerged reference branches: `proto/low-tail`, `smooth-arc`, `sweet-tank`, `tension`, `tight-ringing`, `wellspring-fit`, `wobble-hang`, plus the two above. Merged and deletable when convenient: `proto/springs3-palette*`, `proto/wellspring-fit-3/-4`, `proto/wellspring-f2`.
+- **Renders whose picks are done** (deletable, ask the owner first): `springs3_palette2`, `wellspring_fit3`, `wellspring_fit4`, `f2_lowend`, `f2_springs3`. Keep `references`, `ir_library`, `sweep_ir`.
 
 ## Next steps (in order)
-1. **Owner listens** (TASKS §3b, §3c): SPRINGS 3 round 2 and Wellspring round 4. Merge each pick as above.
-2. **CPU run 14** on the module (TASKS §0), then the release `a8c64c7` + click check; the owner's red-input-LED report (flashes red while moving knobs, intermittent) is waiting on run 14's knob-move peaks: if run 14 shows overruns, that's the lead.
-3. **Wellspring session 2** (TASKS §5, `docs/recording-recipe.md` §5b): when the owner records takes H–N, run `python3 tools/ingest_references.py test_audio/reference/` (mapping already added), then `tools/sweep_ir.py` on H / D / I (level series: input-stage level dependence, even-order colour), D-L / D-R (stereo matrix), and the octave bursts J (per-band darkening). Feeds Wellspring round 5.
-4. Refresh `docs/manual.md`, `docs/presets.md` and the share read-me for the new sound; republish the share release when the owner wants.
+1. **Run 15 results** (owner pastes the serial output). Compare with run 13 per corner (`firmware/README.md` has the table format). Target ≤ 70 % peak. Watch the knob-move peaks: that's the lead for the owner's red input LEDs. Two firmware changes this session could move CPU:
+   - `RV_SIZE_OPT` puts `controlTick` at -Os.
+   - `RV_NO_UNSWITCH` removes loop unswitching from `Tank::process`.
+
+   Both are in `core/dsp/SizeOpt.h`. If CPU is over, try those first, but flash headroom is only 576 B on profile.
+2. **Click check + play on the module** with `dist/resilio_versio_release_340b542.bin` (TASKS §1). The owner will also report red-LED details.
+3. **Refresh docs for the F sound:**
+   - `docs/manual.md`: TONE noon is now gentler and warmer, left back to dark; SPRINGS 3 = wire gauges; the tank sounds further back.
+   - `docs/presets.md`: re-render the six starting points (`presets/starting_points/*.json`) on `02_hits`, `04_skank` and `10_pad_cminor`, and check peaks and tail lengths against the descriptions.
+   - `releases/README.md`.
+
+   Then, once run 15 and the click check pass: `tools/make_release.sh --publish` (a normal release from `main`, firmware included).
+4. **Open sound questions** (owner's ear first, then a round): what 3 Springs should be (design question in TASKS), and Wellspring round 5 from the owner's notes. For round 5:
+   - **Softer transient:** the echo front below 2 kHz. Rise is 1.0–1.3 ms vs the Wellspring's 9.4; onset above 4 kHz already matches.
+   - **Tail resonance** sits in a different place.
+   - **Centre vs wide** differs: we keep the bass centred below 150 Hz; the Wellspring's L/R correlation is −0.14.
+
+   Session 2 recordings (TASKS §5) would measure the last two.
 
 ## Waiting on the owner (`docs/TASKS.md`)
-- Listens: SPRINGS 3 round 2, Wellspring round 4.
-- Hardware: run 14, then the new release + click check; note red-LED details (flicker vs held, click, which knob).
-- Plugin: look at the panel interface; the M2 Ableton check.
-- Session 2 recordings.
-- Design questions list (Kick with SPLASH 0, KICKED stereo lurch, Howl on a tight tank).
+- **Tomorrow:** CPU run 15 (§0), then the release, click check and play (§1), plus red-LED details.
+- **When they have a view:**
+  - what 3 Springs should be (design questions);
+  - three quick checks on the F sound: SPLASH in KICKED with DRIVE down at ~2 o'clock (−2 dB vs before), the level while sweeping TONE on sharp clicks, and TONE fully left;
+  - the M2 Ableton check;
+  - the session 2 Wellspring recordings.
+- Friends' feedback on candidate F, if it comes.
 
 ## Will bite
-- **Verify hidden-voicing labels before handing a page over** (memory `verify-voicing-labels`): a clamp once made "v4" really v3. And sanity-check fit measures against the owner's ear: the settings search matched the wrong echo band for two rounds (fixed in `tools/wellspring_settings_fit.py`: main repeats 200–1000 Hz + onset brightness).
-- **Flash:** release 91 %, profile 98 % (~2.5 KB). Any merged sound change can overflow the profile build; `RV_FIXED_VOICINGS` compiles Renderer-only voicings out (TONE, WOBBLE, sustain, SPLASH, SPRINGS 3, tank) — keep that pattern for every new voicing.
-- **Tests judged at SPLASH 0 / pinned to voicing 0** since SPLASH C (ADR 0032 amendment, said plainly there): `test_splash` detector checks, `test_tank` level match, `test_drive` wet − dry spread.
-- **Big Knob top is 800 Hz** because KICKED / 3 Springs / TENSION 0 rings at 3.1 kHz above ~850 Hz (the LoopSat lets a Loop mode ring when the lows are cut). A tank fix there would allow the researched ~1.2 kHz.
-- **Review pages:** use the picking-page format (memory `review-pages-columns`): reference as its own version, one panel per sound, names not params, level-matched. The in-app browser can't open file:// pages: use the `renders` launch config (`.claude/launch.json`, port 8765).
-- **Worktrees** need `libs/JUCE` symlinked to build the plugin and lack `test_audio/stimulus` (copy it in) — tests fail with "wav not found" otherwise. Removing a worktree with symlinked libs: guard paths (`${p:?}`) or the safety check blocks it.
-- **CPU:** ~3.5 points under 70 % at run 13, with five changes since unmeasured. Coupled/cross-fed SPRINGS 3 and the tank voicings add per-sample work.
+- **Flash:** profile 99.6 % (576 B). Any code added to the firmware path will overflow it. The levers, all firmware-only:
+  - `RV_SIZE_OPT` (set-up and per-tick housekeeping only);
+  - one-entry voicing tables (`springs3::voicing()`, the fParts table);
+  - Renderer-only voicings behind `RV_FIXED_VOICINGS`;
+  - `printf`/`putchar`/`exit` stubs in `firmware/no_uart_spi.cpp` (not in m0test).
+
+  The knob-move redesign (`updateBaseSettings`, `updateSpringSettings`, `Spring::prepareTransition`) and every per-sample path must stay -O3. GCC's `optimize` attribute keeps `-ffp-contract=off`: I checked the disassembly, and the only fused multiply-adds are in libm and libDaisy, as on `main` before.
+- **Never rename a ParamSpec key.** Ableton saves a device's parameters by the VST3 ID (a hash of the key). BOING → TENSION left dead slots in the owner's set, fixed by editing the .als (backup "Resilio Versio (before TENSION fix).als"). A comment in `core/params/ParamSpec.h` and memory `ableton-saved-param-ids` record this.
+- **Plugin installs:** every install gets its own version (1.<commits/100>.<commits%100>). `tools/install_plugin.sh <ref> <label>` installs a candidate next to the main plugin. Always check Ableton is closed first (`pgrep -f 'MacOS/Live'`), then `auval -v aumf RsVs Rslo` (or the candidate's code, e.g. `RsVF`).
+- **Thin test margins on the F sound:**
+  - The held-pad limiter reads 2.74 dB against a 3.0 bar (the Sustain trim glides down 0.6× as long on the gentler low-cut steps).
+  - The test_drive aliasing check now judges what the loud tone adds over the same tone at −40 dB. The shipped default reads −94.5 dBFS against a −94 floor. That check can't see a product sitting exactly on a fixed floor (backlog).
+  - test_tank mono notch: −4.3 dB against the −4.5 margin.
+  - test_springs3 now runs in three passes, each voicing on the tank it was made on.
+- **TONE level on sharp clicks:** the left half is ~+4 dB vs noon and fully right ~−4.5 dB (drum hits stay within ±3). KICKED splash at SPLASH 0.7 / DRIVE 0 is −2 dB vs the old tank. Both are waiting on the owner's ear.
+- **Agents in worktrees:** brief them to `cd` into the worktree first. One was denied an edit by the permission classifier ("Modify Shared Resources") when its working directory had drifted to the main checkout. Never route around a denial: ask the owner.
+- Worktrees need `test_audio/stimulus` copied in. Their `libs/*` are empty, so build firmware with `LIBDAISY_DIR=… DAISYSP_DIR=…` pointing at the main checkout. There's no numpy on this Mac: write analysis in plain Python or C++.
 - GitHub routing drops on this network: retry pushes.
 
 ## Where to look
-`docs/TASKS.md` · `docs/m8-tuning-backlog.md` (sections from "SPLASH stronger" to the end, and on the round 4 branch "Wellspring fit round 4") · ADRs 0032–0038 · `tools/wellspring_settings_fit.py`, `tools/wellspring_character.py`, `tools/sweep_ir.py` · `docs/recording-recipe.md` §5b · `firmware/README.md` (sizes, run 14)
+`docs/TASKS.md` · `firmware/README.md` (run table, sizes) · `docs/adr/0038-wellspring-fit-tank-voicings.md` (Decision + Round F2) and `0037` · `docs/m8-tuning-backlog.md` sections "Wellspring F merge" and "F round 2" · `core/dsp/SizeOpt.h` · `docs/manual.md`

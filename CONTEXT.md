@@ -31,7 +31,9 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Big Knob** | TONE's right half (ADR 0036): King Tubby's desk high-pass (Altec 9069B), an 18 dB/oct low cut sweeping 20 Hz at noon to 800 Hz fully right, with the coil's nasal bump above the cutoff on sharp hits only. |
 | **Limiter hold** | The output limiter holds its gain 30 ms before releasing (ADR 0035), so light limiting doesn't ride each bass cycle (heard as drive). |
 | **Voicing (hidden)** | A Renderer-only alternative of a sound feature (`tone_voicing`, `splash_voicing`, `springs3_voicing`, `tank_voicing`, …) for listening pages; the firmware compiles only the default (`RV_FIXED_VOICINGS`). |
-| **Transducers (tank model)** | Prototype (ADR 0038, Proposed): the treble-limited coil-and-magnet input and pickup output of a real tank, fitted to the owner's Wellspring sweep. |
+| **Coupled (SPRINGS 3)** | Position 3's Springs share energy every round trip (an energy-keeping rotation of their Loop returns; let go in the Howl zone), ADR 0037. Shipped with **wire gauges**: each Spring its own Chirp, like three wire thicknesses (a cluster of boings per hit), same repeat timing. |
+| **Candidate** | A sound not yet on `main`, built under its own plugin name ("Resilio Versio F") so it installs next to the main plugin for A/B (`install_plugin.sh <ref> <label>`, `make_release.sh --candidate`). |
+| **Transducers (tank model)** | The tank's input coil and output pickup (ADR 0038, shipped 3 Oct 2026): resonant low-passes fitted to the owner's Wellspring sweep, so the highs are gentle from the first moment as on a real tank, plus the coil's even-order colour. |
 | **Tank-level stage** | Processing shared by all Springs: DriveIn, Tilt, DriveOut, output limiter. Contrast with Loop contents, which are per Spring. |
 | **Stimulus** | Generated, deterministic test input (`tools/make_stimulus.py`): clicks, hits, sweep, skank, noise bursts. |
 | **Reference recording** | Wellspring "spring only" (delay DRY/WET dry, MAGIC zero, SPRINGS wet), stereo wet L/R, recorded through the Stimulus. Target for comparison, not for cloning (ADR 0009). |
