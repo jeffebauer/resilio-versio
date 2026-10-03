@@ -81,6 +81,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] **Flash study merged** (4 Oct, `327af86`): release 18.4 KB free, CPU-test 16.5 KB free (were 4.8 KB and 576 B). No sound change
 - [ ] **Module check (≈5 min, after run 15 and the click check):** flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
 
+### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
+- **TONE after the springs** (your pick B): becomes the real behaviour in firmware and plugin
+- **Throw on the gate + hold at the top of DECAY** (CLEAN/DRIVEN, ducked under new hits): two hold versions for you to pick by ear (freeze vs layer)
+- **Echo mode = SPRINGS 3:** tape echo into the noon tank (fixed ~1.5–2 s tail). DECAY = echo feedback, TENSION = echo time (free) or, with a clock in the gate (one pulse = one beat), seven divisions 1/2 … 1/16 incl. dotted; up to 2 s; changes swoop like tape. In the plugin it follows Ableton's tempo. The coupled wire gauges go
+- Each comes with a listening page; then your OK to merge, merged one at a time with the tests re-run on the combination
+
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [x] **Dub-lens critique (3 Oct):** answered ([research/dub-lens-critique.md](research/dub-lens-critique.md) §8): gate = throw, button = Kick; hold at DECAY's top (CLEAN/DRIVEN, ducked); Howl stays KICKED-only, no feedback return; round 5 is the last Wellspring fit. To hear first: TONE filter pre / post / split, tape echo into springs for SPRINGS 3, hiss levels. Still open: what In R is for (duck key, second send, or stereo).
 - [x] **Three dub-lens listening pages (4 Oct): picked.** TONE: **B**, the Big Knob after the springs (the ringing tail thins at once). SPRINGS 3: **B**, tape echo into the springs, and if it ships you want DECAY = echo feedback, TENSION = echo time, the gate = clock (TENSION then picks straight/dotted divisions); decided 4 Oct: clock only in position 3 (throw stays in 1–2), springs behind it fixed (noon tank, ~1.5–2 s tail), time changes swoop like tape. Hiss: inaudible at every level (63–84 dB under the hits), so no hiss. Details: [research/dub-lens-critique.md](research/dub-lens-critique.md) §8
