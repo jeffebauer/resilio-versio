@@ -20,6 +20,7 @@
 // signal (ADR 0014 "typical ~10 Vpp").
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <algorithm>
 #include <array>
@@ -479,7 +480,7 @@ struct Push {
     float outAmount = 1.0f;       // output pickup blend (outAmount0 -> 1 along outAmountCurve)
 };
 // Computed only when DRIVE or the ATTITUDE Morph moved (a few exp calls).
-inline Push push(const Voice& vc, float drive)
+RV_SIZE_OPT inline Push push(const Voice& vc, float drive) // on DRIVE / Morph moves only (controlTick)
 {
     const float c = pushCurve(colourDrive(drive));
     Push p;

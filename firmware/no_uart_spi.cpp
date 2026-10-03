@@ -79,3 +79,28 @@ extern "C" {
 HCD_HandleTypeDef hhcd_USB_OTG_HS;
 void HAL_HCD_IRQHandler(HCD_HandleTypeDef*) {}
 }
+
+// printf / putchar (2 Oct 2026, flash): libDaisy is built with
+// USBD_DEBUG_LEVEL 3 (src/usbd/usbd_conf.h), so the USB device core's
+// USBD_UsrLog / USBD_ErrLog call printf and putchar, which pull newlib's
+// whole stdio (vfprintf, the FILE machinery, malloc for its buffers: ~3 KB)
+// into release and profile. Their output had nowhere to go: no variant
+// retargets stdout (_write is newlib's always-failing stub, see the link
+// warnings), so these do exactly what the real ones did here, minus the
+// code. m0test keeps libc's: its Logger may reference other printf-family
+// members from the same archive objects.
+//
+// exit (same day, flash): crt0 calls exit() if main() ever returns, and
+// newlib's exit runs the stdio clean-up (__stdio_exit_handler), which pulls
+// the FILE machinery, fflush, malloc and the read/write/lseek/close stubs
+// behind it (~1.5 KB) into every build. main() never returns here (the
+// firmware loops forever), so this exit is never called; if it were, it
+// parks the core, as returning from main on bare metal would.
+#if !defined(RV_MODE_M0TEST)
+extern "C" int printf(const char*, ...) { return 0; }
+extern "C" int putchar(int c) { return c; }
+extern "C" void exit(int)
+{
+    for (;;) {}
+}
+#endif

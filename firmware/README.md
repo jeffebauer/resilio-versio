@@ -40,13 +40,13 @@ budget each build uses (ADR 0011) and fails the build if any variant goes
 over, with a warning once a variant passes 95%. Right now (approximate, will
 shift slightly as DSP work continues):
 
-- release 122,392 B (93%) (2 Oct 2026: SPRINGS 3 coupled, ADR 0037: the coupled Loops are the first SPRINGS 3 code in the firmware, +5.7 KB at -O3; the Tank's and Spring's set-up and per-tick housekeeping (`controlTick`, `prepare`, `reset`, the coupled helpers) are now built for size, `RV_SIZE_OPT` in `core/dsp/SizeOpt.h`, and the firmware keeps only its own voicing's entry of the SPRINGS 3 table. The knob-move coefficient redesign (`updateBaseSettings`, `updateSpringSettings`, `Spring::prepareTransition`) and every per-sample path stay -O3)
+- release 126,280 B (96%) (2 Oct 2026: tank voicing 7, the Wellspring fit, ADR 0038, on top of SPRINGS 3 coupled, ADR 0037. 7 added ~10 KB of code (the Sweep, the Loop diffusers, the transducers, the second decorrelator, the low cut and its makeup, the TONE re-map); see "Flash-budget techniques" below for how it fits. Before 7: 122,392 B)
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
-- profile 130,396 B (99.5%, ~0.7 KB headroom) with SPRINGS 3 coupled. Run 14 binary (before coupled): `dist/resilio_versio_m3_profile_run14.bin`. Run 15 (this build: coupled per-sample path, -Os control tick) is due before a release with coupled
+- profile 130,496 B (99.6%, 576 B headroom) with tank voicing 7 and SPRINGS 3 coupled (before 7: 130,396 B). Run 14 binary (before coupled): `dist/resilio_versio_m3_profile_run14.bin`. Run 15 (this build: coupled and 7's per-sample paths, the -Os housekeeping) is due before a release
 
 ### Flash-budget techniques in use (ADR 0011)
 
-Two, both firmware/-only (no changes inside `libs/libDaisy`):
+All firmware/-only (no changes inside `libs/libDaisy`):
 
 - **`firmware/no_uart_spi.cpp`** stubs out libDaisy's UART and SPI DMA
   bookkeeping (and their IRQ handlers) so the linker never pulls in
@@ -70,6 +70,28 @@ Two, both firmware/-only (no changes inside `libs/libDaisy`):
   so profile calls `hw.seed.usb_handle.Init()` directly instead. `m0test`
   still uses the original `PrintLine`-based logging unchanged, since it must
   not change behaviour while the M0 hardware check is in progress.
+- **`RV_SIZE_OPT` (`core/dsp/SizeOpt.h`)**: set-up and per-tick
+  housekeeping in the Core is built for size (-Os) in the firmware only:
+  every `prepare` / `reset`, the pool layout, the tank voicing's set-up, the
+  per-tick parts of Splash, Wobble and Kick (`Splash::set` / `controlTick` /
+  `fire`, `Wobble::setAmount` / `tick`, the Morph blends), the Tank's
+  `controlTick`. Every per-sample path and the knob-move coefficient redesign
+  (`Tank::updateBaseSettings` / `updateSpringSettings`,
+  `Spring::prepareTransition` / `prepareDamping` / `setSettings` /
+  `commitDesign`, `DriveIn::set`, `Tilt::set`) stay -O3: the knob-move CPU
+  bursts are the lead for the red input LEDs.
+- **`RV_NO_UNSWITCH` on `Tank::process`**: -O3 without loop unswitching,
+  which copied the whole input loop (Tilt, low cut, coil, Clang) once more
+  for one loop-invariant branch (the Clang's ceiling): 1.5 KB for a
+  predictable branch per sample.
+- **`printf` / `putchar` / `exit` stubs** in `no_uart_spi.cpp` (release and
+  profile): libDaisy's USB device core logs through `printf` (its
+  `USBD_DEBUG_LEVEL` is 3) and crt0 calls `exit`, which together pulled
+  newlib's stdio, `malloc` and the FILE machinery in. No variant retargets
+  stdout, so that output went nowhere; `main()` never returns.
+- The firmware Tank links no `malloc` / `free` (it gets its pool from
+  `main.cpp`), `exp(log)` instead of `pow` in the Core (`powf` is ~1.1 KB),
+  and profile's report divides in float, not 64-bit integers (~0.85 KB).
 - Link-time optimisation (`-flto`) was evaluated and **not adopted**: on
   this small a set of translation units it made both release and profile a
   few hundred bytes *larger*, not smaller (LTO's own bookkeeping outweighed

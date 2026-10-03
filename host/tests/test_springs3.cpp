@@ -6,7 +6,11 @@
 // For every voicing of position 3 (round 1: 1 long tank, 2 in series, 3
 // wide, 4 pan tank; round 2: 5 pan brighter only, 6 pan higher Chirp only,
 // 7 mixed wire gauges, 8 coupled, 9 diffuse, 10 cross-fed wide; 0 is today,
-// covered by the other suites):
+// covered by the other suites; F round 2: 11 stronger, 12 wide, 13 coupled
+// wire gauges, 14 swell). Three passes (see inPass()): the default (13,
+// ADR 0037 "Round F2") on the shipped tank (voicing 7, low cut step 2); the
+// round 1 / 2 references on tank voicing 0, which they were made on; F round
+// 2's references on tank voicing 7 with F's own low cut, which they were made on:
 //   identity  SPRINGS 1 and 2 are bit for bit what voicing 0 plays (hits and
 //             stabs, every ATTITUDE), so positions 1 and 2 never change.
 //   level     SPRINGS 3 as loud as SPRINGS 2 within +-1.5 dB, stereo and
@@ -49,6 +53,7 @@
 #include "params/ParamSpec.h"
 #include "params/SpringModes.h"
 #include "params/Springs3Voicing.h"
+#include "params/TankVoicing.h"
 
 #include <algorithm>
 #include <chrono>
@@ -72,14 +77,42 @@ void check(bool ok, const char* what)
     if (!ok) ++failures;
 }
 
+// Two passes (main()). The default voicing (coupled) and today's position 3
+// are checked on the default tank voicing (TankVoicing.h, 7 since ADR 0038),
+// as they ship. The other SPRINGS 3 voicings are Renderer-only references
+// built and measured on tank voicing 0 (ADR 0037): their checks run in a
+// second pass on tank voicing 0, today's baselines (voicing 0) included, so
+// each reference is still held to its own bars against the tank it was made
+// for. Each pass reports the other pass's voicings as INFO, uncounted.
+// Three passes: 1 the shipped tank (tank voicing 7 with its default low cut)
+// with today's position 3 (0) and the default; 2 tank voicing 0 with the
+// round 1 / 2 references (made on it); 3 tank voicing 7 with F's own low cut
+// (f_lowcut_voicing 0) with F round 2's references (11+, made on it; ADR 0037
+// "Round F2"). The default is checked in pass 1 only.
+int  gTankVoicing = rv::tankv::kDefaultVoicing;
+int  gFLowCut     = rv::tankv::kDefaultFLowCut;
+int  gPass        = 1;
+bool inPass(int v)
+{
+    const bool madeOnF = v >= rv::springs3::kFirstFVoicing;
+    if (v == rv::springs3::kDefaultVoicing) return gPass == 1;
+    if (gPass == 1) return v == 0;
+    return gPass == 2 ? !madeOnF : (madeOnF || v == 0); // 0: each pass's own baseline (today's position 3 on that tank)
+}
+void checkV(int v, bool ok, const char* what)
+{
+    if (inPass(v)) check(ok, what);
+}
+
 using Buf = std::vector<float>;
 constexpr float  kFs = 48000.0f;
 constexpr double kPi = 3.14159265358979323846;
 const char* const kAttName[3]   = {"CLEAN", "DRIVEN", "KICKED"};
-const char* const kVoiceName[11] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
+const char* const kVoiceName[15] = {"0 today",          "1 long tank",       "2 in series",  "3 wide",
                                     "4 pan tank",       "5 pan brighter",    "6 pan Chirp",  "7 wire gauges",
-                                    "8 coupled",        "9 diffuse",         "10 cross-fed wide"};
-static_assert(rv::springs3::kNumVoicings == 11, "name every voicing");
+                                    "8 coupled",        "9 diffuse",         "10 cross-fed wide",
+                                    "11 coupled stronger", "12 coupled wide", "13 coupled gauges", "14 coupled swell"};
+static_assert(rv::springs3::kNumVoicings == 15, "name every voicing");
 constexpr int kNumVoicings = rv::springs3::kNumVoicings;
 
 size_t sec(double s) { return size_t(s * double(kFs)); }
@@ -105,6 +138,8 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setSprings3Voicing(s.voicing);
+    t.setTankVoicing(gTankVoicing); // the pass's tank (above)
+    t.setFLowCutVoicing(gFLowCut);
 }
 
 struct Stereo {
@@ -289,9 +324,10 @@ auto perVoicing(F f)
 {
     std::vector<std::future<decltype(f(1))>> jobs;
     const char* only = std::getenv("RV_S3_ONLY");
-    for (int v = 1; v < kNumVoicings; ++v) jobs.push_back(std::async(std::launch::async, f, only ? std::atoi(only) : v));
+    for (int v = 1; v < kNumVoicings; ++v)
+        jobs.push_back(std::async(inPass(v) ? std::launch::async : std::launch::deferred, f, only ? std::atoi(only) : v));
     std::vector<decltype(f(1))> out;
-    for (auto& j : jobs) out.push_back(j.get());
+    for (int v = 1; v < kNumVoicings; ++v) out.push_back(inPass(v) ? jobs[size_t(v - 1)].get() : decltype(f(1)){});
     return out;
 }
 
@@ -300,6 +336,7 @@ void identity()
 {
     const Buf h = hits(8.0), st = stabs(8.0);
     for (int v = 1; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         bool same = true;
         for (int sp = 0; sp < 2; ++sp)
             for (int a = 0; a < 3; ++a)
@@ -314,7 +351,7 @@ void identity()
                 }
         std::snprintf(msg, sizeof msg, "Voicing %s: SPRINGS 1 and 2 bit for bit as voicing 0 (hits + stabs, every ATTITUDE)",
                       kVoiceName[v]);
-        check(same, msg);
+        checkV(v, same, msg);
     }
 }
 
@@ -350,6 +387,7 @@ void level()
         return r;
     });
     for (int v = 1; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         const Row& r = rows[size_t(v - 1)];
         bool ok = true;
         for (int d = 0; d < 3; ++d)
@@ -362,7 +400,7 @@ void level()
                       kVoiceName[v], r.st[0][0], r.mo[0][0], r.st[0][1], r.mo[0][1], r.st[1][0], r.mo[1][0], r.st[1][1],
                       r.mo[1][1], r.st[2][0], r.mo[2][0], r.st[2][1], r.mo[2][1], r.pw[0][0], r.pw[0][1], r.pw[1][0],
                       r.pw[1][1], r.pw[2][0], r.pw[2][1]);
-        check(ok, msg);
+        checkV(v, ok, msg);
     }
 }
 
@@ -395,8 +433,9 @@ void stereo()
         return res;
     };
     std::vector<std::future<std::array<Res, 2>>> jobs;
-    for (int v = 0; v < kNumVoicings; ++v) jobs.push_back(std::async(std::launch::async, voiced, v));
+    for (int v = 0; v < kNumVoicings; ++v) jobs.push_back(std::async(inPass(v) ? std::launch::async : std::launch::deferred, voiced, v));
     for (int v = 0; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         const auto res = jobs[size_t(v)].get();
         for (int k = 0; k < 2; ++k) {
             const Res& r = res[size_t(k)];
@@ -405,7 +444,7 @@ void stereo()
                           "min mono_loss %+.2f dB (%s; >= -1.5), deepest mono_notch %+.1f dB (%s; >= -6)",
                           kVoiceName[v], k ? "stabs" : "hits", r.corr, r.at[0], r.loss, r.at[1], r.notch, r.at[2]);
             if (v == 0) std::printf("INFO  %s\n", msg); // today: test_tank's
-            else check(r.ok, msg);
+            else checkV(v, r.ok, msg);
         }
     }
 }
@@ -447,6 +486,7 @@ void ringing()
         return r;
     });
     for (int v = 1; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         const Res& r = rows[size_t(v - 1)];
         // In series (voicing 2) the steady-tone flag (SPEC §4.10: a peak 12 dB
         // proud for > 2 s above -30 dBFS) is reported, not checked: a
@@ -460,7 +500,7 @@ void ringing()
                       "0/.5/1): %d of %d flagged, worst ringing_db %.1f (%s; limit %.0f); steady tone %d%s",
                       kVoiceName[v], r.flagged, r.n, r.worst, r.at, rv::metrics::kRingingGrowthDb, r.steady,
                       series ? " (reported, not checked in series: ADR 0037)" : "");
-        check(r.flagged == 0 && (series || r.steady == 0), msg);
+        checkV(v, r.flagged == 0 && (series || r.steady == 0), msg);
     }
 }
 
@@ -502,8 +542,9 @@ void howl()
         }
         return r;
     });
-    for (const auto& r : rows)
-        for (int k = 0; k < 3; ++k) check(r.ok[k], r.line[k]);
+    for (int v = 1; v < kNumVoicings; ++v)
+        if (inPass(v))
+            for (int k = 0; k < 3; ++k) check(rows[size_t(v - 1)].ok[k], rows[size_t(v - 1)].line[k]);
 }
 
 // ---- switching ------------------------------------------------------------------------------
@@ -584,7 +625,9 @@ void switching()
         r.flipOk = c == 0;
         return r;
     });
-    for (const auto& r : rows) {
+    for (int v = 1; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
+        const auto& r = rows[size_t(v - 1)];
         for (int k = 0; k < 4; ++k) check(r.ok[k], r.line[k]);
         check(r.flipOk, r.flip);
     }
@@ -716,11 +759,11 @@ void sustain()
     const char* only = std::getenv("RV_S3_ONLY");
     for (int v = 0; v < kNumVoicings; ++v)
         for (int k = 0; k < 3; ++k)
-            jobs.push_back(std::async(only && v > 0 && v != std::atoi(only) ? std::launch::deferred : std::launch::async, one, v, k));
+            jobs.push_back(std::async((only && v > 0 && v != std::atoi(only)) || !inPass(v) ? std::launch::deferred : std::launch::async, one, v, k));
     Res res[kNumVoicings][3];
     for (int v = 0; v < kNumVoicings; ++v)
         for (int k = 0; k < 3; ++k)
-            if (!only || v == 0 || v == std::atoi(only)) res[v][k] = jobs[size_t(v * 3 + k)].get();
+            if ((!only || v == 0 || v == std::atoi(only)) && inPass(v)) res[v][k] = jobs[size_t(v * 3 + k)].get();
     for (int v = 0; v < kNumVoicings; ++v)
         for (int k = 0; k < 3; ++k) {
             const Res& q = res[v][k];
@@ -735,6 +778,7 @@ void sustain()
                           double(rv::springs3::kVoicings[size_t(v)].sustainMaxDb),
                           double(q.asWritten), double(q.asWrittenOver));
             if (only && v > 0 && v != std::atoi(only)) continue;
+            if (!inPass(v)) continue;
             if (v == 0) std::printf("INFO  %s\n", msg);
             else check(q.worst <= std::max(t.worst + kWorstSlackDb, kMomentDb) && q.mean <= t.mean + kMeanSlackDb
                            && -q.deep <= rv::springs3::kVoicings[size_t(v)].sustainMaxDb + 0.01f, msg);
@@ -763,12 +807,13 @@ void stability()
         return std::pair{finite, peak};
     });
     for (int v = 1; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         const auto [finite, peak] = rows[size_t(v - 1)];
         std::snprintf(msg, sizeof msg,
                       "Stability, voicing %s, SPRINGS 3 at DECAY 1 DRIVE 1 SPLASH 1, every ATTITUDE, TENSION/TONE 0 and 1: "
                       "finite, peak %.3f (< 1)",
                       kVoiceName[v], double(peak));
-        check(finite && peak < 1.0f, msg);
+        checkV(v, finite && peak < 1.0f, msg);
     }
 }
 
@@ -868,6 +913,7 @@ void timing()
     std::vector<Res> res;
     for (auto& j : jobs) res.push_back(j.get());
     for (int v = 0; v < kNumVoicings; ++v) {
+        if (!inPass(v)) continue;
         const Res& r = res[size_t(v)];
         const Res& t = res[0];
         std::snprintf(msg, sizeof msg,
@@ -878,7 +924,7 @@ void timing()
                       r.capAt[0] ? "; memory cap: round trip " : "", r.capped, r.capAt[0] ? ", " : "", r.capAt, r.spacing[0],
                       r.spacing[1], r.spacing[2], t.spacing[0], t.spacing[1], t.spacing[2]);
         if (!rv::springs3::kVoicings[size_t(v)].keepTiming) std::printf("INFO  %s\n", msg); // round 1: changes it on purpose
-        else check(std::fabs(r.rtWorst) <= 0.05 && std::fabs(r.echoWorst) <= 0.05 && r.capped >= -1.5, msg);
+        else checkV(v, std::fabs(r.rtWorst) <= 0.05 && std::fabs(r.echoWorst) <= 0.05 && r.capped >= -1.5, msg);
     }
 }
 
@@ -1066,18 +1112,32 @@ int main(int argc, char** argv)
     auto run = [&](const char* name, void (*f)()) {
         if (only.empty() || only == name) f();
     };
-    run("identity", identity);
-    run("level", level);
-    run("stereo", stereo);
-    run("ringing", ringing);
-    run("howl", howl);
-    run("switching", switching);
-    run("sustain", sustain);
-    run("stability", stability);
-    run("timing", timing);
-    run("arrivals", arrivals);
-    run("character", character);
-    run("cost", cost);
+    auto all = [&] {
+        run("identity", identity);
+        run("level", level);
+        run("stereo", stereo);
+        run("ringing", ringing);
+        run("howl", howl);
+        run("switching", switching);
+        run("sustain", sustain);
+        run("stability", stability);
+        run("timing", timing);
+        run("arrivals", arrivals);
+        run("character", character);
+        run("cost", cost);
+    };
+    std::printf("== Pass 1: tank voicing %d, low cut step %d (as shipped): SPRINGS 3 voicing 0 and the default, %s\n",
+                gTankVoicing, gFLowCut, kVoiceName[rv::springs3::kDefaultVoicing]);
+    all();
+    gTankVoicing = rv::tankv::kToday;
+    gPass        = 2;
+    std::printf("== Pass 2: tank voicing 0 (what they were made on): the round 1 / 2 reference SPRINGS 3 voicings\n");
+    all();
+    gTankVoicing = rv::tankv::kGentleWide;
+    gFLowCut     = 0;
+    gPass        = 3;
+    std::printf("== Pass 3: tank voicing 7 with F's own low cut (what they were made on): F round 2's references\n");
+    all();
     std::printf("%s\n", failures ? "FAILED" : "ALL PASSED");
     return failures ? 1 : 0;
 }

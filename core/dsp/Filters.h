@@ -4,6 +4,7 @@
 // per-sample process() calls never do.
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <cmath>
 #include <cstdint>
@@ -61,6 +62,20 @@ struct Biquad {
 
     void setLowpass(float hz, float q, float sampleRate) { design(hz, q, sampleRate, true); }
     void setHighpass(float hz, float q, float sampleRate) { design(hz, q, sampleRate, false); }
+    // RBJ low shelf, shelf slope 1 (Tank voicing 4, params/TankVoicing.h).
+    RV_SIZE_OPT void setLowShelf(float hz, float gainDb, float sampleRate) // set-up only
+    {
+        const float A = std::exp(gainDb * (2.302585093f / 40.0f)); // 10^(dB/40); exp, not pow, for the Firmware's flash
+        const float w = 2.0f * map::kPi * hz / sampleRate;
+        const float cw = std::cos(w), alpha = std::sin(w) / 2.0f * std::sqrt(2.0f);
+        const float sA = 2.0f * std::sqrt(A) * alpha;
+        const float a0 = (A + 1.0f) + (A - 1.0f) * cw + sA;
+        b0 = A * ((A + 1.0f) - (A - 1.0f) * cw + sA) / a0;
+        b1 = 2.0f * A * ((A - 1.0f) - (A + 1.0f) * cw) / a0;
+        b2 = A * ((A + 1.0f) - (A - 1.0f) * cw - sA) / a0;
+        a1 = -2.0f * ((A - 1.0f) + (A + 1.0f) * cw) / a0;
+        a2 = ((A + 1.0f) + (A - 1.0f) * cw - sA) / a0;
+    }
 
     float process(float x)
     {

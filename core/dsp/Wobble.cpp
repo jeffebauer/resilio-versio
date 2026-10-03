@@ -1,4 +1,5 @@
 #include "dsp/Wobble.h"
+#include "dsp/SizeOpt.h"
 
 #include "params/SpringModes.h"
 
@@ -6,7 +7,7 @@
 
 namespace rv::dsp {
 
-void Wobble::RandomLine::start(Rng& rng, float lo, float hi)
+RV_SIZE_OPT void Wobble::RandomLine::start(Rng& rng, float lo, float hi)
 {
     p0     = rng.bipolar();
     p1     = rng.bipolar();
@@ -16,7 +17,7 @@ void Wobble::RandomLine::start(Rng& rng, float lo, float hi)
     factor = lo + (hi - lo) * 0.5f * (rng.bipolar() + 1.0f);
 }
 
-void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed, Role role)
+RV_SIZE_OPT void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed, Role role)
 {
     sampleRate_ = sampleRate;
     role_       = role;
@@ -29,7 +30,7 @@ void Wobble::prepare(float sampleRate, int springIndex, uint32_t seed, Role role
     reset();
 }
 
-void Wobble::reset()
+RV_SIZE_OPT void Wobble::reset()
 {
     rng_.seed(seed_);
     phase_ = 0.5f * (rng_.bipolar() + 1.0f); // seeded start phase: Springs never in step
@@ -43,7 +44,7 @@ void Wobble::reset()
     gCur_ = gPrev_ = tremoloGain();
 }
 
-void Wobble::setAmount(float wobble, float depthScale)
+RV_SIZE_OPT void Wobble::setAmount(float wobble, float depthScale)
 {
     if (wobble == amount_ && depthScale == depthScale_) return;
     amount_     = wobble;
@@ -73,7 +74,7 @@ void Wobble::setVoicing([[maybe_unused]] int voicing)
     setAmount(w, sc);
 }
 
-void Wobble::tick()
+RV_SIZE_OPT void Wobble::tick()
 {
     // Only the active side moves (the other's depth is exactly 0); a frozen
     // side restarts from where it stopped, from depth 0, so nothing jumps.
@@ -97,13 +98,13 @@ void Wobble::tick()
 
 // Flutter tremolo (Transport, left side, B / C): 10^(dB·flutter/20), one
 // exp per 32-sample tick; exactly 1 when off, so noon stays bit-identical.
-float Wobble::tremoloGain() const
+RV_SIZE_OPT float Wobble::tremoloGain() const
 {
     if (depths_.tremoloDb <= 0.0f) return 1.0f;
     return std::exp((0.115129255f * depths_.tremoloDb) * flutter_.value()); // ln(10)/20
 }
 
-float Wobble::value() const
+RV_SIZE_OPT float Wobble::value() const
 {
     return depths_.lfo * std::sin(2.0f * map::kPi * phase_) + depths_.wow * wow_.value()
          + depths_.flutter * flutter_.value();

@@ -20,6 +20,7 @@
 // INPUT gain (DRIVE, ADR 0033), before any saturation.
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <array>
 #include <cmath>
@@ -466,7 +467,7 @@ inline constexpr std::array<Voice, 3> kVoice{{
 // full-strength Jolt, which at 0.025 left test_tank's mono-notch margin at
 // −5.0 dB (3 Springs, chord stabs; margin −4.5). At 0.015: −3.9 dB.
 
-inline Voice blendVoice(const std::array<float, 3>& w)
+RV_SIZE_OPT inline Voice blendVoice(const std::array<float, 3>& w)
 {
     Voice v{};
     auto mix = [&](float Voice::*m) {

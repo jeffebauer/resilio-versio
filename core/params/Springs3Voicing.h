@@ -119,9 +119,20 @@ namespace rv::springs3 {
 // a second guard.
 constexpr int kToday = 0, kLong = 1, kSeries = 2, kWide = 3, kPan = 4;
 constexpr int kPanBright = 5, kPanChirp = 6, kGauges = 7, kCoupled = 8, kDiffuse = 9, kCrossWide = 10;
-constexpr int kNumVoicings    = 11;
-// Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board" (ADR 0037).
-constexpr int kDefaultVoicing = kCoupled; // firmware + plugin
+// F round 2 (proto/wellspring-f2; ADR 0037 "Round F2", proposed): made on
+// tank voicing 7 (Wellspring F), see the end of this file.
+constexpr int kCoupledStrong = 11, kCoupledWide = 12, kCoupledGauges = 13, kCoupledSwell = 14;
+constexpr int kFirstFVoicing  = kCoupledStrong;
+constexpr int kNumVoicings    = 15;
+// Owner's pick, round 2 (2 Oct 2026): F, coupled, "across the board"; F round 2
+// (3 Oct 2026): E, 13 coupled wire gauges, on every row (ADR 0037 "Round F2").
+// RV_SPRINGS3_DEFAULT_VOICING (a scratch build's CMAKE_CXX_FLAGS) makes
+// another voicing the default, so the suite can run as if it shipped.
+#ifdef RV_SPRINGS3_DEFAULT_VOICING
+constexpr int kDefaultVoicing = RV_SPRINGS3_DEFAULT_VOICING;
+#else
+constexpr int kDefaultVoicing = kCoupledGauges; // firmware + plugin
+#endif
 
 #if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
 // The firmware's voicing is fixed (Tank::s3Voicing_ is constexpr), so only the
@@ -297,6 +308,61 @@ inline constexpr std::array<Shape, modes::kNumSprings> kCrossWideSprings{{
 constexpr float kCrossWideAngle = -0.785f;
 constexpr float kCrossWideTrim  = 1.0f;
 
+// ---- F round 2 numbers (made on tank voicing 7, F) ----
+// Owner, 3 Oct 2026, on candidate F: "there isn't much of a noticeable
+// difference between 2 and 3 springs". On F, SPRINGS 2 is already smooth and
+// dense (F's per-trip diffusers) and together in both ears (no flicker), so
+// what the coupling added on today's tank (a smoother bloom, half the
+// left-right flicker) is mostly there in 2 already. Each keeps today's
+// repeat timing (keepTiming) and 3's coupled energy sharing.
+// 11: the Loops turn into each other by more per trip (round 2 kept 0.7 rad:
+// smoothest by the drip index on today's tank); a bigger turn spreads a
+// hit's energy faster, so the swell is quicker and bigger.
+constexpr float kStrongAngle = 1.2f;
+constexpr float kStrongTrim  = kCoupledTrim;
+// 13: round 2's wire gauges (7), coupled: a hit is a little cluster of
+// different boings that then share their energy.
+constexpr float kCoupledGaugesTrim = kCoupledTrim;
+// The centre Spring (C, the thin wire's high boing) a touch louder in the
+// middle than today's 3 Springs (kCentre3): with the gentler low cut (ADR
+// 0038 Round F2) the three Springs' first echoes combed in mono on chords at
+// DECAY 0, TENSION 0 (-4.9 dB at 1.8 kHz, test_tank's margin -4.5; 0.45 read
+// -4.8, 0.5 -4.5, 0.52 -4.3, 0.55 -4.1). Louder still narrows the image (tank
+// voicing 6's fine-structure L/R correlation 0.10 at 0.55, bar 0.1; 0.09 at
+// 0.52). Level vs 0.40 at the page settings: hits / skank / clicks / pad
+// +0.04 / -0.10 / -0.01 / +0.23 dB stereo, mono +0.21 / 0.00 / +0.16 / +0.34.
+constexpr float kGaugesCentre = 0.52f;
+constexpr modes::StereoMix kGaugesMix{{0.5f, 0.5f, kGaugesCentre}, {modes::kSide3, -modes::kSide3, 0.0f}, modes::kDecorr3};
+// 12: coupled, wider: more of the Springs' difference through F's second
+// decorrelator, Spring C's included (F's 3 Springs: A - B at 0.45). Wider
+// fine structure, still no flicker (both ears hear every echo), mono
+// unchanged in shape (the difference cancels).
+inline constexpr std::array<float, 3> kWideSides{{0.6f, -0.6f, 0.3f}};
+constexpr float kWideTrim  = 0.99f; // -0.4 dB re coupled: wider is a touch louder held (SPRINGS 3 -> 2 level step)
+// 14: a swell. The input goes mostly into Spring A, you hear mostly B and
+// C, and the coupling hands A's energy to them trip by trip, so after a hit
+// the tail grows for a moment before it fades.
+inline constexpr std::array<float, 3> kSwellInput{{1.7f, 0.1f, 0.1f}};
+constexpr float kSwellAngle = 0.45f;
+constexpr modes::StereoMix kSwellMix{{0.15f, 0.65f, 0.5f}, {modes::kSide3, -modes::kSide3, 0.0f}, modes::kDecorr3};
+// The split follows the tail's round trips (T60 / L, DECAY over TENSION):
+// none up to kSwellTripsFrom (a short or loose tail has no time to hand the
+// energy over: it would only be quieter), all of it from kSwellTripsTo.
+constexpr float kSwellTripsFrom = 14.0f, kSwellTripsTo = 26.0f;
+// Its sides from B and C only (B - C): A, the Spring the hit goes into, sits
+// in the middle, so the hit doesn't fall away in mono.
+inline constexpr std::array<float, 3> kSwellSides{{0.0f, 0.45f, -0.45f}};
+constexpr float kSwellTrim = 1.07f; // +0.3 dB re coupled: Spring A, which you hear least, holds a share of every hit
+// Hits only (a held pad goes into all three evenly, so it keeps today's
+// level): the split opens when the input's power over kSwellFastAttS runs
+// kSwellRatioFrom..To x (in power: x^2) its power over kSwellSlowS, and holds,
+// falling over kSwellHoldS, while the hit rings in. On a hit A gets the input
+// x kSwellInputGain: what waits in A is lost to its own damping until the
+// coupling hands it on.
+constexpr float kSwellFastAttS = 0.005f, kSwellSlowS = 0.3f, kSwellHoldS = 0.3f;
+constexpr float kSwellRatioFrom = 2.0f, kSwellRatioTo = 6.0f;
+constexpr float kSwellInputGain = 1.7f;
+
 inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 0 today: never applied (the Tank plays SpringModes.h as on main).
     {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, 1.0f},
@@ -345,7 +411,32 @@ inline constexpr std::array<Voicing, kNumVoicings> kVoicings{{
     // 10 cross-fed wide
     {1.0f, 0.0f, 1.0f, kCrossWideSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 8.0f, kTodayMix, kCrossWideTrim,
      true, 0.0f, kCrossWideAngle, kCoupleLeftRight},
+    // ---- F round 2: made on tank voicing 7 (F); today's repeat timing ----
+    // 11 coupled, stronger
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kStrongTrim, true, 0.0f,
+     kStrongAngle, kCoupleAll},
+    // 12 coupled wide
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kTodayMix, kWideTrim, true, 0.0f,
+     kCoupledAngle, kCoupleAll},
+    // 13 coupled wire gauges
+    {1.0f, 0.0f, 1.0f, kGaugeSprings, modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kGaugesMix, kCoupledGaugesTrim, true,
+     0.0f, kCoupledAngle, kCoupleAll},
+    // 14 coupled swell
+    {1.0f, 0.0f, 1.0f, detuned(), modes::kStageCap[2], 0.0f, 0.0f, 0.0f, 0.0f, 5.0f, kSwellMix, kSwellTrim, true, 0.0f,
+     kSwellAngle, kCoupleAll},
 }};
+
+// F round 2's own parts (Renderer-only: the firmware builds none of them,
+// RV_FIXED_VOICINGS; only voicings 12 and 14 use them).
+struct FParts {
+    std::array<float, 3> wideSides{};   // the side gains into F's second decorrelator, Springs A, B, C (all 0 = the tank's: wideSide3, -wideSide3, 0)
+    std::array<float, 3> inputWeight{}; // coupled only: each Spring's share of a hit (all 0 = 1 each, today's)
+};
+constexpr FParts fParts(int v)
+{
+    return v == kCoupledWide ? FParts{kWideSides, {}} : v == kCoupledSwell ? FParts{kSwellSides, kSwellInput} : FParts{};
+}
+constexpr bool hasInputWeights(int v) { return v == kCoupledSwell; }
 
 // The voicing Tank reads. The firmware plays only the default, so it keeps
 // that one entry rather than the whole table (~1.9 KB of flash).

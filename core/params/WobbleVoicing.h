@@ -37,6 +37,7 @@
 // numbers per knob step are in docs/m8-tuning-backlog.md "Bipolar WOBBLE".
 
 #include "params/Mappings.h"
+#include "dsp/SizeOpt.h"
 
 #include <array>
 #include <cmath>
@@ -220,7 +221,7 @@ struct Depths {
     float tremoloDb = 0.0f;     // dB per unit flutter line (Transport only; 0 elsewhere)
     float flutterFollow = 0.0f; // flutter rate × (1 + this × wow line)
 };
-inline Depths depths(float knob, bool early, float rateScale, float sampleRate, int voicingIndex = kDefaultVoicing)
+RV_SIZE_OPT inline Depths depths(float knob, bool early, float rateScale, float sampleRate, int voicingIndex = kDefaultVoicing)
 {
     const Voicing& v = voicing(voicingIndex);
     Depths d;
@@ -243,7 +244,7 @@ inline Depths depths(float knob, bool early, float rateScale, float sampleRate, 
 // needs the most, and a sharing Spring follows Spring A scaled by its Loop
 // ratio (<= 1.13). (The flutter's rate follow changes its speed, not its
 // depth in samples.)
-inline float maxDepthSamples(float sampleRate)
+RV_SIZE_OPT inline float maxDepthSamples(float sampleRate)
 {
     float m = 0.0f;
     for (int v = 0; v < int(kVoicings.size()); ++v)

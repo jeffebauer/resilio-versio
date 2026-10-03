@@ -44,18 +44,18 @@ int nextPow2(int v)
 // kJoltMaxLoopFrac of L) and WOBBLE (at most wobble::maxDepthSamples()).
 constexpr float kLongestLoopSeconds = map::kLoopDelayMaxSeconds * modes::kMaxLoopDelayDetune;
 constexpr float kJoltMaxLoopFrac    = 0.0125f;
-int lowDelaySize(float sampleRate)
+RV_SIZE_OPT int lowDelaySize(float sampleRate)
 {
     return int(std::ceil(kLongestLoopSeconds * sampleRate * (1.02f + kJoltMaxLoopFrac)))
          + int(std::ceil(wobble::maxDepthSamples(sampleRate))) + 8;
 }
-int highDelaySize(float sampleRate)
+RV_SIZE_OPT int highDelaySize(float sampleRate)
 {
     return int(std::ceil(Spring::kHighDelayRatio * kLongestLoopSeconds * sampleRate * 1.02f)) + 8;
 }
 // Each stretched section's ring holds K+1 samples; K is largest at the lowest
 // (detuned) fC.
-int ringSize(float sampleRate)
+RV_SIZE_OPT int ringSize(float sampleRate)
 {
     const float kMax = map::stretchK(map::kTransitionMinHz * modes::kMinTransitionDetune, sampleRate);
     return nextPow2(int(std::ceil(kMax * 1.1f)) + 3);
@@ -63,15 +63,24 @@ int ringSize(float sampleRate)
 
 } // namespace
 
-size_t Spring::requiredFloats(float sampleRate)
+RV_SIZE_OPT size_t Spring::requiredFloats(float sampleRate, [[maybe_unused]] int maxStages)
 {
-    return size_t(lowDelaySize(sampleRate)) + size_t(highDelaySize(sampleRate))
-         + size_t(kMaxStages) * size_t(ringSize(sampleRate));
+#if RV_TANKV_BUILT >= 1
+    const int rings = std::clamp(maxStages, 1, kMaxStages);
+#else
+    constexpr int rings = kMaxStages; // the firmware without voicing 1
+#endif
+    return size_t(lowDelaySize(sampleRate)) + size_t(highDelaySize(sampleRate)) + size_t(rings) * size_t(ringSize(sampleRate));
 }
 
-RV_SIZE_OPT void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed)
+RV_SIZE_OPT void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSeed, int maxStages)
 {
     sampleRate_ = sampleRate;
+#if RV_TANKV_BUILT >= 1
+    maxStages_  = std::clamp(maxStages, 1, kMaxStages);
+#else
+    (void)maxStages; // the firmware without voicing 1: always kMaxStages
+#endif
     lowSize_    = lowDelaySize(sampleRate);
     highSize_   = highDelaySize(sampleRate);
     ringMask_   = ringSize(sampleRate) - 1;
@@ -109,8 +118,14 @@ RV_SIZE_OPT void Spring::reset()
 {
     std::fill(lowBuf_, lowBuf_ + lowSize_, 0.0f);
     std::fill(highBuf_, highBuf_ + highSize_, 0.0f);
-    std::fill(rings_, rings_ + size_t(kMaxStages) * size_t(ringMask_ + 1), 0.0f);
+    std::fill(rings_, rings_ + size_t(maxStages_) * size_t(ringMask_ + 1), 0.0f);
     lowW_ = highW_ = ringW_ = 0;
+#if RV_TANKV_BUILT >= 3
+    for (int k = 0; k < numFbDiff_; ++k) {
+        std::fill(fbDiff_[size_t(k)].buf, fbDiff_[size_t(k)].buf + fbDiff_[size_t(k)].size, 0.0f);
+        fbDiff_[size_t(k)].w = 0;
+    }
+#endif
     thiranY1_.fill(0.0f);
     hapX1_.fill(0.0f);
     hapY1_.fill(0.0f);
@@ -141,8 +156,8 @@ bool Spring::setSettings(const SpringSettings& s, bool snap)
         SpringSettings t = s;
         t.transitionHz = designFc_;
         settings_ = t;
-        lTarget_  = std::clamp(t.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
-        mTarget_  = std::clamp(t.stages, 1, kMaxStages);
+        lTarget_  = std::clamp(t.loopDelaySeconds * sampleRate_ - diffDelay(), 4.0f, float(lowSize_ - 4));
+        mTarget_  = std::clamp(t.stages, 1, maxStages_);
         prepareDamping(t.dampingHz);
         commitDesign();
         pending_ = false;
@@ -169,20 +184,20 @@ bool Spring::setSettings(const SpringSettings& s, bool snap)
         // filters and g, which must match each other, next call.
         prepareTransition(s.transitionHz);
         a_               = s.allpassCoeff;
-        lTarget_         = std::clamp(s.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
-        mTarget_         = std::clamp(s.stages, 1, kMaxStages);
+        lTarget_         = std::clamp(s.loopDelaySeconds * sampleRate_ - diffDelay(), 4.0f, float(lowSize_ - 4));
+        mTarget_         = std::clamp(s.stages, 1, maxStages_);
         tapOffsetTarget_ = s.tapOffsetSeconds * sampleRate_;
         pending_         = true;
         return false;
     }
 
     settings_ = s;
-    lTarget_  = std::clamp(s.loopDelaySeconds * sampleRate_, 4.0f, float(lowSize_ - 4));
-    mTarget_  = std::clamp(s.stages, 1, kMaxStages);
+    lTarget_  = std::clamp(s.loopDelaySeconds * sampleRate_ - diffDelay(), 4.0f, float(lowSize_ - 4));
+    mTarget_  = std::clamp(s.stages, 1, maxStages_);
     if (snap) {
         lCur_ = lTarget_;
         mPos_ = float(mTarget_);
-        for (int j = mTarget_; j < kMaxStages; ++j) clearStage(j);
+        for (int j = mTarget_; j < maxStages_; ++j) clearStage(j);
         mActive_ = mTarget_;
     }
     if (s.transitionHz != designFc_) prepareTransition(s.transitionHz); // snap
@@ -204,7 +219,7 @@ void Spring::prepareTransition(float transitionHz)
     stagedEta_ = (1.0f - d) / (1.0f + d);
 
     stagedLowpass_.setLowpass(transitionHz, 0.7071f, sampleRate_);
-    stagedHighpass_.setHighpass(kHighPassRatio * transitionHz, 0.7071f, sampleRate_);
+    stagedHighpass_.setHighpass(hiXover() * transitionHz, 0.7071f, sampleRate_); // today kHighPassRatio
     // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
     lpfDelay_ = 1.41421356f * sampleRate_ / (2.0f * map::kPi * transitionHz);
 
@@ -276,7 +291,7 @@ void Spring::commitDesign()
     float g = kMaxGain;
     for (size_t p = 0; p < size_t(kNumPoints); ++p) {
         const float chain = mPos_ * map::stretchedAllpassGroupDelayFromCos(a_, k_, ptCosK_[p]);
-        const float rt    = lCur_ + chain + ptDampDelay_[p] + lpfDelay_ + ptLatency_[p];
+        const float rt    = withDiff(lCur_) + chain + ptDampDelay_[p] + lpfDelay_ + ptLatency_[p];
         const float gf    = std::exp(-3.0f * kLn10 * rt / (t60 * sampleRate_)) / ptMag_[p];
         g = std::min(g, gf);
     }
@@ -302,8 +317,26 @@ void Spring::commitDesign()
     }
 
     // High path: no dispersion to speak of, simple T60 from its own trip.
-    lhCur_ = kHighDelayRatio * lCur_;
-    gHigh_ = std::min(kMaxGain, std::exp(-3.0f * kLn10 * lhCur_ / (kHighT60Ratio * s.t60Seconds * sampleRate_)));
+    lhCur_ = kHighDelayRatio * withDiff(lCur_);
+    gHigh_ = std::min(kMaxGain, std::exp(-3.0f * kLn10 * lhCur_ / (hiT60() * s.t60Seconds * sampleRate_)));
+
+    // Tank voicing 1 (setHighPathVoicing): the high path's pickup lines its
+    // first echo up with the Loop's at the crossover: the Loop's pickup plus
+    // what its first echo passes (Chirp chain, fC low-pass, damping), minus
+    // the high path's own allpasses and ceiling, plus a trim.
+#if RV_TANKV_BUILT >= 1
+    hiPick_ = -1.0f;
+    if (hiAlignOn_) {
+        const float fx  = hiXover_ * s.transitionHz;
+        const float cw  = std::cos(2.0f * map::kPi * fx / sampleRate_);
+        const float loopArr = tapRatio_ * withDiff(lTarget_) + tapOffsetTarget_
+                            + float(mTarget_) * map::stretchedAllpassGroupDelaySamples(a_, k_, fx, sampleRate_) + lpfDelay_
+                            + damping_.groupDelay(cw);
+        const float highOwn = float(kHighStages) * map::stretchedAllpassGroupDelaySamples(kHighAllpassCoeff, 1.0f, fx, sampleRate_)
+                            + highCeiling_.groupDelay(cw);
+        hiPick_ = std::max(2.0f, loopArr - highOwn + hiAlignMs_ * 0.001f * sampleRate_);
+    }
+#endif
 }
 
 float Spring::chainGroupDelaySamples(float freqHz) const
@@ -321,7 +354,9 @@ float Spring::roundTripAt(float freqHz, float cw, float loopSatLatency) const
 {
     // Butterworth LPF group delay well below its cutoff ≈ sqrt(2) / (2 pi fC).
     const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
-    return lCur_ + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + loopSatLatency;
+    // + the feedback diffusers' delay (Tank voicing 3; their average group
+    // delay is their delay, and L was shortened by it).
+    return withDiff(lCur_) + chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + loopSatLatency;
 }
 
 #ifndef RV_FIXED_VOICINGS // analysis only: not in the firmware (Drive.h)
@@ -348,6 +383,27 @@ float Spring::t60AtSeconds(float freqHz) const
     const float perTrip = g_ * loopMagnitude(freqHz);
     if (perTrip <= 0.0f) return 0.0f;
     return -3.0f * roundTripSamples(freqHz) / (sampleRate_ * std::log10(perTrip));
+}
+
+RV_SIZE_OPT void Spring::setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c)
+{
+#if RV_TANKV_BUILT >= 3
+    numFbDiff_   = std::clamp(n, 0, kMaxFbDiffusers);
+    fbDiffC_     = c;
+    fbDiffDelay_ = 0.0f;
+    for (int k = 0; k < numFbDiff_; ++k) {
+        FbDiffuser& f = fbDiff_[size_t(k)];
+        f.buf  = bufs[k];
+        f.size = sizes[k];
+        f.d    = std::clamp(int(delays[k] + 0.5f), 1, sizes[k] - 1);
+        f.w    = 0;
+        fbDiffDelay_ += float(f.d);
+    }
+    reset();
+    setSettings(settings_, true); // L, the pickup and g with the new round trip
+#else
+    (void)bufs, (void)sizes, (void)delays, (void)n, (void)c; // the firmware without voicing 3
+#endif
 }
 
 void Spring::clearStage(int j)
@@ -379,7 +435,7 @@ inline void Spring::advanceGlides()
     if (dl > kLoopSlewPerSample) lCur_ += kLoopSlewPerSample;
     else if (dl < -kLoopSlewPerSample) lCur_ -= kLoopSlewPerSample;
     else lCur_ = lTarget_; // land exactly, so "at rest" is detectable
-    lhCur_ = kHighDelayRatio * lCur_;
+    lhCur_ = kHighDelayRatio * withDiff(lCur_); // the full round trip (voicing 3 shortens L)
 
     // The pickup offset glides too (it follows TENSION and SPRINGS, see
     // SpringSettings::tapOffsetSeconds): a jump in the read point would click.
@@ -421,11 +477,19 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     const float fb  = readLow(lMod);
     // Pickup ~half way: first echo after ~half a round trip (+ the fixed
     // stagger and WOBBLE's transport).
-    float tapAt = tapRatio_ * lMod + tapOffset_ + tapMod;
+    // (Tank voicing 3: along the full round trip, L + the feedback diffusers.)
+    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapMod;
     tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
     const float tap = readLow(tapAt);
 
-    float x = dc_.process(in + g_ * loopSat_.process(fb));
+    // Tank voicing 3: the feedback diffusers (after the pickup: every trip
+    // smears the echo a little more; the first echo never passes them).
+    float fbd = fb;
+#if RV_TANKV_BUILT >= 3
+    for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+#endif
+
+    float x = dc_.process(in + g_ * loopSat_.process(fbd));
 
     // Spectral delay filter: M stretched allpass sections, each
     //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
@@ -460,7 +524,7 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
         ring[iw] = v;
         x = a * v + d;
     }
-    if (frac > 0.0f && full < kMaxStages) {
+    if (frac > 0.0f && full < maxStages_) {
         float* ring = rings_ + size_t(full) * stride;
         const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
         thiranY1_[size_t(full)] = dOut;
@@ -516,7 +580,7 @@ void Spring::loopWrite(float x)
         ring[iw] = v;
         x = a * v + d;
     }
-    if (frac > 0.0f && full < kMaxStages) {
+    if (frac > 0.0f && full < maxStages_) {
         float* ring = rings_ + size_t(full) * stride;
         const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
         thiranY1_[size_t(full)] = dOut;
@@ -543,7 +607,11 @@ inline float Spring::processHigh(float in, float lhMod)
     if (i1 < 0) i1 += highSize_;
     const float fb = highBuf_[i0] + fr * (highBuf_[i1] - highBuf_[i0]);
     // Pickup: the output reads earlier along the line than the feedback.
+#if RV_TANKV_BUILT >= 1
+    const float pm = hiPick_ >= 0.0f ? std::min(hiPick_, lhMod) : kHighPickup * lhMod; // voicing 1: aligned
+#else
     const float pm = kHighPickup * lhMod;
+#endif
     const int   pi = int(pm);
     const float pf = pm - float(pi);
     int p0 = highW_ - pi;
@@ -577,10 +645,16 @@ float Spring::coupledReturn(float lFrac, float lSamples, float tapSamples)
     const float lMax = float(lowSize_ - 2);
     lMod = lMod < 2.0f ? 2.0f : (lMod > lMax ? lMax : lMod);
     const float fb = readLow(lMod);
-    float tapAt = tapRatio_ * lMod + tapOffset_ + tapSamples;
+    // (Tank voicing 3: the pickup along the full round trip, and the
+    // feedback diffusers, as processLow.)
+    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapSamples;
     tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
     cTap_ = readLow(tapAt);
-    return g_ * loopSat_.process(fb);
+    float fbd = fb;
+#if RV_TANKV_BUILT >= 3
+    for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+#endif
+    return g_ * loopSat_.process(fbd);
 }
 
 float Spring::coupledFinish(float in, float highIn, float loopReturn)

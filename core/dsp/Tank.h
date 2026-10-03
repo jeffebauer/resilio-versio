@@ -114,6 +114,19 @@
 // a TENSION move), so an idle Spring's Chirp grows to full length over a few
 // hundred ms after it becomes audible.
 //
+// Tank voicings (Wellspring fit round 3, params/TankVoicing.h, ADR 0038
+// Proposed; Renderer key tank_voicing, default 0 = everything above, bit for
+// bit): 1 puts the shared Sweep after the Clang (mono -> Sweep -> every
+// Spring's Loop and high path), with fewer Loop sections and B's aligned high
+// path; 2 zeroes the side (no Spring panned) and widens with D alone, its
+// bass taken out; 3 adds the Loop diffusers (Spring::setDiffusion); 4 adds a
+// low cut before the Clang, less Loop damping and a longer high path T60.
+// Round 4: 5 = 3 + transducers (a resonant low-pass on what enters the
+// Springs, after the Clang, and on the wet before DriveOut; less Loop
+// damping, a longer, softer high path); 6 = 5 + wide (the Springs'
+// difference back, through its own decorrelator D2: L = mid + X, R = mid -
+// X); 7 = 6 + 4's low cut with a level makeup.
+// The firmware compiles only the default.
 // SPRINGS 3 palette (PROTOTYPE, ADR 0037 proposed; params/Springs3Voicing.h):
 // a Renderer-only voicing (setSprings3Voicing) changes what position 3 does
 // (long tank, Springs in series, wide, pan tank). It reshapes each Spring
@@ -152,10 +165,12 @@
 #include "dsp/Kick.h"
 #include "dsp/Splash.h"
 #include "dsp/Spring.h"
+#include "dsp/Sweep.h"
 #include "dsp/Wobble.h"
 #include "params/ParamSpec.h"
 #include "params/DriveVoicing.h"
 #include "params/SpringModes.h"
+#include "params/TankVoicing.h"
 #include "params/Springs3Voicing.h"
 
 #include <algorithm>
@@ -203,6 +218,11 @@ public:
     void prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats);
 
     static size_t requiredPoolFloats(float sampleRate);
+    // What the pool would need if Tank voicing v (params/TankVoicing.h) were
+    // the only one compiled in (the firmware's RV_FIXED_VOICINGS layout):
+    // its Sweep, its Loop diffusers, and Loop rings only for the sections it
+    // uses. Desktop builds hold every voicing at once (requiredPoolFloats).
+    static size_t poolFloatsForVoicing(float sampleRate, int v);
 
     void setParam(ParamId id, float normalised)
     {
@@ -313,6 +333,20 @@ public:
         compDrive_ = -1.0f; // DriveIn settings again on the next tick (voicing 3)
     }
     int  toneVoicing() const { return tilt_.voicing(); }
+    // Renderer / test hook (not a panel control, ADR 0038 Proposed): which
+    // Tank voicing (params/TankVoicing.h: 0 = today, 1 = Sweep, 2 = + stereo
+    // together, 3 = + diffusion, 4 = + gentler). The firmware and plugin
+    // never call it (tankv::kDefaultVoicing). Set it after prepare() and
+    // before rendering: it clears the tails.
+    void setTankVoicing(int v);
+    int  tankVoicing() const { return tankVoicing_; }
+    // Renderer / test hook (not a panel control, ADR 0038 "Round F2",
+    // proposed): which step of 7's low cut (TankVoicing.h kFLowCutSteps: 0 =
+    // F's own, 1-3 gentler). Only tank voicing 7 hears it. The firmware and
+    // plugin never call it. Set it after prepare(), before rendering: it
+    // clears the tails.
+    void setFLowCutVoicing(int v);
+    int  fLowCutVoicing() const { return fLowCut_; }
     // Output safety limiter's gain now in effect (linear, stereo-linked):
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
@@ -335,6 +369,9 @@ private:
     };
 
     void bindPool(float* pool);
+    void applyTankVoicing(); // per-Spring parts of the voicing (diffusers, high path T60)
+    modes::StereoMix stereoMixFor(int mode) const;
+    float loopDampingScale() const; // the tank voicing's Loop damping x (1 today)
     void controlTick(bool snap);
     void updateBaseSettings(float decay, float tension, float tone, const drive::Voice& voice);
     void updateSpringSettings(size_t i);
@@ -456,6 +493,61 @@ private:
     float susGDownCoeff_ = 0.0f, susGUpCoeff_ = 0.0f, susGLetGoCoeff_ = 0.0f, susGTarget_ = 1.0f, susGNeedRelease_ = 0.0f;
     float susGNeed_ = kSusNoNeed, susGNeedHold_ = 0.0f;
     float inTrimFrom_ = 1.0f, inTrimTo_ = 1.0f;
+    // Tank voicings (params/TankVoicing.h; ADR 0038 Proposed).
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int tankVoicing_ = tankv::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+    static constexpr int fLowCut_ = tankv::kDefaultFLowCut; // F round 2's low cut steps: Renderer-only
+#else
+    int tankVoicing_ = tankv::kDefaultVoicing; // setTankVoicing
+    int fLowCut_ = tankv::kDefaultFLowCut;     // setFLowCutVoicing (TankVoicing.h kFLowCutSteps)
+#endif
+    // Each part only where this build can play it (RV_TANKV_BUILT): the
+    // firmware with the default 0 carries none of them.
+#if RV_TANKV_BUILT >= 1
+    dsp::Sweep          sweep_;          // voicing 1+: shared, in front of every Spring
+    float               sweepAlign_ = 0.0f; // its pickup alignment (samples, updateBaseSettings)
+    bool                snapNow_ = false; // controlTick(snap) in progress (the Sweep's stage jump)
+#endif
+#if RV_TANKV_BUILT >= 2
+    dsp::OnePoleLowpass dBass_{};        // voicing 2+: D's bass, taken out (bass centred)
+#endif
+#if RV_TANKV_BUILT >= 3
+    std::array<std::array<float*, tankv::kNumDiffusers>, kMaxSprings> diffBuf_{}; // voicing 3: Loop diffusers
+    std::array<std::array<int, tankv::kNumDiffusers>, kMaxSprings>    diffSize_{};
+#endif
+#if RV_TANKV_BUILT >= 4
+    dsp::Biquad         gentleHp_{};     // voicing 4: the low cut in front of the Springs
+    dsp::Biquad         gentleShelf_{};  // ... and its low-mid shelf
+#endif
+#if RV_TANKV_BUILT >= 5
+    dsp::Biquad                tdIn_{};  // voicing 5+: the input coil's treble loss
+    std::array<dsp::Biquad, 2> tdOut_{}; // ... and the output pickup's, L and R
+    dsp::OnePoleLowpass        tdEvenAvg_{}; // ... the slow average of its even-order term
+    float                      tdTrim_ = 1.0f; // ... and the wet's trim (tdTrimDb)
+#endif
+#if RV_TANKV_BUILT >= 6
+    std::array<Diffuser, 3> wideDecorr_{}; // voicing 6+: D2, the Springs' difference decorrelated
+#endif
+#if RV_TANKV_BUILT >= 7
+    // Voicing 7: the low cut's level makeup (power into / out of it above
+    // ~90 Hz, slow followers; gain, 1 = none).
+    std::array<dsp::OnePoleLowpass, 4> gmHp_{};
+    float gmAccIn_ = 0.0f, gmAccOut_ = 0.0f, gmIn_ = 0.0f, gmOut_ = 0.0f, gmGain_ = 1.0f;
+    // ... read a second time on the raw input above ~90 Hz (the Excitation
+    // trim's high-passes), through a copy of the low cut: the material before
+    // DRIVE colours it; the makeup is the smaller.
+    dsp::Biquad lcShHp_{}, lcShShelf_{};
+    float gmShAccIn_ = 0.0f, gmShAccOut_ = 0.0f, gmShIn_ = 0.0f, gmShOut_ = 0.0f;
+    dsp::Biquad tdEvenHp_{};          // the coil's square term, high-passed (tdEvenHpHz)
+    float tdTone_   = -1.0f;          // TONE the coil and pickup corners were set for
+    float tdDrive_  = -1.0f;          // ... and KICKED x DRIVE^3 (the coil's corner opens with it)
+    float toneTrim_ = 1.0f;           // TONE re-map's level right of noon, on the Springs' input
+    dsp::OnePoleLowpass tdDarkLp_{};  // ... left of noon: the input's highs (toneDarkLpHz) ...
+    float tdAccAll_ = 0.0f, tdAccLp_ = 0.0f, tdAll_ = 0.0f, tdLp_ = 0.0f, tdDarkDb_ = 0.0f, tdWd_ = 0.0f; // ... and its makeup
+    float splashLift_ = 1.0f;         // the Clang and Clatter at low DRIVE (tdSplashLiftDb)
+    std::array<float, kMaxSprings> hiT60Set_{{-1.0f, -1.0f, -1.0f}}; // high path T60 ratio sent to each Spring
+#endif
+
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
     static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
     std::array<float, kClatterSideMax> clatBuf_{};
@@ -506,6 +598,12 @@ private:
     // returns, at the last tick and this one (ramped per sample between).
     CoupleMatrix s3CoupleFrom_{}, s3CoupleTo_{};
     bool s3Coupled_ = false; // either end of the ramp is coupled (s3W_ > 0 in a coupled voicing)
+#ifndef RV_FIXED_VOICINGS // F round 2's SPRINGS 3 voicings: Renderer-only
+    float s3SwellAmt_ = 0.0f, s3SwellFrom_ = 0.0f, s3SwellTo_ = 0.0f; // "coupled swell" input split
+    float s3SwellTurn_ = 1.0f;                                         // ... its turn per trip re noon TENSION's
+    float swFast_ = 0.0f, swSlow_ = 0.0f, swHold_ = 0.0f;              // ... its hit detector
+    float swFastAtt_ = 1.0f, swSlowC_ = 1.0f, swHoldStep_ = 1.0f;
+#endif
 };
 
 } // namespace rv

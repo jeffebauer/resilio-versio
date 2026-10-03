@@ -1,4 +1,5 @@
 #include "dsp/Kick.h"
+#include "dsp/SizeOpt.h"
 
 #include <cmath>
 
@@ -17,7 +18,7 @@ inline float fastSin01(float p)
 
 } // namespace
 
-void KickVoice::prepare(float sampleRate, uint32_t seed)
+RV_SIZE_OPT void KickVoice::prepare(float sampleRate, uint32_t seed)
 {
     sampleRate_   = sampleRate;
     seed_         = mixSeed(seed);
@@ -29,7 +30,7 @@ void KickVoice::prepare(float sampleRate, uint32_t seed)
     reset();
 }
 
-void KickVoice::reset()
+RV_SIZE_OPT void KickVoice::reset()
 {
     for (auto& v : voices_) v = Voice{};
     nextVoice_ = 0;
@@ -43,14 +44,14 @@ void KickVoice::reset()
     started_    = 0;
 }
 
-void KickVoice::setAttitude(const std::array<float, 3>& weights) { params_ = splash::blendKick(weights); }
+RV_SIZE_OPT void KickVoice::setAttitude(const std::array<float, 3>& weights) { params_ = splash::blendKick(weights); }
 
 void KickVoice::trigger(int sampleOffset)
 {
     if (numPending_ < kMaxPending) pending_[size_t(numPending_++)] = sampleOffset < 0 ? 0 : sampleOffset;
 }
 
-void KickVoice::start(Voice& v)
+RV_SIZE_OPT void KickVoice::start(Voice& v)
 {
     const float fs = sampleRate_;
     v.active     = true;
