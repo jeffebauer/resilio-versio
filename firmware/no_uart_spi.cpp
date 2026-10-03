@@ -104,3 +104,42 @@ extern "C" void exit(int)
     for (;;) {}
 }
 #endif
+
+// QSPI (4 Oct 2026, flash): DaisySeed::Init() always brings up the Seed's
+// external QSPI flash chip (qspi.Init(qspi_config)): pins, clock, a reset
+// and quad-enable sequence that writes the chip's status register, then
+// memory-mapped mode. This firmware never touches that chip in release or
+// profile: code and data live in internal flash (ADR 0011), the delay pool
+// in DTCM, and there are no presets to store. Defining the one entry point
+// DaisySeed uses here keeps libDaisy's qspi.o and the HAL QSPI driver out
+// of the link (~5.3 KB). m0test keeps the real one (unchanged since M0).
+//
+// With the QSPI peripheral never set up, its 8 MB window at 0x90000000
+// must never be read, not even speculatively: the Cortex-M7 may prefetch
+// from "Normal" memory, which that window is in the default memory map,
+// and a read there with the QSPI off can stall the bus (ST AN4838/AN4861
+// recommend exactly this guard). So the stub marks the window no-access,
+// strongly-ordered and never-execute in the MPU. DaisySeed::Init calls
+// this right after System::Init has set up libDaisy's MPU regions 0-2
+// (src/sys/system.cpp ConfigureMpu); region 3 is free.
+#if !defined(RV_MODE_M0TEST)
+#include "per/qspi.h"
+daisy::QSPIHandle::Result daisy::QSPIHandle::Init(const daisy::QSPIHandle::Config&)
+{
+    MPU_Region_InitTypeDef r = {};
+    r.Enable           = MPU_REGION_ENABLE;
+    r.Number           = MPU_REGION_NUMBER3;
+    r.BaseAddress      = 0x90000000;
+    r.Size             = MPU_REGION_SIZE_8MB;
+    r.AccessPermission = MPU_REGION_NO_ACCESS;
+    r.TypeExtField     = MPU_TEX_LEVEL0;
+    r.IsShareable      = MPU_ACCESS_SHAREABLE;
+    r.IsCacheable      = MPU_ACCESS_NOT_CACHEABLE;
+    r.IsBufferable     = MPU_ACCESS_NOT_BUFFERABLE;
+    r.DisableExec      = MPU_INSTRUCTION_ACCESS_DISABLE;
+    HAL_MPU_Disable();
+    HAL_MPU_ConfigRegion(&r);
+    HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
+    return daisy::QSPIHandle::Result::OK;
+}
+#endif
