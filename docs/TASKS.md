@@ -2,54 +2,41 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 2 Oct 2026, session 6 (SPRINGS 3 coupled merged; your Wellspring pick F (+ gentler) being built for merging; docs refreshed)
+**Last updated:** 3 Oct 2026, evening (Wellspring F merged with your picks: low end D, SPRINGS 3 wire gauges; one plugin in Ableton again; CPU run 15 and the new release ready for tomorrow)
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | M0 passed. Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. **Next: run 15** once Wellspring F is merged, measuring everything since run 13 at once (run 14 skipped unless the red LEDs bother you sooner) |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_a8c64c7.bin` (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE; 91 % of flash; also the first release with the engine built at power-up and the USB-host stub). Do CPU run 14 first (§0), then flash this and the click check |
-| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE, sustain trim, Big Knob TONE, SPLASH C and **SPRINGS 3 coupled** merged (1–2 Oct). Wellspring round 4 pick F being built for merging (Claude) |
+| M0 hardware · M3 CPU | M0 passed. Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. **Run 15 ready** (§0): measures everything since run 13 at once (run 14 skipped) |
+| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_340b542.bin` (the Wellspring F sound with your picks, SPRINGS 3 wire gauges, Big Knob TONE, SPLASH C; 96 % of flash). Run 15 first (§0), then flash this and the click check (§1) |
+| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE, sustain trim, Big Knob TONE, SPLASH C, and **Wellspring F** (tank fitted to your Wellspring, gentler low cut D, SPRINGS 3 wire gauges) merged (1–3 Oct). Open: what 3 Springs should be (design questions), Wellspring round 5 (your notes) |
 | M2 Ableton check | Ready: the plugin is installed |
-| M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points (`docs/manual.md`, `docs/presets.md`) up to date with the sound as of `a8c64c7` |
+| M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points need a refresh for the Wellspring F sound |
 
-**Plugin in Ableton (two side by side, installed 3 Oct for A/B):** **"Resilio Versio"** = `main` `77989d8` (v1.2.96): SPRINGS 3 coupled, Big Knob TONE, SPLASH C, without Wellspring F; your sets' devices use this one. **"Resilio Versio F"** = the Wellspring F candidate `cef6a77` (v1.3.11), the same build your friend gets. Both AU validated. **Rescan needed:** open Ableton, hold ⌥ and click Rescan; add "Resilio Versio F" on a second return track. Before merging F, Claude puts "Resilio Versio" back to a single plugin.
+**Plugin in Ableton:** `340b542`, version **1.3.29** (installed 3 Oct, evening): **Wellspring F with your picks** (low end D, SPRINGS 3 wire gauges), plus Big Knob TONE, SPLASH C and everything before; AU validated. "Resilio Versio F" removed. Your Whalesong set's devices now play this. **Rescan needed:** open Ableton, hold ⌥ and click Rescan.
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin, Versio firmware, read-me. **New, for A/B:** [candidate F, v2026.10.02-cef6a77](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F) (pre-release, plugin only, no firmware yet): installs as **"Resilio Versio F"** next to the 1 Oct "Resilio Versio", so your friend can put both on return tracks and compare; its read-me says what changed and what to listen for. Download the zip there to send. Claude makes the next one with `tools/make_release.sh --publish` (or `--candidate <ref> <label>`).
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin, Versio firmware, read-me. **For A/B:** [candidate F, v2026.10.02-cef6a77](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F) (pre-release, plugin only): installs as **"Resilio Versio F"** next to the 1 Oct "Resilio Versio"; it's F before your two picks. Claude makes the next one with `tools/make_release.sh --publish` (or `--candidate <ref> <label>`).
 
 ## Now (suggested order)
 
-### 0a. Play the Wellspring F candidate in Ableton (≈15 min) · before Claude merges it
-- [x] **Played (3 Oct):** sounding good overall. Two notes: at TONE noon it's just a tad too thin / high-passed, and 2 vs 3 Springs barely differ. Claude is building two short pages (gentler low end at noon; ways to make SPRINGS 3 stand out on F). F merges with your picks from those
-- Set-up: two return tracks, "Resilio Versio" (today's main) on one and "Resilio Versio F" on the other, same settings, same send; switch between them
-- [ ] **General feel:** does it sit further back and gentler, like your Wellspring, without going dull? Any setting where it sounds worse than before?
-- [ ] **SPLASH in KICKED with DRIVE down:** around 2 o'clock a rim hit splashes ~2 dB less than today (fully up it's slightly more). Still strong enough in the middle of the knob?
-- [ ] **TONE sweep on sharp clicks/rims:** the left half comes out ~4 dB louder than noon and fully right ~4.5 dB quieter on very sharp clicks (drum hits stay even). Does sweeping TONE feel like it jumps in level?
-- [ ] **TONE fully left:** as warm and dark as you're used to?
-- Then tell Claude: merge as is, or what to fix first
-
-### 0b. F round 2: two short listens (≈15 min) · then Claude merges F with your picks
-- [x] **Low end at TONE noon** (3 Oct: **D, "a little more"** on clicks, hits, skank and pad; Claude is making it F's default): `renders/f2_lowend/index.html` (level-matched). **A** today's main, **B** candidate F as you played it, **C** a touch more body, **D** a little more, **E** the most (still well under today's). Which has the right amount of low end at noon?
-- [x] **What should 3 Springs be?** (3 Oct: **E, wire gauges** on every row; Claude is making it the default. Your note: B, C and E are almost imperceptibly different, F's swell adds a lag, D's widening is subtle at best) `renders/f2_springs3/index.html`. **A** 2 Springs, **B** 3 Springs as in F (coupled), **C** stronger coupling, **D** wide (more of the Springs' differences in the sides, still no left-right flicker), **E** wire gauges (a cluster of boings per hit), **F** swell (the tail grows for ~0.1 s after a hit, then fades; held sounds aren't swelled). Which makes 3 Springs its own thing? Same repeat timing in all
-- "Copy results for Claude" on each page, or plain words
-
-### 0. CPU run 14 on the module (≈10 min, USB only) · ready
-- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run14.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
+### 0. CPU run 15 on the module (≈10 min, USB only) · ready for tomorrow
+- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run15.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
 - [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
-- Why: WOBBLE and the sustain trim have never been measured on the chip, and knob moves are the CPU peaks: the lead for the red input LEDs. This build is also the first with the engine built at power-up (frees flash): the run checks that on the hardware too
-- Then flash the new release (`dist/resilio_versio_release_a8c64c7.bin`) and do §1
+- Why: everything since run 13 is unmeasured on the chip (bipolar WOBBLE, sustain trim, Big Knob, SPLASH C, SPRINGS 3 wire gauges, the Wellspring F tank, and the flash savings), and knob moves are the CPU peaks: the lead for the red input LEDs. Also the first hardware run of the engine built at power-up
+- Then flash the new release (§1)
 
 ### 1. Flash the Versio and play (≈2 min + play)
-- [ ] Flash `dist/resilio_versio_release_a8c64c7.bin` (after run 14) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
+- [ ] Flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
-- [ ] **Input LEDs flash red while moving knobs** (your note, 1 Oct; looped sample, LEDs otherwise green/amber, never red untouched). Next time it happens, please note: (1) is the red a brief flicker or held about half a second (a real warning is held 0.5 s)? (2) any click or dropout in the sound at the same moment? (3) which knob(s): DECAY, TENSION and TONE make the module work hardest; MIX, WOBBLE, DRIVE, SPLASH less. Claude's lead: knob moves are the CPU peaks, and this release adds WOBBLE and the sustain trim without a CPU run on the module (the CPU-test firmware is over flash). Next: trim it so it fits, then CPU run 14
+- [ ] **Input LEDs flash red while moving knobs** (your note, 1 Oct; looped sample, LEDs otherwise green/amber, never red untouched). Next time it happens, please note: (1) is the red a brief flicker or held about half a second (a real warning is held 0.5 s)? (2) any click or dropout in the sound at the same moment? (3) which knob(s): DECAY, TENSION and TONE make the module work hardest; MIX, WOBBLE, DRIVE, SPLASH less. Claude's lead: knob moves are the CPU peaks; run 15 measures them
 
 ### 2. The plugin in Ableton (≈20 min)
 - [ ] **Look at the panel interface:** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module? Does KICK fire? Tell Claude or send a screenshot of anything off
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
 - [ ] **A fresh listening pass**, answering the design questions below where you have a view
+- [ ] Three checks on the new sound when you have a moment: **SPLASH in KICKED with DRIVE down** around 2 o'clock (a rim splashes ~2 dB less than before; fully up slightly more): strong enough? **TONE sweep on sharp clicks/rims**: does the level jump (left half ~+4 dB, fully right ~−4.5 dB on very sharp clicks; drum hits even)? **TONE fully left**: as warm and dark as you're used to?
 
 ### 3. Big Knob TONE · **merged** (2 Oct)
 - TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
@@ -91,6 +78,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
+- [ ] **What should make you reach for 3 Springs instead of 2?** Three rounds keeping today's repeat timing all came out subtle (wire gauges shipped). Options: a bigger, longer-ringing darker tank (rings longer than DECAY says); two tanks in a row (thicker, washed, a doubled boing); a brighter, splashier tank (sparse → classic → splashy); or leave it as "slightly denser"
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
 - [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
@@ -101,7 +89,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Wellspring F merge** (your pick, 2 Oct): built on top of SPRINGS 3 coupled; needs TONE re-mapped (keep today's dark left side), tests re-tuned, the firmware trimmed to fit. Then a new plugin install, CPU run 15 and a release
+- **Docs:** refresh `docs/manual.md`, `docs/presets.md` and the share read-me for the Wellspring F sound; republish the friends' release once run 15 and the click check pass
 - **Wellspring round 5** from your notes: a softer transient (each echo's front), the tail's resonance in a different place, which frequencies sit in the centre vs wide. Session 2 recordings (§5) would help measure the last two
 - **After session 2 recordings:** ingest, the level series (how the input stage changes with level), the full stereo picture, per-octave darkening; feeds the next Wellspring round
 - **Friends' share release** is still `1d18fce`: republish with `tools/make_release.sh --publish` when you want to send the new sound round
@@ -121,6 +109,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 3 Oct 2026: **Wellspring F merged** with your picks (`340b542`, ADR 0038 / 0037 Round F2, SPEC v1.0.28): the tank fitted to your Wellspring (gentle highs from the first moment, repeats that darken, wider with no flicker), the low cut eased to D ("a little more" at TONE noon), SPRINGS 3 = coupled wire gauges, TONE's left half as dark as before. Installed in Ableton as the only Resilio; run 15 and the release built
+- 3 Oct 2026: **BOING in Ableton fixed:** your Whalesong set's devices still held the pre-29 Sep BOING slot (sets save parameters by ID); remapped to TENSION, backup next to the set. Every install now also gets its own version number
 - 2 Oct 2026: **SPRINGS 3 coupled merged** (your pick F "across the board", ADR 0037): position 3's three Springs share energy every round trip, so hits bloom instead of dripping; repeat timing and level as before. Firmware trimmed to fit (release 93 %, CPU-test 99.5 %). In Ableton (`2ed84f2`, 2 Oct); not yet on the Versio: next release together with Wellspring F
 - 2 Oct 2026: **Wellspring round 4 listened:** F (+ gentler) on clicks, hits and skank. Still different: the Wellspring's transient is softer, the tail's resonance sits elsewhere, and different frequencies are centred vs wide
 - 2 Oct 2026: **Manual, starting points and the friends' read-me refreshed** for the new sound (Big Knob TONE, SPLASH C, sustain trim, bipolar WOBBLE). The six starting points re-checked on it: none reaches the output limiter on hits, skank or a held pad. Changing a preset is still by ear: tell Claude what you'd move
