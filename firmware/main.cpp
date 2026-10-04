@@ -657,6 +657,7 @@ int main()
 // output limiter pulling down. No mode colours, no Kick flash.
 
 #include "LedMeter.h"
+#include "PotEndStops.h"
 
 namespace {
 
@@ -942,7 +943,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     if (hw.tap.RisingEdge()) tank.kick(0);
 
     for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
-        tank.setParam(kPotParams[p], hw.GetKnobValue(kPotKnob[p]));
+        tank.setParam(kPotParams[p], rvpot::endStops(hw.GetKnobValue(kPotKnob[p]))); // exact 0 / 1 at the stops
 
     const int springsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
     const int attitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
