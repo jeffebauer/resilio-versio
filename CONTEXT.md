@@ -17,7 +17,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Jolt** | Momentary lurch of Loop parameters on impact. Part of Splash. |
 | **Hit** | Detected transient strength (0–1) from the input after the INPUT gain. Drives the Jolt; its sibling, the hit envelope e, drives the Clang and the Bite. |
 | **Kick** | Simulated physical strike on Tank (thump + crash). Triggered by button, Gate, or MIDI note. Fixed strength, scaled by Attitude. |
-| **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Bite, Jolt, self-oscillation permission. |
+| **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Bite, Jolt, self-oscillation permission, and the µ-law box on the output (DRIVEN 12-bit, KICKED 8-bit; CLEAN none, ADR 0042). |
 | **Drive chain** | Input transducer → tape → Loop saturation → output pickup (SPEC §4.9). DRIVE is the INPUT gain in front of it and drives the input and output stages only (ADR 0033). |
 | **Howl** | Controlled self-sustaining feedback. KICKED only, top ~10% of DECAY. Noisy/crashing, never a pure tone. |
 | **Ringing / Buildup** | Unwanted single frequency growing into sine-like tone in tail. Prevented by AntiRes system. (Heard on the Wellspring's BBD delay feedback, not its spring.) |
@@ -29,6 +29,7 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Flutter** | The fast part of Drift: a smaller, quicker random pitch shimmer, ~5–12 Hz, on top of the wow. |
 | **Sustain trim** | Held sounds only (pads, drones, never hits): eases the Springs' input down just enough that the wet's peaks stay under the output limiter. Tails and the Howl untouched (ADR 0035). |
 | **Big Knob** | TONE's right half (ADR 0036): King Tubby's desk high-pass (Altec 9069B), an 18 dB/oct low cut sweeping 20 Hz at noon to 800 Hz fully right, with the coil's nasal bump above the cutoff on sharp hits only. |
+| **µ-law box** | DRIVEN / KICKED only: the whole output (dry and wet, after MIX) through 24 kHz / µ-law, 12-bit in DRIVEN, 8-bit in KICKED (ADR 0042). Grit that follows the signal, the top octave above ~11 kHz gone, fading tails turning to soft grain then silence. CLEAN is untouched, so only CLEAN at MIX fully left is a clean passthrough. |
 | **Limiter hold** | The output limiter holds its gain 30 ms before releasing (ADR 0035), so light limiting doesn't ride each bass cycle (heard as drive). |
 | **Voicing (hidden)** | A Renderer-only alternative of a sound feature (`tone_voicing`, `splash_voicing`, `springs3_voicing`, `tank_voicing`, …) for listening pages; the firmware compiles only the default (`RV_FIXED_VOICINGS`). |
 | **Coupled (SPRINGS 3)** | Position 3's Springs share energy every round trip (an energy-keeping rotation of their Loop returns; let go in the Howl zone), ADR 0037. Shipped with **wire gauges**: each Spring its own Chirp, like three wire thicknesses (a cluster of boings per hit), same repeat timing. |

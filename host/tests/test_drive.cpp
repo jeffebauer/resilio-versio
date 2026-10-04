@@ -90,11 +90,13 @@ Stereo render(rv::Tank& t, const Buf& in, int block)
     return o;
 }
 
-Stereo renderWith(const Settings& s, const Buf& in)
+// outBits: output_bits_voicing (-1 = the default, ADR 0042's mu-law box; 0 = before the box, a test hook).
+Stereo renderWith(const Settings& s, const Buf& in, int outBits = -1)
 {
     rv::Tank t;
     t.prepare(kFs, 48);
     apply(t, s);
+    if (outBits >= 0) t.setOutputBitsVoicing(outBits);
     return render(t, in, 48);
 }
 
@@ -1036,6 +1038,11 @@ void aliasing()
     // energy-dependent rattle put modulation sidebands within ~10-20 Hz of
     // the tone (-41 dB at the old WOBBLE 0.2 / SPLASH 0.3 in KICKED). Those are
     // not aliasing; this measures the drive stages.
+    // Read before the output's mu-law box (ADR 0042; output_bits_voicing 0 as
+    // a test hook): this measures the drive chain's oversampling. The box's own
+    // products (mu-law's expansion is slightly curved, and it runs at 24 kHz,
+    // so the highest fold) sit ~30 dB under its grain; test_output_bits checks
+    // the box for new pitches. Its number is printed below as INFO.
     {
         AliasResult r;
         for (float f0 = 5000.0f; f0 <= 15000.0f; f0 += 1000.0f) {
@@ -1047,8 +1054,8 @@ void aliasing()
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.5f; // noon: still
-            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l,
-                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f)).l, f0, -100.0 + heardDb(s.drive));
+            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f), 0).l,
+                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f), 0).l, f0, -100.0 + heardDb(s.drive));
         }
         report("Tank wet DRIVEN DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS, what it adds over the same tone at -40 dBFS (abs floor -100 dBFS + the +6 dB DRIVE adds)", r);
     }
@@ -1063,12 +1070,25 @@ void aliasing()
             s.springs = 2;
             s.splash  = 0.0f;
             s.wobble  = 0.5f; // noon: still
-            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp)).l,
-                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f * amp)).l, f0, -100.0 + heardDb(s.drive));
+            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, amp), 0).l,
+                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f * amp), 0).l, f0, -100.0 + heardDb(s.drive));
         }
         report(amp == 1.0f ? "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at 0 dBFS, what it adds over the same tone 40 dB down"
                            : "Tank wet KICKED DRIVE 1 (3 Springs), 5-15 kHz at -6 dBFS, what it adds over the same tone 40 dB down",
                r);
+    }
+    // INFO: the same at 0 dBFS with the output's mu-law box in (what ships).
+    for (int a = 1; a < 3; ++a) {
+        AliasResult r;
+        for (float f0 = 5000.0f; f0 <= 15000.0f; f0 += 1000.0f) {
+            Settings s;
+            s.att = a, s.drive = 1.0f, s.decay = 0.3f, s.tension = 0.0f, s.springs = 2, s.splash = 0.0f, s.wobble = 0.5f;
+            accumulateVsLinear(r, renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 1.0f)).l,
+                               renderWith(s, fadedSine(size_t(3.0f * kFs), f0, 0.01f)).l, f0, -100.0 + heardDb(s.drive));
+        }
+        std::printf("INFO  Aliasing Tank wet %s DRIVE 1, 5-15 kHz at 0 dBFS, with the output's mu-law box (ADR 0042): worst non-harmonic "
+                    "product %.1f dB re fundamental (%.0f Hz, from %.0f Hz; %.0f dBFS abs)\n",
+                    a == 1 ? "DRIVEN" : "KICKED", r.worst, r.atHz, r.fromHz, r.absDb);
     }
     // LoopSat sees the Loop's own band (< fC ~4.4 kHz: the chirp low-pass is
     // inside the Loop), at a hot, Howl-level signal.
@@ -1532,7 +1552,7 @@ void stabilityGrid()
 {
     const size_t sec = size_t(kFs);
     int bad = 0, cells = 0;
-    float worstPeak = 0;
+    float worstPeak = 0, shippedPeak = 0;
     for (int a = 0; a < 3; ++a)
         for (float dr : {0.0f, 0.5f, 1.0f})
             for (float d : {0.0f, 0.5f, 0.89f, 1.0f})
@@ -1555,9 +1575,14 @@ void stabilityGrid()
                         s.tension = 0.0f; // loosest tank
                         // Rendered here (not renderWith) to log the output
                         // limiter's gain per 48-sample block.
+                        // Read before the output's mu-law box (ADR 0042;
+                        // output_bits_voicing 0 as a test hook): the Tank's
+                        // stability, not the converter's steps. The shipped
+                        // output is checked below (finite, ends no louder).
                         rv::Tank tank;
                         tank.prepare(kFs, 48);
                         apply(tank, s);
+                        tank.setOutputBitsVoicing(0);
                         Stereo o{Buf(in.size()), Buf(in.size())};
                         std::vector<float> limGain(in.size() / 48 + 1, 1.0f);
                         for (size_t pos = 0; pos < in.size(); pos += 48) {
@@ -1574,6 +1599,16 @@ void stabilityGrid()
                         const float pk = std::max(peakAbs(o.l), peakAbs(o.r));
                         worstPeak = std::max(worstPeak, pk);
                         bool good = allFinite(o.l) && allFinite(o.r) && pk < 1.0f;
+                        {
+                            // The shipped output (box in): finite; outside the
+                            // Howl its last second no louder than the first after
+                            // the input (<=: the box's tail can be exact silence).
+                            const Stereo sh = renderWith(s, in);
+                            shippedPeak = std::max({shippedPeak, peakAbs(sh.l), peakAbs(sh.r)});
+                            const size_t st = input == 0 ? sec / 2 : sec + sec / 2;
+                            good &= allFinite(sh.l) && allFinite(sh.r)
+                                 && (howl || power(sh.l, 5 * sec, 6 * sec) <= power(sh.l, st, st + sec));
+                        }
                         if (!howl) {
                             // Energy after the input stops falls (+1 dB slack), and ends lower.
                             // A window compared with one the output limiter was
@@ -1603,8 +1638,9 @@ void stabilityGrid()
                     }
     std::snprintf(msg, sizeof msg,
                   "Stability ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x SPRINGS (%d cells, impulse + 1 s full-scale "
-                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
-                  cells, worstPeak, bad);
+                  "noise, TENSION 0 (loose)): finite, peak before the output box < 1 (worst %.3f), decaying outside the Howl zone "
+                  "(%d bad); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
+                  cells, worstPeak, bad, shippedPeak, shippedPeak * 0.874f);
     check(bad == 0, msg);
 
     // CLEAN / DRIVEN at max DECAY decay (ADR 0001): 3 s after a noise burst

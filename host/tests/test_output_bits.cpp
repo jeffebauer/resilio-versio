@@ -1,11 +1,11 @@
-// The output's bit depth (PROTOTYPE, owner 4 Oct 2026; core/dsp/OutputBits.h,
+// The output's bit depth (ADR 0042, owner 4 Oct 2026; core/dsp/OutputBits.h,
 // core/params/OutputVoicing.h, docs/prototypes/output-mulaw/README.md).
-// Renderer key output_bits_voicing: 0 = today, 1 = DRIVEN 24 kHz / 12-bit
+// Renderer key output_bits_voicing: 0 = before the box (the "today" reference), 1 = the default, DRIVEN 24 kHz / 12-bit
 // mu-law and KICKED 24 kHz / 8-bit mu-law on the whole output after MIX
 // (dry and wet), CLEAN untouched.
 //
 // Checks:
-//  - voicing 0 renders bit for bit as an untouched Tank (the default);
+//  - the default is voicing 1, and an untouched Tank renders bit for bit as it;
 //  - voicing 1 in CLEAN renders bit for bit as today (every SPRINGS, MIX 0 /
 //    0.4 / 1), and CLEAN MIX 0 is still the input exactly;
 //  - level: K-weighted loudness within +-0.5 dB of today per ATTITUDE
@@ -20,6 +20,8 @@
 //  - deterministic, block-size free;
 //  - INFO: latency (samples / ms), noise floor per mode (a 1 kHz tone at
 //    -6 ... -80 dBFS, dry only), desktop cost.
+
+#include "../../firmware/LedMeter.h"
 
 #include "dsp/Filters.h"
 #include "dsp/Tank.h"
@@ -381,18 +383,18 @@ Stereo naiveBox(const Stereo& o, float bits)
 // ---- checks ------------------------------------------------------------------------------------
 void identity()
 {
-    std::snprintf(msg, sizeof msg, "the default output_bits_voicing is 0 (today): %d", rv::outbits::kOutputBitsDefault);
-    check(rv::outbits::kOutputBitsDefault == 0, msg);
+    std::snprintf(msg, sizeof msg, "the default output_bits_voicing is 1 (mu-law, ADR 0042): %d", rv::outbits::kOutputBitsDefault);
+    check(rv::outbits::kOutputBitsDefault == 1, msg);
     const Buf h = hits(4.0);
     int ok = 0, cells = 0;
     for (int sp = 0; sp < 3; ++sp)
         for (int a = 0; a < 3; ++a) {
             Settings s;
             s.springs = sp, s.att = a, s.mix = 0.4f;
-            ok += same(render(s, h, -1), render(s, h, 0)) ? 1 : 0;
+            ok += same(render(s, h, -1), render(s, h, 1)) ? 1 : 0;
             ++cells;
         }
-    std::snprintf(msg, sizeof msg, "voicing 0 = an untouched Tank, bit for bit (hits, MIX 0.4, SPRINGS x ATTITUDE): %d of %d", ok, cells);
+    std::snprintf(msg, sizeof msg, "voicing 1 = an untouched Tank (the default), bit for bit (hits, MIX 0.4, SPRINGS x ATTITUDE): %d of %d", ok, cells);
     check(ok == cells, msg);
 }
 
@@ -781,6 +783,59 @@ void flips()
     }
 }
 
+// The release firmware's output LEDs (ADR 0031) with the box in. Red comes
+// only from the limiter (Tank::limiterGain()), which sits before the box: it
+// must read exactly as without the box. The level meters read the box's
+// output (the per-block peak of what leaves the Tank), so they show what the
+// box does (INFO: on bright material the 24 kHz rate lowers a transient's
+// peak). test_led_meter's "limiter pulls" case (a held chord at -3 dBFS into
+// 3 Springs, DECAY 0.62, the Sustain trim off, fully wet; and at MIX 0.5) in
+// DRIVEN and KICKED, per 48-sample block as the firmware does.
+void leds()
+{
+    Buf in(sec(4.0), 0.0f);
+    for (size_t n = 0; n < in.size(); ++n) {
+        const double env = std::min(1.0, double(n) / 480.0);
+        double sum = 0.0;
+        for (double hz : {220.0, 261.63, 329.63}) sum += std::sin(2.0 * kPi * hz * double(n) / kFs);
+        in[n] = float(std::pow(10.0, -3.0 / 20.0) * env * sum / 3.0);
+    }
+    for (int a = 1; a < 3; ++a)
+    for (float mix : {0.5f, 1.0f}) {
+        Settings s;
+        s.att = a, s.springs = 2, s.drive = 0.0f, s.splash = 0.0f, s.decay = 0.62f, s.mix = mix;
+        std::vector<float> gain[2], peak[2];
+        for (int v = 0; v < 2; ++v) {
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, s);
+            t.setSustainTrimEnabled(false);
+            t.setOutputBitsVoicing(v);
+            Buf l(48), r(48);
+            for (size_t pos = 0; pos + 48 <= in.size(); pos += 48) {
+                t.process(in.data() + pos, in.data() + pos, l.data(), r.data(), 48);
+                float pk = 0.0f;
+                for (int i = 0; i < 48; ++i) pk = std::max({pk, std::fabs(l[size_t(i)]), std::fabs(r[size_t(i)])});
+                gain[v].push_back(t.limiterGain());
+                peak[v].push_back(pk);
+            }
+        }
+        int red[2] = {0, 0};
+        double worstPos = 0.0;
+        for (size_t b = 0; b < gain[0].size(); ++b) {
+            for (int v = 0; v < 2; ++v) red[v] += rvled::limiterReducing(gain[v][b]) ? 1 : 0;
+            const float p0 = std::max(peak[0][b], b ? peak[0][b - 1] : 0.0f), p1 = std::max(peak[1][b], b ? peak[1][b - 1] : 0.0f);
+            if (p0 >= 0.063f) worstPos = std::max(worstPos, double(std::fabs(rvled::levelToPosition(p1) - rvled::levelToPosition(p0))));
+        }
+        std::snprintf(msg, sizeof msg,
+                      "LEDs, %s held chord into the limiter (MIX %.1f): limiter gain per block identical with and without the box %d; red in %d / %d blocks "
+                      "(without / with: the same; DRIVEN must light it, KICKED stays under the limiter here). INFO the output level meter, worst block (above -24 dBFS) %.3f of its "
+                      "scale from before the box",
+                      kAtt[a], double(mix), int(gain[0] == gain[1]), red[0], red[1], worstPos);
+        check(gain[0] == gain[1] && red[0] == red[1] && (a == 2 || red[0] > 0), msg);
+    }
+}
+
 void deterministic()
 {
     const Buf h = hits(4.0);
@@ -842,6 +897,7 @@ int main(int argc, char** argv)
     if (want("silence")) silence();
     if (want("artefacts")) artefacts();
     if (want("flips")) flips();
+    if (want("leds")) leds();
     if (want("deterministic")) deterministic();
     if (want("cost")) cost();
     std::printf("%d failure(s)\n", failures);

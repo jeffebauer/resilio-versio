@@ -13,6 +13,7 @@
 //                                                                     └ decorrelator ─ D
 //     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
+//   out ─ mu-law box (DRIVEN 24 kHz / 12-bit, KICKED 24 kHz / 8-bit; CLEAN untouched; ADR 0042, dsp/OutputBits.h)
 //
 // Drive chain (M5, SPEC §4.9, dsp/Drive.h, numbers in params/DriveVoicing.h):
 // DriveIn (input transducer -> tape) and Tilt (TONE) are Tank-level: one
@@ -59,7 +60,9 @@
 // Latency: the wet path picks up ~5 samples (0.1 ms at 48 kHz) of group
 // delay from the DriveIn and DriveOut oversamplers (2.5 each at x2): like a
 // tiny pre-delay, inaudible in a reverb. The dry path is untouched, so the Plugin still reports latency 0
-// (MIX 0 stays a bit-identical null). Inside each Loop the LoopSat's
+// (MIX 0 stays a bit-identical null in CLEAN). In DRIVEN / KICKED the output's
+// mu-law box (ADR 0042) delays dry and wet together by ~6 samples (0.12 ms);
+// an ATTITUDE flip crossfades it against the undelayed CLEAN over 20 ms. Inside each Loop the LoopSat's
 // oversampler delay is counted in the round trip (Spring.h).
 //
 // SPLASH / KICK / WOBBLE (M7, SPEC §4.5-4.7, docs/m7-integration.md; all
@@ -352,11 +355,12 @@ public:
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
     float limiterGain() const { return limitGain_; }
-    // Renderer / test hook (PROTOTYPE, owner 4 Oct 2026, OutputVoicing.h):
-    // the output's bit depth, 0 = today, 1 = DRIVEN 24 kHz / 12-bit mu-law,
-    // KICKED 24 kHz / 8-bit mu-law on the whole output after MIX (CLEAN
-    // untouched). The firmware and plugin never call it (outbits::
-    // kOutputBitsDefault). Set it after prepare(), before rendering.
+    // Renderer / test hook (ADR 0042, OutputVoicing.h): the output's bit
+    // depth. 1 (the default) = DRIVEN 24 kHz / 12-bit mu-law, KICKED 24 kHz /
+    // 8-bit mu-law on the whole output after MIX (CLEAN untouched); 0 = before
+    // the box (the pre-ADR 0042 reference; tests read the Tank there). The
+    // firmware and plugin never call it (outbits::kOutputBitsDefault; the
+    // firmware compiles it out). Set it after prepare(), before rendering.
     void setOutputBitsVoicing(int v) { outBits_.setVoicing(v); }
     int  outputBitsVoicing() const { return outBits_.voicing(); }
     const dsp::OutputBits& outputBits() const { return outBits_; }
@@ -441,7 +445,7 @@ private:
     std::array<Diffuser, modes::kDecorrSeconds.size()> decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
-    dsp::OutputBits                     outBits_; // the output's bit depth (PROTOTYPE, after MIX)
+    dsp::OutputBits                     outBits_; // the output's mu-law box (ADR 0042, after MIX)
     float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
     map::MixGains                       mixGains_{1.0f, 0.0f};
     float hitBlend_ = 0.0f, hitRelease_ = 0.0f; // Big Knob voicing 5

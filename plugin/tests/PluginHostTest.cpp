@@ -95,6 +95,12 @@ void setParam(const ParamMap& byId, rv::ParamId id, float v)
     if (auto* p = byId[size_t(id)]) p->setValueNotifyingHost(v);
 }
 
+// ATTITUDE for the presets below (normalised; < 0 = the ParamSpec default,
+// DRIVEN). The MIX 0 null test and the Kick onset check set CLEAN: since ADR
+// 0042 DRIVEN / KICKED put the whole output (dry too) through the mu-law box,
+// which isn't a passthrough and delays the output ~6 samples.
+float gAttitude = -1.0f;
+
 // A preset used by the parity and null-test checks: DECAY 0.8, TENSION 0.2,
 // TONE 0.7, plus whatever MIX the caller wants. Everything else stays at its
 // ParamSpec default on both sides.
@@ -104,6 +110,7 @@ void setPresetOnPlugin(const ParamMap& byId, float decay, float tension, float t
     setParam(byId, rv::ParamId::Tension, tension);
     setParam(byId, rv::ParamId::Tone, tone);
     setParam(byId, rv::ParamId::Mix, mix);
+    if (gAttitude >= 0.0f) setParam(byId, rv::ParamId::Attitude, gAttitude);
 }
 
 void setPresetOnTank(rv::Tank& tank, float decay, float tension, float tone, float mix)
@@ -112,6 +119,7 @@ void setPresetOnTank(rv::Tank& tank, float decay, float tension, float tone, flo
     tank.setParam(rv::ParamId::Tension, tension);
     tank.setParam(rv::ParamId::Tone, tone);
     tank.setParam(rv::ParamId::Mix, mix);
+    if (gAttitude >= 0.0f) tank.setParam(rv::ParamId::Attitude, gAttitude);
 }
 
 // Block-size schedules a DAW might send, covering a signal of `total` samples.
@@ -348,12 +356,14 @@ int main()
             }
         }
         {
+            gAttitude = 0.0f; // CLEAN (ADR 0042: in DRIVEN / KICKED MIX 0 is the dry through the mu-law box)
             auto blocks = blockSchedule({512}, int(in.size()));
             auto pluginOut = renderPlugin(fm, vst3Path, in, blocks, 0.5f, 0.5f, 0.5f, 0.0f);
+            gAttitude = -1.0f;
             bool identicalL = pluginOut.outL == in, identicalR = pluginOut.outR == in;
             const double dbL = maxAbsDiffDb(in, pluginOut.outL), dbR = maxAbsDiffDb(in, pluginOut.outR);
             char what[256];
-            std::snprintf(what, sizeof(what), "MIX 0 render is a null test against the input (bit-identical: L %s, R %s; max diff L %.1f dBFS, R %.1f dBFS)",
+            std::snprintf(what, sizeof(what), "MIX 0 render (CLEAN) is a null test against the input (bit-identical: L %s, R %s; max diff L %.1f dBFS, R %.1f dBFS)",
                           identicalL ? "yes" : "no", identicalR ? "yes" : "no", dbL, dbR);
             check(identicalL && identicalR, what);
         }
@@ -384,14 +394,20 @@ int main()
             // impulse. Its onset (first sample differing from the same render
             // without it) is at N + a fixed offset, the same for every block
             // schedule (0: the DriveOut oversampler's first tap responds at once).
+            // Read in CLEAN: in DRIVEN / KICKED the output's mu-law box (ADR
+            // 0042) adds its own ~6 samples and its steps; the parity check above
+            // already covers the default ATTITUDE.
+            gAttitude = 0.0f;
+            pluginOut = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.kickAt, c.note_, c.velocity);
             auto quiet = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f);
+            gAttitude = -1.0f;
             long onset = -1;
             for (size_t i = 0; i < quiet.outL.size() && onset < 0; ++i)
                 if (std::memcmp(&pluginOut.outL[i], &quiet.outL[i], sizeof(float)) != 0
                     || std::memcmp(&pluginOut.outR[i], &quiet.outR[i], sizeof(float)) != 0) // bit-exact
                     onset = long(i);
             constexpr long kKickOnsetOffset = 0;
-            std::snprintf(what, sizeof(what), "MIDI Kick onset at N + %ld samples (fixed offset %ld), %s", onset - c.kickAt,
+            std::snprintf(what, sizeof(what), "MIDI Kick onset (CLEAN) at N + %ld samples (fixed offset %ld), %s", onset - c.kickAt,
                           kKickOnsetOffset, c.label);
             check(onset - c.kickAt == kKickOnsetOffset, what);
         }

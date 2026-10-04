@@ -1,10 +1,10 @@
 #!/bin/bash
-# The output's bit depth listening page (PROTOTYPE; output_bits_voicing,
+# The output's bit depth listening page (ADR 0042; output_bits_voicing,
 # core/params/OutputVoicing.h, docs/prototypes/output-mulaw/README.md).
 # Usage (from the repo root or a worktree):
 #   tools/output_mulaw_page.sh [RENDER_BIN] [OUT_DIR]
 # Defaults: build/rv_render, renders/feat_output_mulaw (in this checkout).
-# A = today, B = mu-law on the whole output (DRIVEN 12-bit, KICKED 8-bit);
+# A = before the box (voicing 0), B = mu-law on the whole output (the default since ADR 0042);
 # columns CLEAN / DRIVEN / KICKED (CLEAN: A = B, as a check); level matching on.
 set -e
 cd "$(dirname "$0")/.."

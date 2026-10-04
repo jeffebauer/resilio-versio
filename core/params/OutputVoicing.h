@@ -1,14 +1,17 @@
 #pragma once
-// The output's bit depth per ATTITUDE (PROTOTYPE, owner 4 Oct 2026;
-// docs/prototypes/output-mulaw/README.md). The owner liked the echo branch's
+// The output's bit depth per ATTITUDE (ADR 0042, owner 4 Oct 2026; method
+// and measurements in docs/prototypes/output-mulaw/README.md). The owner liked the echo branch's
 // 8-bit mu-law repeats (echo_bits_voicing D) but heard it as subtle there,
 // and asked for the same "box" on the whole output in DRIVEN and KICKED:
 //   CLEAN  untouched (bit for bit as today, MIX 0 still a clean passthrough)
 //   DRIVEN 24 kHz / 12-bit mu-law
 //   KICKED 24 kHz / 8-bit mu-law
 // every SPRINGS position, dry and wet both (after MIX). dsp/OutputBits.h.
-// Renderer key output_bits_voicing (0 = today, 1 = the owner's spec); the
-// firmware builds only kOutputBitsDefault (RV_FIXED_VOICINGS).
+// The owner picked it on every panel (renders/feat_output_mulaw, 4 Oct 2026):
+// the default everywhere. Renderer key output_bits_voicing 0 renders "before
+// the box" (the pre-ADR 0042 reference, and the tests' hook for reading the
+// Tank before it); the firmware builds only kOutputBitsDefault
+// (RV_FIXED_VOICINGS: the hook compiles out, costing nothing).
 
 namespace rv::outbits {
 
@@ -36,7 +39,7 @@ constexpr float kEnvReleaseMs    = 1.0f;
 #ifdef RV_OUTPUT_BITS_DEFAULT
 constexpr int kOutputBitsDefault = RV_OUTPUT_BITS_DEFAULT;
 #else
-constexpr int kOutputBitsDefault = 0;
+constexpr int kOutputBitsDefault = 1; // owner, 4 Oct 2026: B on every panel (ADR 0042)
 #endif
 
 } // namespace rv::outbits

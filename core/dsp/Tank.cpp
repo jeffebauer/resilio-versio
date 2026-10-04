@@ -1741,8 +1741,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outL[pos + i] = m.dry * dryL + m.wet * wl;
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
-        // The output's bit depth (PROTOTYPE, OutputVoicing.h): dry and wet
-        // both, after MIX. Off (voicing 0) and in CLEAN it leaves them untouched.
+        // The output's mu-law box (ADR 0042, OutputVoicing.h): dry and wet
+        // both, after MIX. In CLEAN (and voicing 0) it leaves them untouched.
         outBits_.process(outL + pos, outR + pos, n);
         prof::mark(prof::kOutput);
         pos += n;

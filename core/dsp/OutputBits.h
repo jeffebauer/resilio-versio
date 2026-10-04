@@ -1,5 +1,5 @@
 #pragma once
-// The output's bit depth (PROTOTYPE, owner 4 Oct 2026; numbers in
+// The output's bit depth (ADR 0042, owner 4 Oct 2026; numbers in
 // params/OutputVoicing.h, method and measurements in
 // docs/prototypes/output-mulaw/README.md). The echo branch's 8-bit mu-law
 // "box" (feat/echo-mode 2792b14, dsp/EchoBits.h) moved to the very end of

@@ -1,5 +1,7 @@
 # Prototype: mu-law on the whole output in DRIVEN / KICKED
 
+**Shipped 4 Oct 2026 (ADR 0042):** the owner picked B on every panel. `output_bits_voicing` 1 is now the default everywhere, and 0 renders "before the box". The 8 suites below are adapted as proposed (see ADR 0042 "Tests adapted"). The rest of this page is the prototype record.
+
 Branch `proto/output-mulaw` (from `main` f399902). Owner's decision, 4 Oct 2026: the echo's 8-bit mu-law "box" (`feat/echo-mode` 2792b14, `echo_bits_voicing` D) applied to the whole output, dry and wet, after MIX, in every SPRINGS position:
 
 | ATTITUDE | Output |
