@@ -18,11 +18,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (suggested order)
 
-### 0. CPU run 15 on the module (≈10 min, USB only) · ready for tomorrow
-- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run15.bin` with NE Firmware Swap → Select Custom File. It ignores the knobs and makes its own test signal
-- [ ] In Terminal: `screen /dev/tty.usbmodem* 115200`, let it run until the corner lines have gone round twice (a few minutes), then select all, copy and paste the output to Claude (quit screen: Ctrl-A, K, Y)
-- Why: everything since run 13 is unmeasured on the chip (bipolar WOBBLE, sustain trim, Big Knob, SPLASH C, SPRINGS 3 wire gauges, the Wellspring F tank, and the flash savings), and knob moves are the CPU peaks: the lead for the red input LEDs. Also the first hardware run of the engine built at power-up
-- Then flash the new release (§1)
+### 0. CPU run 15 on the module · done 4 Oct: **over budget**
+- [x] Run 15: worst case **82 % average / 86 % peak** (target ≤ 70 % peak; run 13 was 63 / 66). The Wellspring F tank's shared Sweep costs ~16 % and the coupled SPRINGS 3 ~40 % more. Still under the dropout point, so it plays, but the safety margin is gone. Claude is finding sound-neutral savings first (no decision needed); echo mode removes the coupled S3; a bigger audio block (+1 ms) is the reserve you already approved. Details: `firmware/README.md` "Run 15"
 
 ### 1. Flash the Versio and play (≈2 min + play)
 - [ ] Flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
