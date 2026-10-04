@@ -62,6 +62,20 @@ bool parse(const json::Value& root, Automation& out, std::string& error)
         }
         std::stable_sort(out.gateEvents.begin(), out.gateEvents.end(), [](auto& a, auto& b) { return a.first < b.first; });
     }
+    if (const json::Value* clocks = root.find("clocks")) {
+        if (!clocks->isArray()) { error = "clocks must be an array"; return false; }
+        for (const auto& item : clocks->items()) out.clocksSeconds.push_back(item.numberValue());
+        std::sort(out.clocksSeconds.begin(), out.clocksSeconds.end());
+    }
+    if (const json::Value* cb = root.find("clock_bpm")) {
+        if (cb->isNumber()) out.clockBpm = cb->numberValue();
+        else if (cb->isObject()) {
+            out.clockBpm   = cb->get("bpm", 0.0);
+            out.clockStart = cb->get("start", 0.0);
+            out.clockEnd   = cb->get("end", -1.0);
+        } else { error = "clock_bpm must be a number or {bpm, start, end}"; return false; }
+        if (!(out.clockBpm > 0.0)) { error = "clock_bpm needs a bpm above 0"; return false; }
+    }
     return true;
 }
 

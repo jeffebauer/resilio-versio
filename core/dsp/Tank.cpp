@@ -29,6 +29,7 @@ constexpr uint32_t kSplashSeed = 0x51A5E001u;
 constexpr uint32_t kKickSeed   = 0x4B1C0002u;
 constexpr std::array<uint32_t, Tank::kMaxSprings> kWobbleSeeds{{0x0B0B1E01u, 0x0B0B1E02u, 0x0B0B1E03u}};
 constexpr uint32_t kTransportSeed = 0x0B0B1E04u;
+constexpr uint32_t kEchoSeed      = 0x0B0B1E05u; // the tape's WOBBLE (echo mode)
 
 // Limiter backstop: identity below the knee, then dsp::softClip scaled into
 // the room between knee and threshold. softClip has slope 1 and no curvature
@@ -66,9 +67,12 @@ void Tank::releaseOwnedPool()
 {
 #ifndef RV_FIXED_VOICINGS // the firmware hands the Tank its pool (main.cpp): no malloc / free linked (flash)
     std::free(ownedPool_);
+    std::free(ownedTape_);
 #endif
     ownedPool_   = nullptr;
     ownedFloats_ = 0;
+    ownedTape_   = nullptr;
+    ownedTapeFloats_ = 0;
 }
 
 // ---- Tank voicings (params/TankVoicing.h): pool layout ---------------------
@@ -154,11 +158,18 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize)
         ownedPool_ = static_cast<float*>(std::malloc(need * sizeof(float)));
         if (ownedPool_) ownedFloats_ = need;
     }
-#endif // the firmware passes its own pool (below); without one the Tank stays silent
-    prepare(sampleRate, maxBlockSize, ownedPool_, ownedFloats_);
+    const size_t tapeNeed = requiredTapeFloats(sampleRate);
+    if (tapeNeed > ownedTapeFloats_) {
+        std::free(ownedTape_);
+        ownedTape_       = static_cast<float*>(std::malloc(tapeNeed * sizeof(float)));
+        ownedTapeFloats_ = ownedTape_ ? tapeNeed : 0;
+    }
+#endif // the firmware passes its own pool and tape (below); without a pool the Tank stays silent
+    prepare(sampleRate, maxBlockSize, ownedPool_, ownedFloats_, ownedTape_, ownedTapeFloats_);
 }
 
-RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats)
+RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, size_t poolFloats, float* tape,
+                               size_t tapeFloats)
 {
     sampleRate_   = sampleRate;
     maxBlockSize_ = maxBlockSize;
@@ -189,6 +200,13 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     dcRef_  = drive::driveCurve(splash::kSplashRefDrive);
     for (size_t i = 0; i < wobble_.size(); ++i) wobble_[i].prepare(sampleRate, int(i), kWobbleSeeds[i]);
     transport_.prepare(sampleRate, 0, kTransportSeed, dsp::Wobble::Role::Transport);
+    // Echo mode (EchoVoicing.h): the tape, the clock, and the DECAY that
+    // gives the fixed springs their T60 (Mappings.h decayT60Seconds inverted).
+    static_assert(dsp::TapeEcho::kGrid == kControlInterval, "the echo steps on the Tank's control grid");
+    echo_.prepare(sampleRate, kEchoSeed, tape, tapeFloats);
+    clock_.prepare(sampleRate);
+    springsDecay_ = std::log(echo::kSpringsT60Seconds / map::kT60MinSeconds)
+                  / std::log(map::kT60MaxSeconds / map::kT60MinSeconds);
     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
     // Power ratios from dB (10^(dB/10) = dbToGain(2 dB): exp, not powf, for the Firmware's flash).
     satFloorMs_   = drive::dbToGain(2.0f * antires::kLoopSatQuietDb);
@@ -196,6 +214,8 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
     for (auto& f : bkHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
+    toneReturn_.prepare(sampleRate);
+    for (auto& f : trHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
     excGate_  = drive::dbToGain(2.0f * drive::kExcGateDb); // a power
     {
@@ -469,6 +489,12 @@ RV_SIZE_OPT void Tank::reset()
     kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
+    echo_.reset();
+    clock_.reset();
+    numPendingClocks_ = numClockQ_ = 0;
+    sampleClock_      = 0;
+    echoW_ = echoWFrom_ = fbFrom_ = fbTo_ = ginFrom_ = ginTo_ = 0.0f;
+    division_ = -1;
     levelAcc_ = levelMs_ = 0.0f;
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
@@ -476,6 +502,12 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& f : bkHp_) f.reset();
     bkAccIn_ = bkAccOut_ = bkIn_ = bkOut_ = 0.0f;
     bkGain_  = 1.0f;
+    toneReturn_.reset();
+    for (auto& f : trHp_) f.reset();
+    trAccIn_ = trAccOut_ = trIn_ = trOut_ = 0.0f;
+    trGain_  = 1.0f;
+    trMakeup_.snap(1.0f);
+    trIdle_  = false; // the first tick decides
     // Power-up (and reset): the trim starts turned all the way down, so the
     // first sound can only come in too quiet, never too hot (the first chord
     // of a skank peaked ~3 dB over the rest: its attack reached the Springs
@@ -552,6 +584,57 @@ void Tank::gate(bool high, int sampleOffset)
         pendingGates_[size_t(numPendingGates_++)] = GateEvent{sampleOffset < 0 ? 0 : sampleOffset, high};
 }
 
+void Tank::clock(int sampleOffset)
+{
+    if (numPendingClocks_ < kMaxPendingKicks)
+        pendingClocks_[size_t(numPendingClocks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
+}
+
+void Tank::feedClocks()
+{
+    int k = 0;
+    while (k < numClockQ_ && int32_t(clockQ_[size_t(k)] - sampleClock_) <= 0) clock_.edge(clockQ_[size_t(k++)]);
+    if (k == 0) return;
+    for (int j = k; j < numClockQ_; ++j) clockQ_[size_t(j - k)] = clockQ_[size_t(j)];
+    numClockQ_ -= k;
+}
+
+RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, bool snap)
+{
+    // SPRINGS 3 echo mode (EchoVoicing.h, ADR 0041); its glide is in
+    // controlTick. The clock: the host's tempo (Plugin), else the gate's (lost after a
+    // while without pulses), else none.
+    clock_.update(sampleClock_);
+    const float beat = hostBpm_ > 0.0f ? 60.0f / hostBpm_ : clock_.beatSamples() / sampleRate_;
+    if (beat > 0.0f) {
+        // TENSION's seven zones, long -> short, with a little hysteresis at
+        // each border (kDivisionHysteresis).
+        const float u = tensionKnob * float(echo::kNumDivisions);
+        if (division_ < 0 || u < float(division_) - echo::kDivisionHysteresis
+            || u > float(division_ + 1) + echo::kDivisionHysteresis)
+            division_ = std::clamp(int(u), 0, echo::kNumDivisions - 1);
+        float secs = echo::kDivisionBeats[size_t(division_)] * beat;
+        while (secs > echo::kMaxSeconds) secs *= 0.5f; // longer than the tape: half
+        echoSecs_ = secs;
+    } else {
+        division_ = -1;
+        echoSecs_ = echo::kFreeLongSeconds
+                  * std::exp(tensionKnob * std::log(echo::kFreeShortSeconds / echo::kFreeLongSeconds));
+    }
+    // DECAY = feedback: CLEAN and DRIVEN's curve, KICKED's (runaway at the
+    // top), blended with the ATTITUDE Morph.
+    const float fb = (attW_[0] + attW_[1]) * echo::feedbackClean(decayKnob) + attW_[2] * echo::feedbackKicked(decayKnob);
+    fbFrom_ = snap ? fb : fbTo_;
+    fbTo_   = fb;
+    // The input onto the tape at the feedback's own gain: every repeat a step
+    // down from the hit, the first included (EchoVoicing.h "The first repeat").
+    const float gin = std::clamp(fb, echo::kFirstRepeatMin, echo::kFirstRepeatMax);
+    ginFrom_ = snap ? gin : ginTo_;
+    ginTo_   = gin;
+    if (echoW_ > 0.0f || echoWFrom_ > 0.0f)
+        echo_.tick(echoSecs_, smoothed_[size_t(ParamId::Wobble)], snap || fresh); // a fresh tape starts at the time
+}
+
 RV_SIZE_OPT void Tank::controlTick(bool snap)
 {
 #if RV_TANKV_BUILT >= 1
@@ -562,14 +645,36 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         if (snap || p.kind != ParamKind::Knob) smoothed_[i] = values_[i];
         else smoothed_[i] += tickCoeff_[i] * (values_[i] - smoothed_[i]);
     }
-    const float decay = smoothed_[size_t(ParamId::Decay)];
-    const float tension = smoothed_[size_t(ParamId::Tension)];
+    float decay = smoothed_[size_t(ParamId::Decay)];
+    float tension = smoothed_[size_t(ParamId::Tension)];
     const float tone  = smoothed_[size_t(ParamId::Tone)];
 
     // SPRINGS: a switch, so never smoothed here. A change starts a fade of
     // the output mix from the gains playing right now (mixCur_), so a flip
     // in the middle of a fade carries on smoothly from where it was.
-    const int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
+    int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
+    springsPos_ = mode; // the panel's position (the gate's role, ThrowHold.h gateRole)
+    // Position 3 = echo mode (ADR 0041): the echo glides in (echoTick, after
+    // the Morph below: the feedback follows ATTITUDE), and the Springs play
+    // position 2 at the fixed tank: DECAY and TENSION are the echo's, so the
+    // Springs glide from the knobs' tank to EchoVoicing.h's with the echo.
+    // The echo fades in on a fresh tape, and out, over springs3::kGlideSeconds.
+    const float decayKnob = decay, tensionKnob = tension;
+    bool echoFresh = false;
+    {
+        const bool  echoPos = echoMode_ && mode == 2;
+        const float target  = echoPos ? 1.0f : 0.0f;
+        echoFresh = target > 0.0f && echoW_ <= 0.0f;
+        if (echoFresh) echo_.clearTape();
+        echoWFrom_ = snap ? target : echoW_;
+        echoW_     = snap ? target : (target > echoW_ ? std::min(target, echoW_ + s3Step_) : std::max(target, echoW_ - s3Step_));
+        if (echoPos) mode = 1;
+        if (echoW_ > 0.0f) { // exactly the knobs otherwise (positions 1 and 2, bit for bit)
+            // (1 - w) x + w y: exactly the fixed tank once the glide is done.
+            decay   = (1.0f - echoW_) * decay + echoW_ * springsDecay_;
+            tension = (1.0f - echoW_) * tension + echoW_ * echo::kSpringsTension;
+        }
+    }
     if (snap) {
         mode_     = mode;
         mixCur_   = mixTo_ = mixFrom_ = stereoMixFor(mode);
@@ -642,6 +747,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             for (size_t a = 0; a < 3; ++a) attW_[a] = f >= 1.0f ? target[a] : attW_[a] + f * (target[a] - attW_[a]);
         }
     }
+    echoTick(decayKnob, tensionKnob, echoFresh, snap);
     if (snap || attW_ != voiceW_) { // the blends only when the Morph moved
         voice_  = dsp::blendVoice(attW_);
         kick_.setAttitude(attW_);
@@ -870,7 +976,10 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     }
     // Big Knob makeup (DriveVoicing.h, voicings 1-3, TONE right of noon):
     // slow power into and out of the Tilt; give back a share of what the low
-    // cut took out, held in silence. 1 (exactly) otherwise.
+    // cut took out, held in silence. 1 (exactly) otherwise. With the Big
+    // Knob after the Springs (the default) the Tilt has no low cut above
+    // 20 Hz, so this only follows the tilt itself (as the prototype the
+    // owner picked did); the return filter has its own makeup below.
     {
         constexpr float kInv = 1.0f / float(kControlInterval);
         bkIn_ += excCoeff_ * (bkAccIn_ * kInv - bkIn_);
@@ -881,8 +990,26 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         } else if (bkIn_ > excGate_) {
             constexpr float kMaxLog = drive::kBigKnobMakeupMaxDb * (2.302585093f / 20.0f);
             const float l = 0.5f * drive::kBigKnobMakeupShare * std::log(bkIn_ / std::max(bkOut_, 1.0e-12f))
-                          + (2.302585093f / 20.0f) * drive::bigKnobTrimDb(tilt_.voicing(), tone, attW_, drive);
+                          + (2.302585093f / 20.0f) * drive::bigKnobPreTrimDb(tilt_.place(), tilt_.voicing(), tone, attW_, drive);
             bkGain_ = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
+        }
+        // The Big Knob on the wet (DriveVoicing.h "TONE placement"): the
+        // return filter's own makeup (the wet's power into / out of it,
+        // slow, held while the wet is silent).
+        trIn_ += excCoeff_ * (trAccIn_ * kInv - trIn_);
+        trOut_ += excCoeff_ * (trAccOut_ * kInv - trOut_);
+        trAccIn_ = trAccOut_ = 0.0f;
+        if (tilt_.place() == drive::kTonePlacePre || tilt_.voicing() == drive::kToneVoicingToday || tone <= 0.5f) {
+            trGain_ = 1.0f;
+        } else if (trIn_ > excGate_) {
+            constexpr float kMaxLog = drive::kPostMakeupMaxDb * (2.302585093f / 20.0f);
+            const float l = 0.5f * drive::kPostMakeupShare * std::log(trIn_ / std::max(trOut_, 1.0e-12f))
+                          + (2.302585093f / 20.0f) * drive::bigKnobPostTrimDb(tilt_.place(), tilt_.voicing(), tone);
+            trGain_ = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
+        }
+        if (tilt_.place() != drive::kTonePlacePre) {
+            if (snap) trMakeup_.snap(trGain_);
+            else trMakeup_.aim(trGain_, kControlInterval);
         }
         float trim = excTrimTo_ * susGain_ * bkGain_;
 #if RV_TANKV_BUILT >= 7
@@ -997,6 +1124,21 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         hitBlend_ = h > hitBlend_ * hitRelease_ ? h : hitBlend_ * hitRelease_;
         if (tilt_.voicing() == drive::kToneVoicingHits)
             tilt_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, kControlInterval);
+        if (tilt_.place() != drive::kTonePlacePre) { // the Big Knob on the wet (DriveVoicing.h "TONE placement")
+            toneReturn_.set(tilt_.voicing(), tone, snap, kControlInterval);
+            if (tilt_.voicing() == drive::kToneVoicingHits)
+                toneReturn_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, kControlInterval);
+            // Skip the stage while it's an exact pass-through (noon and left,
+            // makeup at 1). The followers' into-side keeps running (out =
+            // in there), so the makeup starts from the right reading.
+            const bool idle = toneReturn_.idle() && trMakeup_.value == 1.0f && trMakeup_.target == 1.0f;
+            if (trIdle_ && !idle) {
+                toneReturn_.clearFilters();
+                trHp_[2] = trHp_[0];
+                trHp_[3] = trHp_[1];
+            }
+            trIdle_ = idle;
+        }
     }
     // The pickups' hardness is divided by the level DRIVE adds (ADR 0033), so
     // they bend the louder tail exactly as ADR 0022 voiced them: DRIVE's
@@ -1471,7 +1613,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outL[i] = inL[i];
             outR[i] = inR[i];
         }
-        numPendingKicks_ = 0;
+        numPendingKicks_ = numPendingClocks_ = 0;
         numPendingGates_ = 0;
         return;
     }
@@ -1495,7 +1637,19 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
     }
     int gateIdx = 0; // next pending gate change
+    // Echo mode's clock: this block's gate edges, on their exact samples,
+    // queued; each reaches the clock at the first control tick at or after
+    // it (feedClocks), so any block size reads the same tempo at the same tick.
+    for (int k = 0; k < numPendingClocks_; ++k) {
+        const uint32_t at = sampleClock_ + uint32_t(std::min(pendingClocks_[size_t(k)], numSamples - 1));
+        if (numClockQ_ == kMaxPendingKicks) break; // full: extras dropped (as kick())
+        int j = numClockQ_++;
+        for (; j > 0 && int32_t(clockQ_[size_t(j - 1)] - at) > 0; --j) clockQ_[size_t(j)] = clockQ_[size_t(j - 1)];
+        clockQ_[size_t(j)] = at;
+    }
+    numPendingClocks_ = 0;
     if (!primed_) {
+        feedClocks();
         controlTick(true);
         mix_.value = values_[size_t(ParamId::Mix)];
         primed_    = true;
@@ -1507,9 +1661,13 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
     float wet[kMaxSprings][kControlInterval], send[kControlInterval], sendG[kControlInterval];
+    float echoPlay[kControlInterval], echoGain[kControlInterval], echoRec[kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
-        if (tick_ == 0) controlTick(false); // fixed grid, independent of block size
+        if (tick_ == 0) { // fixed grid, independent of block size
+            feedClocks();
+            controlTick(false);
+        }
         prof::mark(prof::kControl);
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
 
@@ -1529,7 +1687,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         if (sendLive) {
             const float hStep = (holdSendTo_ - holdSendFrom_) * (1.0f / float(kControlInterval));
             const bool  layer = holdVoicing_ == throwhold::kVoicingLayer;
-            const bool  throwRole = throwhold::gateRole(mode_) == throwhold::GateRole::Throw;
+            const bool  throwRole = throwhold::gateRole(springsPos_, echoMode_) == throwhold::GateRole::Throw;
             for (int i = 0; i < n; ++i) {
                 while (gateIdx < numPendingGates_ && std::min(pendingGates_[size_t(gateIdx)].at, numSamples - 1) <= pos + i) {
                     const bool high = pendingGates_[size_t(gateIdx++)].high;
@@ -1538,8 +1696,12 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 }
                 const float hs = holdSendFrom_ + hStep * float(tick_ + i);
                 float g = hs;
-                if (throwOn_ && throwRole) {
-                    thrPos_ = gateHigh_ ? std::min(1.0f, thrPos_ + thrOpenStep_) : std::max(0.0f, thrPos_ - thrCloseStep_);
+                if (throwOn_) {
+                    // Where the gate is the echo's clock (SPRINGS 3, ADR
+                    // 0041) the throw rests open: the send glides open and
+                    // follows the gate again back in positions 1-2.
+                    const bool open = throwRole ? gateHigh_ : true;
+                    thrPos_ = open ? std::min(1.0f, thrPos_ + thrOpenStep_) : std::max(0.0f, thrPos_ - thrCloseStep_);
                     const float t = throwhold::smooth01(thrPos_);
                     g = layer ? t * hs : t;
                     if (thrReleasing_) { // leaving throw mode: glide to the plain send, then unlatch
@@ -1559,6 +1721,41 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             sendNow_ = sendG[n - 1];
         }
 
+        // SPRINGS 3 echo mode (EchoVoicing.h): the tape's playback, faded in
+        // with the glide, joins the mono input before the Splash, so each
+        // repeat hits the springs as a new hit would. The tape records the
+        // input and its own playback x the feedback (series: the feedback
+        // stays on the tape).
+        const bool echoRun = echoW_ > 0.0f || echoWFrom_ > 0.0f;
+        if (echoRun) {
+            echo_.play(echoPlay, n);
+            const float gStep = (echoW_ - echoWFrom_) * (1.0f / float(kControlInterval));
+            const float fStep = (fbTo_ - fbFrom_) * (1.0f / float(kControlInterval));
+            const float iStep = (ginTo_ - ginFrom_) * (1.0f / float(kControlInterval));
+            // The feedback (diffused and worn when a prototype voicing asks,
+            // EchoVoicing.h), and the input at the first repeat's gain.
+            float fbs[kControlInterval], xs[kControlInterval];
+            const bool diffuse = echo::kDiffuseBuilt && echo_.diffuseVoicing() != 0;
+            // KICKED only (with the Morph): its runaway zone is where the tape saturates.
+            const float trim = diffuse ? 1.0f - attW_[2] * (1.0f - echo::kDiffuse[echo_.diffuseVoicing()].trim) : 1.0f;
+            for (int i = 0; i < n; ++i) {
+                fbs[i] = trim * (fbFrom_ + fStep * float(tick_ + i)) * echoPlay[i];
+                xs[i]  = (ginFrom_ + iStep * float(tick_ + i)) * (0.5f * (inL[pos + i] + inR[pos + i]));
+            }
+            if (diffuse) echo_.diffuse(fbs, n);
+            if (echo_.wearActive()) {
+                echo_.wear(fbs, n);
+                echo_.delayInput(xs, n);
+            }
+            for (int i = 0; i < n; ++i) {
+                const float w = echoWFrom_ + gStep * float(tick_ + i);
+                echoGain[i]   = w;
+                echoRec[i]    = w * xs[i] + fbs[i];
+                echoPlay[i] *= w;
+            }
+            prof::mark(prof::kSpringC); // echo mode: the echo's share (Spring C doesn't run)
+        }
+
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
         // The Splash listens first, to the input after the INPUT gain G and
         // before any saturation (ADR 0032, 0033).
@@ -1570,8 +1767,12 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 duckEnv_ += (a > duckEnv_ ? duckAtt_ : duckRel_) * (a - duckEnv_);
             }
             if (sendLive) x *= sendG[i];
-            xin[i] = x;
-            det[i] = x * inputGain_.next();
+            // Echo mode: the Springs (and the Splash) hear the tape's output,
+            // the input plus its repeats; the Excitation trim below still
+            // reads the input itself (after the send).
+            const float xe = echoRun ? x + echoPlay[i] : x;
+            xin[i] = xe;
+            det[i] = xe * inputGain_.next();
             // Excitation trim followers on the raw input (what the dry path
             // carries), full band and weighted like the whole chain's response.
             float w = x - excHp_[0].process(x);
@@ -1689,8 +1890,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             const float lo = clangLp_.process(x);
             float c = clang[i];
             if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
-                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
-                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float hi = x - lo, a = dsp::absSel(hi); // (Select.h: no branch on the chip)
+                clangEnv_ += dsp::selGt(a, clangEnv_, clangAtt_, clangRel_) * (a - clangEnv_);
                 const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
                 c = c < cmax ? c : cmax;
                 c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
@@ -1724,8 +1925,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
         // Voicing 1: the shared Sweep, once for every Spring (Loop and high path).
 #if RV_TANKV_BUILT >= 1
-        if (tankv::hasSweep(tankVoicing_))
-            for (int i = 0; i < n; ++i) mono[i] = sweep_.process(mono[i]);
+        if (tankv::hasSweep(tankVoicing_)) sweep_.process(mono, n);
 #endif
         // One transport for every pickup: the first echoes move together. Its
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
@@ -1749,7 +1949,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             processCoupled(mono, clat, jolt, tapSamples, wobA, wet, tick_, n);
         } else
         {
-        for (size_t s = 0; s < springs_.size(); ++s) {
+        // Spring C is heard nowhere with echo mode built (Tank.h "SPRINGS
+        // switching"): it doesn't run, and plays silence.
+        const size_t numRun = echoMode_ ? size_t(kMaxSprings - 1) : springs_.size();
+        if (numRun < springs_.size()) std::fill(wet[2], wet[2] + n, 0.0f);
+        for (size_t s = 0; s < numRun; ++s) {
             const float scale = splash::kJoltSpringScale[s];
             const float* c = clat[s];
             for (int i = 0; i < n; ++i) {
@@ -1797,7 +2001,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             // level at every DRIVE (the tail's length and colour don't move
             // with DRIVE), and the pickups' hardness is divided by the same
             // gain (controlTick), so they bend the louder tail as before.
-            const float wg = wetGain * heardGain_.next() * trem[i];
+            float wg = wetGain * heardGain_.next() * trem[i];
+            if (echoRun) wg *= 1.0f + echoGain[i] * (echo::kTrim - 1.0f); // echo mode's level (EchoVoicing.h kTrim), with the glide
             const float src[modes::kNumSources] = {wg * wet[0][i], wg * wet[1][i], wg * wet[2][i]};
 
             if (fadePos_ < 1.0f) {
@@ -1880,6 +2085,32 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);
             wl = ll + kShelfGain * (wl - ll);
             wr = lr + kShelfGain * (wr - lr);
+            if (tilt_.place() != drive::kTonePlacePre && trIdle_) {
+                // Noon and left of it: an exact pass-through; only the
+                // makeup's into-follower runs (out = in).
+                const float si = wl + wr;
+                float wi = si - trHp_[0].process(si);
+                wi -= trHp_[1].process(wi);
+                trAccIn_ += wi * wi;
+                trAccOut_ += wi * wi;
+            } else if (tilt_.place() != drive::kTonePlacePre) {
+                // The Big Knob on the return (DriveVoicing.h "TONE
+                // placement", ADR 0036 amendment): the tail you hear thins
+                // at once. Its makeup followers (L + R above ~90 Hz, so the
+                // Kick's sub thump doesn't count) and its makeup.
+                const float si = wl + wr;
+                toneReturn_.process(wl, wr);
+                const float so = wl + wr;
+                float wi = si - trHp_[0].process(si);
+                wi -= trHp_[1].process(wi);
+                float wo = so - trHp_[2].process(so);
+                wo -= trHp_[3].process(wo);
+                trAccIn_ += wi * wi;
+                trAccOut_ += wo * wo;
+                const float g = trMakeup_.next();
+                wl *= g;
+                wr *= g;
+            }
 
             // Safety limiter (stereo-linked). The envelope jumps to each new
             // peak, holds 30 ms (Tank.h kLimitHoldS) and releases slowly; the gain glides down to knee/envelope
@@ -1920,7 +2151,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
         prof::mark(prof::kOutput);
+        if (echoRun) echo_.record(echoRec, n); // the record head: after this step's playback (Echo.h)
         pos += n;
+        sampleClock_ += uint32_t(n);
         tick_ = (tick_ + n) % kControlInterval;
     }
     numPendingKicks_ = 0;

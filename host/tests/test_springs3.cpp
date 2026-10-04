@@ -137,6 +137,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(ParamId::Splash, s.splash);
     t.setParam(ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(ParamId::Springs, rv::switchToNormalised(s.springs));
+    t.setEchoMode(false); // the coupled Springs reference (ADR 0041: position 3 ships as echo mode, test_echo_mode)
     t.setSprings3Voicing(s.voicing);
     t.setTankVoicing(gTankVoicing); // the pass's tank (above)
     t.setFLowCutVoicing(gFLowCut);

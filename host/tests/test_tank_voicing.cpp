@@ -72,6 +72,10 @@ Out render(int voicing, const Knobs& k, const Buf& in)
     rv::Tank t;
     t.prepare(kFs, 48);
     t.setTankVoicing(voicing);
+    // SPRINGS position 3 is echo mode since ADR 0041; these checks are about
+    // the tank's own voicings, so position 3 runs the three-Spring reference
+    // (as test_tank and the other tank suites do).
+    t.setEchoMode(false);
     t.setParam(rv::ParamId::Decay, k.decay);
     t.setParam(rv::ParamId::Tension, k.tension);
     t.setParam(rv::ParamId::Tone, k.tone);

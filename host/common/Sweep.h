@@ -27,6 +27,7 @@ struct Config {
     json::Value base = json::Value::makeObject();
     std::vector<Axis> grid; // insertion order preserved
     double tailSeconds = 0.0;
+    std::string autoPath; // optional "auto": an automation JSON (Automation.h) applied to every render
     json::Value ignoreFlags = json::Value::makeArray(); // copied into manifest.json
 };
 

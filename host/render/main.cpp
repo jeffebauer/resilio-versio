@@ -11,11 +11,16 @@
 //   core/params/WobbleVoicing.h), sustain_voicing = 0 / 1 / 2 (off / round 2 / gentle,
 //   core/params/DriveVoicing.h), splash_voicing = 0 / 1 / 2 / 3 (today / stronger top / + DRIVE-free /
 //   bolder, core/params/SplashVoicing.h), tone_voicing = 0..5 (the Big Knob, DriveVoicing.h) and
-//   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), hold_voicing =
-//   0 / 1 (the Hold at the top of DECAY: freeze / layer, core/params/ThrowHold.h), duck_voicing = 0 / 1
-//   (the Hold's ducking on the lows: 12 / 18 dB), in --set, a
+//   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), echo_mode = 1 / 0
+//   (SPRINGS 3 = echo mode / the coupled reference, ADR 0041), host_bpm = a tempo (echo mode's
+//   clock as the Plugin's DAW gives it), hold_voicing = 0 / 1 (the Hold at the top of DECAY:
+//   freeze / layer, core/params/ThrowHold.h), duck_voicing = 0 / 1 / 2 (the Hold's ducking:
+//   12 / 18 dB / none), in --set, a
 //   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
+//   tone_place_voicing = 0 / 1 (the Big Knob before the Springs, for reference / on the wet,
+//   the default; DriveVoicing.h "TONE placement", ADR 0036). A sweep JSON may name an automation file
+//   ("auto": "a.json", Automation.h), applied to every render (gesture renders).
 
 #include "Automation.h"
 #include "Json.h"
@@ -102,6 +107,19 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
     if (autom)
         for (double t : autom->throwExitsSeconds) exitSamples.push_back(size_t(std::lround(t * double(sr))));
     size_t nextExit = 0;
+    // Echo mode's clock (ADR 0041): gate rising edges, sample-accurate like the kicks.
+    std::vector<size_t> clockSamples;
+    if (autom) {
+        std::vector<double> secs = autom->clocksSeconds;
+        if (autom->clockBpm > 0.0) {
+            const double len = double(frames) / double(sr);
+            const double end = autom->clockEnd >= 0.0 ? std::min(autom->clockEnd, len) : len;
+            for (double t = autom->clockStart; t < end; t += 60.0 / autom->clockBpm) secs.push_back(t);
+            std::sort(secs.begin(), secs.end());
+        }
+        for (double t : secs) clockSamples.push_back(size_t(std::lround(t * double(sr))));
+    }
+    size_t nextClock = 0;
 
     const int microBlock = autom ? std::min(block, 16) : block;
     for (size_t pos = 0; pos < frames; pos += size_t(microBlock)) {
@@ -123,6 +141,10 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
         while (nextExit < exitSamples.size() && exitSamples[nextExit] < pos + size_t(n)) {
             tank.exitThrowMode();
             ++nextExit;
+        }
+        while (nextClock < clockSamples.size() && clockSamples[nextClock] < pos + size_t(n)) {
+            if (clockSamples[nextClock] >= pos) tank.clock(int(clockSamples[nextClock] - pos));
+            ++nextClock;
         }
         tank.process(srcL.data() + pos, srcR.data() + pos, out.channels[0].data() + pos, dstR + pos, n);
     }
@@ -204,6 +226,14 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
     const size_t tailFrames = size_t(cfg.tailSeconds * double(srcIn.sampleRate));
     for (auto& ch : tailed.channels) ch.resize(ch.size() + tailFrames, 0.0f);
 
+    // Optional automation (a gesture: TONE swept on a ringing tail...), the
+    // same for every render of the sweep.
+    rv::automation::Automation sweepAuto;
+    if (!cfg.autoPath.empty() && !rv::automation::loadFile(cfg.autoPath, sweepAuto, error)) {
+        std::fprintf(stderr, "sweep auto: %s\n", error.c_str());
+        return 1;
+    }
+
     std::system(("mkdir -p \"" + outDir + "\"").c_str());
 
     rv::json::Value manifest = rv::json::Value::makeObject();
@@ -211,6 +241,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
     manifest.set("created", rv::json::Value::makeString(isoTimestamp()));
     manifest.set("input", rv::json::Value::makeString(cfg.input));
     manifest.set("ignore_flags", cfg.ignoreFlags);
+    if (!cfg.autoPath.empty()) manifest.set("auto", rv::json::Value::makeString(cfg.autoPath));
     rv::json::Value renders = rv::json::Value::makeArray();
 
     const auto combos = rv::sweep::cartesian(cfg.grid);
@@ -238,6 +269,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool lcVoiced = setsKey(rv::paramsjson::kFLowCutVoicingKey);
         bool holdVoiced = setsKey(rv::paramsjson::kHoldVoicingKey);
         bool duckVoiced = setsKey(rv::paramsjson::kDuckVoicingKey);
+        bool tpVoiced = setsKey(rv::paramsjson::kTonePlaceVoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
             if (key == rv::paramsjson::kSplashVoicingKey) splVoiced = true;
@@ -247,6 +279,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             if (key == rv::paramsjson::kFLowCutVoicingKey) lcVoiced = true;
             if (key == rv::paramsjson::kHoldVoicingKey) holdVoiced = true;
             if (key == rv::paramsjson::kDuckVoicingKey) duckVoiced = true;
+            if (key == rv::paramsjson::kTonePlaceVoicingKey) tpVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
@@ -259,7 +292,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         const std::string wavPath = outDir + "/" + wavName;
         const std::string sidecarPath = outDir + "/" + sidecarName;
 
-        Audio out = renderWithAutomation(tank, tailed, 48, nullptr);
+        Audio out = renderWithAutomation(tank, tailed, 48, cfg.autoPath.empty() ? nullptr : &sweepAuto);
         if (!rv::wav::write(wavPath, out, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }
 
         std::vector<float> mono = downmix(out);
@@ -278,6 +311,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (lcVoiced) params.set(rv::paramsjson::kFLowCutVoicingKey, rv::json::Value::makeNumber(tank.fLowCutVoicing()));
         if (holdVoiced) params.set(rv::paramsjson::kHoldVoicingKey, rv::json::Value::makeNumber(tank.holdVoicing()));
         if (duckVoiced) params.set(rv::paramsjson::kDuckVoicingKey, rv::json::Value::makeNumber(tank.duckVoicing()));
+        if (tpVoiced) params.set(rv::paramsjson::kTonePlaceVoicingKey, rv::json::Value::makeNumber(tank.tonePlaceVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }

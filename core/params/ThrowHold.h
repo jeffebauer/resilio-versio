@@ -57,14 +57,15 @@ constexpr float kThrowExitHoldSeconds = 1.0f;
 constexpr float kThrowExitBlinkSeconds = 0.15f;
 
 enum class GateRole : unsigned char {
-    Throw, // positions 1 and 2 (and, for now, 3)
-    Clock  // position 3, once the echo lands (not built)
+    Throw, // positions 1 and 2
+    Clock  // position 3 in echo mode (ADR 0041): the echo's clock (Tank::clock)
 };
-// SPRINGS position (0, 1, 2) -> what the gate does there.
-constexpr GateRole gateRole(int springsPosition)
+// SPRINGS position (0, 1, 2) and echo mode (on: position 3 is the tape
+// echo) -> what the gate does there. As the clock the throw rests open (the
+// send glides open, and follows the gate again back in positions 1-2).
+constexpr GateRole gateRole(int springsPosition, bool echoMode)
 {
-    (void)springsPosition; // position 3 becomes GateRole::Clock with the echo build
-    return GateRole::Throw;
+    return springsPosition == 2 && echoMode ? GateRole::Clock : GateRole::Throw;
 }
 
 // Smoothstep of a ramp position in [0, 1].

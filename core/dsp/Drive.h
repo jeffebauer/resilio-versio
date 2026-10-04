@@ -16,6 +16,7 @@
 #include "dsp/Filters.h"
 #include "dsp/SizeOpt.h"
 #include "dsp/Oversampler.h"
+#include "dsp/Select.h"
 #include "params/DriveVoicing.h"
 
 #include <array>
@@ -36,6 +37,31 @@ inline float softClip(float x)
     x = x > 3.0f ? 3.0f : (x < -3.0f ? -3.0f : x);
     const float x2 = x * x;
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+}
+// The same, the hold done with selects on the firmware (RV_VSEL,
+// dsp/Select.h), where GCC makes it a branch: no branch in the oversampled
+// pair, so the M7 overlaps one clip's multiplies and divide with the
+// other's. Pays in the LoopSat and DriveIn; in DriveOut the branchy form
+// reads faster (perf/run16, in-order issue model), so it keeps softClip.
+// Same result for every input.
+inline float softClipSel(float x)
+{
+#if RV_VSEL
+    const float hi = 3.0f, lo = -3.0f;
+    asm("vcmpe.f32 %[x], %[hi]\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselgt.f32 %[x], %[hi], %[x]\n\t" // x > 3 ? 3 : x
+        "vcmpe.f32 %[lo], %[x]\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselgt.f32 %[x], %[lo], %[x]"     // -3 > x ? -3 : x
+        : [x] "+t"(x)
+        : [hi] "t"(hi), [lo] "t"(lo)
+        : "cc");
+    const float x2 = x * x;
+    return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+#else
+    return softClip(x);
+#endif
 }
 // Slope of softClip (for tests and the small-signal Loop analysis).
 inline float softClipSlope(float x)
@@ -60,6 +86,24 @@ inline float asymClip(float x, float kPos, float kNeg)
 inline float asymClip(float x, float kPos, float kNeg, float invPos, float invNeg)
 {
     return x >= 0.0f ? softClip(kPos * x) * invPos : softClip(kNeg * x) * invNeg;
+}
+// The same, branch-free on the firmware (see softClipSel): the half's k and
+// 1/k by select, the same arithmetic as clipping each half on its own.
+inline float asymClipSel(float x, float kPos, float kNeg, float invPos, float invNeg)
+{
+#if RV_VSEL
+    float k, inv;
+    asm("vcmpe.f32 %[x], #0\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselge.f32 %[k], %[kp], %[kn]\n\t" // x >= 0 ? kPos : kNeg
+        "vselge.f32 %[i], %[ip], %[in]"
+        : [k] "=&t"(k), [i] "=&t"(inv)
+        : [x] "t"(x), [kp] "t"(kPos), [kn] "t"(kNeg), [ip] "t"(invPos), [in] "t"(invNeg)
+        : "cc");
+    return softClipSel(k * x) * inv;
+#else
+    return asymClip(x, kPos, kNeg, invPos, invNeg);
+#endif
 }
 
 // ---- First-order shelf (tape pre-/de-emphasis) -------------------------------
@@ -186,9 +230,9 @@ public:
         const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, tk = tapeK_, itk = invTapeK_,
                     amt = tapeAmt_.next();
         float y = back * os_.process(x, [&](float u) {
-            const float t = asymClip(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
+            const float t = asymClipSel(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
             const float p = preEmph_.process(t);                            // tape
-            const float s = p + amt * (softClip(tk * p) * itk - p);
+            const float s = p + amt * (softClipSel(tk * p) * itk - p);
             return fluxPost_.process(deEmph_.process(s));               // restore highs
         });
         envOut_.process(y * y + kEnvFloor);
@@ -247,6 +291,18 @@ public:
         tone_    = -1.0f; // redesign on the next set()
     }
     int voicing() const { return voicing_; }
+    // TONE placement (DriveVoicing.h "TONE placement"; Renderer only, the
+    // firmware and plugin keep drive::kTonePlaceDefault, post): pre runs the
+    // Big Knob here, before the Springs; post leaves only noon's 20 Hz guard
+    // here (the Big Knob runs on the wet, ToneReturn).
+    void setPlace([[maybe_unused]] int p)
+    {
+#ifndef RV_FIXED_VOICINGS
+        place_ = p;
+#endif
+        tone_ = -1.0f;
+    }
+    int place() const { return place_; }
     float process(float x)
     {
         const float lo = split_.process(x);
@@ -260,6 +316,10 @@ public:
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
         const float in = lo * lo_.next() + hi + extra;
         const float y  = lowCut_.process(in); // bright-side low cut (drive::bigKnob)
+        // Big Knob after the Springs (the default): here it's noon's at any
+        // TONE (k = 0, both paths alike), so the sections below would pass y
+        // through exactly; skip them (CPU).
+        if (place_ != drive::kTonePlacePre) return y;
         // Big Knob's 1st-order section: k 0 (noon, CCW, voicing 0) passes y
         // through exactly.
         const float k  = k_.next();
@@ -285,9 +345,109 @@ private:
 #else
     int voicing_ = drive::kToneDefaultVoicing;
 #endif
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int place_ = drive::kTonePlaceDefault;
+#else
+    int place_ = drive::kTonePlaceDefault;
+#endif
     float kTarget_ = 0.0f;
     bool boost_ = false;
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;
+};
+
+// ---- ToneReturn: the Big Knob on the wet (TONE placement post, the default) --
+// DriveVoicing.h "TONE placement", ADR 0036 amendment (owner, 4 Oct 2026).
+// Stereo, after the pickups and the shelf, before the limiter: the Big
+// Knob (bigKnobPost), the same coefficients the Tilt used, redesigned
+// once per control tick while TONE moves (TONE is smoothed over ~5 ms first,
+// as for the Tilt). Each section is crossfaded from an exact pass-through
+// (depth, k ramped per sample), so noon and below are bit-for-bit dry here.
+// Voicing 5 (bump on hits): the gentle-bump path runs beside the plain one
+// and is blended in while a hit lasts, as in the Tilt.
+class ToneReturn {
+public:
+    void prepare(float sampleRate)
+    {
+        sampleRate_ = sampleRate;
+        tone_ = -1.0f;
+        reset();
+    }
+    void reset()
+    {
+        for (auto& f : lc_) f.reset();
+        for (auto& f : lcB_) f.reset();
+        for (auto& f : ord_) f.reset();
+        for (auto& f : ordB_) f.reset();
+        depth_.snap(0.0f);
+        k_.snap(0.0f);
+        hit_.snap(0.0f);
+    }
+    void set(int voicing, float tone, bool snap, int interval)
+    {
+        if (tone != tone_ || voicing != voicing_) {
+            const drive::PostKnob p = drive::bigKnobPost(drive::kTonePlacePost, voicing, tone);
+            for (auto& f : lc_) f.setHighpass(p.b.hz, p.b.q, sampleRate_);
+            for (auto& f : ord_) f.setCutoff(p.b.hz1, sampleRate_);
+            if (voicing == drive::kToneVoicingHits) {
+                const drive::PostKnob g = drive::bigKnobPost(drive::kTonePlacePost, drive::kToneVoicingGentle, tone);
+                for (auto& f : lcB_) f.setHighpass(g.b.hz, g.b.q, sampleRate_);
+                for (auto& f : ordB_) f.setCutoff(g.b.hz1, sampleRate_);
+            }
+            depthTo_ = p.depth;
+            kTo_     = p.b.k;
+            tone_    = tone;
+            voicing_ = voicing;
+        }
+        if (snap) {
+            depth_.snap(depthTo_);
+            k_.snap(kTo_);
+        } else {
+            depth_.aim(depthTo_, interval);
+            k_.aim(kTo_, interval);
+        }
+    }
+    void setHitBlend(float target, int interval) { hit_.aim(target, interval); }
+    // At noon and left of it, once the crossfades have landed on 0, the
+    // stage passes the wet through exactly whatever its filters hold, so the
+    // Tank skips it (CPU; the profile's worst corners sit at TONE noon).
+    // Checked once per control tick, after set(); the ramps land exactly on
+    // their targets at each aim(), so skipped next() calls don't drift.
+    bool idle() const
+    {
+        return depth_.value == 0.0f && depth_.target == 0.0f && k_.value == 0.0f && k_.target == 0.0f;
+    }
+    // Leaving idle: the filters start from rest. The crossfades rise from an
+    // exact pass-through, so the output starts at the dry wet (no jump).
+    void clearFilters()
+    {
+        for (auto& f : lc_) f.reset();
+        for (auto& f : lcB_) f.reset();
+        for (auto& f : ord_) f.reset();
+        for (auto& f : ordB_) f.reset();
+    }
+    void process(float& l, float& r)
+    {
+        const float d = depth_.next(), k = k_.next();
+        const float hb = voicing_ == drive::kToneVoicingHits ? hit_.next() : 0.0f;
+        l = one(l, 0, d, k, hb);
+        r = one(r, 1, d, k, hb);
+    }
+
+private:
+    float one(float x, int c, float d, float k, float hb)
+    {
+        const float y1 = x + d * (lc_[c].process(x) - x);
+        const float y  = y1 - k * ord_[c].process(y1);
+        if (voicing_ != drive::kToneVoicingHits) return y;
+        const float b1 = x + d * (lcB_[c].process(x) - x);
+        const float yb = b1 - k * ordB_[c].process(b1);
+        return y + hb * (yb - y);
+    }
+    std::array<Biquad, 2> lc_{}, lcB_{};
+    std::array<OnePoleLowpass, 2> ord_{}, ordB_{};
+    Ramp depth_, k_, hit_;
+    float sampleRate_ = 48000.0f, tone_ = -1.0f, depthTo_ = 0.0f, kTo_ = 0.0f;
+    int voicing_ = -1;
 };
 
 // ---- LoopSat: inside a Spring's feedback path -------------------------------
@@ -342,7 +502,7 @@ public:
     {
         const float a = amount_, kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_;
         const float y = os_.process(fluxPre_.process(x),
-                                    [a, kP, kN, iP, iN](float u) { return u + a * (asymClip(u, kP, kN, iP, iN) - u); });
+                                    [a, kP, kN, iP, iN](float u) { return u + a * (asymClipSel(u, kP, kN, iP, iN) - u); });
         return fluxPost_.process(y);
     }
     // Latency (samples) at freqHz, counted in the Loop round trip (the

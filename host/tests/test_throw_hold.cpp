@@ -427,6 +427,35 @@ void leaveThrowMode()
     }
 }
 
+// SPRINGS 3 = echo mode (ADR 0041): the gate is the echo's clock there, so
+// it never latches the throw, and a throw latched in positions 1-2 rests
+// open (the send glides open); DECAY is the echo's feedback, so no Hold.
+void echoModeRoles()
+{
+    Setup s;
+    s.springs = 3;
+    s.decay   = 1.0f;
+    auto t = make(s);
+    renderEx(*t, Buf(sec(1.0f), 0.0f), {{sec(0.2f), 1}, {sec(0.3f), 0}, {sec(0.5f), 1}, {sec(0.6f), 0}});
+    const bool noLatch = !t->throwOn() && t->sendGain() == 1.0f && t->holdWeight() == 0.0f;
+    // Latched in position 2 (send closed), then position 3: the send opens.
+    Setup s2;
+    s2.springs = 2;
+    s2.decay   = 0.5f;
+    auto u = make(s2);
+    renderEx(*u, Buf(sec(0.5f), 0.0f), {{sec(0.1f), 1}, {sec(0.2f), 0}});
+    const bool closed = u->throwOn() && u->sendGain() <= 1e-6f;
+    u->setParam(rv::ParamId::Springs, rv::switchToNormalised(2));
+    renderEx(*u, Buf(sec(0.5f), 0.0f), {});
+    const bool opened = u->sendGain() >= 0.999f;
+    u->setParam(rv::ParamId::Springs, rv::switchToNormalised(1));
+    renderEx(*u, Buf(sec(0.5f), 0.0f), {});
+    const bool closedAgain = u->sendGain() <= 1e-6f;
+    check(noLatch && closed && opened && closedAgain,
+          "Echo mode (SPRINGS 3): the gate is the clock (never latches the throw), no Hold at DECAY 1; a throw "
+          "latched in positions 1-2 rests open in 3 and follows the gate again back in 2");
+}
+
 // ---- HOLD ---------------------------------------------------------------------
 
 void zone()
@@ -478,9 +507,13 @@ void holds()
             s.decay    = 1.0f;
             s.springs  = sp;
             auto t = make(s);
-            // Freeze voicing: the bed is filled while ... the send is closed at
-            // DECAY 1, so fill it with a throw (an open throw overrides the
-            // freeze), then let it hold.
+            // Position 3 is echo mode (ADR 0041), where DECAY is the echo's
+            // feedback and there is no Hold (echoModeRoles): the three-Spring
+            // reference holds as positions 1-2 do.
+            if (sp == 3) t->setEchoMode(false);
+            // The bed is filled with a throw (in the freeze voicing the
+            // send is closed at DECAY 1 and an open throw overrides it), then
+            // let it hold.
             Buf in(sec(41.0f), 0.0f);
             addHit(in, 0.2f, -3.0f);
             addHit(in, 0.45f, -3.0f);
@@ -807,6 +840,7 @@ int main()
     throwClicks();
     throwParam();
     leaveThrowMode();
+    echoModeRoles();
     zone();
     holds();
     ducking();

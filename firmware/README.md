@@ -44,6 +44,10 @@ shift slightly as DSP work continues):
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
 - profile 114,600 B (87%, 16.5 KB free) on `main` `327af86` (flash study: also skips the ADC/controls and the Seed 1.1 codec set-up; audio code byte-identical, so run 15's numbers hold). Binary: `dist/resilio_versio_m3_profile_327af86.bin`. Before: 130,496 B (99.6%) at `340b542`, **run 15 binary `dist/resilio_versio_m3_profile_run15.bin`** (first chip measurement since run 13), release for after it `dist/resilio_versio_release_340b542.bin`
 
+### Knob end stops (release, 4 Oct 2026)
+
+The Versio's pots (summed with their CV in hardware) stop a little short of 0 and 1; M0 only showed "within 2 %". With MIX equal-power, a pot topping out at 0.98 let the dry through at about -30 dB (owner: un-TONE'd dry at MIX fully right on the module, none in the plugin). `firmware/PotEndStops.h` snaps the outer 2.5 % at each end to exactly 0 / 1 and stretches the rest linearly (noon stays noon), for every knob in the release build. Tested in `host/tests/test_pot_endstops.cpp`. +24 B.
+
 ### Flash-budget techniques in use (ADR 0011)
 
 All firmware/-only (no changes inside `libs/libDaisy`):
@@ -137,8 +141,12 @@ CORNER S3 D1.0 TN0.0 TO1.0 (SPEC worst case)  avg  42.3% max  58.1% min  39.0% |
 ```
 
 - `CORNER S3 D1.0 TN0.0 TO1.0` — 3 Springs, DECAY 1.0 (max), TENSION 0.0 (loosest tank),
-  TONE 1.0 (brightest). `(SPEC worst case)` marks the corner matching the
+  TONE 1.0 (brightest). `(SPEC worst case)` marked the corner matching the
   budget's named worst case (SPEC §5: 3 springs, loosest TENSION, max DECAY).
+  Since echo mode (ADR 0041) no position runs 3 Springs: the candidates are
+  marked `(worst?)` (S2 and S3 at DECAY 1.0, TENSION 0.0; S3 is 2 Springs at
+  the fixed tank plus the tape echo), and the `SPLIT` line's `echo` column
+  (Spring C's old slot) is the tape's share.
 - `avg / max / min` — CPU load over that corner's ~3 s window, as a
   percentage of the audio block's time budget. **The number to watch is
   `max`; SPEC §5's target is ≤ 65%.**
@@ -178,7 +186,10 @@ fastest RAM available apart from the tiny 128 KB DTCM (already needed for the
 stack and other libDaisy internals, too small to also fit the reverb). If a
 future milestone ever needs more RAM than SRAM has spare, there's one line in
 `firmware/main.cpp` (search for `kTankPool`) that moves just this block out to
-the 64 MB external SDRAM instead — everything else stays the same. The
+the 64 MB external SDRAM instead — everything else stays the same.
+Echo mode's tape (SPRINGS 3, ADR 0041) is a second block, 2 s at 48 kHz plus a
+margin (379 KB, `kEchoTape`), in ordinary AXI SRAM (.bss, zeroed at start-up):
+about 407 KB (release) / 418 KB (profile) of the 512 KB is then in use. The
 `m0test` build is left exactly as it was and manages its own memory the
 original way, since it must not change behaviour while the M0 check is still
 in progress.
@@ -192,7 +203,7 @@ block (1 ms at 48 frames), `main.cpp`'s release section reads:
   (ADR 0028; `kPotKnob` is the pot → libDaisy index table, `kPotParams` the
   pot → function table).
 - **SW0 → SPRINGS, SW1 → ATTITUDE** (CLEAN / DRIVEN / KICKED).
-- **Button → Kick**, on the rising edge, at the start of the block. **Held 1 s** (`TimeHeldMs()`, ThrowHold.h `kThrowExitHoldSeconds`): throw mode off, once per press (`Tank::exitThrowMode()`); if it was on, all four LEDs show white for 150 ms in the main loop (ADR 0039). **Gate → THROW** (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes).
+- **Button → Kick**, on the rising edge, at the start of the block. **Held 1 s** (`TimeHeldMs()`, ThrowHold.h `kThrowExitHoldSeconds`): throw mode off, once per press (`Tank::exitThrowMode()`); if it was on, all four LEDs show white for 150 ms in the main loop (ADR 0039). **Gate → THROW** in positions 1-2 (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes). Every rising edge also goes to `Tank::clock()` (echo mode's clock, ADR 0041); in position 3 that is the gate's only job (the Tank keeps the role, ThrowHold.h `gateRole`).
 - **Output trim**: undoes the Versio's polarity flip and +1.2 dB (M0), so
   MIX 0 sounds like a patch cable.
 - **LEDs**: level meters (ADR 0031, `LedMeter.h`).
@@ -294,4 +305,17 @@ Flash: release 115,424 B (88 %, +4.6 KB: the new code, and the Tank object is co
 
 **Run 12 on the chip** (30 Sep, owner's Versio, USB): **target met.** Worst case S3 D1.0 TN0.0 TO0.5 **avg 60.7 % / max 63.3 %** (run 11: 62.1 / 67.8); highest max anywhere **64.0 %** (S3 and S2, tight tank, TO 0.5; run 11: 68.6). `PEAK ctl` 6.1 → 2.6–3.2; `out` average 8.6 → 7.7 (the MIX square roots). Every corner's max ≤ 65 %. Headroom against the target: ~1 point on peaks, ~4 points on averages.
 
-**Run 13 on the chip** (30 Sep, owner's Versio; the SPLASH/DRIVE build before the owner's tuning, `dist/resilio_versio_m3_profile_run13.bin`): worst case S3 D1.0 TN0.0 TO0.5 **avg 63.4 % / max 66.3 %**; highest max anywhere 66.5 % (S3 D0 TN1 TO0.5). `splash` 2.5 → 4.8 %, `drvIn` 6.0 → 5.4 %. All under the 70 % target (ADR 0030 amendment); ~3.5 points of peak headroom left. The tuning after it (gentler Bite, milder DRIVEN, KICKED Clang) moved the desktop worst case from +2.5 % to ~+3 % vs main; D's Clang blend and the DRIVE stretch add no work. No chip run since.
+**Run 13 on the chip** (30 Sep, owner's Versio; the SPLASH/DRIVE build before the owner's tuning, `dist/resilio_versio_m3_profile_run13.bin`): worst case S3 D1.0 TN0.0 TO0.5 **avg 63.4 % / max 66.3 %**; highest max anywhere 66.5 % (S3 D0 TN1 TO0.5). `splash` 2.5 → 4.8 %, `drvIn` 6.0 → 5.4 %. All under the 70 % target (ADR 0030 amendment); ~3.5 points of peak headroom left. The tuning after it (gentler Bite, milder DRIVEN, KICKED Clang) moved the desktop worst case from +2.5 % to ~+3 % vs main; D's Clang blend and the DRIVE stretch add no work.
+
+**Run 15 on the chip** (4 Oct, owner's Versio, `dist/resilio_versio_m3_profile_run15.bin` from `340b542`: everything since run 13, incl. the Wellspring F tank, ADR 0038, and SPRINGS 3 coupled wire gauges, ADR 0037). **Over budget.** Worst case S3 D1.0 TN0.0 TO0.5 **avg 82.1 % / max 86.3 %**; highest max anywhere **87.6 %** (S3 D0/D1 TN1 TO0.5, the corner's glide from loose to tight). S2 worst avg 76.1 % / max 80.7 %; S1 worst avg 74.1 % / max 79.9 % (86.1 % on the first corner of lap 1, start-up). Tight tanks: S1/S2 ~65.5 % avg / ~70.5 % max, S3 ~70.5 / 75.8. Where it went (SPLIT, % of budget, loose tank): `tilt` **16.0** (was ~0.8: it now carries the shared Sweep, ~40–64 highs-later sections; 10.8 at a tight tank), each Spring 12.5–12.8 (sprA) / 10.5 (idle), `out` 9.4 at S1/S2 and **~51** at S3 (the coupled Loops are processed inside `out`), `splash` 5.4, `drvIn` 4.9, `ctl` 3.2–4.6 (PEAK 7.9). The 576 B-headroom profile (runs 13 → 15) didn't change what it measures. Next: sound-neutral savings in the Sweep, diffusers and transducers (pipelining as in ADR 0030), echo mode (removes the coupled S3), then block 96 if needed.
+
+**Run 16 (prepared)** (branch `perf/run16`, not yet on the chip; same corner list as run 15, so the SPLIT compares line for line). Sound-neutral CPU savings only: every desktop render identical bit for bit with main (58 renders: hits, skank, clicks; every ATTITUDE, SPRINGS 1/2/3, TENSION 0/0.5/1; KICKED DRIVE 1 DECAY 1; a moves + Kicks render with odd block sizes; with and without FMA contraction), firmware selects by construction (same IEEE compare). Without the chip, the cycles come from `tools/m7_issue_model.py` (an in-order issue model over the disassembly; it reads main's Chirp loop at 14 cycles per section, run 8's measurement, and run 15's `tilt` and Spring shares within ~0.5 points). What changed, cycles/sample at a loose tank (TENSION 0: Sweep 50 sections, active Loops 39, idle 24):
+- **Sweep** (`Sweep.h`, `StretchedChain.h`): sections pipelined as the Chirp (ADR 0030), coefficients in registers (they were reloaded after every store), rings section-interleaved in the pool (DTCM) with the Thiran state as one more row, a run of samples per call; 24 → 10.5 cycles per section: **~670 cycles, ~6.7 points of `tilt`** (16.0 → ~9.3; tight tank ~3.2).
+- **Chirp sections** (`Spring.cpp` `chirpSections`, shared `dsp/StretchedChain.h`): the same interleaved rings (no per-section address arithmetic), two sections per pass with D{v} two ahead: 14 → 10.5 cycles per section, ~130 cycles per active Spring, ~77 per idle one: **~2.8 points at S1, ~3.4 at S2** (~2.3 at a tight tank).
+- **Loop diffusers** (`Spring::processLow`): the three written out, their delayed samples read before the chain: **~59 cycles per Spring, ~1.8 points** (idle Springs too).
+- **Branch-free clips and envelopes** (`dsp/Select.h`; `softClipSel` / `asymClipSel` in the LoopSat and DriveIn, the Splash's detector and envelope followers, the Clang ceiling): GCC's branches on the signal's sign or an envelope's attack/release became VSEL selects: LoopSat −12 per Spring, DriveIn −61, Splash −17, Clang −3: **~1.2 points** plus mispredicted branches the model can't count (the profile's noise makes the Splash's coin flips). DriveOut keeps the branches: there the selects measured slower.
+- Tried and reverted (the model said slower): the high path run beside the LoopSat; both DriveOut pickups side by side (register spills).
+
+**Expected run 16:** S2 worst ~63 % avg / **~68 % max** (run 15: 76.1 / 80.7), S1 ~62 / **~67** (74.1 / 79.9); tight tanks ~57 / ~62. SPLIT, loose: `tilt` ~9.3, sprA ~10.7, idle Springs ~9.0, `drvIn` ~4.3, `splash` ~5.2, `out` and `ctl` as run 15. S3 is left to echo mode (the coupled Loops in `out` are unchanged). Flash: release 113,412 B, profile 115,328 B (main 112,628 / 114,600). The estimates are a model's: run 16 on the chip is the check.
+
+**Run 16 on the chip** (4 Oct, `dist/resilio_versio_m3_profile_run16.bin` from branch `perf/run16`, bit-identical to `main`: pipelined Sweep and Chirp sections, written-out Loop diffusers, branch-free selects). Worst cases: S1 avg 66.0 % / max 70–74 % (74.1 on the first corner after BENCH); **S2 avg 67.7 % / max 72.8 %**; S3 (still coupled) avg 72.1 % / max **77.8 %** (highest anywhere, the TN1 TO0.5 corner's loose → tight glide). Against run 15: S2 −8.4 points average / −7.9 peak, S3 −10.0 / −9.8. SPLIT at a loose tank: `tilt` 16.0 → 10.6, active Spring 12.7 → 11.9, idle Spring 10.5 → 9.9, `out` (S1/S2) unchanged ~9.3, coupled S3 `out` 51 → 46.5. The in-order issue model predicted S2 63 / 68; the chip is ~4–5 points higher (branch mispredictions and memory stalls the model doesn't count). Budget (ADR 0030 amendment, 4 Oct): ≤ 75 % peak target, 80 % ceiling: S1/S2 within target, S3 under the ceiling (echo mode replaces the coupled S3).

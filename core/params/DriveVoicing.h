@@ -528,6 +528,9 @@ inline float toneTiltDb(float v)
 // CW half on a log scale with a slightly early curve (u^0.7), so the
 // thinning builds evenly: ~3 o'clock ≈ 105 Hz, full CW kToneLowCutMaxHz.
 // Pre-tank, so the Kick's thud (direct to the wet bus) keeps its weight.
+// (Tone voicing 0, a Renderer reference now. The Big Knob that replaced it
+// sits on the wet since 4 Oct 2026, "TONE placement" below, and so thins
+// the Kick's thud too.)
 constexpr float kToneLowCutMinHz = 20.0f;
 constexpr float kToneLowCutMaxHz = 300.0f;
 inline float toneLowCutHz(float v)
@@ -665,6 +668,82 @@ inline float bigKnobTrimDb(int voicing, float v, const std::array<float, 3>& w, 
     const bool bumped = voicing >= kToneVoicingBump; // 2-5 (v5: its hits carry the bump; held sounds come out ~1 dB quieter at TONE 1)
     const float bump = bumped ? kBigKnobBumpTrimDb : 0.0f;
     return -u * (bump + (0.5f * w[1] + w[2]) * (kBigKnobSquashDb + kBigKnobSquashDriveDb * drive));
+}
+
+// ---- TONE placement: the Big Knob after the Springs (owner, 4 Oct 2026;
+// ADR 0036 "Placement: after the springs"; docs/research/dub-lens-critique.md
+// §3.2 and direction B; prototype docs/prototypes/tone-place/) ----
+// "When you turn TONE right during a ringing tail, what should thin out?"
+// The owner, by ear: the tail you hear. The Big Knob (TONE's right half: the
+// low cut above, its slope, cutoff curve and bump on hits) runs on the
+// stereo wet, after the Springs, pickups and shelf, before the limiter and
+// MIX: Black Ark's low cut on the spring's return, dub techno's filter on
+// the wet. Turning TONE right thins the ringing tail at once, and turning
+// back gives its body back. Everything else TONE does (the tilt, the Loop
+// damping, the high path, tank voicing 7's coil and pickup) stays where it
+// was, and left of noon and noon are unchanged, bit for bit.
+//   kTonePlacePre  (0): the Big Knob before the Springs (ADR 0036 as first
+//                  shipped, SPEC <= v1.0.28): the next hit goes in thin, the
+//                  tail already ringing changes only slowly. Kept renderable
+//                  for reference (Renderer key "tone_place_voicing" = 0).
+//   kTonePlacePost (1): THE behaviour. Firmware, plugin and Renderer default.
+// (The prototype's split placement, 1st-order section before / 2nd-order on
+// the wet, was dropped with the owner's pick.)
+// Level (the wet, not the Springs' input, so the makeup is its own): slow
+// followers of the wet's power into and out of the return filter above
+// ~90 Hz (the Excitation trim's weighting, so the Kick's sub thump doesn't
+// count), give back kPostMakeupShare of what it took (in dB, at most
+// kPostMakeupMaxDb either way), held while the wet is silent. It reads the
+// wet itself, so it follows a ringing tail too: a sweep thins the tail at
+// once and the level catches up over kExcSeconds (a gentle swell back, not
+// a jump; ramped per sample). The squash correction (a driven tank squashing
+// on the lows the pre cut fed it) doesn't apply after the tank; the bump
+// correction does, on the wet.
+// The firmware (RV_FIXED_VOICINGS) builds only kTonePlaceDefault.
+constexpr int   kTonePlacePre     = 0;
+constexpr int   kTonePlacePost    = 1;
+constexpr int   kNumTonePlaces    = 2;
+constexpr int   kTonePlaceDefault = kTonePlacePost; // owner pick, 4 Oct 2026
+constexpr float kPostMakeupShare  = 0.75f;
+constexpr float kPostMakeupMaxDb  = 12.0f;
+// The Big Knob's sections before the Springs: all of them (pre), or noon's
+// (post: a 20 Hz 2nd-order guard, no 1st-order section; the Tilt then skips
+// its Big Knob sections, which are pass-throughs there).
+inline BigKnob bigKnobPre(int place, int voicing, float v)
+{
+    if (place == kTonePlacePre || v <= 0.5f) return bigKnob(voicing, v);
+    BigKnob b = bigKnob(voicing, 0.5f); // noon's, exactly
+    b.pushDb = bigKnob(voicing, v).pushDb;
+    return b;
+}
+// ... and on the wet (post). depth crossfades the 2nd-order section in from
+// an exact pass-through at noon (as k does the 1st-order one), so crossing
+// noon never jumps.
+struct PostKnob {
+    BigKnob b;
+    float   depth = 0.0f;
+};
+inline PostKnob bigKnobPost(int place, int voicing, float v)
+{
+    PostKnob p;
+    if (place == kTonePlacePre || v <= 0.5f) return p; // pass-through
+    p.b     = bigKnob(voicing, v);
+    p.depth = std::min(1.0f, (2.0f * v - 1.0f) / kBigKnobOrderIn);
+    p.b.pushDb = 0.0f;
+    return p;
+}
+// The makeups' measured corrections: pre keeps ADR 0036's (bump + squash);
+// post has no pre cut (none before the Springs) and moves the bump
+// correction to the wet.
+inline float bigKnobPreTrimDb(int place, int voicing, float v, const std::array<float, 3>& w, float drive)
+{
+    return place == kTonePlacePre ? bigKnobTrimDb(voicing, v, w, drive) : 0.0f;
+}
+inline float bigKnobPostTrimDb(int place, int voicing, float v)
+{
+    if (place == kTonePlacePre || v <= 0.5f) return 0.0f;
+    const float u = std::min(1.0f, 2.0f * v - 1.0f);
+    return voicing >= kToneVoicingBump ? -u * kBigKnobBumpTrimDb : 0.0f;
 }
 
 // Tilt level compensation, dB per dB of tilt. A spring tank's loudness sits
