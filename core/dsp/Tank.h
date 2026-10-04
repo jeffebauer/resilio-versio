@@ -333,6 +333,19 @@ public:
         compDrive_ = -1.0f; // DriveIn settings again on the next tick (voicing 3)
     }
     int  toneVoicing() const { return tilt_.voicing(); }
+    // Renderer / test hook (not a panel control; DriveVoicing.h "TONE
+    // placement", ADR 0036 amendment): where the Big Knob acts: 0 = before
+    // the Springs (as first shipped, for reference), 1 = on the wet (the
+    // return; the default). The firmware and plugin never call it
+    // (drive::kTonePlaceDefault; RV_FIXED_VOICINGS builds only that). Set it
+    // before rendering.
+    void setTonePlaceVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        tilt_.setPlace(std::clamp(v, 0, drive::kNumTonePlaces - 1));
+#endif
+    }
+    int  tonePlaceVoicing() const { return tilt_.place(); }
     // Renderer / test hook (not a panel control, ADR 0038 Proposed): which
     // Tank voicing (params/TankVoicing.h: 0 = today, 1 = Sweep, 2 = + stereo
     // together, 3 = + diffusion, 4 = + gentler). The firmware and plugin
@@ -465,6 +478,14 @@ private:
     // (1 = none).
     std::array<dsp::OnePoleLowpass, 4> bkHp_{}; // 2 x one-pole HP into, 2 out of the Tilt
     float bkAccIn_ = 0.0f, bkAccOut_ = 0.0f, bkIn_ = 0.0f, bkOut_ = 0.0f, bkGain_ = 1.0f;
+    // The Big Knob on the wet (DriveVoicing.h "TONE placement", ADR 0036
+    // amendment), and its own makeup: the wet's power (L + R) into and out
+    // of it above ~90 Hz, slow followers, gain ramped per sample.
+    dsp::ToneReturn toneReturn_;
+    std::array<dsp::OnePoleLowpass, 4> trHp_{}; // 2 x one-pole HP into, 2 out of the return filter
+    float trAccIn_ = 0.0f, trAccOut_ = 0.0f, trIn_ = 0.0f, trOut_ = 0.0f, trGain_ = 1.0f;
+    dsp::Ramp trMakeup_;
+    bool trIdle_ = false; // the stage is an exact pass-through: skipped (controlTick)
     // M8 Sustain trim (DriveVoicing.h "Sustain trim"): held detector, the
     // followers behind the tank's build-up gain K, the trim (ln gain, <= 0);
     // the Springs' input trim ramped per tick is Excitation x Sustain

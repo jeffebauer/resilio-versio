@@ -11,6 +11,7 @@ bool parse(const json::Value& root, Config& out, std::string& error)
     out.input = root.get("input", std::string());
     if (out.input.empty()) { error = "sweep: missing 'input'"; return false; }
     out.tailSeconds = root.get("tail_seconds", 0.0);
+    out.autoPath = root.get("auto", std::string());
     if (const json::Value* f = root.find("ignore_flags"); f && f->isArray()) out.ignoreFlags = *f;
     if (const json::Value* base = root.find("base")) out.base = *base;
 

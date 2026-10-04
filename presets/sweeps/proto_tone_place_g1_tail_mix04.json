@@ -1,0 +1,30 @@
+{
+  "name": "proto_tone_place_g1_tail_mix04",
+  "input": "test_audio/stimulus/proto_one_snare.wav",
+  "base": {
+    "springs": "2",
+    "decay": 0.6,
+    "tension": 0.5,
+    "splash": 0.3,
+    "drive": 0.25,
+    "wobble": 0.5,
+    "mix": 0.4
+  },
+  "grid": {
+    "attitude": [
+      0,
+      1
+    ],
+    "tone_place_voicing": [
+      0,
+      1
+    ]
+  },
+  "tail_seconds": 0,
+  "ignore_flags": [
+    "click_count",
+    "max_step_db_100ms",
+    "resonance_peak_db"
+  ],
+  "auto": "presets/sweeps/proto_tone_place_auto_tail.json"
+}
