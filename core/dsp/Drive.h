@@ -31,9 +31,35 @@ namespace rv::dsp {
 // Never steeper than 1 anywhere: a saturator built from it can only ever
 // *reduce* gain, which is what keeps the Loop safe (gain < 1 stays < 1).
 // One division, no libm: cheap on the Cortex-M7.
+//
+// RV_VSEL (the firmware, Cortex-M7 FPv5): the hold here and asymClip's
+// choice of half are VSEL selects, written out because GCC turned the plain
+// choices into branches (perf/run16). A branch on the signal's sign is a
+// coin flip for the branch predictor, and it splits the code so the M7
+// can't overlap one clip's multiplies and divide with the next one's (the
+// oversampled pair, the two output pickups). Same comparisons, same
+// results for every input (NaN included); other builds use the plain C.
+#if defined(__GNUC__) && !defined(__clang__) && defined(__ARM_ARCH_7EM__) && defined(__ARM_FP) && __ARM_FP == 14
+#define RV_VSEL 1
+#else
+#define RV_VSEL 0
+#endif
 inline float softClip(float x)
 {
+#if RV_VSEL
+    const float hi = 3.0f, lo = -3.0f;
+    asm("vcmpe.f32 %[x], %[hi]\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselgt.f32 %[x], %[hi], %[x]\n\t" // x > 3 ? 3 : x
+        "vcmpe.f32 %[lo], %[x]\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselgt.f32 %[x], %[lo], %[x]"     // -3 > x ? -3 : x
+        : [x] "+t"(x)
+        : [hi] "t"(hi), [lo] "t"(lo)
+        : "cc");
+#else
     x = x > 3.0f ? 3.0f : (x < -3.0f ? -3.0f : x);
+#endif
     const float x2 = x * x;
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
@@ -56,10 +82,23 @@ inline float asymClip(float x, float kPos, float kNeg)
 }
 // The same with 1/k worked out beforehand (at control rate): a divide costs
 // ~14 cycles on the M7 and nothing overlaps it (M3). Differs from the plain
-// form in the last bit only.
+// form in the last bit only. (RV_VSEL: the half's k and 1/k by select, see
+// softClip; the same arithmetic as clipping each half on its own.)
 inline float asymClip(float x, float kPos, float kNeg, float invPos, float invNeg)
 {
+#if RV_VSEL
+    float k, inv;
+    asm("vcmpe.f32 %[x], #0\n\t"
+        "vmrs APSR_nzcv, fpscr\n\t"
+        "vselge.f32 %[k], %[kp], %[kn]\n\t" // x >= 0 ? kPos : kNeg
+        "vselge.f32 %[i], %[ip], %[in]"
+        : [k] "=&t"(k), [i] "=&t"(inv)
+        : [x] "t"(x), [kp] "t"(kPos), [kn] "t"(kNeg), [ip] "t"(invPos), [in] "t"(invNeg)
+        : "cc");
+    return softClip(k * x) * inv;
+#else
     return x >= 0.0f ? softClip(kPos * x) * invPos : softClip(kNeg * x) * invNeg;
+#endif
 }
 
 // ---- First-order shelf (tape pre-/de-emphasis) -------------------------------
