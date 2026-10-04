@@ -2,118 +2,61 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 3 Oct 2026, evening (Wellspring F merged with your picks: low end D, SPRINGS 3 wire gauges; one plugin in Ableton again; CPU run 15 and the new release ready for tomorrow)
+**Last updated:** 4 Oct 2026, evening (three features built and picked, waiting on your last listen + OK to merge; run 16 ready; Wellspring session 2 recorded, ingest running)
 
 | Milestone | State |
 |---|---|
-| M0 hardware · M3 CPU | M0 passed. Run 13 (SPLASH/DRIVE build): 63 % average, 66 % peak, target **70 %**. **Run 15 ready** (§0): measures everything since run 13 at once (run 14 skipped) |
-| Real firmware on the Versio | **New release ready:** `dist/resilio_versio_release_340b542.bin` (the Wellspring F sound with your picks, SPRINGS 3 wire gauges, Big Knob TONE, SPLASH C; 96 % of flash). Run 15 first (§0), then flash this and the click check (§1) |
-| M8 sound | **In progress:** SPLASH/DRIVE, bipolar WOBBLE, sustain trim, Big Knob TONE, SPLASH C, and **Wellspring F** (tank fitted to your Wellspring, gentler low cut D, SPRINGS 3 wire gauges) merged (1–3 Oct). Open: what 3 Springs should be (design questions), Wellspring round 5 (your notes) |
+| M3 CPU | Run 15 (Wellspring F tank): **82 % average / 86 % peak**, over budget but no clicks. New budget (your call): **≤ 75 % peak target, 80 % ceiling**. **Run 16 ready** (§2): same sound, expected ~68 % peak |
+| Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops: MIX fully right is fully wet). Click check passed |
+| M8 sound | Three features built on branches, waiting on your OK to merge (§1): **TONE after the springs**, **Throw + Hold**, **Echo mode** (SPRINGS 3). µ-law grit for DRIVEN/KICKED being prototyped. Wellspring round 5 next, from session 2 |
 | M2 Ableton check | Ready: the plugin is installed |
-| M9 polish | LED meters done (module and plugin); panel interface in the plugin; manual and starting points need a refresh for the Wellspring F sound |
+| M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
 
-**Plugin in Ableton:** `340b542`, version **1.3.29** (installed 3 Oct, evening): **Wellspring F with your picks** (low end D, SPRINGS 3 wire gauges), plus Big Knob TONE, SPLASH C and everything before; AU validated. "Resilio Versio F" removed. Your Whalesong set's devices now play this. **Rescan needed:** open Ableton, hold ⌥ and click Rescan.
+**Plugin in Ableton:** `340b542`, version 1.3.29 (Wellspring F with your picks). The three new features aren't in it yet: Claude installs them right after the merge.
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private, like the repo): universal plugin, Versio firmware, read-me. **For A/B:** [candidate F, v2026.10.02-cef6a77](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F) (pre-release, plugin only): installs as **"Resilio Versio F"** next to the 1 Oct "Resilio Versio"; it's F before your two picks. Claude makes the next one with `tools/make_release.sh --publish` (or `--candidate <ref> <label>`).
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private): universal plugin, firmware, read-me. A/B candidate: [v2026.10.02-cef6a77-candidate-F](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F). Both predate this week's features; the next release (after the merge) replaces them.
 
-## Now (suggested order)
+## Now (in this order)
 
-### 0. CPU run 15 on the module · done 4 Oct: **over budget**
-- [x] Run 15: worst case **82 % average / 86 % peak** (target was ≤ 70 % peak, **now ≤ 75 %, ceiling 80 %**, your call 4 Oct; run 13 was 63 / 66). The Wellspring F tank's shared Sweep costs ~16 % and the coupled SPRINGS 3 ~40 % more. Still under the dropout point, so it plays, but the safety margin is gone. Claude is finding sound-neutral savings first (no decision needed); echo mode removes the coupled S3; a bigger audio block (+1 ms) is the reserve you already approved. Details: `firmware/README.md` "Run 15"
+### 1. Last listen, then OK to merge the three features (≈10 min)
+- [ ] **Hold ducking:** open [`renders/feat_hold_duck/`](../renders/feat_hold_duck/index.html). A round 1 (full-range duck), B lows-only duck at 12 dB (below ~200 Hz, triggered only by kick and bass, no swell into the next beat), C the same at 18 dB. **Pick 12 or 18 dB.** The KICKED row checks today's Howl fade is back
+- [ ] **Echo repeats, confirm:** BBD A only, no extra diffusion or bit depth on the repeats (the µ-law idea below covers the grit). Say if you'd rather keep a diffusion or bit-depth option
+- [ ] **OK to merge** TONE after the springs, Throw + Hold, and Echo mode. Claude then merges them one at a time, re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware for the module
 
-### 0b. CPU run 16 on the module (≈10 min, USB only) · ready
-- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run16.bin` (Firmware Swap → Select Custom File), then `screen /dev/tty.usbmodem* 115200` in the app's Terminal, let the CORNER lines go round twice, and tell Claude (it can read the Terminal panel). Same sound as today, bit for bit; the Sweep and the springs' sections now run about twice / a third faster. Expected: worst case S1/S2 ≈ 62–63 % average, ≈ 67–68 % peak (run 15: 74–76 / 80–81). S3 still runs the coupled springs here (echo mode replaces them later). Afterwards flash `dist/resilio_versio_release_d74ddc5.bin` back
+### 2. CPU run 16 on the module (≈10 min, USB only)
+- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run16.bin` (Firmware Swap → Select Custom File), run `screen /dev/tty.usbmodem* 115200` in this app's Terminal, let the CORNER lines go round twice, and tell Claude (it reads the Terminal panel). Same sound, bit for bit; expected ~62 % average / ~68 % peak for 1–2 Springs (run 15: 74–76 / 80–81). Then flash `dist/resilio_versio_release_d74ddc5.bin` back
 
-### 1. Flash the Versio and play (≈2 min + play)
-- [x] Click check passed (4 Oct, on `327af86`, same sound and CPU as 340b542): no clicks or dropouts. Was: flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
-- [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
-- [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
-- [x] Done 4 Oct: the module's tails match the desktop at both DECAY ends (the pot reads 0.00 / ~0.99); the 30 Sep noon shortfall is the knob's mid-travel, not the DSP. Was: optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
+### 3. µ-law grit for DRIVEN and KICKED (when Claude says it's ready)
+- [ ] Page `renders/feat_output_mulaw/` (being built): today vs µ-law on the whole output, dry and wet, 12-bit in DRIVEN, 8-bit in KICKED, every SPRINGS position, CLEAN untouched. Note: MIX fully left in DRIVEN/KICKED would no longer be a clean passthrough
 
-- [x] **Input LEDs flashing red: solved (4 Oct).** Real input peaks: the shaker's loudest grains touched the Versio's clip point (amber shows the overall level; transients sit 6–10 dB above it). With the clip 6 dB lower, no more red. Not a firmware fault, and the same in older builds. **Dry at MIX fully right:** the pots stop short of 100 %; fixed with knob end stops (merged, `d74ddc5`), **confirmed on the module 4 Oct: fully wet** (the Versio now runs `dist/resilio_versio_release_d74ddc5.bin`)
+### 4. After the merge: play it (plugin and module)
+- [ ] **Echo mode feel**, on the plugin or module: is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to a long build? Is the **KICKED runaway** in the right place (top ~13 % of DECAY)? Is the **swoop** (~0.3 s) the right speed?
+- [ ] **Throw on the module:** gate into the gate jack opens the springs' send; hold KICK 1 s to leave throw mode (all four LEDs blink white)
+- [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
+- [ ] Play it thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 
-### 2. The plugin in Ableton (≈20 min)
-- [ ] **Look at the panel interface:** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module? Does KICK fire? Tell Claude or send a screenshot of anything off
-- [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0, 44.1/96 kHz. A 10th control, **Bypass**, is normal
-- [ ] **A fresh listening pass**, answering the design questions below where you have a view
-- [ ] Three checks on the new sound when you have a moment: **SPLASH in KICKED with DRIVE down** around 2 o'clock (a rim splashes ~2 dB less than before; fully up slightly more): strong enough? **TONE sweep on sharp clicks/rims**: does the level jump (left half ~+4 dB, fully right ~−4.5 dB on very sharp clicks; drum hits even)? **TONE fully left**: as warm and dark as you're used to?
+### 5. The plugin in Ableton (≈20 min, after the next install)
+- [ ] **Panel interface:** does the layout read like your panel? Knobs comfortable? LEDs match the module? KICK and THROW work?
+- [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0 (in CLEAN), 44.1/96 kHz. A **Bypass** control is normal
 
-### 3. Big Knob TONE · **merged** (2 Oct)
-- TONE's right side becomes a King Tubby-style steeper low cut with a resonant bump, the "Big Knob" on Tubby's desk ([dub-spring-reference.md](dub-spring-reference.md) §6B, §8). Four versions on one page: today, steeper cut, steeper cut + nasal bump, and that plus "ringier when driven"
-- [x] Researched and built in the cloud (1 Oct): `docs/research/big-knob.md` on the branch (the Altec 9069B, 18 dB/oct; its "bump" comes from how the desk was wired into it). Reference listen: *King Tubby Meets Rockers Uptown* (Augustus Pablo, 1976), the filter on the hi-hat
-- [x] **Listened (1 Oct): v2** (steep + bump) nearly everywhere; v1 (no bump) won fully right on skank and KICKED hits; v3 only on pads at DRIVE 0.8. Your pick: **v2 with a gentler bump at the top** (+4.1 dB fully right instead of +5.6), built as v4
-- [x] **Check page listened (1 Oct):** the bump won on every drum-hit panel, no bump won on pads, clicks and KICKED skank. Your pick: **the bump on hits only** (v5). (Note: that page's "v4" was really v3, a bug Claude fixed; your conclusion holds)
-- [x] Top of the knob is now **800 Hz** (was 1.2 kHz): above ~850 Hz one KICKED setting (3 Springs, TENSION fully loose) rang. Every ringing/Howl test passes at 800 Hz. A deeper tank fix could reopen ~1.2 kHz later if you want it thinner
-- [x] **Picked v5, the bump on hits only** (2 Oct). **Merged** (`c996a0a`, ADR 0036): TONE's right half is now the Big Knob. Not yet in Ableton or on the Versio: next plugin install / release
-
-### 3b. SPRINGS 3 and SPLASH · experiments (cloud, can run alongside Big Knob)
-- [x] Your note (1 Oct): 2 vs 3 Springs barely differ; SPLASH feels subtle. You want to hear every SPRINGS 3 idea, and SPLASH **stronger at the top** and **less tied to DRIVE**
-- [x] SPRINGS 3 built in the cloud (1 Oct): five versions of position 3, no extra memory, all pass the ringing and Howl checks (the series version still flags one held-tone test: to fix before it could ship)
-- [x] **Listened (2 Oct):** a different-sized tank muddles TENSION and DECAY (long, pan); liked the pan tank's character but couldn't tell whether it was the shorter tank or the brighter, higher-chirp sound; wide sounded close to today but lopsided, leaning to a higher harmonic on chords
-- [x] Round 2 built (2 Oct): six versions, all at today's repeat timing (first echo and spacing within 0.5 ms), no extra memory, no ringing, the Howl unchanged
-- [x] **Listen to SPRINGS 3 round 2 (≈15 min):** open `renders/springs3_palette2/index.html` (level-matched). **A** SPRINGS 2, **B** position 3 today, **C** pan brighter only (less bass, airier tail), **D** pan higher chirp only (higher, quicker, metallic boing), **E** mixed wire gauges (a small cluster of boings per hit, balanced L/R), **F** coupled (hits blur into a bloom instead of separate drips), **G** diffuse (smoother, softer echoes), **H** your cross-fed wide (bright left / today centre / dark right trading energy: roughly halves the lean, no upward pull on chords). C vs D answers "brightness or chirp?". Which makes position 3 its own thing?
-- [x] SPLASH built in the cloud (1 Oct)
-- [x] **SPLASH listened (2 Oct): C** (stronger top + works with DRIVE down) on every click and hit panel and most skank. **Merged** (SPEC v1.0.25). Not yet in Ableton or on the Versio: next install / release
-
-### 3c. Today's sound next to your Wellspring (≈10 min)
-- [x] Round 2 page (`wellspring_fit2`, deleted 2 Oct): listened, notes below
-- Measured: echo spacing now matches (within 3–4 ms); the tail's tonal balance is ~3 dB off; our tails are shorter at both ends (lows 3.4 vs 4.7 s, 4 kHz 1.1 vs 1.9 s)
-- [x] **Listened (2 Oct):** still quite different: the Wellspring is more diffuse; ours has more low end/mids (present, forward) where the Wellspring is further away and gentler; its repeats blur fast while ours flicker left/right like a delay. Measured, all three confirmed: tail washed-ness 0.97 vs ours 0.62–0.66; low-mid balance −6 vs −2 dB (defaults +1); L/R jumps 2.8 vs 9–10 dB per 10 ms
-- [x] Wellspring fit round 3 built (2 Oct): no ringing in any version, Howl unchanged
-- [x] **Round 3 listened (2 Oct):** still different: the Wellspring's echoes are further apart; it's more muted (less highs), wider, more diffuse; its repeats darken while ours sound metallic and bright. Measured: Claude's settings search had matched the Wellspring's fast high-only arcs (36 ms) instead of its main echoes (65 ms), so every comparison used TENSION far too tight: fixed, the closest is **TENSION noon**. And ours is ~17 dB brighter in the first 60 ms after a hit at every knob setting: the Wellspring's coil-and-magnet transducers filter the treble going in and coming out; ours barely do
-- [x] Round 4 built (2 Oct), fitted to your sweep recording (take D): the transducers bring the onset brightness to your Wellspring's exactly (−25.7 dB), the treble falls steeply above ~3 kHz, the coil's warm even-order colour matches (2nd harmonic −25 dB); the tail as wide as yours with no flicker; the low end cut to your Wellspring's curve
-- [x] **Listen (≈10 min):** open `renders/wellspring_fit4/compare/index.html`. One panel per sound, buttons switching in sync: **A your Wellspring**, **B** Resilio today, **C** round 3's best (sweep + stereo together + diffusion), **D** + transducers, **E** + wide, **F** + gentler low end. Level-matched, corrected settings (TENSION noon, TONE 2 o'clock). "My pick" per panel, then "Copy results for Claude". (Round 3's page `renders/wellspring_fit3/compare/` is now reference only)
-- Known open after round 4: each echo's rise is sharper than the Wellspring's; the lowest octave rings shorter (3.3 vs 4.7 s); if picked, TONE needs re-mapping (its dark half gets much less dark), several tests need re-tuning, and the CPU-test firmware would be 1.3–3.1 KB over flash (needs trimming)
-- Still different after round 3 (measured): the lowest octave rings shorter (3.8 vs 4.7 s; making it longer stretches DECAY past its range: a question for you later), the top octave too (1.2 vs 1.9 s), and the "pew" stops a bit lower than the Wellspring's
-
-### 4. Fitted to your Wellspring · next round (local: your recordings stay on the Mac)
-- [x] Listened (30 Sep): **B (fitted sweep)** in every panel; an improvement, but still far from the Wellspring: brighter (the old SPLASH burst was still in this prototype), and the pew on hits has a resonant quality in a different register
-- Next round (one local agent, best after your weekly usage resets): keep B's sweep, drop the tone dip, make the echoes thin clean sweeps, add the Wellspring's fast highs-only echoes (every ~35 ms, a likely source of its resonant "zing"); compare at SPLASH 0 and with the new SPLASH
-
-### 5. Wellspring recording session 2 (≈20 min, when convenient)
-- [ ] Follow `docs/recording-recipe.md` §5b: same patch and base INPUT as session 1; takes H–N (a quiet and a hot sweep, the sweep into each tank alone, octave tone bursts, pink noise, held tones, the pad, 30 s of silence). First run `python3 tools/make_stimulus.py` and `python3 tools/make_sustain_stimulus.py` for the new files. Then tell Claude: it tells us the transducers' exact treble roll-off, how the input changes with level, the full stereo picture, per-octave darkening, and the hiss
-
-### Friends' feedback
-- [ ] Send your friend the candidate F zip (link above, in Share package). They compare "Resilio Versio F" with the 1 Oct "Resilio Versio" they already have
-- When your friend replies about the plugin, paste it to Claude: it goes into the backlog next to your own notes
-
-### 1b. Flash room for the new features (4 Oct) · your OK to merge
-- [x] **Flash study merged** (4 Oct, `327af86`): release 18.4 KB free, CPU-test 16.5 KB free (were 4.8 KB and 576 B). No sound change
-- [x] Release `327af86` boots and plays, click check passed (4 Oct). Still to see: the CPU-test build's CORNER lines (next time you run a profile). Was: flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
-
-### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
-- [x] **TONE after the springs: picked (4 Oct)** B in every panel, the Kick at TONE fully right included (no thud, sharper knock: keep); Howls leaning to a pitch at TONE right: fine. Merge waits until you've heard the other two, then all three go in together (`feat/tone-after`, page [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html))
-- [ ] **Throw + Hold: built (`feat/throw-hold`), your listen + OK to merge.** Page: [`renders/feat_throw_hold/`](../renders/feat_throw_hold/index.html) (links a Throw page and a Hold page). Listen for / decide:
-  - [x] **Throws: picked (4 Oct)** "thrown" in every ATTITUDE. Leaving throw mode: **long-press KICK (~1 s)** (unplugging would leave the send closed): **built** (4 Oct): the Kick still fires on the press; after 1 s held, throw mode switches off and all four LEDs blink white once; the next gate rise switches it back on. Same in the plugin (hold its KICK button)
-  - [x] **Hold: picked layer (4 Oct)**, CLEAN and DRIVEN. Your notes: duck only the lows (like sidechaining to kick/bass), and the pumping made a swell/hump before each kick. **Ready to hear:** [`renders/feat_hold_duck/`](../renders/feat_hold_duck/index.html): A round 1 (full-range duck), B lows-only duck (below ~200 Hz, triggered by kick and bass only) at 12 dB with the swell fixed, C the same at 18 dB. Listen for a clean dip under each kick with no swell into the next beat, and hats/chords leaving the bed alone; pick 12 or 18 dB. The KICKED row checks today's Howl fade is back. Tip: to get a held bed after flipping out of KICKED, turn DECAY down a touch and back up
-  - [x] **Howl flip: today's fade (4 Oct)**: flipping out of KICKED at DECAY max calms into the long tail as before; the hold won't catch a Howl
-  - The Hold slowly fades (~3 dB per 10 s after the first 20 s) rather than truly freezing; it never grows
-- [ ] **Echo mode: picked (4 Oct)** in every panel. **Repeats getting more diffuse with each pass: ready to hear** on [`renders/feat_echo_diffuse/`](../renders/feat_echo_diffuse/index.html): A none (today), B light (by the 5th–6th repeat the hit is rounded), C medium (worn by the 3rd–4th, the attack a short swish), D heavy (a wash by the 4th–5th). The first repeat is identical in all four. Listen for where the wearing-out feels right, anything metallic, and whether the clocked row stays rhythmic. Cost if picked: ~1 KB firmware, ~+3 % CPU in SPRINGS 3. **Your notes (4 Oct):** the first repeat came back as loud as the hit (fixing: every repeat a step down from the hit, set by DECAY), and you'd like repeats that *break up*, not just blur. **Ready to hear (level fix included in every version):** [`renders/feat_echo_wear/`](../renders/feat_echo_wear/index.html), A none (even steps down from the hit now), then four break-ups that build per repeat: **worn tape** (growing wobble, oxide dropouts, saturation), **radio band** (~450 Hz, dub techno), **BBD grit** (aliasing, compander, clock whine: your Wellspring's delay), **crushed** (bits and rate per pass, crackle: SDE-3000, Pole). Last row: a KICKED runaway ridden up and back. The older echo and diffuse pages predate the level fix. **Picked (4 Oct): D, BBD grit, everywhere**; you want the aliasing more obvious (crushed sounded too subtle). **Ready to hear:** [`renders/feat_echo_bbd/`](../renders/feat_echo_bbd/index.html): A today's BBD (barely audible aliasing), B stronger (grainy from the 2nd–3rd repeat), C strongest (a lo-fi ghost by the 3rd–4th), D follows the echo time like a real BBD (short echoes cleaner, noon = B, 2 s past C). Rows include a long echo and a clocked run through the divisions. **Picked (4 Oct): A, today**; B/C/D added pitched chirps (aliasing). Next: Beads-style bit depth on the repeats, `renders/feat_echo_bits/`: A today, B "Sunny Tape" 24 kHz/12-bit, C "Scorched Cassette" 24 kHz/8-bit, D a variant; quantised against full scale so each quieter repeat gets grainier, no new pitches. **Ready to hear:** [`renders/feat_echo_bits/`](../renders/feat_echo_bits/index.html): A BBD as picked, B Sunny Tape 12-bit (fine grain, mostly on quiet late repeats), C Scorched Cassette 8-bit (coarse grain and hiss; quiet repeats drop away sooner), D 8-bit µ-law (C's crunch on loud repeats, finer grain on quiet ones so long tails survive). Measured: no new pitches in any. Cost if picked: 1.6–2.8 KB firmware, CPU to be measured. **Your take (4 Oct):** D (8-bit µ-law) sounds best but too subtle on the repeats alone, so instead: **µ-law on the whole output (dry and wet) in DRIVEN (12-bit) and KICKED (8-bit), every SPRINGS position; CLEAN stays clean.** Prototype being built: `renders/feat_output_mulaw/` (today vs µ-law, CLEAN / DRIVEN / KICKED). Note: MIX fully left in DRIVEN/KICKED will no longer be a clean passthrough Still open from the first page (answer when you've played it):
-  - Is TENSION noon's **0.4 s** a good resting echo time (free, unclocked)? Range 2 s → 80 ms
-  - Does **DECAY** feel right, from one repeat (DECAY 0) to a long build?
-  - Is the **KICKED runaway** in the right place (top ~13 % of DECAY)?
-  - Is the **swoop** speed (~0.3 s) right?
-  - Firmware gets smaller (the coupled springs code is gone) and the module works less in every SPRINGS position; the chip's CPU is measured at the next profile run
-- All three tested (each branch 100 % of its suites, re-run by Claude). After your OKs Claude merges them one at a time (TONE, then Throw + Hold, then Echo mode), re-runs every test on the combination, and makes a release + CPU-test build for the module
+### Optional
+- [ ] Friends' feedback: worth waiting for the next release (after the merge) rather than sending candidate F, which is now several picks behind. Paste any reply to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [x] **Dub-lens critique (3 Oct):** answered ([research/dub-lens-critique.md](research/dub-lens-critique.md) §8): gate = throw, button = Kick; hold at DECAY's top (CLEAN/DRIVEN, ducked); Howl stays KICKED-only, no feedback return; round 5 is the last Wellspring fit. To hear first: TONE filter pre / post / split, tape echo into springs for SPRINGS 3, hiss levels. Still open: what In R is for (duck key, second send, or stereo).
-- [x] **Three dub-lens listening pages (4 Oct): picked.** TONE: **B**, the Big Knob after the springs (the ringing tail thins at once). SPRINGS 3: **B**, tape echo into the springs, and if it ships you want DECAY = echo feedback, TENSION = echo time, the gate = clock (TENSION then picks straight/dotted divisions); decided 4 Oct: clock only in position 3 (throw stays in 1–2), springs behind it fixed (noon tank, ~1.5–2 s tail), time changes swoop like tape. Hiss: inaudible at every level (63–84 dB under the hits), so no hiss. Details: [research/dub-lens-critique.md](research/dub-lens-critique.md) §8
-- [ ] **What should make you reach for 3 Springs instead of 2?** Three rounds keeping today's repeat timing all came out subtle (wire gauges shipped). Options: a bigger, longer-ringing darker tank (rings longer than DECAY says); two tanks in a row (thicker, washed, a doubled boing); a brighter, splashier tank (sparse → classic → splashy); or leave it as "slightly denser"
+- [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
-- [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal?
-- [ ] **TONE fully right:** thin and splashy enough, too thin, or should the low cut start earlier? (The Big Knob experiment, §3, will answer this one by ear)
+- [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal? (At TONE right you said the pitch lean is fine)
 
 ## Later
-- **Stereo in:** should the reverb follow where things are panned, or stay a classic mono-send dub tank? Options and costs: [SPEC §10](../SPEC.md). Decide once the new tank's CPU is known
+- **Stereo in:** see "What is In R for?" above; options and costs in [SPEC §10](../SPEC.md)
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Docs:** refresh `docs/manual.md`, `docs/presets.md` and the share read-me for the Wellspring F sound; republish the friends' release once run 15 and the click check pass
-- **Wellspring round 5** from your notes: a softer transient (each echo's front), the tail's resonance in a different place, which frequencies sit in the centre vs wide. Session 2 recordings (§5) would help measure the last two
-- **After session 2 recordings:** ingest, the level series (how the input stage changes with level), the full stereo picture, per-octave darkening; feeds the next Wellspring round
-- **Friends' share release** is still `1d18fce`: republish with `tools/make_release.sh --publish` when you want to send the new sound round
+- **Wellspring session 2 ingest** (running): the transducers' treble roll-off, the input at three levels (H, D2, I), each tank's stereo, per-octave decay, held-sound build-up, the hiss. Feeds **Wellspring round 5**, the last fit (your call): a softer echo front, the tail's resonance in the right place, centre vs wide
+- **Merging** the three features once you've said OK (§1), then the plugin install, release and CPU-test firmware
+- **Docs after the merge:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
+- **CPU, if run 16 comes in above 75 %:** more sound-neutral savings first (the tilt loop, the springs' per-sample work); a bigger audio block (+1 ms) stays the reserve
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -121,7 +64,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Listening:** paste the page's "Copy results for Claude", or plain-words answers
 - **Hardware checks:** pass/fail per step; for anything odd, a line of description or a short recording
 
-## Retired (30 Sep 2026: superseded, no action)
+## Retired (superseded, no action)
+- 4 Oct 2026: **"What should make you reach for 3 Springs?"**: answered by echo mode. **Wellspring fit "next round" (old §4)**: superseded by round 5. **Three checks on the F sound** (SPLASH with DRIVE down, TONE sweep level on clicks, TONE fully left): the sound moves again with TONE after the springs; check by ear after the merge (§4). **TONE fully right thin enough?**: settled by the Big Knob picks and TONE after the springs. Listening pages already judged were deleted (prototypes, BBD, diffuse, wear)
 These judged builds that no longer exist, or were overtaken by newer work:
 - M1 renders (5), M4 renders (6), M5 drive + TONE pages (8), SPLASH "heavier clang" re-listen (8b), M8 round 1 pairs (8c), M7 pages (9), TENSION/DECAY pages (10), M1 A/B listen (4b): the sound has moved on (TENSION, earlier first echo, spring EQ, SPLASH rework); their open questions moved to **Design questions**
 - **Lows ring longer** page (`renders/proto_low_tail/`): the analysis showed the real difference is *how loud* our lows are (10–20 dB too much), not how long they ring
@@ -130,6 +74,17 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 4 Oct 2026: **Listening picks:** TONE after the springs (B everywhere, Kick and Howl at TONE right fine); throws "thrown" everywhere, leave throw mode by holding KICK 1 s; hold = layer, a Howl flipped out of KICKED fades as before; echo mode (B) with even steps down from the hit, BBD grit A (stronger aliasing added pitched chirps); repeats' bit depth too subtle alone, so µ-law on the whole DRIVEN/KICKED output instead
+- 4 Oct 2026: **Wellspring session 2 recorded** (takes H, I, D2 at a lowered OUTPUT, D-L, D-R, J, K, L, M, N)
+- 4 Oct 2026: **CPU budget** now ≤ 75 % peak target, 80 % ceiling with a click check (your call; ADR 0030, SPEC v1.0.32)
+- 4 Oct 2026: **Run 15** on the chip: 82 % average / 86 % peak (the Wellspring F tank's Sweep ~16 %, coupled SPRINGS 3 ~40 % more). Run 16 (sound-neutral savings, bit-identical) built
+- 4 Oct 2026: **Click check passed** on `327af86`; **knob end stops** merged and confirmed (`d74ddc5`: MIX fully right is fully wet; every knob reaches exact 0 / 1)
+- 4 Oct 2026: **Red input LEDs:** real input peaks (the shaker loop peaks at 0 dBFS); gone with the clip 6 dB lower. Not a firmware fault
+- 4 Oct 2026: **Hardware DECAY end takes:** the module's tails match the desktop at both ends (the pot reads 0.00 / ~0.99); the old 10 % noon shortfall is the knob's mid-travel, not the DSP
+- 4 Oct 2026: **Flash study merged** (`327af86`): 18.4 KB free in the release, 16.5 KB in the CPU-test build (were 4.8 KB / 576 B), by not setting up unused hardware; firmware stays one-click Firmware Swap (ADR 0011)
+- 3–4 Oct 2026: **Dub-lens critique** ([research/dub-lens-critique.md](research/dub-lens-critique.md)) and your answers: gate = throw, hold at DECAY's top, Howl stays KICKED-only, no feedback return, no hiss (inaudible at real levels), round 5 is the last Wellspring fit
+- 2 Oct 2026: **Big Knob TONE merged** (v5, the bump on hits only, top 800 Hz; ADR 0036). **SPLASH C merged** (stronger top, works with DRIVE down). **SPRINGS 3 rounds 1–2** listened (wire gauges shipped with Wellspring F)
+- 2 Oct 2026: **Wellspring fit rounds 2–4** listened; round 4's F became the Wellspring F tank
 - 3 Oct 2026: **Wellspring F merged** with your picks (`340b542`, ADR 0038 / 0037 Round F2, SPEC v1.0.28): the tank fitted to your Wellspring (gentle highs from the first moment, repeats that darken, wider with no flicker), the low cut eased to D ("a little more" at TONE noon), SPRINGS 3 = coupled wire gauges, TONE's left half as dark as before. Installed in Ableton as the only Resilio; run 15 and the release built
 - 3 Oct 2026: **BOING in Ableton fixed:** your Whalesong set's devices still held the pre-29 Sep BOING slot (sets save parameters by ID); remapped to TENSION, backup next to the set. Every install now also gets its own version number
 - 2 Oct 2026: **SPRINGS 3 coupled merged** (your pick F "across the board", ADR 0037): position 3's three Springs share energy every round trip, so hits bloom instead of dripping; repeat timing and level as before. Firmware trimmed to fit (release 93 %, CPU-test 99.5 %). In Ableton (`2ed84f2`, 2 Oct); not yet on the Versio: next release together with Wellspring F
