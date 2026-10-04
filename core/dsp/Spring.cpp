@@ -4,6 +4,7 @@
 #include "params/AntiRes.h"
 #include "params/SplashVoicing.h"
 #include "params/SpringModes.h"
+#include "params/ThrowHold.h"
 #include "params/WobbleVoicing.h"
 
 #include <algorithm>
@@ -173,7 +174,8 @@ bool Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.tapOffsetSeconds == settings_.tapOffsetSeconds
                    && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
                    && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl
-                   && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz;
+                   && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz
+                   && s.hold == settings_.hold && s.highT60Seconds == settings_.highT60Seconds;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return true;
 
     if (!snap && s.transitionHz != designFc_) {
@@ -289,6 +291,10 @@ void Spring::commitDesign()
     // LoopSat oversampler latency (as roundTripSamples()).
     const float t60 = kT60DesignScale * s.t60Seconds;
     float g = kMaxGain;
+    // Hold zone (ADR 0040): the cap moves with the zone weight from kMaxGain
+    // to the one that puts the peak g|H| at throwhold::kPeakGain (< 1).
+    const float hold = std::clamp(s.hold, 0.0f, 1.0f);
+    if (hold > 0.0f && maxMag_ > 0.0f) g = kMaxGain + hold * (throwhold::kPeakGain / maxMag_ - kMaxGain);
     for (size_t p = 0; p < size_t(kNumPoints); ++p) {
         const float chain = mPos_ * map::stretchedAllpassGroupDelayFromCos(a_, k_, ptCosK_[p]);
         const float rt    = withDiff(lCur_) + chain + ptDampDelay_[p] + lpfDelay_ + ptLatency_[p];
@@ -296,6 +302,7 @@ void Spring::commitDesign()
         g = std::min(g, gf);
     }
     g = std::max(0.0f, g);
+    if (hold > 0.0f && maxMag_ > 0.0f) g = std::min(g, throwhold::kPeakGain / maxMag_); // never P >= 1 while held
 
     // Howl zone: lift the small-signal peak gain P = g·max|H| toward
     // kHowlPeakGain (> 1). The LoopSat's compression then holds the level.
@@ -318,7 +325,8 @@ void Spring::commitDesign()
 
     // High path: no dispersion to speak of, simple T60 from its own trip.
     lhCur_ = kHighDelayRatio * withDiff(lCur_);
-    gHigh_ = std::min(kMaxGain, std::exp(-3.0f * kLn10 * lhCur_ / (hiT60() * s.t60Seconds * sampleRate_)));
+    const float hiBase = s.highT60Seconds > 0.0f ? s.highT60Seconds : s.t60Seconds; // the Hold keeps the plain DECAY's
+    gHigh_ = std::min(kMaxGain, std::exp(-3.0f * kLn10 * lhCur_ / (hiT60() * hiBase * sampleRate_)));
 
     // Tank voicing 1 (setHighPathVoicing): the high path's pickup lines its
     // first echo up with the Loop's at the crossover: the Loop's pickup plus

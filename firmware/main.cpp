@@ -645,9 +645,10 @@ int main()
 #else // RV_MODE_RELEASE
 // =============================================================================
 // The real instrument (SPEC §3, §6.4). 7 knobs (+CV) -> ParamSpec Normalised
-// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; tap + gate -> Kick
-// on the rising edge, applied at the start of the block (offset 0) so it
-// lands within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
+// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; tap -> Kick on the
+// rising edge, gate -> THROW (ADR 0039: the Springs' send open while high,
+// from its first rising edge), both applied at the start of the block
+// (offset 0) so they land within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
 // (ADR 0011: flash-size watch item at M3, ~35 KB left for DSP code once the
 // M0 test firmware's 94 KB baseline is accounted for).
 //
@@ -935,9 +936,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     hw.ProcessAllControls();
     hw.tap.Debounce(); // ProcessAllControls() only handles knobs (SPEC §8.1)
 
+    // The gate is THROW (ADR 0039): the Tank gets every change, at the
+    // block's start, and keeps the latch (unpatched the gate reads low, so
+    // the throw stays off and the send open until the first rising edge) and
+    // the gate's role per SPRINGS position. The button stays KICK.
     static bool lastGate = false;
     const bool  gate     = hw.Gate();
-    if (gate && !lastGate) tank.kick(0);
+    if (gate != lastGate) tank.gate(gate, 0);
     lastGate = gate;
     if (hw.tap.RisingEdge()) tank.kick(0);
 

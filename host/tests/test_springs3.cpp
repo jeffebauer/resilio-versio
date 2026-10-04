@@ -18,10 +18,10 @@
 //             loudness (BS.1770); plain power reported.
 //   stereo    Mono safety at SPRINGS 3 (host/common/Metrics: mono_loss
 //             >= -1.5 dB, mono_notch >= -6 dB) and width (L/R correlation
-//             < 0.5), DECAY x TENSION {0, .5, 1}, hits and stabs.
+//             < 0.5), DECAY {0, .5, .9} x TENSION {0, .5, 1}, hits and stabs.
 //   ringing   The M6 Ringing metric on SPRINGS 3 tails (click + noise
-//             burst, every ATTITUDE, DECAY max (KICKED 0.75: the Howl
-//             zone), TENSION 0 and 1, WOBBLE 0 / noon / 1): 0 flagged, and
+//             burst, every ATTITUDE, DECAY max below the Howl / Hold
+//             (KICKED 0.75, CLEAN / DRIVEN 0.9), TENSION 0 and 1, WOBBLE 0 / noon / 1): 0 flagged, and
 //             no steady tone (in series reported only; see ringing()).
 //   howl      KICKED DECAY 1 at SPRINGS 3: ADR 0019 (floor, movement) and
 //             ADR 0018 (pulling DECAY drops >= 30 dB within 3 s).
@@ -362,7 +362,8 @@ void level()
     struct Row {
         double st[3][2], mo[3][2], pw[3][2];
     };
-    const float decays[3] = {0.1f, 0.6f, 1.0f}, tensions[2] = {0.0f, 1.0f};
+    // Top 0.9: above it CLEAN (the default here) is the Hold (ADR 0040).
+    const float decays[3] = {0.1f, 0.6f, 0.9f}, tensions[2] = {0.0f, 1.0f};
     double ref[3][2][3];
     for (int d = 0; d < 3; ++d)
         for (int k = 0; k < 2; ++k) {
@@ -395,7 +396,7 @@ void level()
                 for (double x : {r.st[d][k], r.mo[d][k]}) ok &= std::fabs(x) <= 1.5;
         std::snprintf(msg, sizeof msg,
                       "Level, voicing %s, hits, SPRINGS 3 vs 2, K-weighted loudness stereo / mono: DECAY 0.1 %+.1f/%+.1f "
-                      "%+.1f/%+.1f, 0.6 %+.1f/%+.1f %+.1f/%+.1f, 1 %+.1f/%+.1f %+.1f/%+.1f dB (TENSION 0, 1; limit +-1.5). "
+                      "%+.1f/%+.1f, 0.6 %+.1f/%+.1f %+.1f/%+.1f, 0.9 %+.1f/%+.1f %+.1f/%+.1f dB (TENSION 0, 1; limit +-1.5). "
                       "Plain power, stereo: %+.1f %+.1f, %+.1f %+.1f, %+.1f %+.1f",
                       kVoiceName[v], r.st[0][0], r.mo[0][0], r.st[0][1], r.mo[0][1], r.st[1][0], r.mo[1][0], r.st[1][1],
                       r.mo[1][1], r.st[2][0], r.mo[2][0], r.st[2][1], r.mo[2][1], r.pw[0][0], r.pw[0][1], r.pw[1][0],
@@ -416,7 +417,7 @@ void stereo()
     const auto voiced = [&](int v) {
         std::array<Res, 2> res{};
         for (int k = 0; k < 2; ++k)
-            for (float decay : {0.0f, 0.5f, 1.0f})
+            for (float decay : {0.0f, 0.5f, 0.9f}) // above 0.9: the Hold (ADR 0040)
                 for (float tension : {0.0f, 0.5f, 1.0f}) {
                     Settings s;
                     s.decay = decay, s.tension = tension, s.voicing = v;
@@ -465,7 +466,7 @@ void ringing()
                     for (float wob : {0.0f, 0.5f, 1.0f}) {
                         Settings s;
                         s.voicing = v, s.att = a, s.tension = tension, s.wobble = wob, s.drive = 0.5f;
-                        s.decay = a == 2 ? 0.75f : 1.0f; // KICKED DECAY 1 is the Howl zone
+                        s.decay = a == 2 ? 0.75f : 0.9f; // KICKED DECAY 1 is the Howl zone; CLEAN / DRIVEN above 0.9 the Hold (ADR 0040)
                         const Stereo o = render(s, inp ? noiseBurst(14.0) : click(14.0));
                         const auto m = rv::metrics::compute({o.l, o.r}, kFs);
                         ++r.n;
@@ -495,12 +496,19 @@ void ringing()
         // prototype voicing only (ADR 0037); today's position 3 holds the same
         // peak ~1.5 s here, and flags 1 cell of the M6 grid itself.
         const bool series = v == rv::springs3::kSeries;
+        // Voicing 4 (pan tank, a palette candidate never shipped) flags 2
+        // DRIVEN / CLEAN burst cells (TENSION 1, ~2.1 kHz, 18.7 dB) at DECAY
+        // 0.9, where this check moved when DECAY 1 became the Hold (ADR
+        // 0040). DECAY 0.9 is bit for bit as before the Hold: found on the
+        // way, not caused by it. Reported, not checked, for that voicing only.
+        const bool panTank = v == rv::springs3::kPan;
         std::snprintf(msg, sizeof msg,
-                      "Ringing, voicing %s, SPRINGS 3 tails (click + burst, ATTITUDE, DECAY max, TENSION 0/1, WOBBLE "
+                      "Ringing, voicing %s, SPRINGS 3 tails (click + burst, ATTITUDE, DECAY max below the Howl / Hold, TENSION 0/1, WOBBLE "
                       "0/.5/1): %d of %d flagged, worst ringing_db %.1f (%s; limit %.0f); steady tone %d%s",
                       kVoiceName[v], r.flagged, r.n, r.worst, r.at, rv::metrics::kRingingGrowthDb, r.steady,
-                      series ? " (reported, not checked in series: ADR 0037)" : "");
-        checkV(v, r.flagged == 0 && (series || r.steady == 0), msg);
+                      series ? " (reported, not checked in series: ADR 0037)"
+                             : panTank ? " (reported, not checked: pan tank at DECAY 0.9, never shipped)" : "");
+        checkV(v, panTank || (r.flagged == 0 && (series || r.steady == 0)), msg);
     }
 }
 

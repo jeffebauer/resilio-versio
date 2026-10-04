@@ -285,6 +285,8 @@ int main()
 
                 if (p.kind == rv::ParamKind::Knob) {
                     check(param->getNumSteps() > 1000, std::string(what) + " is continuous (Knob)");
+                } else if (p.kind == rv::ParamKind::Toggle) {
+                    check(param->getNumSteps() == 2, std::string(what) + " is an on/off switch (Toggle)");
                 } else {
                     check(param->getNumSteps() == 3, std::string(what) + " has exactly 3 choices (Switch3)");
                     bool labelsMatch = true;

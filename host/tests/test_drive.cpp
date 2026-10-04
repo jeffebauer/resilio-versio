@@ -24,6 +24,7 @@
 #include "params/SpringModes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
+#include "params/ThrowHold.h"
 
 #include <algorithm>
 #include <chrono>
@@ -1539,6 +1540,11 @@ void stabilityGrid()
                 for (int m = 0; m < 3; ++m)
                     for (int input = 0; input < 2; ++input) {
                         const bool howl = a == 2 && d >= rv::drive::kHowlZoneStart;
+                        // CLEAN / DRIVEN from DECAY 0.9: the Hold (ADR 0040). It
+                        // holds by design, so it must only never grow; rendered
+                        // in the layer voicing so the input gets in (the
+                        // default freeze closes the send at DECAY 1).
+                        const bool hold = a < 2 && d > rv::throwhold::kZoneStart;
                         Buf in;
                         if (input == 0) {
                             in.assign(6 * sec, 0.0f);
@@ -1557,6 +1563,7 @@ void stabilityGrid()
                         // limiter's gain per 48-sample block.
                         rv::Tank tank;
                         tank.prepare(kFs, 48);
+                        if (hold) tank.setHoldVoicing(rv::throwhold::kVoicingLayer);
                         apply(tank, s);
                         Stereo o{Buf(in.size()), Buf(in.size())};
                         std::vector<float> limGain(in.size() / 48 + 1, 1.0f);
@@ -1582,7 +1589,10 @@ void stabilityGrid()
                             // (since ADR 0033 the wet is up to 6 dB louder at
                             // DRIVE 1, so full-scale noise at DECAY 1 meets the
                             // limiter). The "ends lower" check below still holds.
-                            const size_t start = input == 0 ? sec / 2 : sec + sec / 2;
+                            // In the Hold the ducking lets go of the bed over
+                            // ~1.5 s after the noise stops (up to +12 dB, by
+                            // design): judge the bed from 3 s.
+                            const size_t start = hold && input == 1 ? 3 * sec : input == 0 ? sec / 2 : sec + sec / 2;
                             bool falls = true;
                             for (const Buf* ch : {&o.l, &o.r}) {
                                 double prev = power(*ch, start, start + sec / 2);
@@ -1592,7 +1602,7 @@ void stabilityGrid()
                                     prev = e;
                                 }
                             }
-                            good &= falls && power(o.l, 5 * sec, 6 * sec) < power(o.l, start, start + sec);
+                            good &= falls && (hold || power(o.l, 5 * sec, 6 * sec) < power(o.l, start, start + sec));
                         }
                         ++cells;
                         if (!good) {
@@ -1603,23 +1613,24 @@ void stabilityGrid()
                     }
     std::snprintf(msg, sizeof msg,
                   "Stability ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x SPRINGS (%d cells, impulse + 1 s full-scale "
-                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
+                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone, never growing in the "
+                  "Hold (CLEAN / DRIVEN DECAY 1, layer voicing) (%d bad)",
                   cells, worstPeak, bad);
     check(bad == 0, msg);
 
-    // CLEAN / DRIVEN at max DECAY decay (ADR 0001): 3 s after a noise burst
-    // the level is well below where it started.
+    // CLEAN / DRIVEN at the top of DECAY below the Hold (ADR 0001, 0040):
+    // 3 s after a noise burst the level is well below where it started.
     for (int a = 0; a < 2; ++a) {
         Buf in = noise(10 * sec, 0.5f, 5u);
         std::fill(in.begin() + long(sec), in.end(), 0.0f);
         Settings s;
         s.att = a;
-        s.decay = 1.0f;
+        s.decay = rv::throwhold::kZoneStart;
         s.drive = 1.0f;
         s.springs = 2;
         const Stereo o = renderWith(s, in);
         const double e1 = db(power(o.l, 1 * sec + sec / 2, 2 * sec)), e9 = db(power(o.l, 9 * sec, 10 * sec));
-        std::snprintf(msg, sizeof msg, "%s DECAY 1 DRIVE 1: tail falls %.1f dB from 1.5 s to 9.5 s (fades, ADR 0001)",
+        std::snprintf(msg, sizeof msg, "%s DECAY 0.9 DRIVE 1: tail falls %.1f dB from 1.5 s to 9.5 s (fades, ADR 0001)",
                       kAttName[a], e1 - e9);
         check(e1 - e9 > 25.0, msg);
     }
@@ -1709,8 +1720,11 @@ void howl()
         check(floorDb >= -25.0 && (fDev >= 0.5 || lDev >= 3.0), msg);
     }
 
-    // Leaving via ATTITUDE (KICKED -> DRIVEN at DECAY 1): falls back to a
-    // normal tail, which then fades at DECAY 1's T60 (reported).
+    // Leaving via ATTITUDE (KICKED -> DRIVEN at DECAY 1): since ADR 0040
+    // DRIVEN DECAY 1 is the Hold, so the Howl hands over to a held (ducked)
+    // bed instead of fading at DECAY 1's ~9 s T60. Whether that is right is
+    // an open owner question (TASKS); here it must only stay bounded: never
+    // grow, stay under the limiter.
     const size_t n = 12 * sec, flipAt = 6 * sec;
     Buf in = snareHits(n, 0.5f, 1);
     rv::Tank t;
@@ -1728,11 +1742,14 @@ void howl()
     const double before = db(power(o.l, flipAt - sec / 2, flipAt));
     const double a3 = db(power(o.l, flipAt + 3 * sec - sec / 4, flipAt + 3 * sec + sec / 4));
     const double a5 = db(power(o.l, flipAt + 5 * sec, flipAt + 5 * sec + sec / 2));
+    const float  pk = std::max(peakAbs(o.l), peakAbs(o.r));
     std::snprintf(msg, sizeof msg,
-                  "Howl exit via ATTITUDE KICKED -> DRIVEN at DECAY 1: %.1f dB lower after 3 s, %.1f dB after 5 s "
-                  "(falls steadily; DECAY 1 T60 ~9 s)",
-                  before - a3, before - a5);
-    check(before - a3 > 10.0 && a5 < a3, msg);
+                  "Howl exit via ATTITUDE KICKED -> DRIVEN at DECAY 1 (into the Hold, ADR 0040; open owner question): "
+                  "%.1f dB lower after 3 s, %.1f dB after 5 s, peak %.3f (bounded: at most +3 dB, then never grows; under the limiter)",
+                  before - a3, before - a5, pk);
+    // Bounded: the hand-over may bloom a little as KICKED's LoopSat lets go
+    // (+1.2 dB at 3 s measured), but at most 3 dB, then never grows again.
+    check(before - a3 > -3.0 && a5 <= a3 + 0.5 && pk <= rv::Tank::kLimitThreshold + 1e-3f, msg);
 }
 
 // ---- Determinism with ATTITUDE / DRIVE / TONE moves -------------------------------------------

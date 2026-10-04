@@ -172,6 +172,7 @@
 #include "params/SpringModes.h"
 #include "params/TankVoicing.h"
 #include "params/Springs3Voicing.h"
+#include "params/ThrowHold.h"
 
 #include <algorithm>
 #include <array>
@@ -236,6 +237,39 @@ public:
     // Kick at a sample offset within the next process() block (clamped to it).
     // Up to kMaxPendingKicks per block; extras are dropped.
     void kick(int sampleOffset);
+
+    // THROW (ADR 0039, params/ThrowHold.h): the gate's level from a sample
+    // offset within the next process() block (clamped to it; give them in
+    // time order). Hosts pass every change (the firmware once per block on a
+    // change; the Plugin's THROW param and the Renderer's "gates" events
+    // too). The Tank keeps the gate's role (gateRole(SPRINGS)) and the
+    // latch: the throw is off, and the send open, until the first rising
+    // edge after prepare()/reset(); from then on the Springs' input is open
+    // only while the gate is high (opens over 2 ms, closes over 15 ms).
+    // Up to kMaxPendingGates per block; extras are dropped.
+    void gate(bool high, int sampleOffset);
+    // The throw has latched on (the first rising edge has come).
+    bool throwOn() const { return throwOn_; }
+    // The send's gain now in effect (1 = open), throw x Hold, for tests.
+    float sendGain() const { return sendNow_; }
+
+    // HOLD (ADR 0040, params/ThrowHold.h): CLEAN / DRIVEN top of DECAY.
+    // The zone weight now in effect (zone x the CLEAN + DRIVEN Morph
+    // weight; 0 outside it and in KICKED), and the ducking's gain on the
+    // wet (1 = none), for tests and meters.
+    float holdWeight() const { return holdZ_; }
+    float duckGain() const { return duckTo_; }
+    // Renderer / test hook (not a panel control, ADR 0040): which Hold
+    // voicing (ThrowHold.h: 0 = A "freeze", 1 = B "layer"). The firmware
+    // and plugin never call it (throwhold::kDefaultVoicing). Set it before
+    // rendering.
+    void setHoldVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        holdVoicing_ = std::clamp(v, 0, throwhold::kNumVoicings - 1);
+#endif
+    }
+    int holdVoicing() const { return holdVoicing_; }
 
     void process(const float* inL, const float* inR, float* outL, float* outR, int numSamples);
 
@@ -440,6 +474,28 @@ private:
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;
+    // THROW (ADR 0039): pending gate changes, the gate's level as the Tank
+    // has it, the latch, and the send's ramp (position 0..1, smoothstep'd).
+    static constexpr int kMaxPendingGates = 16;
+    struct GateEvent {
+        int  at;
+        bool high;
+    };
+    std::array<GateEvent, kMaxPendingGates> pendingGates_{};
+    int   numPendingGates_ = 0;
+    bool  gateHigh_ = false, throwOn_ = false, throwParamHigh_ = false;
+    float thrPos_ = 1.0f, thrOpenStep_ = 0.0f, thrCloseStep_ = 0.0f;
+    float sendNow_ = 1.0f; // last sample's send gain (tests)
+    // HOLD (ADR 0040): zone weight, bed weight (freeze / duck / layer), the
+    // Hold's send gain over the tick, the ducking follower and its gain over
+    // the tick (from -> to, ramped per sample).
+    float holdZ_ = 0.0f, holdBed_ = 0.0f, holdSendFrom_ = 1.0f, holdSendTo_ = 1.0f;
+    float duckEnv_ = 0.0f, duckAtt_ = 1.0f, duckRel_ = 1.0f, duckFrom_ = 1.0f, duckTo_ = 1.0f;
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int holdVoicing_ = throwhold::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+#else
+    int holdVoicing_ = throwhold::kDefaultVoicing; // setHoldVoicing
+#endif
 
     // M7: Splash (Hit, Clatter, Jolt), the Kick voice and one Wobble per Spring.
     dsp::Splash                        splash_;
