@@ -364,21 +364,37 @@ void stabilityGrid()
 {
     const float fs = 48000.0f;
     const size_t sec = size_t(fs);
+    // The Tank's stability is read before the output's mu-law box (ADR 0042;
+    // output_bits_voicing 0 as a test hook): the box's 24 kHz filters and steps
+    // can lift a peak a little past 1.0, which is the converter, not the Tank.
+    // The shipped output (box in, default ATTITUDE DRIVEN) is checked finite
+    // and no louder at the end (<=: its tail can be exact silence); its peak is
+    // reported, and the Versio's after the firmware's kOutputTrim (x 0.874).
     bool ok = true;
     int bad = 0;
-    float worstPeak = 0;
+    float worstPeak = 0, shippedPeak = 0;
     for (float d : {0.0f, 0.5f, 0.9f}) // above 0.9: the Hold (ADR 0040; test_throw_hold)
         for (float b : {0.0f, 0.5f, 1.0f})
             for (float t : {0.0f, 0.5f, 1.0f})
                 for (int input = 0; input < 2; ++input) {
                     Settings s{d, b, t, 1.0f};
-                    rv::Tank tank;
-                    tank.prepare(fs, 48);
-                    apply(tank, s);
                     Buf in = input == 0 ? impulse(6 * sec) : noise(6 * sec, 1.0f, 99u);
                     if (input == 1) std::fill(in.begin() + long(sec), in.end(), 0.0f); // 1 s full-scale noise
-                    Buf l, r;
-                    renderTank(tank, in, 48, &l, &r);
+                    Buf l, r, sl, sr;
+                    {
+                        rv::Tank tank;
+                        tank.prepare(fs, 48);
+                        apply(tank, s);
+                        tank.setOutputBitsVoicing(0); // before the box
+                        renderTank(tank, in, 48, &l, &r);
+                    }
+                    {
+                        rv::Tank tank;
+                        tank.prepare(fs, 48);
+                        apply(tank, s);
+                        renderTank(tank, in, 48, &sl, &sr);
+                    }
+                    shippedPeak = std::max({shippedPeak, peakAbs(sl), peakAbs(sr)});
                     const float pk = std::max(peakAbs(l), peakAbs(r));
                     worstPeak = std::max(worstPeak, pk);
                     // Energy after the input stops, in half-second windows, must
@@ -392,18 +408,19 @@ void stabilityGrid()
                         prev = e;
                     }
                     const bool tailLower = energy(l, 5 * sec, 6 * sec) < energy(l, start, start + sec);
-                    const bool good = allFinite(l) && allFinite(r) && pk < 1.0f && falls && tailLower;
+                    const bool shippedOk = allFinite(sl) && allFinite(sr) && energy(sl, 5 * sec, 6 * sec) <= energy(sl, start, start + sec);
+                    const bool good = allFinite(l) && allFinite(r) && pk < 1.0f && falls && tailLower && shippedOk;
                     if (!good) {
                         ++bad;
-                        std::printf("      grid fail: decay %.1f tension %.1f tone %.1f %s peak %.3f falls %d lower %d\n",
-                                    d, b, t, input ? "noise" : "impulse", pk, falls, tailLower);
+                        std::printf("      grid fail: decay %.1f tension %.1f tone %.1f %s peak %.3f falls %d lower %d shipped %d\n",
+                                    d, b, t, input ? "noise" : "impulse", pk, falls, tailLower, shippedOk);
                     }
                     ok &= good;
                 }
     std::snprintf(msg, sizeof msg,
-                  "Stability DECAY {0,.5,.9} x TENSION x TONE {0,.5,1}, impulse + 1 s noise: finite, peak < 1 (worst %.3f), "
-                  "decaying (%d bad)",
-                  worstPeak, bad);
+                  "Stability DECAY {0,.5,.9} x TENSION x TONE {0,.5,1}, impulse + 1 s noise: finite, peak before the output box < 1 "
+                  "(worst %.3f), decaying (%d bad); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
+                  worstPeak, bad, shippedPeak, shippedPeak * 0.874f);
     check(ok, msg);
 }
 

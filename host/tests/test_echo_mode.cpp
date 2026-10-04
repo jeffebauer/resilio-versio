@@ -105,6 +105,7 @@ struct Settings {
     bool  echo = true;
     float hostBpm = 0.0f;
     int   wear = -1; // echo_wear_voicing; -1 = the default (BBD grit since 4 Oct)
+    int   outBits = -1; // output_bits_voicing: -1 the default (ADR 0042's mu-law box), 0 before the box (a test hook)
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -113,6 +114,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setEchoMode(s.echo);
     t.setHostTempo(s.hostBpm);
     if (s.wear >= 0) t.setEchoWearVoicing(s.wear);
+    if (s.outBits >= 0) t.setOutputBitsVoicing(s.outBits);
     t.setParam(ParamId::Decay, s.decay);
     t.setParam(ParamId::Tension, s.tension);
     t.setParam(ParamId::Tone, s.tone);
@@ -1016,11 +1018,16 @@ void switching()
 }
 
 // ---- stability ------------------------------------------------------------------------------
+// Peaks are read before the output's mu-law box (ADR 0042; output_bits_voicing
+// 0 as a test hook): the box's 24 kHz filters and steps can lift a limited
+// peak a little past 1.0, which is the converter, not the echo running away.
+// The shipped output (box in) is checked finite (and, in the grid, fading)
+// and its peak reported, with the Versio's after kOutputTrim (x 0.874).
 void stability()
 {
     const Buf h = hits(14.0);
     bool ok = true;
-    float worst = 0.0f;
+    float worst = 0.0f, shipped = 0.0f;
     int cases = 0;
     for (int a = 0; a < 3; ++a)
         for (float tn : {0.0f, 1.0f})
@@ -1028,14 +1035,18 @@ void stability()
                 for (int clocked = 0; clocked < 2; ++clocked) {
                     Settings s;
                     s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = wob, s.tone = tn;
+                    const Stereo sh = render(s, h, 48, clocked ? steadyClock(140.0, 0.0, 14.0) : std::vector<size_t>{});
+                    s.outBits = 0;
                     const Stereo o = render(s, h, 48, clocked ? steadyClock(140.0, 0.0, 14.0) : std::vector<size_t>{});
                     const float pk = peakOf(o);
                     worst = std::max(worst, pk);
-                    ok &= finite(o) && pk < 1.0f;
+                    shipped = std::max(shipped, peakOf(sh));
+                    ok &= finite(o) && pk < 1.0f && finite(sh);
                     ++cases;
                 }
     std::snprintf(msg, sizeof msg, "Stability: %d extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION/TONE 0 1, WOBBLE 0 1, "
-                                   "clocked or not): finite, worst peak %.3f (< 1)", cases, double(worst));
+                                   "clocked or not): finite, worst peak before the output box %.3f (< 1); shipped output peak %.3f "
+                                   "(Versio after kOutputTrim %.3f)", cases, double(worst), double(shipped), double(shipped * 0.874f));
     check(ok, msg);
 
     // The grid (as test_tank / test_drive): impulse + 1 s full-scale noise,
@@ -1048,7 +1059,7 @@ void stability()
         const Buf nz = noise(sec(1.0), 1.0f, 99u);
         std::copy(nz.begin(), nz.end(), in.begin() + long(sec(0.5)));
         int cells = 0, bad = 0;
-        float pkWorst = 0.0f;
+        float pkWorst = 0.0f, shWorst = 0.0f;
         double fadeWorst = 1e9;
         char badAt[160] = "none";
         for (int a = 0; a < 3; ++a)
@@ -1057,11 +1068,15 @@ void stability()
                     for (float tn : {0.0f, 0.5f, 1.0f}) {
                         Settings st;
                         st.att = a, st.drive = dr, st.decay = dc, st.tension = tn;
+                        const Stereo sh = render(st, in, 48);
+                        st.outBits = 0;
                         const Stereo o = render(st, in, 48);
                         const float pk = peakOf(o);
+                        shWorst = std::max(shWorst, peakOf(sh));
                         const bool runaway = a == 2 && dc > 0.87f;
                         const double fall = stereoDb(o, sec(3.0), sec(5.0)) - stereoDb(o, sec(33.0), sec(35.0));
-                        const bool good = finite(o) && pk < 1.0f && (runaway || fall >= 10.0);
+                        const double shFall = stereoDb(sh, sec(3.0), sec(5.0)) - stereoDb(sh, sec(33.0), sec(35.0));
+                        const bool good = finite(o) && pk < 1.0f && (runaway || fall >= 10.0) && finite(sh) && (runaway || shFall >= 10.0);
                         pkWorst = std::max(pkWorst, pk);
                         if (!runaway) fadeWorst = std::min(fadeWorst, fall);
                         if (!good && bad++ == 0)
@@ -1071,9 +1086,10 @@ void stability()
                     }
         std::snprintf(msg, sizeof msg,
                       "Stability grid ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x TENSION {0,.5,1} (%d cells, impulse + 1 s full-scale "
-                      "noise, 36 s): finite, peak < 1 (worst %.3f), repeats fade >= 10 dB over 30 s outside KICKED's runaway "
-                      "(least %.1f dB); %d bad (first: %s)",
-                      cells, double(pkWorst), fadeWorst, bad, badAt);
+                      "noise, 36 s): finite, peak before the output box < 1 (worst %.3f), repeats fade >= 10 dB over 30 s outside "
+                      "KICKED's runaway (least %.1f dB; with the box too); %d bad (first: %s); shipped output peak %.3f (Versio after "
+                      "kOutputTrim %.3f)",
+                      cells, double(pkWorst), fadeWorst, bad, badAt, double(shWorst), double(shWorst * 0.874f));
         check(bad == 0, msg);
     }
 }

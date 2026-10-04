@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0041). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.33 — ADR 0042 (owner, 4 Oct 2026, B on every panel of `renders/feat_output_mulaw`): in DRIVEN and KICKED the whole output, dry and wet, goes through a µ-law box after MIX: DRIVEN 24 kHz / 12-bit µ-law, KICKED 24 kHz / 8-bit µ-law, every SPRINGS position; CLEAN untouched. MIX fully left is a clean passthrough only in CLEAN. The box adds ~0.12 ms in DRIVEN/KICKED (an ATTITUDE flip crossfades it over 20 ms), ends fading tails in exact silence, and takes off the top octave above ~11 kHz. §3 MIX and ATTITUDE rows, §4.8, §7 M7.
 - v1.0.32 — ADR 0030 amendment (owner, 4 Oct 2026): CPU target raised to **≤ 75 % peak** worst case, with an **80 % ceiling** for a release that passes its click check (run 15 measured 87.6 % peak and passed). §5. (v1.0.29–31 are reserved by the TONE-after, Throw/Hold and echo-mode branches, merging next.)
 - v1.0.31 — ADR 0041 (owner, 4 Oct 2026): SPRINGS position 3 is **echo mode**: a tape echo into the springs (each repeat splashes into the tank, darker each pass). In position 3 DECAY is the echo's feedback (0 = one repeat; KICKED's top runs away and dies down with DECAY), TENSION its time (2 s → 80 ms, 0.4 s at noon) or, with a clock in the gate (one pulse = a quarter note), one of seven divisions 1/2 … 1/16 incl. dotted; time changes swoop like tape. The springs behind it are fixed (the noon tank, ~1.7 s tail). The gate kicks only in positions 1–2; the plugin follows the DAW's tempo. Spring C no longer runs (heard nowhere); the coupled Springs (ADR 0037) stay a Renderer reference. §3 SW0, P2, P5, Button + Gate; §4.3; §5.
 - v1.0.30 — ADR 0039 (owner, dub-lens critique §8): the **gate throws** (in SPRINGS 1–2; in 3 it is the echo's clock, v1.0.31): with a gate patched, the Springs' send is open only while it is high (opens 2 ms, closes 15 ms; MIX and the ringing tail untouched; the Kick never gated); unpatched nothing changes (the throw switches on at the gate's first rise); **holding KICK 1 s leaves throw mode** (send open again, all four LEDs blink white once; the next rise switches it back on). The button stays KICK. Plugin: an automatable THROW switch. ADR 0040: the **Hold**: CLEAN and DRIVEN, top ~10 % of DECAY, the tail glides out toward minutes (~3 dB per 10 s at max, always under unity gain), new sound still goes in 6 dB down ("layer", the owner's pick; "freeze" stays a Renderer voicing), and the whole bed dips 12 dB under the input's kick and bass only (the ducking listens below ~120 Hz, so snares, hats and chords don't trigger it), a short dip with no swell back into the next beat. The Hold arms when DECAY enters its top range outside KICKED, so leaving the Howl by ATTITUDE fades as before (owner's pick). KICKED's Howl unchanged. In echo mode (SPRINGS 3, v1.0.31) DECAY is the echo's feedback and the springs run a fixed tank, so there is no Hold there. §3 DECAY, Button + Gate, §4.4, §4.6, §6.1, §6.3.
@@ -113,7 +114,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 
 | Pot | Name | Function | Notes |
 |---|---|---|---|
-| P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return |
+| P1 | **MIX** | Dry/wet, equal-power | Full CW = 100% wet for send/return. Full CCW = dry only: a clean passthrough in CLEAN; in DRIVEN / KICKED the dry too goes through the µ-law box (ADR 0042) |
 | P2 | **DECAY** | Tail length (feedback gain) only (§4.4, ADR 0026) | T60 0.4 s → 9 s (exponential, §4.4), always fades (ADR 0001, 0006; the tight slap is DECAY 0 with TENSION up, i.e. tight). KICKED: top ~10% enables Howl (ADR 0002), exits naturally (ADR 0018). CLEAN / DRIVEN: top ~10% is the Hold (ADR 0040): T60 glides out toward minutes, never self-oscillates, it ducks under the input's kick and bass; armed by DECAY entering the zone outside KICKED; not in SPRINGS 3 echo mode, where DECAY is the echo's feedback (ADR 0041). Doesn't change the tank or bend pitch (ADR 0026 supersedes 0012) |
 | P3 | **TONE** | Bipolar tilt. CCW = dark dub (loop damping LPF down, a darker input coil, tilt toward lows: as dark as before ADR 0038); noon = the Wellspring-fit sound (ADR 0038); CW = bright/splashy and thinner: King Tubby's Big Knob, an 18 dB/oct low cut to 800 Hz with a nasal bump on sharp hits, on the wet return after the Springs so it thins the ringing tail at once (ADR 0036 and its amendment), the output pickup opening up | Hero control (§2.3.3). Tilt applied pre-tank (changes what excites springs) + damping in loop; the Big Knob on the wet (§4.8). CCW warm dub dark, CW splashy never harsh (ADR 0017) |
 | P4 | **SPLASH** | How hard the hits hit: a loud, sudden hit's own highs fed harder into the springs (Clang), and in DRIVEN/KICKED a short hit pushed harder into the input transducer (Bite) (§4.5, ADR 0032) | Nothing is added on a hit; ghost notes in a groove stay quiet. SPLASH 0 = only the small Jolt floor (DRIVEN/KICKED) |
@@ -126,7 +127,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 | Switch | Left | Centre | Right |
 |---|---|---|---|
 | SW0 **SPRINGS** | 1 spring — sparse, most splashy | 2 springs — classic tank | Echo mode — a tape echo into the 2-spring tank: each repeat splashes into the springs (ADR 0041). DECAY = echo feedback, TENSION = echo time, gate = clock |
-| SW1 **ATTITUDE** | CLEAN — linear tank, light transducer colour | DRIVEN — tape saturation, moderate clatter | KICKED — hard drive in loop, full chaos, collisions, Howl allowed |
+| SW1 **ATTITUDE** | CLEAN — linear tank, light transducer colour; output untouched | DRIVEN — tape saturation, moderate clatter; whole output 24 kHz / 12-bit µ-law (ADR 0042) | KICKED — hard drive in loop, full chaos, collisions, Howl allowed; whole output 24 kHz / 8-bit µ-law (ADR 0042) |
 
 Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003). Into echo mode the echo fades in over 80 ms on a fresh tape while the springs glide to their fixed tank; out of it the echo fades out over 80 ms, its last repeats ringing on in the springs (ADR 0041).
 
@@ -250,6 +251,7 @@ Modulation of each Spring's Loop delay L, plus one shared Transport generator on
 
 - Wet: the pickups' treble loss before DriveOut (§4.2, ADR 0038), the wet trim after it, gentle high-shelf cut, then the **Big Knob** (TONE right of noon, ADR 0036 and its amendment: 18 dB/oct low cut 20 Hz → 800 Hz, the coil bump blended in on sharp hits, stereo; its own slow makeup from the wet's power above ~90 Hz in / out, ¾ back, ≤ 12 dB, held in silence; a pass-through, skipped, at noon and left), then the limiter. The Kick's direct thump joins before the pickups, so it is thinned with the wet.
 - MIX: equal-power.
+- µ-law box (ADR 0042), on the stereo output after MIX, dry and wet, every SPRINGS position: CLEAN none (bit for bit), DRIVEN 24 kHz / 12-bit µ-law, KICKED 24 kHz / 8-bit µ-law. 48 → 24 → 48 kHz through polyphase IIR half-bands (flat to 10.6 kHz, ≥ 85 dB down from 13.4 kHz: nothing folds back); µ-law (µ 255) against full scale, TPDF dither down to the last step, under half a step exactly 0 (silence in, silence out; tails end in grain, then silence). ~6 samples (0.12 ms) of delay in DRIVEN/KICKED only; ATTITUDE flips crossfade the box over 20 ms. After the limiter (the limiter and the red LEDs read the wet before it), before the firmware's output trim.
 - Denormal protection (FTZ; tiny noise if needed).
 
 ### 4.9 DRIVE voicing — "characterful, not a fight"
@@ -432,7 +434,7 @@ Shared definitions:
 ### M2 — JUCE Plugin shell
 - [A] AU + VST3 load in Ableton. All ParamSpec params visible and automatable. Names/ranges generated from ParamSpec, no hand-written list.
 - [A] Kick from any MIDI note on a routed MIDI track, velocity ignored, **sample-accurate** (offline test: note at sample N → Kick onset at N, with reported latency).
-- [A] Plugin latency reported to the host. The dry path stays aligned with other tracks in Ableton (null test vs a duplicate track at MIX 0).
+- [A] Plugin latency reported to the host. The dry path stays aligned with other tracks in Ableton (null test vs a duplicate track at MIX 0, in CLEAN since ADR 0042).
 - [A] Plugin render == Renderer output for the same stimulus/params at 48 kHz (bit-identical, or within float tolerance −120 dBFS).
 - [A] Works at 44.1/48/96 kHz without crashing or detuning (T60 and chirp timing within 5% across rates).
 
@@ -475,7 +477,7 @@ Shared definitions:
 - [H] Gate Kicks: every gate at up to 12/s (16ths at 180 bpm) gives exactly one Kick, onset within 1 ms of the gate edge. No double triggers.
 - [L] WOBBLE: noon still, a touch left of noon (the default) keeps held chords in tune, every step away from noon is heard, both end stops clearly out of tune; left random (never same-same), right a steady sine (ADR 0034, was ADR 0008's one-way zones).
 - [A] WOBBLE pitch deviation (cents, on `08_held_tones`) sits in the range measured from the Magneto's WOW & FLUTTER series (takes MW0–MW4): Drift ≈ the 9 o'clock–noon takes, Warble ≈ the 3 o'clock–fully CW takes.
-- [A] MIX: CCW = dry only (null vs input), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
+- [A] MIX: CCW = dry only (null vs input in CLEAN; ADR 0042), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
 - [A/H] Envelope on MIX CV (5 ms attack): throw lands with no audible lag (smoothing ≤ 5 ms, ADR 0015).
 - [H] All 7 knobs respond to CV 0–5 V over their full range.
 

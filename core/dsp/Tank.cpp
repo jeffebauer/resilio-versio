@@ -184,6 +184,7 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     limitRelease_ = std::exp(-1.0f / (kLimitReleaseS * sampleRate));
     limitAttack_  = 1.0f - std::exp(-1.0f / (kLimitAttackS * sampleRate));
     limitHoldSamples_ = int(kLimitHoldS * sampleRate);
+    outBits_.prepare(sampleRate, 0xB175u);
     fadeStep_     = 1.0f / (kSpringsFadeSeconds * sampleRate);
     s3Step_       = float(kControlInterval) / (springs3::kGlideSeconds * sampleRate);
     morphStep_    = float(kControlInterval) / (drive::kMorphSeconds * sampleRate);
@@ -527,6 +528,7 @@ RV_SIZE_OPT void Tank::reset()
     limitEnv_  = 0.0f;
     limitHold_ = 0;
     limitGain_ = 1.0f;
+    outBits_.reset();
     s3SeriesFrom_ = s3SeriesTo_ = s3WFrom_ = 0.0f;
     s3InLp_.reset();
     s3SendLp_.reset();
@@ -747,6 +749,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             for (size_t a = 0; a < 3; ++a) attW_[a] = f >= 1.0f ? target[a] : attW_[a] + f * (target[a] - attW_[a]);
         }
     }
+    outBits_.setTarget(att, snap); // the output's bit depth fades on its own (OutputBits.h)
     echoTick(decayKnob, tensionKnob, echoFresh, snap);
     if (snap || attW_ != voiceW_) { // the blends only when the Morph moved
         voice_  = dsp::blendVoice(attW_);
@@ -2150,6 +2153,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outL[pos + i] = m.dry * dryL + m.wet * wl;
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
+        // The output's mu-law box (ADR 0042, OutputVoicing.h): dry and wet
+        // both, after MIX. In CLEAN (and voicing 0) it leaves them untouched.
+        outBits_.process(outL + pos, outR + pos, n);
         prof::mark(prof::kOutput);
         if (echoRun) echo_.record(echoRec, n); // the record head: after this step's playback (Echo.h)
         pos += n;

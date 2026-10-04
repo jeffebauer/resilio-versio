@@ -267,6 +267,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
         bool s3Voiced = setsKey(rv::paramsjson::kSprings3VoicingKey);
         bool lcVoiced = setsKey(rv::paramsjson::kFLowCutVoicingKey);
+        bool obVoiced = setsKey(rv::paramsjson::kOutputBitsKey);
         bool holdVoiced = setsKey(rv::paramsjson::kHoldVoicingKey);
         bool duckVoiced = setsKey(rv::paramsjson::kDuckVoicingKey);
         bool tpVoiced = setsKey(rv::paramsjson::kTonePlaceVoicingKey);
@@ -277,6 +278,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
             if (key == rv::paramsjson::kSprings3VoicingKey) s3Voiced = true;
             if (key == rv::paramsjson::kFLowCutVoicingKey) lcVoiced = true;
+            if (key == rv::paramsjson::kOutputBitsKey) obVoiced = true;
             if (key == rv::paramsjson::kHoldVoicingKey) holdVoiced = true;
             if (key == rv::paramsjson::kDuckVoicingKey) duckVoiced = true;
             if (key == rv::paramsjson::kTonePlaceVoicingKey) tpVoiced = true;
@@ -309,6 +311,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
         if (s3Voiced) params.set(rv::paramsjson::kSprings3VoicingKey, rv::json::Value::makeNumber(tank.springs3Voicing()));
         if (lcVoiced) params.set(rv::paramsjson::kFLowCutVoicingKey, rv::json::Value::makeNumber(tank.fLowCutVoicing()));
+        if (obVoiced) params.set(rv::paramsjson::kOutputBitsKey, rv::json::Value::makeNumber(tank.outputBitsVoicing()));
         if (holdVoiced) params.set(rv::paramsjson::kHoldVoicingKey, rv::json::Value::makeNumber(tank.holdVoicing()));
         if (duckVoiced) params.set(rv::paramsjson::kDuckVoicingKey, rv::json::Value::makeNumber(tank.duckVoicing()));
         if (tpVoiced) params.set(rv::paramsjson::kTonePlaceVoicingKey, rv::json::Value::makeNumber(tank.tonePlaceVoicing()));

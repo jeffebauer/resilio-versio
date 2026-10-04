@@ -48,6 +48,7 @@ inline constexpr const char* kToneVoicingKey     = "tone_voicing";
 inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
+inline constexpr const char* kOutputBitsKey      = "output_bits_voicing"; // 1 (default) DRIVEN 12-bit / KICKED 8-bit mu-law output, 0 before it (ADR 0042)
 inline constexpr const char* kHoldVoicingKey     = "hold_voicing";
 inline constexpr const char* kDuckVoicingKey     = "duck_voicing";
 inline constexpr const char* kTonePlaceVoicingKey = "tone_place_voicing";
