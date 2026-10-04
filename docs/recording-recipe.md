@@ -102,7 +102,7 @@ Same patch, same Ableton set, **same "spring only" settings and the same base IN
 | I | `wellspring_I_sweep_hot.wav` | `14_sweep_hot` | none (it's 9 dB hotter than D on purpose; check the recording doesn't clip in Ableton) | Level series: how the input stage darkens, squashes or distorts when pushed |
 | D-L | `wellspring_D-L_sweep_left.wav` | `03_sweep` | **Dummy plug in the R input**, as for A-L (left tank only) | Stereo matrix: how the left tank reaches each output |
 | D-R | `wellspring_D-R_sweep_right.wav` | `03_sweep` | Stimulus into **R only**, L input empty (right tank only) | Stereo matrix: the right tank |
-| J | `wellspring_J_tone_bursts.wav` | `15_tone_bursts` | none (back to both inputs) | Per-octave decay and darkening, the metallic modes |
+| J | `wellspring_J_tone_bursts.wav` | `15_tone_bursts` | none (back to the default: L in, R unplugged, so both tanks) | Per-octave decay and darkening, the metallic modes |
 | K | `wellspring_K_pink_noise.wav` | `09_pink_noise` | none | Steady-state colour and the cleanest per-band tail lengths |
 | L | `wellspring_L_held_tones.wav` | `08_held_tones` | none | How a real tank builds up on held sounds |
 | M | `wellspring_M_pad.wav` | `10_pad_cminor` | none | The same, on a pad (compare with our sustain trim) |
