@@ -23,6 +23,7 @@
 #include "Metrics.h"
 #include "Wav.h"
 #include "dsp/Tank.h"
+#include "params/ThrowHold.h"
 #include "params/AntiRes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
@@ -283,7 +284,7 @@ void heldTonePitch()
         }
 
     // (b) The Tank as the owner hears it (WOBBLE noon, wet only), every SPRINGS
-    // mode, DECAY 0.5 and 1, CLEAN and DRIVEN: the mono sum, and each
+    // mode, DECAY 0.5 and 0.9 (above 0.9 is the Hold, ADR 0040), CLEAN and DRIVEN: the mono sum, and each
     // channel where it carries the partial. A partial more than 20 dB weaker
     // in one channel than in the other (the width stage, L = mid + side + wD,
     // R = mid - side - wD, can all but cancel one steady partial on one side,
@@ -321,7 +322,7 @@ void heldTonePitch()
     double worstMax = 0, worstP95 = 0;
     char worstAt[96] = {};
     for (int m = 0; m < 3; ++m)
-        for (float d : {0.5f, 1.0f})
+        for (float d : {0.5f, 0.9f}) // CLEAN / DRIVEN above 0.9 are the Hold (ADR 0040; test_throw_hold)
             for (int att : {0, 1}) {
                 const double from = std::max(2.0, (2.0 / 3.0) * double(rv::map::decayT60Seconds(d))) + 0.01;
                 const double len  = from + 5.5;
@@ -398,14 +399,17 @@ void loopEvenness()
                     Settings s;
                     s.att = a;
                     s.tone = tn;
-                    s.decay = d;
+                    // CLEAN / DRIVEN DECAY 1 is the Hold (ADR 0040): its T60 is
+                    // minutes by design, judged in test_throw_hold (and its
+                    // Loop gain < 1 in test_drive). Here: the zone's edge.
+                    s.decay = d >= rv::throwhold::kZoneStart ? rv::throwhold::kZoneStart : d;
                     s.tension = b;
                     s.springs = 2;
                     rv::Tank t;
                     t.prepare(kFs, 48);
                     apply(t, s);
                     render(t, Buf(4800, 0.0f));
-                    const double target = double(rv::map::decayT60Seconds(d));
+                    const double target = double(rv::map::decayT60Seconds(s.decay));
                     for (int sp = 0; sp < 3; ++sp) {
                         const rv::Spring& spr = t.spring(sp);
                         std::vector<double> P, T;
@@ -415,7 +419,7 @@ void loopEvenness()
                         }
                         ++cells;
                         char at[128];
-                        std::snprintf(at, sizeof at, "%s TONE %.1f DECAY %.2f TENSION %.1f Spring %d", kAttName[a], tn, d, b, sp);
+                        std::snprintf(at, sizeof at, "%s TONE %.1f DECAY %.2f TENSION %.1f Spring %d", kAttName[a], tn, s.decay, b, sp);
                         double pMax = 0, pBump = -1e9, tMax = 0, tBump = -1e9;
                         for (size_t i = 0; i < freqs.size(); ++i) {
                             pMax = std::max(pMax, P[i]);
@@ -520,7 +524,7 @@ void tankTails()
                 s.wobble = wob;
                 s.att = a;
                 s.springs = m;
-                s.decay = a == 2 ? 0.75f : 1.0f; // KICKED DECAY 1 is the Howl zone
+                s.decay = a == 2 ? 0.75f : 0.9f; // KICKED DECAY 1 is the Howl zone; CLEAN / DRIVEN from 0.9 the Hold (ADR 0040)
                 s.tension = 0.0f; // loosest tank
                 rv::Tank t;
                 t.prepare(kFs, 48);
@@ -535,7 +539,7 @@ void tankTails()
                 }
             }
     std::snprintf(msg, sizeof msg,
-                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max, TENSION 0 (loose), WOBBLE %.2f): "
+                  "Ringing metric on Tank tails (click + noise burst, ATTITUDE x SPRINGS, DECAY max below the Howl / Hold, TENSION 0 (loose), WOBBLE %.2f): "
                   "%d of %d flagged, worst ringing_db %.1f (%s; limit %.0f)",
                   double(wob), flagged, n, worst, worstAt, rv::metrics::kRingingGrowthDb);
     check(flagged == 0, msg);
@@ -543,9 +547,11 @@ void tankTails()
 
     // Not toothless: the same kind of tail with one slow mode added (1.3 kHz,
     // T60 30 s vs the tail's ~9 s, starting 30 dB under the tail's peak
-    // level) must be flagged; the bare tail must not.
+    // level) must be flagged; the bare tail must not. CLEAN DECAY 0.9: the
+    // top of DECAY is the Hold (ADR 0040; test_throw_hold).
     Settings s;
     s.springs = 2;
+    s.decay   = 0.9f;
     rv::Tank t;
     t.prepare(kFs, 48);
     apply(t, s);
@@ -606,7 +612,8 @@ void howlZone()
 
     // Exit by flipping ATTITUDE (KICKED -> DRIVEN / CLEAN) at DECAY max: an
     // open owner decision (ADR 0018 says ~1-2 s; DECAY 1's T60 is ~9 s).
-    // Reported, not checked, not changed.
+    // Reported, not checked, not changed (the Hold, ADR 0040, arms only when
+    // DECAY enters its zone outside KICKED, so this flip fades as before).
     for (int to : {1, 0}) {
         const size_t n = 20 * sec, flipAt = 10 * sec;
         const Buf in = click(20.0);

@@ -36,7 +36,10 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // "echo_mode" (1 = SPRINGS 3 is echo mode, the default and what ships; 0 =
 // the coupled Springs reference, springs3_voicing; ADR 0041) and "host_bpm"
 // (echo mode's clock as the Plugin gets it from the DAW: a tempo in bpm, 0 =
-// none; Tank::setHostTempo).
+// none; Tank::setHostTempo). "hold_voicing" (the Hold at the top of DECAY
+// in CLEAN / DRIVEN: 0 = freeze, 1 = layer, the default; core/params/
+// ThrowHold.h, ADR 0040) and "duck_voicing" (the Hold's ducking depth: 0 =
+// 12 dB, the default, 1 = 18 dB, 2 = none).
 // Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
@@ -45,6 +48,8 @@ inline constexpr const char* kToneVoicingKey     = "tone_voicing";
 inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
+inline constexpr const char* kHoldVoicingKey     = "hold_voicing";
+inline constexpr const char* kDuckVoicingKey     = "duck_voicing";
 inline constexpr const char* kTonePlaceVoicingKey = "tone_place_voicing";
 inline constexpr const char* kEchoModeKey        = "echo_mode";
 inline constexpr const char* kHostBpmKey         = "host_bpm";

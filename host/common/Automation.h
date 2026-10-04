@@ -1,13 +1,23 @@
 #pragma once
 // Automation JSON: parameter breakpoints over time + Kick events
-// (docs/m1-contracts.md Stream B). Linear interpolation between
-// breakpoints per key.
+// (docs/m1-contracts.md Stream B) + gate events (THROW, ADR 0039). Linear
+// interpolation between breakpoints per key.
 //
 // { "breakpoints": [ {"t": 0.0, "key": "decay", "value": 0.2}, ... ],
 //   "kicks": [1.5, 3.0],
+//   "gates": [[1.0, 1.25], [3.0, 3.5]],
+//   "throw_exits": [6.0],
 //   "clocks": [0.0, 0.5, 1.0],  // gate rising edges (seconds): echo mode's clock (ADR 0041)
 //   "clock_bpm": 120 }          // or a steady clock: a number (the whole file) or
 //                               // {"bpm": 120, "start": 0, "end": 8} (seconds)
+//
+// "gates": the gate input, as [rise, fall] pairs in seconds: high from rise
+// to fall, sample-accurate (Tank::gate). The first rise switches the throw
+// on (until then the send is open, as unpatched). The "throw_gate" key in
+// "breakpoints" does the same at the Renderer's 16-sample granularity.
+// "throw_exits": a long press of KICK (Tank::exitThrowMode()) at each time,
+// at the start of the Renderer's 16-sample block holding it (the press's
+// own Kick is a separate "kicks" entry, as on the panel).
 
 #include "Json.h"
 #include "dsp/Tank.h"
@@ -26,6 +36,9 @@ struct Track {
 struct Automation {
     std::vector<Track> tracks;         // one per automated key, insertion order
     std::vector<double> kicksSeconds;  // sorted ascending
+    // Gate changes (seconds, high?), sorted by time; from "gates" [rise, fall] pairs.
+    std::vector<std::pair<double, bool>> gateEvents;
+    std::vector<double> throwExitsSeconds; // sorted ascending
     std::vector<double> clocksSeconds; // gate rising edges ("clocks"), sorted
     double clockBpm = 0.0, clockStart = 0.0, clockEnd = -1.0; // "clock_bpm" (end < 0 = to the end of the file)
 };

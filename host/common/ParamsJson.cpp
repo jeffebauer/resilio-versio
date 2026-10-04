@@ -59,6 +59,14 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setFLowCutVoicing(int(std::lround(value)));
         return true;
     }
+    if (key == kHoldVoicingKey) {
+        tank.setHoldVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kDuckVoicingKey) {
+        tank.setDuckVoicing(int(std::lround(value)));
+        return true;
+    }
     if (key == kTonePlaceVoicingKey) {
         tank.setTonePlaceVoicing(int(std::lround(value)));
         return true;

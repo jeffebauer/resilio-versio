@@ -8,6 +8,7 @@
 
 #include "../firmware/LedMeter.h"
 #include "params/ParamSpec.h"
+#include "params/ThrowHold.h"
 #include "params/WobbleVoicing.h"
 
 #include <cmath>
@@ -58,6 +59,9 @@ constexpr Toggle kToggles[] = {
 };
 
 constexpr Part kButton{26.185f, 69.330f};
+// THROW (ADR 0039): the gate jack's stand-in, not on the printed panel. Right
+// of the KICK button, below DRIVE.
+constexpr Part kThrow{37.5f, 69.330f};
 
 // LED1..LED4, left to right: In L, In R, Out L, Out R (PanelLink::Meter order).
 constexpr Part kLeds[PanelLink::kNumMeters] = {
@@ -231,6 +235,13 @@ public:
         kick_.onClick = [this] { link_.requestKick(); };
         addAndMakeVisible(kick_);
 
+        // THROW: the gate (on = high, the send open; ADR 0039). A latching
+        // button on the automatable throw_gate param.
+        throw_.setButtonText("THROW");
+        throw_.setClickingTogglesState(true);
+        addAndMakeVisible(throw_);
+        throwAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(state, spec(ParamId::Throw).key, throw_);
+
         const float scales[3] = {1.0f, 1.5f, 2.0f};
         const char* names[3]  = {"1x", "1.5x", "2x"};
         for (size_t i = 0; i < sizes_.size(); ++i) {
@@ -269,6 +280,7 @@ public:
             }
 
         kick_.setBounds(centred(kButton, kButtonMm, kButtonMm));
+        throw_.setBounds(centred(kThrow, 9.0f, kSegmentHMm));
 
         constexpr float sizeW = 7.0f;
         for (size_t i = 0; i < sizes_.size(); ++i)
@@ -318,7 +330,8 @@ public:
             const auto  c = kLeds[m];
             const float r = px(kLedRadiusMm);
             const auto  e = juce::Rectangle<float>(2.0f * r, 2.0f * r).withCentre({px(c.x), px(c.y)});
-            g.setColour(ledColour(meters_[static_cast<size_t>(m)].colour()));
+            const bool blink = juce::Time::getMillisecondCounterHiRes() < blinkUntilMs_;
+            g.setColour(blink ? juce::Colours::white : ledColour(meters_[static_cast<size_t>(m)].colour()));
             g.fillEllipse(e);
             g.setColour(kOutlineColour);
             g.drawEllipse(e, 1.0f);
@@ -339,6 +352,20 @@ private:
 
         // Red: input near full scale; output while the Tank's safety limiter
         // pulls the wet down (stereo-linked: both output LEDs together).
+        // KICK held (ADR 0039): after kThrowExitHoldSeconds, throw mode off
+        // once per press; the LEDs blink white if it was on (as the module).
+        if (kick_.isDown()) {
+            if (kickDownMs_ < 0.0) kickDownMs_ = now;
+            if (!exitSent_ && now - kickDownMs_ >= 1000.0 * double(rv::throwhold::kThrowExitHoldSeconds)) {
+                link_.requestThrowExit();
+                exitSent_ = true;
+            }
+        } else {
+            kickDownMs_ = -1.0;
+            exitSent_   = false;
+        }
+        if (link_.takeThrowExited()) blinkUntilMs_ = now + 1000.0 * double(rv::throwhold::kThrowExitBlinkSeconds);
+
         const bool limiting = rvled::limiterReducing(link_.takeLimiterGain());
         meters_[PanelLink::kInL].update(peak[PanelLink::kInL], rvled::inputNearClip(peak[PanelLink::kInL]), dt);
         meters_[PanelLink::kInR].update(peak[PanelLink::kInR], rvled::inputNearClip(peak[PanelLink::kInR]), dt);
@@ -358,6 +385,10 @@ private:
     std::array<std::array<juce::TextButton, 3>, std::size(kToggles)> toggles_;
     std::array<std::unique_ptr<juce::ParameterAttachment>, std::size(kToggles)> toggleAttach_;
     juce::TextButton                kick_;
+    double                          kickDownMs_ = -1.0, blinkUntilMs_ = 0.0; // KICK held -> throw mode off
+    bool                            exitSent_   = false;
+    juce::TextButton                throw_;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> throwAttach_;
     std::array<juce::TextButton, 3> sizes_;
 
     std::array<rvled::LevelMeter, PanelLink::kNumMeters> meters_;

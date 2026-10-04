@@ -654,7 +654,9 @@ void wobbleOnHeldTones()
     x.resize(size_t(9.0f * kFs));
     std::printf("      08_held_tones, 1 kHz held, DRIVEN (DRIVE default), 1 Spring: wet p95 (peak) |cents| re median\n");
     constexpr int kN = 11; // knob 0 (fully left) .. 1 (fully right), noon at [5]
-    const float ds[] = {0.0f, 0.5f, 1.0f};
+    // "max" is 0.9: above it DRIVEN is the Hold (ADR 0040), which freezes
+    // the tank (nothing new gets in; test_throw_hold).
+    const float ds[] = {0.0f, 0.5f, 0.9f};
     double c[3][kN], dflt[3];
     auto measure = [&](float w, float d) {
         Settings s;
@@ -695,7 +697,7 @@ void wobbleOnHeldTones()
         even &= c[di][0] >= 0.6 * c[di][10] && c[di][0] <= 1.6 * c[di][10];
     }
     const bool first = c[1][4] >= 1.5 && c[1][6] >= 1.5;
-    std::snprintf(msg, sizeof msg, "WOBBLE noon = Micro-mod floor only: p95 %.1f / %.1f / %.1f cents at DECAY 0 / 0.5 / 1 (< 3)",
+    std::snprintf(msg, sizeof msg, "WOBBLE noon = Micro-mod floor only: p95 %.1f / %.1f / %.1f cents at DECAY 0 / 0.5 / 0.9 (< 3)",
                   c[0][5], c[1][5], c[2][5]);
     check(floorOk, msg);
     std::snprintf(msg, sizeof msg,

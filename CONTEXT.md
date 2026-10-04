@@ -16,7 +16,10 @@ Shared vocabulary for this project. Use these terms exactly in code, comments, a
 | **Clatter** | Injected noise bursts simulating springs hitting each other/housing. The Kick's crash only (since ADR 0032; hits no longer fire it). |
 | **Jolt** | Momentary lurch of Loop parameters on impact. Part of Splash. |
 | **Hit** | Detected transient strength (0–1) from the input after the INPUT gain. Drives the Jolt; its sibling, the hit envelope e, drives the Clang and the Bite. |
-| **Kick** | Simulated physical strike on Tank (thump + crash). Triggered by button, Gate, or MIDI note. Fixed strength, scaled by Attitude. |
+| **Kick** | Simulated physical strike on Tank (thump + crash). Triggered by button or MIDI note (the Gate until ADR 0039). Fixed strength, scaled by Attitude. Never gated by a Throw. |
+| **Throw** | The gate opens the Springs' send: only what plays while it is high goes into the Tank; the tail rings on after (ADR 0039). Switched on by the gate's first rising edge (unpatched, the send stays open); switched off by holding KICK 1 s. SPRINGS 1–2 only: in 3 (echo mode) the gate is the echo's clock. The Plugin's THROW switch. |
+| **Hold** | CLEAN / DRIVEN, top ~10 % of DECAY: the tail glides out toward minutes and sits as a bed, always under unity gain (unlike the Howl), ducked under the input's kick and bass (ADR 0040). Armed when DECAY enters its top range outside KICKED (leaving the Howl by ATTITUDE fades as before). Voicings: **layer** (the default: new sound in, 6 dB down) or **freeze** (nothing new gets in except through a Throw). |
+| **Ducking** | The Hold's whole bed dips (12 dB) like a sidechain, but only the input's kick and bass trigger it: the ducking listens to the input below ~120 Hz, so snares, hats, stabs and chords don't. A short dip, back within ~150 ms, with no swell into the next beat. |
 | **Attitude** | SW1 mode: CLEAN / DRIVEN / KICKED. Sets drive stages, Bite, Jolt, self-oscillation permission. |
 | **Drive chain** | Input transducer → tape → Loop saturation → output pickup (SPEC §4.9). DRIVE is the INPUT gain in front of it and drives the input and output stages only (ADR 0033). |
 | **Howl** | Controlled self-sustaining feedback. KICKED only, top ~10% of DECAY. Noisy/crashing, never a pure tone. |

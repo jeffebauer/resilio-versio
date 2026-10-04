@@ -112,6 +112,13 @@ struct SpringSettings {
     float modDepth         = 0.0f;
     float lfoDepth         = 0.0f;
     float lfoHz            = 0.35f;
+    // Hold zone weight, 0..1 (CLEAN / DRIVEN top of DECAY, ADR 0040; 0
+    // everywhere else): moves the Loop gain's cap from kMaxGain to
+    // throwhold::kPeakGain on the peak g|H|, so t60Seconds may be minutes.
+    float hold             = 0.0f;
+    // The high path's T60 base when > 0 (the Hold keeps the plain DECAY's
+    // there); 0 = t60Seconds, as before.
+    float highT60Seconds   = 0.0f;
 };
 
 class Spring {

@@ -342,13 +342,18 @@ double tankT60(float fs, float decay)
 void t60MatchesDecay()
 {
     const float fs = 48000.0f;
-    const double t0 = tankT60(fs, 0.0f), t5 = tankT60(fs, 0.5f), t1 = tankT60(fs, 1.0f);
+    // The top of the plain DECAY curve is measured at 0.9: above it CLEAN /
+    // DRIVEN (the default ATTITUDE) are the Hold (ADR 0040; test_throw_hold)
+    // and KICKED the Howl. DECAY 1's plain 9 s (ADR 0001) is still the curve
+    // the Hold glides out from.
+    const double t0 = tankT60(fs, 0.0f), t5 = tankT60(fs, 0.5f), t1 = tankT60(fs, 0.9f);
     std::snprintf(msg, sizeof msg, "T60 DECAY 0 = %.3f s (target %.2f, ADR 0006 0.3-0.5 s)", t0,
                   rv::map::decayT60Seconds(0.0f));
     check(t0 >= 0.3 && t0 <= 0.5, msg);
-    std::snprintf(msg, sizeof msg, "T60 DECAY 1 = %.2f s (target %.1f, ADR 0001 8-10 s)", t1,
-                  rv::map::decayT60Seconds(1.0f));
-    check(t1 >= 8.0 && t1 <= 10.0, msg);
+    const double target9 = rv::map::decayT60Seconds(0.9f);
+    std::snprintf(msg, sizeof msg, "T60 DECAY 0.9 = %.2f s (target %.2f, within 15%%; the curve reaches ADR 0001's %.1f s at 1)",
+                  t1, target9, rv::map::decayT60Seconds(1.0f));
+    check(std::fabs(t1 / target9 - 1.0) < 0.15, msg);
     const double target5 = rv::map::decayT60Seconds(0.5f);
     std::snprintf(msg, sizeof msg, "T60 DECAY 0.5 = %.2f s (target %.2f, within 15%%)", t5, target5);
     check(t5 > t0 && t5 < t1 && std::fabs(t5 / target5 - 1.0) < 0.15, msg);
@@ -362,7 +367,7 @@ void stabilityGrid()
     bool ok = true;
     int bad = 0;
     float worstPeak = 0;
-    for (float d : {0.0f, 0.5f, 1.0f})
+    for (float d : {0.0f, 0.5f, 0.9f}) // above 0.9: the Hold (ADR 0040; test_throw_hold)
         for (float b : {0.0f, 0.5f, 1.0f})
             for (float t : {0.0f, 0.5f, 1.0f})
                 for (int input = 0; input < 2; ++input) {
@@ -396,7 +401,7 @@ void stabilityGrid()
                     ok &= good;
                 }
     std::snprintf(msg, sizeof msg,
-                  "Stability DECAY x TENSION x TONE {0,.5,1}^3, impulse + 1 s noise: finite, peak < 1 (worst %.3f), "
+                  "Stability DECAY {0,.5,.9} x TENSION x TONE {0,.5,1}, impulse + 1 s noise: finite, peak < 1 (worst %.3f), "
                   "decaying (%d bad)",
                   worstPeak, bad);
     check(ok, msg);

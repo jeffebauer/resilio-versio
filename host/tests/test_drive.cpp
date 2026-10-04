@@ -24,6 +24,7 @@
 #include "params/SpringModes.h"
 #include "params/DriveVoicing.h"
 #include "params/Mappings.h"
+#include "params/ThrowHold.h"
 
 #include <algorithm>
 #include <chrono>
@@ -1545,6 +1546,10 @@ void stabilityGrid()
                 for (int m = 0; m < 3; ++m)
                     for (int input = 0; input < 2; ++input) {
                         const bool howl = a == 2 && d >= rv::drive::kHowlZoneStart;
+                        // CLEAN / DRIVEN from DECAY 0.9: the Hold (ADR 0040). It
+                        // holds by design, so it must only never grow; in the
+                        // layer voicing (the default) the input gets in.
+                        const bool hold = a < 2 && d > rv::throwhold::kZoneStart;
                         Buf in;
                         if (input == 0) {
                             in.assign(6 * sec, 0.0f);
@@ -1563,6 +1568,7 @@ void stabilityGrid()
                         // limiter's gain per 48-sample block.
                         rv::Tank tank;
                         tank.prepare(kFs, 48);
+                        if (hold) tank.setHoldVoicing(rv::throwhold::kVoicingLayer);
                         apply(tank, s);
                         Stereo o{Buf(in.size()), Buf(in.size())};
                         std::vector<float> limGain(in.size() / 48 + 1, 1.0f);
@@ -1588,7 +1594,10 @@ void stabilityGrid()
                             // (since ADR 0033 the wet is up to 6 dB louder at
                             // DRIVE 1, so full-scale noise at DECAY 1 meets the
                             // limiter). The "ends lower" check below still holds.
-                            const size_t start = input == 0 ? sec / 2 : sec + sec / 2;
+                            // In the Hold the ducking lets go of the bed over
+                            // ~1.5 s after the noise stops (up to +12 dB, by
+                            // design): judge the bed from 3 s.
+                            const size_t start = hold && input == 1 ? 3 * sec : input == 0 ? sec / 2 : sec + sec / 2;
                             bool falls = true;
                             for (const Buf* ch : {&o.l, &o.r}) {
                                 double prev = power(*ch, start, start + sec / 2);
@@ -1598,7 +1607,7 @@ void stabilityGrid()
                                     prev = e;
                                 }
                             }
-                            good &= falls && power(o.l, 5 * sec, 6 * sec) < power(o.l, start, start + sec);
+                            good &= falls && (hold || power(o.l, 5 * sec, 6 * sec) < power(o.l, start, start + sec));
                         }
                         ++cells;
                         if (!good) {
@@ -1609,23 +1618,24 @@ void stabilityGrid()
                     }
     std::snprintf(msg, sizeof msg,
                   "Stability ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x SPRINGS (%d cells, impulse + 1 s full-scale "
-                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone (%d bad)",
+                  "noise, TENSION 0 (loose)): finite, peak < 1 (worst %.3f), decaying outside the Howl zone, never growing in the "
+                  "Hold (CLEAN / DRIVEN DECAY 1, layer voicing) (%d bad)",
                   cells, worstPeak, bad);
     check(bad == 0, msg);
 
-    // CLEAN / DRIVEN at max DECAY decay (ADR 0001): 3 s after a noise burst
-    // the level is well below where it started.
+    // CLEAN / DRIVEN at the top of DECAY below the Hold (ADR 0001, 0040):
+    // 3 s after a noise burst the level is well below where it started.
     for (int a = 0; a < 2; ++a) {
         Buf in = noise(10 * sec, 0.5f, 5u);
         std::fill(in.begin() + long(sec), in.end(), 0.0f);
         Settings s;
         s.att = a;
-        s.decay = 1.0f;
+        s.decay = rv::throwhold::kZoneStart;
         s.drive = 1.0f;
         s.springs = 2;
         const Stereo o = renderWith(s, in);
         const double e1 = db(power(o.l, 1 * sec + sec / 2, 2 * sec)), e9 = db(power(o.l, 9 * sec, 10 * sec));
-        std::snprintf(msg, sizeof msg, "%s DECAY 1 DRIVE 1: tail falls %.1f dB from 1.5 s to 9.5 s (fades, ADR 0001)",
+        std::snprintf(msg, sizeof msg, "%s DECAY 0.9 DRIVE 1: tail falls %.1f dB from 1.5 s to 9.5 s (fades, ADR 0001)",
                       kAttName[a], e1 - e9);
         check(e1 - e9 > 25.0, msg);
     }
@@ -1716,7 +1726,9 @@ void howl()
     }
 
     // Leaving via ATTITUDE (KICKED -> DRIVEN at DECAY 1): falls back to a
-    // normal tail, which then fades at DECAY 1's T60 (reported).
+    // normal tail, which then fades at DECAY 1's T60 (reported). Unchanged
+    // by the Hold (ADR 0040, owner's pick): it arms only when DECAY enters
+    // its zone outside KICKED, so this flip is bit for bit as before.
     const size_t n = 12 * sec, flipAt = 6 * sec;
     Buf in = snareHits(n, 0.5f, 1);
     rv::Tank t;

@@ -663,7 +663,9 @@ void switchingClickFree()
 // Each knob 0 -> 1 over 4 s on noise: click-free, no loudness jump, L within
 // the slew limit (TENSION bends the pitch like stretching the tank). Since
 // ADR 0026 DECAY sets T60 only: during a DECAY sweep L must not move.
-void knobSweep(rv::ParamId id, const char* name, const Settings& start)
+// DECAY sweeps to 0.9: above it CLEAN / DRIVEN are the Hold (ADR 0040),
+// which freezes and ducks the wet on purpose (test_throw_hold).
+void knobSweep(rv::ParamId id, const char* name, const Settings& start, float to = 1.0f)
 {
     const size_t n = size_t(5.0f * kFs), sweepFrom = size_t(0.5f * kFs), sweepLen = size_t(4.0f * kFs);
     const Buf in = noise(n, 0.1f, 11u);
@@ -676,7 +678,7 @@ void knobSweep(rv::ParamId id, const char* name, const Settings& start)
         Stereo o{Buf(n), Buf(n)};
         float lPrev = 0, maxJump = 0, lMin = 1e9f, lMax = 0;
         for (size_t pos = 0; pos < n; pos += 16) {
-            if (pos >= sweepFrom) t.setParam(id, std::min(1.0f, float(pos - sweepFrom) / float(sweepLen)));
+            if (pos >= sweepFrom) t.setParam(id, to * std::min(1.0f, float(pos - sweepFrom) / float(sweepLen)));
             t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 16);
             // Pitch bend smoothness: L moves by at most the slew limit per sample.
             const float l = t.spring(0).loopDelaySamples();
@@ -689,9 +691,9 @@ void knobSweep(rv::ParamId id, const char* name, const Settings& start)
         const double step = maxStepDb100ms(o, sweepFrom, n);
         const bool isDecay = id == rv::ParamId::Decay;
         std::snprintf(msg, sizeof msg,
-                      "%s 0->1 in 4 s, %s: %d clicks (worst ratio %.1f), max 100 ms step %.2f dB (limit 3), L slew "
+                      "%s 0->%.1f in 4 s, %s: %d clicks (worst ratio %.1f), max 100 ms step %.2f dB (limit 3), L slew "
                       "%.3f samples/sample (limit %.2f), L %.1f .. %.1f ms%s",
-                      name, kModeName[m], clicks, std::max(r1, r2), step, maxJump, rv::Spring::kLoopSlewPerSample,
+                      name, double(to), kModeName[m], clicks, std::max(r1, r2), step, maxJump, rv::Spring::kLoopSlewPerSample,
                       1e3 * lMin / kFs, 1e3 * lMax / kFs, isDecay ? " (DECAY leaves the tank alone)" : "");
         check(clicks == 0 && step <= 3.0 && maxJump <= rv::Spring::kLoopSlewPerSample + 1e-4f
                   && (!isDecay || lMax - lMin < 0.01f * lMax),
@@ -706,7 +708,7 @@ void stabilityGrid()
     int bad = 0, cells = 0;
     float worstPeak = 0;
     for (int m = 0; m < 3; ++m)
-        for (float d : {0.0f, 0.5f, 1.0f})
+        for (float d : {0.0f, 0.5f, 0.9f}) // above 0.9: the Hold (ADR 0040; test_throw_hold)
             for (float b : {0.0f, 0.5f, 1.0f})
                 for (float tn : {0.0f, 0.5f, 1.0f})
                     for (int input = 0; input < 2; ++input) {
@@ -870,7 +872,7 @@ int main()
     stereoWidthAndMono();
     firstArrivals();
     switchingClickFree();
-    knobSweep(rv::ParamId::Decay, "DECAY", Settings{0.0f, 0.5f, 0.5f, 1.0f, 0});
+    knobSweep(rv::ParamId::Decay, "DECAY", Settings{0.0f, 0.5f, 0.5f, 1.0f, 0}, 0.9f);
     knobSweep(rv::ParamId::Tension, "TENSION", Settings{0.5f, 0.0f, 0.5f, 1.0f, 0});
     kickReachesAllSprings();
     determinism();

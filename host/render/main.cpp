@@ -13,7 +13,9 @@
 //   bolder, core/params/SplashVoicing.h), tone_voicing = 0..5 (the Big Knob, DriveVoicing.h) and
 //   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), echo_mode = 1 / 0
 //   (SPRINGS 3 = echo mode / the coupled reference, ADR 0041), host_bpm = a tempo (echo mode's
-//   clock as the Plugin's DAW gives it), in --set, a
+//   clock as the Plugin's DAW gives it), hold_voicing = 0 / 1 (the Hold at the top of DECAY:
+//   freeze / layer, core/params/ThrowHold.h), duck_voicing = 0 / 1 / 2 (the Hold's ducking:
+//   12 / 18 dB / none), in --set, a
 //   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
 //   tone_place_voicing = 0 / 1 (the Big Knob before the Springs, for reference / on the wet,
@@ -97,6 +99,14 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
         for (double t : autom->kicksSeconds) kickSamples.push_back(size_t(std::lround(t * double(sr))));
     }
     size_t nextKick = 0;
+    std::vector<std::pair<size_t, bool>> gateSamples; // THROW (ADR 0039): sample-accurate gate changes
+    if (autom)
+        for (const auto& [t, high] : autom->gateEvents) gateSamples.emplace_back(size_t(std::lround(t * double(sr))), high);
+    size_t nextGate = 0;
+    std::vector<size_t> exitSamples; // a long press of KICK: throw mode off (ADR 0039)
+    if (autom)
+        for (double t : autom->throwExitsSeconds) exitSamples.push_back(size_t(std::lround(t * double(sr))));
+    size_t nextExit = 0;
     // Echo mode's clock (ADR 0041): gate rising edges, sample-accurate like the kicks.
     std::vector<size_t> clockSamples;
     if (autom) {
@@ -122,6 +132,15 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
         while (nextKick < kickSamples.size() && kickSamples[nextKick] < pos + size_t(n)) {
             if (kickSamples[nextKick] >= pos) tank.kick(int(kickSamples[nextKick] - pos));
             ++nextKick;
+        }
+        while (nextGate < gateSamples.size() && gateSamples[nextGate].first < pos + size_t(n)) {
+            const size_t at = std::max(gateSamples[nextGate].first, pos);
+            tank.gate(gateSamples[nextGate].second, int(at - pos));
+            ++nextGate;
+        }
+        while (nextExit < exitSamples.size() && exitSamples[nextExit] < pos + size_t(n)) {
+            tank.exitThrowMode();
+            ++nextExit;
         }
         while (nextClock < clockSamples.size() && clockSamples[nextClock] < pos + size_t(n)) {
             if (clockSamples[nextClock] >= pos) tank.clock(int(clockSamples[nextClock] - pos));
@@ -248,6 +267,8 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
         bool s3Voiced = setsKey(rv::paramsjson::kSprings3VoicingKey);
         bool lcVoiced = setsKey(rv::paramsjson::kFLowCutVoicingKey);
+        bool holdVoiced = setsKey(rv::paramsjson::kHoldVoicingKey);
+        bool duckVoiced = setsKey(rv::paramsjson::kDuckVoicingKey);
         bool tpVoiced = setsKey(rv::paramsjson::kTonePlaceVoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
@@ -256,6 +277,8 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
             if (key == rv::paramsjson::kSprings3VoicingKey) s3Voiced = true;
             if (key == rv::paramsjson::kFLowCutVoicingKey) lcVoiced = true;
+            if (key == rv::paramsjson::kHoldVoicingKey) holdVoiced = true;
+            if (key == rv::paramsjson::kDuckVoicingKey) duckVoiced = true;
             if (key == rv::paramsjson::kTonePlaceVoicingKey) tpVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
@@ -286,6 +309,8 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
         if (s3Voiced) params.set(rv::paramsjson::kSprings3VoicingKey, rv::json::Value::makeNumber(tank.springs3Voicing()));
         if (lcVoiced) params.set(rv::paramsjson::kFLowCutVoicingKey, rv::json::Value::makeNumber(tank.fLowCutVoicing()));
+        if (holdVoiced) params.set(rv::paramsjson::kHoldVoicingKey, rv::json::Value::makeNumber(tank.holdVoicing()));
+        if (duckVoiced) params.set(rv::paramsjson::kDuckVoicingKey, rv::json::Value::makeNumber(tank.duckVoicing()));
         if (tpVoiced) params.set(rv::paramsjson::kTonePlaceVoicingKey, rv::json::Value::makeNumber(tank.tonePlaceVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);

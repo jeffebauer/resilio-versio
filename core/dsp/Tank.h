@@ -202,6 +202,7 @@
 #include "params/TankVoicing.h"
 #include "params/Springs3Voicing.h"
 #include "params/EchoVoicing.h"
+#include "params/ThrowHold.h"
 
 #include <algorithm>
 #include <array>
@@ -278,6 +279,58 @@ public:
     // The Plugin's clock (ADR 0004 parity): the host's tempo in bpm (one beat
     // = its quarter note), 0 = none (gate clock or free time). Overrides clock().
     void setHostTempo(float bpm) { hostBpm_ = bpm > 0.0f ? bpm : 0.0f; }
+
+    // THROW (ADR 0039, params/ThrowHold.h): the gate's level from a sample
+    // offset within the next process() block (clamped to it; give them in
+    // time order). Hosts pass every change (the firmware once per block on a
+    // change; the Plugin's THROW param and the Renderer's "gates" events
+    // too). The Tank keeps the gate's role (gateRole(SPRINGS)) and the
+    // latch: the throw is off, and the send open, until the first rising
+    // edge after prepare()/reset(); from then on the Springs' input is open
+    // only while the gate is high (opens over 2 ms, closes over 15 ms).
+    // Up to kMaxPendingGates per block; extras are dropped.
+    void gate(bool high, int sampleOffset);
+    // Throw mode off (ADR 0039: a long press of KICK, ThrowHold.h
+    // kThrowExitHoldSeconds; the Plugin's KICK held as long): at the next
+    // block's start the send glides back to open over the open ramp and the
+    // latch clears, so the next rising edge switches the throw on again.
+    // Returns true if throw mode was on (the firmware's LED confirmation);
+    // false, and nothing changes, if it was off.
+    bool exitThrowMode();
+    // The throw has latched on (the first rising edge has come).
+    bool throwOn() const { return throwOn_; }
+    // The send's gain now in effect (1 = open), throw x Hold, for tests.
+    float sendGain() const { return sendNow_; }
+
+    // HOLD (ADR 0040, params/ThrowHold.h): CLEAN / DRIVEN top of DECAY.
+    // The zone weight now in effect (zone x the CLEAN + DRIVEN Morph
+    // weight; 0 outside it and in KICKED), and the ducking's gain on the
+    // wet (1 = none), for tests and meters.
+    float holdWeight() const { return holdZ_; }
+    float duckGain() const { return duckTo_; }
+    // Renderer / test hook (not a panel control, ADR 0040): which Hold
+    // voicing (ThrowHold.h: 0 = "freeze", 1 = "layer", the default). The firmware
+    // and plugin never call it (throwhold::kDefaultVoicing). Set it before
+    // rendering.
+    void setHoldVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        holdVoicing_ = std::clamp(v, 0, throwhold::kNumVoicings - 1);
+#endif
+    }
+    int holdVoicing() const { return holdVoicing_; }
+    // Renderer / test hook: the ducking's depth on the lows (ThrowHold.h
+    // kDuckDepthDb: 0 = 12 dB, the default; 1 = 18 dB).
+    void setDuckVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        duckVoicing_ = std::clamp(v, 0, throwhold::kNumDuckVoicings - 1);
+#endif
+    }
+    int duckVoicing() const { return duckVoicing_; }
+    // Test hook: no Hold at all (the Tank as before ADR 0040), to check the
+    // Howl flip against it bit for bit.
+    void setHoldEnabled(bool on) { holdOn_ = on; }
 
     void process(const float* inL, const float* inR, float* outL, float* outR, int numSamples);
 
@@ -516,6 +569,7 @@ private:
 
     // SPRINGS mode and its output-matrix fade (see "SPRINGS switching").
     int              mode_     = 1;
+    int              springsPos_ = 1; // SPRINGS as on the panel (mode_ is 1 in echo mode)
     modes::StereoMix mixFrom_{}, mixTo_{}, mixCur_{};
     float            trimFrom_ = 1.0f, trimTo_ = 1.0f, trimCur_ = 1.0f;
     float            mixScale_ = 1.0f; // trim / sqrt(mixPower(mixCur_))
@@ -560,6 +614,47 @@ private:
 
     std::array<int, kMaxPendingKicks> pendingKicks_{};
     int numPendingKicks_ = 0;
+    // THROW (ADR 0039): pending gate changes, the gate's level as the Tank
+    // has it, the latch, and the send's ramp (position 0..1, smoothstep'd).
+    static constexpr int kMaxPendingGates = 16;
+    struct GateEvent {
+        int  at;
+        bool high;
+    };
+    std::array<GateEvent, kMaxPendingGates> pendingGates_{};
+    int   numPendingGates_ = 0;
+    bool  gateHigh_ = false, throwOn_ = false, throwParamHigh_ = false;
+    bool  thrReleasing_ = false, releaseThrow_ = false; // exitThrowMode(): gliding back / asked
+    float thrPos_ = 1.0f, thrOpenStep_ = 0.0f, thrCloseStep_ = 0.0f, thrRelPos_ = 0.0f;
+    void  latchThrow(float holdSend);
+    float sendNow_ = 1.0f; // last sample's send gain (tests)
+    // HOLD (ADR 0040): zone weight, bed weight (freeze / duck / layer), the
+    // Hold's send gain over the tick, the ducking follower and its gain over
+    // the tick (from -> to, ramped per sample).
+    float holdZ_ = 0.0f, holdBed_ = 0.0f, holdSendFrom_ = 1.0f, holdSendTo_ = 1.0f;
+    // Ducking (round 3, ThrowHold.h): the key (input low-passed), its peak
+    // follower, the dip in dB with its hold, and the gain over the tick.
+    dsp::Biquad duckKey_[2];
+    float duckEnv_ = 0.0f, duckAtt_ = 1.0f, duckRel_ = 1.0f, duckFrom_ = 1.0f, duckTo_ = 1.0f;
+    float duckDb_ = 0.0f, duckDbAtt_ = 1.0f, duckDbRel_ = 1.0f;
+    int   duckHoldTicks_ = 0, duckHoldLeft_ = 0;
+    // The Hold arms when DECAY enters its zone outside KICKED; leaving KICKED
+    // inside the zone keeps it disarmed (the Howl calms into the plain long
+    // tail, ADR 0018) until DECAY leaves the zone and comes back.
+    bool holdArmed_ = true;
+    bool holdOn_    = true; // test hook (setHoldEnabled)
+    // CLEAN + DRIVEN Morph weight while the Hold is armed (else 0).
+    float holdNotKicked() const { return holdOn_ && holdArmed_ ? attW_[0] + attW_[1] : 0.0f; }
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int duckVoicing_ = 0;
+#else
+    int duckVoicing_ = 0; // setDuckVoicing
+#endif
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int holdVoicing_ = throwhold::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
+#else
+    int holdVoicing_ = throwhold::kDefaultVoicing; // setHoldVoicing
+#endif
 
     // M7: Splash (Hit, Clatter, Jolt), the Kick voice and one Wobble per Spring.
     dsp::Splash                        splash_;

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Throw and Hold</title>
+<style>
+  :root { --bg: #f6f4ef; --fg: #1d1c1a; --muted: #6b675f; --line: #d9d4c9; --accent: #2f6f5e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #171614; --fg: #ece8df; --muted: #a39e93; --line: #34312c; --accent: #7cc4ad; }
+  }
+  :root[data-theme="dark"] { --bg: #171614; --fg: #ece8df; --muted: #a39e93; --line: #34312c; --accent: #7cc4ad; }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; margin: 0; padding: 32px 16px; }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 24px; }
+  a.card { display: block; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 0 0 12px;
+           color: var(--fg); text-decoration: none; }
+  a.card:hover { border-color: var(--accent); }
+  a.card b { display: block; color: var(--accent); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Throw and Hold</h1>
+  <p>Two listening pages for the feat/throw-hold build. Each has a "My pick" per panel and "Copy results for Claude".</p>
+  <a class="card" href="throw/index.html"><b>THROW on the gate</b>The gate opens the springs' send: one hit or one stab
+    thrown into the springs, the rest dry. Today vs thrown, CLEAN / DRIVEN / KICKED.</a>
+  <a class="card" href="hold/index.html"><b>HOLD at the top of DECAY</b>CLEAN and DRIVEN at DECAY max: a held bed that dips under
+    new playing. Today vs freeze vs layer vs freeze with a throw, plus the Howl handing over to the Hold.</a>
+</main>
+</body>
+</html>

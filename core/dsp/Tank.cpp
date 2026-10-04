@@ -240,6 +240,18 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
         susGNeedRelease_ = tick * drive::kSusGentleNeedReleaseDbPerS * (2.302585093f / 20.0f); // ln of a gain, per tick
     }
     clatDelay_ = std::clamp(int(splash::kClatterSideMs * 0.001f * sampleRate + 0.5f), 1, int(kClatterSideMax));
+    // THROW's send ramp and the Hold's ducking follower (ThrowHold.h).
+    thrOpenStep_  = 1.0f / (throwhold::kThrowOpenSeconds * sampleRate);
+    thrCloseStep_ = 1.0f / (throwhold::kThrowCloseSeconds * sampleRate);
+    duckAtt_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyAttackSeconds * sampleRate));
+    duckRel_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyReleaseSeconds * sampleRate));
+    {
+        const float tick = float(kControlInterval) / sampleRate;
+        duckDbAtt_     = 1.0f - std::exp(-tick / throwhold::kDuckAttackSeconds);
+        duckDbRel_     = 1.0f - std::exp(-tick / throwhold::kDuckReleaseSeconds);
+        duckHoldTicks_ = int(throwhold::kDuckHoldSeconds / tick + 0.5f);
+        for (auto& k : duckKey_) k.setLowpass(throwhold::kDuckKeyHz, 0.70710678f, sampleRate);
+    }
 #if RV_TANKV_BUILT >= 2 // Tank voicings 2 and 4 (TankVoicing.h)
     dBass_.setCutoff(tankv::tuning().togetherBassHz, sampleRate);
 #endif
@@ -519,6 +531,21 @@ RV_SIZE_OPT void Tank::reset()
     s3InLp_.reset();
     s3SendLp_.reset();
     numPendingKicks_ = 0;
+    // THROW: off again until the gate's next first rising edge (power-up).
+    numPendingGates_ = 0;
+    gateHigh_ = throwOn_ = throwParamHigh_ = false;
+    thrReleasing_ = releaseThrow_ = false;
+    thrPos_    = 1.0f;
+    thrRelPos_ = 0.0f;
+    sendNow_ = 1.0f;
+    holdZ_ = holdBed_ = 0.0f;
+    holdSendFrom_ = holdSendTo_ = 1.0f;
+    duckEnv_ = 0.0f;
+    duckFrom_ = duckTo_ = 1.0f;
+    duckDb_       = 0.0f;
+    duckHoldLeft_ = 0;
+    for (auto& k : duckKey_) k.reset();
+    holdArmed_ = true;
     tick_     = 0;
     gridTick_ = 0;
     springTurn_ = 0;
@@ -529,6 +556,32 @@ void Tank::kick(int sampleOffset)
 {
     if (numPendingKicks_ < kMaxPendingKicks)
         pendingKicks_[size_t(numPendingKicks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
+}
+
+bool Tank::exitThrowMode()
+{
+    if (!throwOn_ || thrReleasing_) return false;
+    releaseThrow_ = true;
+    return true;
+}
+
+// The throw switches on (the first rising edge, or the next one after
+// exitThrowMode()). The ramp starts from the send now in effect, so the
+// switch itself never steps the send.
+void Tank::latchThrow(float hs)
+{
+    if (throwOn_ && !thrReleasing_) return;
+    const bool  layer = holdVoicing_ == throwhold::kVoicingLayer;
+    const float now   = layer ? (hs > 1.0e-6f ? sendNow_ / hs : 1.0f) : sendNow_;
+    thrPos_       = std::clamp(now, 0.0f, 1.0f);
+    throwOn_      = true;
+    thrReleasing_ = false;
+}
+
+void Tank::gate(bool high, int sampleOffset)
+{
+    if (numPendingGates_ < kMaxPendingGates)
+        pendingGates_[size_t(numPendingGates_++)] = GateEvent{sampleOffset < 0 ? 0 : sampleOffset, high};
 }
 
 void Tank::clock(int sampleOffset)
@@ -600,6 +653,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     // the output mix from the gains playing right now (mixCur_), so a flip
     // in the middle of a fade carries on smoothly from where it was.
     int mode = normalisedToSwitch(values_[size_t(ParamId::Springs)]);
+    springsPos_ = mode; // the panel's position (the gate's role, ThrowHold.h gateRole)
     // Position 3 = echo mode (ADR 0041): the echo glides in (echoTick, after
     // the Morph below: the feedback follows ATTITUDE), and the Springs play
     // position 2 at the fixed tank: DECAY and TENSION are the echo's, so the
@@ -701,6 +755,44 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     }
     const drive::Voice& voice = voice_;
     const float drive = smoothed_[size_t(ParamId::Drive)];
+
+    // HOLD (ADR 0040, ThrowHold.h): CLEAN and DRIVEN only (KICKED keeps its
+    // Howl there: weight exactly 0 once the Morph reaches KICKED). The zone
+    // sets the Springs' T60 (updateBaseSettings); the bed weight sets the
+    // freeze / layer send and the ducking, ramped over the next tick.
+    {
+        const float z = throwhold::zone(decay);
+        // Armed when DECAY enters the zone outside KICKED; KICKED inside the
+        // zone disarms it until DECAY leaves the zone (the Howl flip calms
+        // into the plain DECAY tail, as before the Hold; ADR 0040).
+        if (z <= 0.0f) holdArmed_ = true;
+        else if (attW_[2] > 0.0f) holdArmed_ = false;
+        const float notKicked = holdNotKicked();
+        holdZ_   = z * notKicked;
+        holdBed_ = throwhold::bedWeight(z) * notKicked;
+        const float hs = throwhold::holdSend(holdVoicing_, holdBed_);
+        holdSendFrom_ = snap ? hs : holdSendTo_;
+        holdSendTo_   = hs;
+        float target = 0.0f; // dB of dip asked for by the key
+        if (holdBed_ > 0.0f) {
+            // The key's peak level (dBFS) -> the dip, x the bed weight.
+            constexpr float kDb = 20.0f / 2.302585093f;
+            const float envDb = kDb * std::log(std::max(duckEnv_, 1.0e-9f));
+            const float amt = std::clamp((envDb - throwhold::kDuckFloorDb) / (throwhold::kDuckFullDb - throwhold::kDuckFloorDb), 0.0f, 1.0f);
+            target = throwhold::kDuckDepthDb[duckVoicing_] * holdBed_ * amt;
+        }
+        // Falls fast, holds, then comes back on a short curve.
+        if (snap) duckDb_ = target, duckHoldLeft_ = 0;
+        else if (target >= duckDb_) {
+            duckDb_ += duckDbAtt_ * (target - duckDb_);
+            duckHoldLeft_ = duckHoldTicks_;
+        } else if (duckHoldLeft_ > 0) --duckHoldLeft_;
+        else duckDb_ += duckDbRel_ * (target - duckDb_);
+        if (duckDb_ < 1.0e-4f) duckDb_ = 0.0f;
+        const float duck = duckDb_ > 0.0f ? drive::dbToGain(-duckDb_) : 1.0f;
+        duckFrom_ = snap ? duck : duckTo_;
+        duckTo_   = duck;
+    }
     const float splashAmt = smoothed_[size_t(ParamId::Splash)];
 
     // M7: Splash and Kick follow the Morph weights (their tables blend like
@@ -1155,6 +1247,17 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
     // nothing else (ADR 0026).
     base.loopDelaySeconds = map::tensionLoopDelaySeconds(tension);
     base.t60Seconds       = map::decayT60Seconds(decay);
+    {
+        // HOLD (ADR 0040): the zone glides T60 out toward minutes, in CLEAN
+        // and DRIVEN; the Spring lets its Loop gain cap follow (hold), and
+        // the high path keeps the plain DECAY's T60 (ThrowHold.h).
+        const float hz = throwhold::zone(decay) * holdNotKicked();
+        if (hz > 0.0f) {
+            base.highT60Seconds = base.t60Seconds;
+            base.t60Seconds     = throwhold::t60Seconds(base.t60Seconds, hz);
+            base.hold           = hz;
+        }
+    }
     base.transitionHz     = map::tensionTransitionHz(tension);
     const springs3::Voicing& v3 = springs3::voicing(s3Voicing_);
     if (springs3::kPaletteBuilt && s3W_ > 0.0f) {
@@ -1290,6 +1393,7 @@ void Tank::updateSpringSettings(size_t i)
     if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).dampingCapHz > 0.0f)
         s.dampingHz = std::min(s.dampingHz, springs3::voicing(s3Voicing_).dampingCapHz * modes::kDetune[i].damping);
     s.t60Seconds       *= sh.decay;
+    s.highT60Seconds   *= sh.decay; // the Hold's (0 otherwise)
     s.highPathLevel    *= sh.highPath;
 #if RV_TANKV_BUILT >= 5
     if (tankv::hasTransducers(tankVoicing_)) s.highPathLevel *= tankv::tuning().tdHighLevel; // voicing 5+
@@ -1510,8 +1614,29 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outR[i] = inR[i];
         }
         numPendingKicks_ = numPendingClocks_ = 0;
+        numPendingGates_ = 0;
         return;
     }
+    // THROW from the ParamSpec switch (Plugin, Renderer): a change is a gate
+    // change at the block's start.
+    {
+        const bool p = values_[size_t(ParamId::Throw)] >= 0.5f;
+        if (p != throwParamHigh_) {
+            throwParamHigh_ = p;
+            if (p && !gateHigh_) latchThrow(holdSendFrom_);
+            gateHigh_ = p;
+        }
+    }
+    // Throw mode off (a long press of KICK, ADR 0039): crossfade from the
+    // throw's send to the plain one over the open ramp, then unlatch.
+    if (releaseThrow_) {
+        releaseThrow_ = false;
+        if (throwOn_ && !thrReleasing_) {
+            thrReleasing_ = true;
+            thrRelPos_    = 0.0f;
+        }
+    }
+    int gateIdx = 0; // next pending gate change
     // Echo mode's clock: this block's gate edges, on their exact samples,
     // queued; each reaches the clock at the first control tick at or after
     // it (feedClocks), so any block size reads the same tempo at the same tick.
@@ -1535,7 +1660,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
     float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
-    float wet[kMaxSprings][kControlInterval], send[kControlInterval];
+    float wet[kMaxSprings][kControlInterval], send[kControlInterval], sendG[kControlInterval];
     float echoPlay[kControlInterval], echoGain[kControlInterval], echoRec[kControlInterval];
     int pos = 0;
     while (pos < numSamples) {
@@ -1545,6 +1670,56 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
         prof::mark(prof::kControl);
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
+
+        // THROW and HOLD (ADR 0039, 0040, ThrowHold.h): the send's gain per
+        // sample, in front of everything that hears the input (the Splash
+        // included: a thrown snare splashes), only while either is in play
+        // (otherwise nothing here runs and the input is as before, bit for
+        // bit). Gate changes land on their sample; the throw latches on at
+        // the first rising edge. Thrown, the send follows the gate (an open
+        // throw overrides the freeze: it is how new sound gets into a held
+        // bed; the layer voicing keeps its lower send under the throw).
+        // HOLD's ducking: the key's follower runs per sample below; the dip
+        // is read on the tick (controlTick) and ramped over it.
+        const bool  duckLive  = holdBed_ > 0.0f || duckFrom_ != 1.0f || duckTo_ != 1.0f;
+        const float duckStep = (duckTo_ - duckFrom_) * (1.0f / float(kControlInterval));
+        const bool sendLive = throwOn_ || gateIdx < numPendingGates_ || holdSendFrom_ != 1.0f || holdSendTo_ != 1.0f;
+        if (sendLive) {
+            const float hStep = (holdSendTo_ - holdSendFrom_) * (1.0f / float(kControlInterval));
+            const bool  layer = holdVoicing_ == throwhold::kVoicingLayer;
+            const bool  throwRole = throwhold::gateRole(springsPos_, echoMode_) == throwhold::GateRole::Throw;
+            for (int i = 0; i < n; ++i) {
+                while (gateIdx < numPendingGates_ && std::min(pendingGates_[size_t(gateIdx)].at, numSamples - 1) <= pos + i) {
+                    const bool high = pendingGates_[size_t(gateIdx++)].high;
+                    if (high && !gateHigh_ && throwRole) latchThrow(holdSendFrom_ + hStep * float(tick_ + i));
+                    gateHigh_ = high;
+                }
+                const float hs = holdSendFrom_ + hStep * float(tick_ + i);
+                float g = hs;
+                if (throwOn_) {
+                    // Where the gate is the echo's clock (SPRINGS 3, ADR
+                    // 0041) the throw rests open: the send glides open and
+                    // follows the gate again back in positions 1-2.
+                    const bool open = throwRole ? gateHigh_ : true;
+                    thrPos_ = open ? std::min(1.0f, thrPos_ + thrOpenStep_) : std::max(0.0f, thrPos_ - thrCloseStep_);
+                    const float t = throwhold::smooth01(thrPos_);
+                    g = layer ? t * hs : t;
+                    if (thrReleasing_) { // leaving throw mode: glide to the plain send, then unlatch
+                        thrRelPos_ = std::min(1.0f, thrRelPos_ + thrOpenStep_);
+                        g += throwhold::smooth01(thrRelPos_) * (hs - g);
+                        if (thrRelPos_ >= 1.0f) {
+                            g        = hs; // exactly the plain send from here on
+                            throwOn_ = thrReleasing_ = false;
+                        }
+                    }
+                }
+                // Layer: what goes into the bed dips with it (kicks and bass
+                // don't pile up in the bed during the dip).
+                if (layer && duckLive) g *= duckFrom_ + duckStep * float(tick_ + i);
+                sendG[i] = g;
+            }
+            sendNow_ = sendG[n - 1];
+        }
 
         // SPRINGS 3 echo mode (EchoVoicing.h): the tape's playback, faded in
         // with the glide, joins the mono input before the Splash, so each
@@ -1585,10 +1760,16 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // The Splash listens first, to the input after the INPUT gain G and
         // before any saturation (ADR 0032, 0033).
         for (int i = 0; i < n; ++i) {
-            const float x = 0.5f * (inL[pos + i] + inR[pos + i]);
+            float x = 0.5f * (inL[pos + i] + inR[pos + i]);
+            if (duckLive) { // the key: the input's lows (kick, bass)
+                const float k = duckKey_[1].process(duckKey_[0].process(x));
+                const float a = k < 0.0f ? -k : k;
+                duckEnv_ += (a > duckEnv_ ? duckAtt_ : duckRel_) * (a - duckEnv_);
+            }
+            if (sendLive) x *= sendG[i];
             // Echo mode: the Springs (and the Splash) hear the tape's output,
             // the input plus its repeats; the Excitation trim below still
-            // reads the input itself.
+            // reads the input itself (after the send).
             const float xe = echoRun ? x + echoPlay[i] : x;
             xin[i] = xe;
             det[i] = xe * inputGain_.next();
@@ -1954,6 +2135,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             else limitGain_ = gainTarget;
             wl = softLimit(wl * limitGain_);
             wr = softLimit(wr * limitGain_);
+            if (duckLive) { // HOLD: the held wet dips under the input's kick and bass (after the limiter: it reads the bed's own level)
+                const float dg = duckFrom_ + duckStep * float(tick_ + i);
+                wl *= dg;
+                wr *= dg;
+            }
 
             const float mixNow = mix_.process(values_[size_t(ParamId::Mix)]);
             if (mixNow != mixAt_) { // two square roots, only while MIX moves
@@ -1971,6 +2157,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         tick_ = (tick_ + n) % kControlInterval;
     }
     numPendingKicks_ = 0;
+    numPendingGates_ = 0;
 }
 
 } // namespace rv

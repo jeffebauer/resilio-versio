@@ -32,8 +32,14 @@ struct PanelLink {
         if (gain < limiterGain_.load(std::memory_order_relaxed)) limiterGain_.store(gain, std::memory_order_relaxed);
     }
     bool takeKick() { return kick_.exchange(false, std::memory_order_acq_rel); }
+    // KICK held long (ADR 0039): throw mode off.
+    bool takeThrowExit() { return throwExit_.exchange(false, std::memory_order_acq_rel); }
 
     void  requestKick() { kick_.store(true, std::memory_order_release); }
+    void  requestThrowExit() { throwExit_.store(true, std::memory_order_release); }
+    // Audio thread: throw mode really was on and is now off (the LEDs blink).
+    void noteThrowExited() { throwExited_.store(true, std::memory_order_release); }
+    bool takeThrowExited() { return throwExited_.exchange(false, std::memory_order_acq_rel); }
     float takePeak(int m) { return peak_[static_cast<size_t>(m)].exchange(0.0f, std::memory_order_relaxed); }
     float takeLimiterGain() { return limiterGain_.exchange(1.0f, std::memory_order_relaxed); }
 
@@ -41,6 +47,7 @@ private:
     std::array<std::atomic<float>, kNumMeters> peak_{{{0.0f}, {0.0f}, {0.0f}, {0.0f}}};
     std::atomic<float> limiterGain_{1.0f}; // lowest Tank::limiterGain() since the last take
     std::atomic<bool>  kick_{false};
+    std::atomic<bool>  throwExit_{false}, throwExited_{false};
 };
 
 class PanelEditor final : public juce::AudioProcessorEditor {
