@@ -511,15 +511,12 @@ private:
     // Hold's send gain over the tick, the ducking follower and its gain over
     // the tick (from -> to, ramped per sample).
     float holdZ_ = 0.0f, holdBed_ = 0.0f, holdSendFrom_ = 1.0f, holdSendTo_ = 1.0f;
-    // Ducking (round 2, ThrowHold.h): the key (input low-passed), its peak
-    // follower, the dip in dB with its hold, the gain over the tick, and the
-    // wet's low band (one-pole per side).
+    // Ducking (round 3, ThrowHold.h): the key (input low-passed), its peak
+    // follower, the dip in dB with its hold, and the gain over the tick.
     dsp::Biquad duckKey_[2];
     float duckEnv_ = 0.0f, duckAtt_ = 1.0f, duckRel_ = 1.0f, duckFrom_ = 1.0f, duckTo_ = 1.0f;
     float duckDb_ = 0.0f, duckDbAtt_ = 1.0f, duckDbRel_ = 1.0f;
     int   duckHoldTicks_ = 0, duckHoldLeft_ = 0;
-    dsp::Biquad duckLo_[2][2], duckHi_[2][2]; // [side][stage]: the LR4 split
-    float duckXf_ = 0.0f, duckXfStep_ = 1.0f;  // 0 = the wet as is, 1 = through the split
     // The Hold arms when DECAY enters its zone outside KICKED; leaving KICKED
     // inside the zone keeps it disarmed (the Howl calms into the plain long
     // tail, ADR 0018) until DECAY leaves the zone and comes back.

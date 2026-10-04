@@ -554,41 +554,61 @@ void split(const Buf& y, Buf& lo, Buf& hi, float loHz = 200.0f)
     }
 }
 
+// A snare like tools/make_stimulus.py's (185 Hz body + band of noise).
+void addSnare(Buf& x, float t, float gainDb = -6.0f)
+{
+    unsigned s = 4242u + unsigned(t * 1000.0f);
+    const double g = std::pow(10.0, double(gainDb) / 20.0);
+    const size_t i0 = sec(t);
+    double lo = 0.0, lo2 = 0.0;
+    const double a7 = std::exp(-2.0 * 3.14159265 * 7000.0 / double(kFs)), a8 = std::exp(-2.0 * 3.14159265 * 800.0 / double(kFs));
+    for (size_t i = 0; i < sec(0.25f) && i0 + i < x.size(); ++i) {
+        s = s * 1664525u + 1013904223u;
+        const double n = double(int(s >> 9) - (1 << 22)) / double(1 << 22);
+        lo = (1 - a7) * n + a7 * lo;   // < 7 kHz
+        lo2 = (1 - a8) * lo + a8 * lo2; // band: 800 Hz - 7 kHz
+        const double tt = double(i) / double(kFs);
+        x[i0 + i] += float(g * 0.6 * (0.6 * std::sin(2.0 * 3.14159265 * 185.0 * tt) * std::exp(-tt / 0.03)
+                                      + 1.2 * (lo - lo2) * std::exp(-tt / 0.06)));
+    }
+}
+
 void ducking()
 {
-    // A held bed (a chord thrown in at 0.2 s, then frozen: the freeze
+    // A held bed (a low chord thrown in at 0.2 s, then frozen: the freeze
     // voicing, so nothing else gets in and the wet is the bed alone), then
-    // kicks 4-6 s, or hats 4-6 s. Compared with the bed alone.
+    // kicks 4-6 s, or snares + hats 4-6 s. Compared with the bed alone.
     Setup s;
     s.decay   = 1.0f;
     s.voicing = rv::throwhold::kVoicingFreeze;
     const std::vector<Event> fill = {{sec(0.15f), 1}, {sec(0.6f), 0}};
-    Buf bed = chord(-6.0f, 0.2f, 0.55f, 9.0f, 110.0); // a low chord: the bed has lows and highs (its harmonics)
-    Buf kicks = bed, hats = bed;
+    Buf bed = chord(-6.0f, 0.2f, 0.55f, 9.0f, 110.0);
+    Buf kicks = bed, snares = bed;
     for (float a = 4.0f; a < 6.0f; a += 0.5f) addKick(kicks, a);
-    for (float a = 4.0f; a < 6.0f; a += 0.125f) addHat(hats, a);
+    for (float a = 4.0f; a < 6.0f; a += 0.5f) addSnare(snares, a + 0.25f);
+    for (float a = 4.0f; a < 6.0f; a += 0.125f) addHat(snares, a);
     auto r = make(s), k = make(s), h = make(s);
-    Buf lr, hr, lk, hk, lh, hh;
-    // Lows below 120 Hz: the chord's root (110 Hz), the part a kick fights.
-    split(render(*r, bed, fill), lr, hr, 120.0f);
-    split(render(*k, kicks, fill), lk, hk, 120.0f);
-    split(render(*h, hats, fill), lh, hh, 120.0f);
-    // Just after each kick (20-120 ms) on the lows: the dip.
-    double dipLo = 0.0, dipHi = 0.0;
+    const Buf yr = render(*r, bed, fill), yk = render(*k, kicks, fill), ys = render(*h, snares, fill);
+    Buf lr, hr, lk, hk;
+    split(yr, lr, hr);
+    split(yk, lk, hk);
+    // Just after each kick (20-120 ms): the dip, full band, lows and highs.
+    double dip = 0.0, dipLo = 0.0, dipHi = 0.0;
     for (float a = 4.0f; a < 6.0f; a += 0.5f) {
+        dip += (rmsDb(yr, a + 0.02f, a + 0.12f) - rmsDb(yk, a + 0.02f, a + 0.12f)) / 4.0;
         dipLo += (rmsDb(lr, a + 0.02f, a + 0.12f) - rmsDb(lk, a + 0.02f, a + 0.12f)) / 4.0;
         dipHi += (rmsDb(hr, a + 0.02f, a + 0.12f) - rmsDb(hk, a + 0.02f, a + 0.12f)) / 4.0;
     }
-    const double hatLo = rmsDb(lr, 4.0f, 6.0f) - rmsDb(lh, 4.0f, 6.0f);
-    const double back  = rmsDb(lr, 6.6f, 7.0f) - rmsDb(lk, 6.6f, 7.0f);
+    double snareMove = 0.0;
+    for (float a = 4.0f; a < 6.0f; a += 0.5f)
+        snareMove = std::max(snareMove, std::fabs(rmsDb(yr, a + 0.27f, a + 0.37f) - rmsDb(ys, a + 0.27f, a + 0.37f)));
+    const double back = rmsDb(yr, 6.6f, 7.0f) - rmsDb(yk, 6.6f, 7.0f);
     std::snprintf(msg, sizeof msg,
-                  "HOLD ducking on the lows: kicks dip the bed's lows %.1f dB (>= 6; 12 asked: the springs' low cut leaves the bed little under 120 Hz, so its 130-170 Hz partials, half in the split's high band, set it) and its highs %.1f dB (<= 2); hats move "
-                  "the lows %.1f dB (<= 1); back within %.2f dB 0.6 s after the last kick (<= 0.5)",
-                  dipLo, dipHi, hatLo, back);
-    check(dipLo >= 6.0 && dipHi <= 2.0 && std::fabs(hatLo) <= 1.0 && std::fabs(back) <= 0.5, msg);
-
-    // Flat when not ducking: the split's sum is the wet itself (the bed
-    // without new input reads the same as with the ducking path idle).
+                  "HOLD ducking (whole bed, keyed on the input's lows): kicks dip the bed %.1f dB (lows %.1f, highs %.1f; "
+                  ">= 9 of the 12 each); snares + hats move it at most %.2f dB (<= 0.5); back within %.2f dB 0.6 s after "
+                  "the last kick (<= 0.5)",
+                  dip, dipLo, dipHi, snareMove, back);
+    check(dip >= 9.0 && dipLo >= 9.0 && dipHi >= 9.0 && snareMove <= 0.5 && std::fabs(back) <= 0.5, msg);
 }
 
 // The hump (owner, round 1: "not just a duck but a swell before each kick,

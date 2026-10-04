@@ -116,36 +116,31 @@ constexpr float kPeakGain = 0.998f;
 // most of the zone is a held bed, eased in over its first half.
 inline float bedWeight(float z) { return smooth01(std::min(1.0f, 2.0f * z)); }
 
-// Ducking (round 2, owner 4 Oct 2026: "only duck the lower frequencies,
-// like sidechaining against a kick or bass"; round 1's full-band duck on a
-// 300 ms release swelled back audibly before each kick). The held bed's LOW
-// band dips under the input's kick and bass, like a sidechain:
+// Ducking (round 3, owner 4 Oct 2026). The whole held bed dips, like a
+// sidechain, but only the input's kick and bass make it dip: snares, hats,
+// stabs and chords don't. (Round 2 misread "duck the lows" as ducking only
+// the bed's lows; the springs' tail has little bass, so it barely sounded
+// ducked. Round 1 ducked the bed on everything and its 300 ms return swelled
+// back into each beat.)
 // - Key: the dry input (mono) through a 4th-order low-pass at kDuckKeyHz
-//   (two Butterworth biquads), so hats, chords and stabs barely move it
-//   (a 220 Hz chord ~22 dB down); a peak follower on it (attack
+//   (two Butterworth biquads); a peak follower on it (attack
 //   kDuckKeyAttackSeconds, release kDuckKeyReleaseSeconds). Its level maps
 //   to the dip in dB: none below kDuckFloorDb, all of the depth from
-//   kDuckFullDb up (linear in dB in between), x bedWeight.
-// - The dip itself is smoothed on the control tick: falls fast
+//   kDuckFullDb up (linear in dB in between), x bedWeight. 120 Hz: kick
+//   and bass fundamentals sit at 40-120 Hz and pass; a snare's body
+//   (~180-250 Hz) is 15-28 dB down and its rattle, hats, stabs and chords
+//   further, so with the floor at -24 dBFS they stay below it
+//   (test_throw_hold: a -6 dBFS snare + hats move the bed 0.00 dB at 120 Hz,
+//   0.12 dB with a 150 Hz key; 120 keeps the margin for hotter or deeper
+//   snares while every kick and bass fundamental still passes).
+// - The dip is smoothed on the control tick: falls fast
 //   (kDuckAttackSeconds), holds kDuckHoldSeconds, then comes back on a short
-//   kDuckReleaseSeconds curve, so it is back well before the next beat
-//   (a dip, then flat) instead of still rising into it (the hump).
-// - Split: a Linkwitz-Riley crossover (4th order, 24 dB/oct) at
-//   kDuckSplitHz; out = g x low + high. Its two halves are in phase at every
-//   frequency, so the sum is flat when not ducking and never rises above
-//   unity at any depth (a plain "wet minus its low-pass" shelf is only
-//   6 dB/oct: -7 dB at 100 Hz for 12 dB asked; steeper versions of that
-//   bump up to +1-2 dB around the split). The crossover's sum is an
-//   all-pass (phase only), so it fades in over kDuckSplitFadeSeconds when
-//   the bed comes in (DECAY past 0.9) and out when it leaves: no step.
-//   200 Hz: the kick's and bass's own range (50-200 Hz) is what they fight
-//   with in the bed; with 12 dB asked the bed is -10.6 dB at 100 Hz, -4 at
-//   200 and within 0.5 dB from 400 Hz up.
-// - The layer voicing's send is ducked by the same gain, so kicks and bass
-//   don't pile into the bed during the dip (it came back fuller each time:
-//   the other half of the hump).
-// Applied to the wet only, before the safety limiter (the split's phase can
-// raise peaks; the Sustain trim still reads the bed's own, unducked, peaks).
+//   kDuckReleaseSeconds curve, so it is back well before the next beat (a
+//   dip, then flat) instead of still rising into it (round 1's hump).
+// - The layer voicing's send dips with it, so kicks and bass don't pile into
+//   the bed during the dip (it came back fuller each time: the other half of
+//   the hump).
+// Applied to the whole wet after the limiter (a gain, so no new peaks).
 constexpr float kDuckKeyHz             = 120.0f;
 constexpr float kDuckKeyAttackSeconds  = 0.001f;
 constexpr float kDuckKeyReleaseSeconds = 0.030f;
@@ -154,9 +149,7 @@ constexpr float kDuckFullDb            = -12.0f;
 constexpr float kDuckAttackSeconds     = 0.003f;
 constexpr float kDuckHoldSeconds       = 0.020f;
 constexpr float kDuckReleaseSeconds    = 0.035f; // time constant (to within 1 dB of 12: ~90 ms)
-constexpr float kDuckSplitHz           = 200.0f;
-constexpr float kDuckSplitFadeSeconds  = 0.020f;
-// Depth on the lows: voicing 0 (default) and 1 (deeper), Renderer key
+// Depth: voicing 0 (default) and 1 (deeper), Renderer key
 // duck_voicing; 2 = no ducking (a reference for tests and pages). The
 // firmware builds the default.
 constexpr float kDuckDepthDb[3] = {12.0f, 18.0f, 0.0f};
