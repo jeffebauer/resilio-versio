@@ -53,7 +53,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Wellspring session 2 ingest** (running): the transducers' treble roll-off, the input at three levels (H, D2, I), each tank's stereo, per-octave decay, held-sound build-up, the hiss. Feeds **Wellspring round 5**, the last fit (your call): a softer echo front, the tail's resonance in the right place, centre vs wide
+- **Wellspring round 5**, the last fit (your call), from session 2 (ingested 4 Oct; findings in the backlog): a softer front (the first echo's energy, not only its rise), the longest ring moved from 1 kHz to ~500 Hz and the presence peak up to ~1.5 kHz, lows centred and the mids no longer left-heavy, wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Built after the merge
 - **Merging** the three features once you've said OK (§1), then the plugin install, release and CPU-test firmware
 - **Docs after the merge:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
 - **CPU, if run 16 comes in above 75 %:** more sound-neutral savings first (the tilt loop, the springs' per-sample work); a bigger audio block (+1 ms) stays the reserve

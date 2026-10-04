@@ -58,3 +58,35 @@ Copied byte-for-byte and renamed; the Eurorack `01_clicks` clip again started 0.
 
 Not used: Eurorack 0001 [180028], 0005, 0006 (unused passes, no clip in the set).
 
+
+## Wellspring session 2, 4 Oct 2026
+
+Same Ableton set, patch, "spring only" settings and base INPUT position as session 1 (INPUT unchanged throughout). 48 kHz / 24-bit, stereo. No new loopback take. Recorded on the track "Wellspring Session 2" (`Wellspring Session 2 00xx [2026-10-04 …].wav`).
+
+- **OUTPUT change:** take I's return clipped at the normal OUTPUT (top centre), so the Wellspring's OUTPUT was turned down and **H, I and D2 were all recorded at that lowered OUTPUT** (about 8–9 dB lower: D2's peak is 8.8 dB under session 1's D, the full-OUTPUT H pass 7.8 dB over the lowered H). OUTPUT then went back to top centre for D-L, D-R, J, K, L, M, N.
+- **D-L:** dummy plug in the R input (left tank only). **D-R:** stimulus into R only, L empty (right tank only). J, K, L, M, N: default (L in, R unplugged, both tanks).
+- **N:** everything patched, nothing playing, OUTPUT top centre.
+- **Timing:** the session 2 sweeps sit **34 samples (0.7 ms) later** than session 1's D (cross-correlated in the 3–8 kHz part of the sweep; D2, D-L and D-R all agree within 1 sample). So this session's path latency is about +24 samples, not session 1's −10; the ingest tool aligns every take with session 1's take 0 value, so session 2 takes come out 0.7 ms late. Harmless for levels, spectra and T60; take it into account for onset-timing measurements, or record a loopback take next session.
+
+### How the files were made (Claude)
+Copied byte-for-byte from `Samples/Recorded/` (verified with `cmp`) and renamed per the recipe. Every stimulus clip's start marker is at 0 and the recorded clips start at 0, so no silence was added. The clip names in the set mark the lowered-OUTPUT passes: `wellspring_I_sweep_hot (lower output level)`, `wellspring_IB_sweep_quiet (lower output level)` (= H at the lowered OUTPUT) and `wellspring_IC_sweep (lower output level)` (= D2).
+
+| Take | File | From | Peak L / R (dBFS) |
+|---|---|---|---|
+| H | wellspring_H_sweep_quiet.wav | Wellspring Session 2 0010 (clip "IB", lowered OUTPUT) | −27.6 / −26.9 |
+| I | wellspring_I_sweep_hot.wav | Wellspring Session 2 0009 (lowered OUTPUT) | −0.8 / −0.1 |
+| D2 | wellspring_D2_sweep_outlow.wav | Wellspring Session 2 0011 (clip "IC", lowered OUTPUT) | −9.6 / −10.4 |
+| D-L | wellspring_D-L_sweep_left.wav | Wellspring Session 2 0012 | −1.6 / −36.0 |
+| D-R | wellspring_D-R_sweep_right.wav | Wellspring Session 2 0013 | −62.0 / −2.7 |
+| J | wellspring_J_tone_bursts.wav | Wellspring Session 2 0015 | −13.6 / −12.7 |
+| K | wellspring_K_pink_noise.wav | Wellspring Session 2 0016 | −10.4 / −9.6 |
+| L | wellspring_L_held_tones.wav | Wellspring Session 2 0017 | −15.7 / −7.0 |
+| M | wellspring_M_pad.wav | Wellspring Session 2 0018 | −13.6 / −13.9 |
+| N | wellspring_N_silence.wav | Wellspring Session 2 0019 | −75.5 / −74.8 |
+| H (full OUTPUT) | session2_extra/wellspring_H_sweep_quiet_fullout.wav | Wellspring Session 2 0008 (clip "H", before OUTPUT was lowered) | −19.8 / −19.4 |
+
+The full-OUTPUT H sits in `session2_extra/` so the ingest tool (which reads one file per take from the top folder) uses the lowered one.
+
+- **No clipping** in any take used. I is close: 5 samples above −1 dBFS on R, single-sample peaks, no flat tops (the aim was about −6 dBFS).
+- **Lengths:** the sweeps are 24.0 s for a 23 s stimulus; J 72.0 s (71.84 s); K 22.0 s for 22 s, so only about 1 s of tail after the noise stops; L 22.0 s (20 s); M 20.0 s (19 s); N 30.0 s (30 s). L's last tail is cut at about −56 dB.
+- **Not used:** 0001, 0002, 0004, 0007 (sweeps at other levels/OUTPUT positions, no clip in the set), 0003 and 0005 (take I at the normal OUTPUT: clipped, thousands of samples above −1 dBFS), 0006 (a sweep peaking −1.8 dBFS, no clip), 0014 (a J pass stopped at 16.6 s), 0020 (empty file).
