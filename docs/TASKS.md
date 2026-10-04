@@ -84,7 +84,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
 - [x] **TONE after the springs: picked (4 Oct)** B in every panel, the Kick at TONE fully right included (no thud, sharper knock: keep); Howls leaning to a pitch at TONE right: fine. Merge waits until you've heard the other two, then all three go in together (`feat/tone-after`, page [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html))
 - [ ] **Throw + Hold: built (`feat/throw-hold`), your listen + OK to merge.** Page: [`renders/feat_throw_hold/`](../renders/feat_throw_hold/index.html) (links a Throw page and a Hold page). Listen for / decide:
-  - **Throws:** a dub beat, today vs three hits thrown (CLEAN, DRIVEN, KICKED). Do they read like dub throws? In the plugin there's a latching THROW button next to KICK (automatable)
+  - [x] **Throws: picked (4 Oct)** "thrown" in every ATTITUDE. Leaving throw mode: **long-press KICK (~1 s)** (unplugging would leave the send closed); being added on the branch, a short press still kicks
   - **Hold: freeze or layer?** Freeze: nothing new gets into the held bed, new hits play dry over it, and a throw lets one stab in. Layer: new sound keeps building into the bed (measured: it doesn't creep up). Ducking: the bed dips ~13 dB under playing, back within ~1–1.5 s
   - **Flipping KICKED → CLEAN/DRIVEN at DECAY max** now hands the Howl to a held, ducked bed instead of fading over ~9 s. Keep, or fade as before? (Pulling DECAY down ends it either way)
   - The Hold slowly fades (~3 dB per 10 s after the first 20 s) rather than truly freezing; it never grows
