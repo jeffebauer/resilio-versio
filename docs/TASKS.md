@@ -27,7 +27,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [x] Done 4 Oct: the module's tails match the desktop at both DECAY ends (the pot reads 0.00 / ~0.99); the 30 Sep noon shortfall is the knob's mid-travel, not the DSP. Was: optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
-- [x] **Input LEDs flashing red: solved (4 Oct).** Real input peaks: the shaker's loudest grains touched the Versio's clip point (amber shows the overall level; transients sit 6–10 dB above it). With the clip 6 dB lower, no more red. Not a firmware fault, and the same in older builds. **Dry at MIX fully right:** the pots stop short of 100 %; fixed with knob end stops (merged, `d74ddc5`)
+- [x] **Input LEDs flashing red: solved (4 Oct).** Real input peaks: the shaker's loudest grains touched the Versio's clip point (amber shows the overall level; transients sit 6–10 dB above it). With the clip 6 dB lower, no more red. Not a firmware fault, and the same in older builds. **Dry at MIX fully right:** the pots stop short of 100 %; fixed with knob end stops (merged, `d74ddc5`), **confirmed on the module 4 Oct: fully wet** (the Versio now runs `dist/resilio_versio_release_d74ddc5.bin`)
 
 ### 2. The plugin in Ableton (≈20 min)
 - [ ] **Look at the panel interface:** does the layout read like your panel? Knobs comfortable to drag? Do the LEDs match the module? Does KICK fire? Tell Claude or send a screenshot of anything off
