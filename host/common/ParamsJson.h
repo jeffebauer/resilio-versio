@@ -30,9 +30,9 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // 1-4 round 3, 5-7 round 4; core/params/TankVoicing.h, ADR 0038) and
 // "f_lowcut_voicing" (tank voicing 7's low cut: 0 = F's own, 1-3 gentler
 // steps; TankVoicing.h kFLowCutSteps, ADR 0038 "Round F2") and
-// "tone_place_voicing" (where the Big Knob acts: 0 = before the Springs,
-// today; 1 = on the wet; 2 = split; DriveVoicing.h "TONE placement",
-// PROTOTYPE docs/prototypes/tone-place/).
+// "tone_place_voicing" (where the Big Knob acts: 0 = before the Springs, as
+// first shipped, for reference; 1 = on the wet, the default since the
+// owner's pick of 4 Oct 2026; DriveVoicing.h "TONE placement", ADR 0036).
 // Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";

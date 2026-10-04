@@ -6,7 +6,7 @@
 # Then: python3 docs/prototypes/tone-place/m6_summary.py <out_dir>
 BIN=${1:-build/rv_render}
 OUT=${2:-renders/proto_tone_place_m6}
-for p in 0 1 2; do
+for p in 0 1; do
   for s in click_ringing_d075 click_ringing_d1 bursts_ringing_d075 bursts_ringing_d1; do
     "$BIN" --sweep presets/sweeps/proto_big_knob_m6_$s.json --out-dir "$OUT/p$p/$s" --set tone_place_voicing=$p > /dev/null &
   done

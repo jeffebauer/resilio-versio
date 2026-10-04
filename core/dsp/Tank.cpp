@@ -196,11 +196,9 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     for (auto& f : excHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     for (auto& f : excLp_) f.setCutoff(drive::kExcLpHz, sampleRate);
     for (auto& f : bkHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
-#ifndef RV_FIXED_VOICINGS
     toneReturn_.prepare(sampleRate);
     for (auto& f : trHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
-#endif
-    excCoeff_ =1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
+    excCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (drive::kExcSeconds * sampleRate));
     excGate_  = drive::dbToGain(2.0f * drive::kExcGateDb); // a power
     {
         const float tick = float(kControlInterval) / sampleRate;
@@ -468,13 +466,12 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& f : bkHp_) f.reset();
     bkAccIn_ = bkAccOut_ = bkIn_ = bkOut_ = 0.0f;
     bkGain_  = 1.0f;
-#ifndef RV_FIXED_VOICINGS
     toneReturn_.reset();
     for (auto& f : trHp_) f.reset();
     trAccIn_ = trAccOut_ = trIn_ = trOut_ = 0.0f;
     trGain_  = 1.0f;
     trMakeup_.snap(1.0f);
-#endif
+    trIdle_  = false; // the first tick decides
     // Power-up (and reset): the trim starts turned all the way down, so the
     // first sound can only come in too quiet, never too hot (the first chord
     // of a skank peaked ~3 dB over the rest: its attack reached the Springs
@@ -790,7 +787,10 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     }
     // Big Knob makeup (DriveVoicing.h, voicings 1-3, TONE right of noon):
     // slow power into and out of the Tilt; give back a share of what the low
-    // cut took out, held in silence. 1 (exactly) otherwise.
+    // cut took out, held in silence. 1 (exactly) otherwise. With the Big
+    // Knob after the Springs (the default) the Tilt has no low cut above
+    // 20 Hz, so this only follows the tilt itself (as the prototype the
+    // owner picked did); the return filter has its own makeup below.
     {
         constexpr float kInv = 1.0f / float(kControlInterval);
         bkIn_ += excCoeff_ * (bkAccIn_ * kInv - bkIn_);
@@ -804,9 +804,9 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                           + (2.302585093f / 20.0f) * drive::bigKnobPreTrimDb(tilt_.place(), tilt_.voicing(), tone, attW_, drive);
             bkGain_ = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
         }
-#ifndef RV_FIXED_VOICINGS
-        // TONE placement 1-2: the return filter's own makeup (the wet's power
-        // into / out of it, slow, held while the wet is silent).
+        // The Big Knob on the wet (DriveVoicing.h "TONE placement"): the
+        // return filter's own makeup (the wet's power into / out of it,
+        // slow, held while the wet is silent).
         trIn_ += excCoeff_ * (trAccIn_ * kInv - trIn_);
         trOut_ += excCoeff_ * (trAccOut_ * kInv - trOut_);
         trAccIn_ = trAccOut_ = 0.0f;
@@ -822,7 +822,6 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             if (snap) trMakeup_.snap(trGain_);
             else trMakeup_.aim(trGain_, kControlInterval);
         }
-#endif
         float trim = excTrimTo_ * susGain_ * bkGain_;
 #if RV_TANKV_BUILT >= 7
         // Voicing 7: give back what the low cut took out (power in / out of
@@ -936,13 +935,21 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         hitBlend_ = h > hitBlend_ * hitRelease_ ? h : hitBlend_ * hitRelease_;
         if (tilt_.voicing() == drive::kToneVoicingHits)
             tilt_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, kControlInterval);
-#ifndef RV_FIXED_VOICINGS
-        if (tilt_.place() != drive::kTonePlacePre) { // TONE placement 1-2: the Big Knob on the wet
-            toneReturn_.set(tilt_.place(), tilt_.voicing(), tone, snap, kControlInterval);
+        if (tilt_.place() != drive::kTonePlacePre) { // the Big Knob on the wet (DriveVoicing.h "TONE placement")
+            toneReturn_.set(tilt_.voicing(), tone, snap, kControlInterval);
             if (tilt_.voicing() == drive::kToneVoicingHits)
                 toneReturn_.setHitBlend(hitBlend_ < 1.0f ? hitBlend_ : 1.0f, kControlInterval);
+            // Skip the stage while it's an exact pass-through (noon and left,
+            // makeup at 1). The followers' into-side keeps running (out =
+            // in there), so the makeup starts from the right reading.
+            const bool idle = toneReturn_.idle() && trMakeup_.value == 1.0f && trMakeup_.target == 1.0f;
+            if (trIdle_ && !idle) {
+                toneReturn_.clearFilters();
+                trHp_[2] = trHp_[0];
+                trHp_[3] = trHp_[1];
+            }
+            trIdle_ = idle;
         }
-#endif
     }
     // The pickups' hardness is divided by the level DRIVE adds (ADR 0033), so
     // they bend the louder tail exactly as ADR 0022 voiced them: DRIVE's
@@ -1741,10 +1748,19 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);
             wl = ll + kShelfGain * (wl - ll);
             wr = lr + kShelfGain * (wr - lr);
-#ifndef RV_FIXED_VOICINGS
-            if (tilt_.place() != drive::kTonePlacePre) {
-                // TONE placement 1-2 (PROTOTYPE): the Big Knob on the return,
-                // its makeup followers (L + R above ~90 Hz) and its makeup.
+            if (tilt_.place() != drive::kTonePlacePre && trIdle_) {
+                // Noon and left of it: an exact pass-through; only the
+                // makeup's into-follower runs (out = in).
+                const float si = wl + wr;
+                float wi = si - trHp_[0].process(si);
+                wi -= trHp_[1].process(wi);
+                trAccIn_ += wi * wi;
+                trAccOut_ += wi * wi;
+            } else if (tilt_.place() != drive::kTonePlacePre) {
+                // The Big Knob on the return (DriveVoicing.h "TONE
+                // placement", ADR 0036 amendment): the tail you hear thins
+                // at once. Its makeup followers (L + R above ~90 Hz, so the
+                // Kick's sub thump doesn't count) and its makeup.
                 const float si = wl + wr;
                 toneReturn_.process(wl, wr);
                 const float so = wl + wr;
@@ -1758,7 +1774,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 wl *= g;
                 wr *= g;
             }
-#endif
 
             // Safety limiter (stereo-linked). The envelope jumps to each new
             // peak, holds 30 ms (Tank.h kLimitHoldS) and releases slowly; the gain glides down to knee/envelope

@@ -1,6 +1,6 @@
 {
-  "name": "proto_tone_place_static_skank_t085",
-  "input": "test_audio/stimulus/04_skank.wav",
+  "name": "tone_after_kick_t100",
+  "input": "test_audio/stimulus/proto_silence_6s.wav",
   "base": {
     "springs": "2",
     "decay": 0.6,
@@ -8,8 +8,8 @@
     "splash": 0.3,
     "drive": 0.25,
     "wobble": 0.5,
-    "mix": 1.0,
-    "tone": 0.85
+    "tone": 1.0,
+    "mix": 1.0
   },
   "grid": {
     "attitude": [
@@ -26,5 +26,6 @@
     "click_count",
     "max_step_db_100ms",
     "resonance_peak_db"
-  ]
+  ],
+  "auto": "presets/sweeps/tone_after_auto_kick.json"
 }

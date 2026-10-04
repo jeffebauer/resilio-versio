@@ -1,19 +1,21 @@
-// TONE placement prototype (DriveVoicing.h "TONE placement"; docs/prototypes/
-// tone-place/; docs/research/dub-lens-critique.md §3.2, direction B).
-// Renderer-only key tone_place_voicing: 0 = the Big Knob before the Springs
-// (today), 1 = on the wet (the return), 2 = split (1st-order section before,
-// 2nd-order section on the wet).
-//   identical  placement 0 is today's Tank, bit for bit (hits, skank; CLEAN /
-//              KICKED; TONE 0.3 / 0.85 / 1 and a TONE sweep), and placements
-//              1-2 are too at TONE <= 0.5.
+// TONE placement: the Big Knob after the Springs (DriveVoicing.h "TONE
+// placement"; ADR 0036 amendment, owner 4 Oct 2026; prototype docs/
+// prototypes/tone-place/). Renderer-only key tone_place_voicing: 0 = the Big
+// Knob before the Springs (as first shipped, kept for reference), 1 = on the
+// wet (the return): the default, what firmware and plugin play.
+//   identical  the default is placement 1; at TONE <= 0.5 it's placement 0,
+//              bit for bit (hits, skank; CLEAN / KICKED).
 //   loudness   hits / skank / held chords at TONE 0.7 / 0.85 / 1 within ±3 dB
-//              of noon, CLEAN / DRIVEN / KICKED, the owner's settings (2
-//              Springs, DECAY 0.6, TENSION noon, SPLASH 0.3, DRIVE 0.25, MIX 1).
+//              of noon, CLEAN / DRIVEN / KICKED, DRIVE 0.25 / 0.8, the
+//              owner's settings (2 Springs, DECAY 0.6, TENSION noon, SPLASH
+//              0.3, MIX 1), the default tone voicing 5 (ADR 0036's promise).
 //   clicks     a fast TONE move (noon -> 1 -> noon, one step each, the 5 ms
 //              smoothing only) on a ringing tail: no clicks.
-//   thins      how much the tail's lows (< 250 Hz) drop 0.25 s after that
-//              move, per placement (INFO: post / split act on the tail now).
-//   cpu        the whole Tank at TONE 1, ns/sample, per placement (INFO).
+//   thins      the tail's lows (< 250 Hz) 0.25 s after that move vs no move:
+//              the default thins the ringing tail at once (<= -10 dB; the
+//              owner's reason for the pick), placement 0 barely (INFO).
+//   cpu        the whole Tank at TONE noon and 1, ns/sample, per placement
+//              (INFO).
 
 #include "Wav.h"
 #include "dsp/Tank.h"
@@ -42,14 +44,15 @@ void check(bool ok, const char* what)
 using Buf = std::vector<float>;
 constexpr float kFs = 48000.0f;
 const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
-const char* const kPlaceName[3] = {"0 pre", "1 post", "2 split"};
+constexpr int kPlaces = 2;
+const char* const kPlaceName[kPlaces] = {"0 pre", "1 post"};
 
 struct Stereo {
     Buf l, r;
 };
 
 struct Settings {
-    int   att = 0, place = 0;
+    int   att = 0, place = rv::drive::kTonePlaceDefault;
     float tone = 0.5f, drive = 0.25f;
 };
 
@@ -64,7 +67,7 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Mix, 1.0f);
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Tone, s.tone);
-    if (s.place != 0) t.setTonePlaceVoicing(s.place);
+    if (s.place != rv::drive::kTonePlaceDefault) t.setTonePlaceVoicing(s.place);
 }
 
 // TONE moves: (sample, value), applied at the start of the block holding it.
@@ -214,6 +217,8 @@ Buf lowBand(const Stereo& o, float hz)
 
 void identical(const Buf& hits, const Buf& skank)
 {
+    check(rv::drive::kTonePlaceDefault == rv::drive::kTonePlacePost,
+          "the Big Knob's default placement is after the Springs (owner, 4 Oct 2026)");
     int cells = 0, diff = 0;
     for (int att : {0, 2})
         for (float tn : {0.0f, 0.3f, 0.5f})
@@ -221,44 +226,13 @@ void identical(const Buf& hits, const Buf& skank)
                 Settings s;
                 s.att = att;
                 s.tone = tn;
-                const Stereo ref = render(s, *in);
-                for (int p = 1; p < 3; ++p) {
-                    s.place = p;
-                    const Stereo o = render(s, *in);
-                    ++cells;
-                    if (o.l != ref.l || o.r != ref.r) ++diff;
-                }
-            }
-    std::snprintf(msg, sizeof msg, "TONE placement 1-2 at TONE 0 / 0.3 / 0.5 are bit for bit placement 0 (hits, skank; CLEAN, KICKED): %d of %d differ", diff, cells);
-    check(diff == 0, msg);
-
-    // Placement 0 set explicitly is the default Tank, TONE right of noon and swept too.
-    cells = diff = 0;
-    const Moves sweep = {{size_t(1.0f * kFs), 1.0f}, {size_t(3.0f * kFs), 0.5f}};
-    for (int att : {0, 2})
-        for (float tn : {0.85f, 1.0f})
-            for (const Buf* in : {&hits, &skank}) {
-                Settings s;
-                s.att = att;
-                s.tone = tn;
-                const Stereo ref = render(s, *in, tn == 1.0f ? sweep : Moves{});
-                rv::Tank t;
-                t.prepare(kFs, 16);
-                apply(t, s);
-                t.setTonePlaceVoicing(0);
-                const size_t n = in->size();
-                Stereo o{Buf(n), Buf(n)};
-                size_t next = 0;
-                const Moves mv = tn == 1.0f ? sweep : Moves{};
-                for (size_t pos = 0; pos < n; pos += 16) {
-                    while (next < mv.size() && mv[next].first < pos + 16) t.setParam(rv::ParamId::Tone, mv[next++].second);
-                    const int k = int(std::min(size_t(16), n - pos));
-                    t.process(in->data() + pos, in->data() + pos, o.l.data() + pos, o.r.data() + pos, k);
-                }
+                const Stereo def = render(s, *in);
+                s.place = rv::drive::kTonePlacePre;
+                const Stereo pre = render(s, *in);
                 ++cells;
-                if (o.l != ref.l || o.r != ref.r) ++diff;
+                if (def.l != pre.l || def.r != pre.r) ++diff;
             }
-    std::snprintf(msg, sizeof msg, "TONE placement 0 set explicitly is the default Tank bit for bit (TONE 0.85 / 1 and a sweep): %d of %d differ", diff, cells);
+    std::snprintf(msg, sizeof msg, "TONE at 0 / 0.3 / 0.5: the default (after the Springs) is placement 0 bit for bit (hits, skank; CLEAN, KICKED): %d of %d differ", diff, cells);
     check(diff == 0, msg);
 }
 
@@ -267,8 +241,9 @@ void loudnessAcross(const Buf& hits, const Buf& skank, const Buf& held)
     const float tones[4] = {0.5f, 0.7f, 0.85f, 1.0f};
     const char* const matName[3] = {"hits", "skank", "held"};
     const Buf* mats[3] = {&hits, &skank, &held};
-    for (int p = 0; p < 3; ++p)
-        for (int att = 0; att < 3; ++att) {
+    for (int p = 0; p < kPlaces; ++p)
+        for (int att = 0; att < 3; ++att)
+        for (float drive : {0.25f, 0.8f}) {
             double worst = 0;
             char line[240] = {}, at[64] = {};
             std::future<double> fut[3][4];
@@ -279,6 +254,7 @@ void loudnessAcross(const Buf& hits, const Buf& skank, const Buf& held)
                         s.att = att;
                         s.place = p;
                         s.tone = tones[i];
+                        s.drive = drive;
                         return loudness(render(s, *mats[m], {}, 48));
                     });
             for (int m = 0; m < 3; ++m) {
@@ -293,8 +269,8 @@ void loudnessAcross(const Buf& hits, const Buf& skank, const Buf& held)
                         std::snprintf(at, sizeof at, "%s TONE %.2f", matName[m], tones[i]);
                     }
             }
-            std::snprintf(msg, sizeof msg, "TONE placement %s %s: loudness vs noon at TONE 0.7/0.85/1 (dB):%s; worst %+.1f (%s; limit ±3)",
-                          kPlaceName[p], kAttName[att], line, worst, at);
+            std::snprintf(msg, sizeof msg, "TONE placement %s %s DRIVE %.2f: loudness vs noon at TONE 0.7/0.85/1 (dB):%s; worst %+.1f (%s; limit ±3)",
+                          kPlaceName[p], kAttName[att], drive, line, worst, at);
             check(std::fabs(worst) <= 3.0, msg);
         }
 }
@@ -304,7 +280,7 @@ void fastSweep()
     const size_t n = size_t(3.0f * kFs);
     const Buf in = oneSnare(n);
     const size_t up = size_t(0.5f * kFs), down = size_t(1.2f * kFs), probe = size_t(0.25f * kFs);
-    for (int p = 0; p < 3; ++p) {
+    for (int p = 0; p < kPlaces; ++p) {
         int clicks = 0;
         double worst = 0, lowDrop[3] = {0, 0, 0};
         for (int att = 0; att < 3; ++att) {
@@ -326,6 +302,11 @@ void fastSweep()
         std::printf("INFO  TONE placement %s: noon -> 1 on a ringing tail, its lows (< 250 Hz) 0.25 s later vs no move: "
                     "CLEAN %+.1f / DRIVEN %+.1f / KICKED %+.1f dB\n",
                     kPlaceName[p], lowDrop[0], lowDrop[1], lowDrop[2]);
+        if (p == rv::drive::kTonePlacePost) {
+            const double least = std::max({lowDrop[0], lowDrop[1], lowDrop[2]});
+            std::snprintf(msg, sizeof msg, "After the Springs: TONE noon -> 1 thins the tail already ringing at once: its lows 0.25 s later %+.1f dB at most (limit -10)", least);
+            check(least <= -10.0, msg);
+        }
         std::snprintf(msg, sizeof msg, "TONE placement %s: fast TONE noon -> 1 -> noon on a ringing tail, every ATTITUDE: %d clicks (worst ratio %.1f, limit 10)",
                       kPlaceName[p], clicks, worst);
         check(clicks == 0, msg);
@@ -334,29 +315,31 @@ void fastSweep()
 
 void cpu(const Buf& hits)
 {
-    double ns[3];
-    for (int p = 0; p < 3; ++p) {
-        double best = 1e9;
-        for (int rep = 0; rep < 3; ++rep) {
-            Settings s;
-            s.att = 2;
-            s.place = p;
-            s.tone = 1.0f;
-            rv::Tank t;
-            t.prepare(kFs, 48);
-            apply(t, s);
-            Buf l(48), r(48);
-            const auto t0 = std::chrono::steady_clock::now();
-            for (size_t pos = 0; pos + 48 <= hits.size(); pos += 48)
-                t.process(hits.data() + pos, hits.data() + pos, l.data(), r.data(), 48);
-            const auto t1 = std::chrono::steady_clock::now();
-            best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(hits.size()));
+    double ns[kPlaces][2];
+    const float tones[2] = {0.5f, 1.0f};
+    for (int p = 0; p < kPlaces; ++p)
+        for (int ti = 0; ti < 2; ++ti) {
+            double best = 1e9;
+            for (int rep = 0; rep < 3; ++rep) {
+                Settings s;
+                s.att = 2;
+                s.place = p;
+                s.tone = tones[ti];
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                apply(t, s);
+                Buf l(48), r(48);
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos + 48 <= hits.size(); pos += 48)
+                    t.process(hits.data() + pos, hits.data() + pos, l.data(), r.data(), 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(hits.size()));
+            }
+            ns[p][ti] = best;
         }
-        ns[p] = best;
-    }
-    std::printf("INFO  TONE placement CPU, whole Tank (KICKED, 2 Springs, TONE 1, hits; best of 3, desktop): "
-                "pre %.1f ns/sample, post %.1f (%+.1f %%), split %.1f (%+.1f %%)\n",
-                ns[0], ns[1], 100.0 * (ns[1] / ns[0] - 1.0), ns[2], 100.0 * (ns[2] / ns[0] - 1.0));
+    std::printf("INFO  TONE placement CPU, whole Tank (KICKED, 2 Springs, hits; best of 3, desktop): "
+                "TONE noon: pre %.1f, post %.1f ns/sample (%+.1f %%); TONE 1: pre %.1f, post %.1f (%+.1f %%)\n",
+                ns[0][0], ns[1][0], 100.0 * (ns[1][0] / ns[0][0] - 1.0), ns[0][1], ns[1][1], 100.0 * (ns[1][1] / ns[0][1] - 1.0));
 }
 
 } // namespace

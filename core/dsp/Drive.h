@@ -248,8 +248,9 @@ public:
     }
     int voicing() const { return voicing_; }
     // TONE placement (DriveVoicing.h "TONE placement"; Renderer only, the
-    // firmware and plugin keep drive::kTonePlaceDefault): which of the Big
-    // Knob's sections run here, before the Springs.
+    // firmware and plugin keep drive::kTonePlaceDefault, post): pre runs the
+    // Big Knob here, before the Springs; post leaves only noon's 20 Hz guard
+    // here (the Big Knob runs on the wet, ToneReturn).
     void setPlace([[maybe_unused]] int p)
     {
 #ifndef RV_FIXED_VOICINGS
@@ -271,6 +272,10 @@ public:
         if (!boost_) ceiling_.process(hi); // keep its state live for a smooth hand-over
         const float in = lo * lo_.next() + hi + extra;
         const float y  = lowCut_.process(in); // bright-side low cut (drive::bigKnob)
+        // Big Knob after the Springs (the default): here it's noon's at any
+        // TONE (k = 0, both paths alike), so the sections below would pass y
+        // through exactly; skip them (CPU).
+        if (place_ != drive::kTonePlacePre) return y;
         // Big Knob's 1st-order section: k 0 (noon, CCW, voicing 0) passes y
         // through exactly.
         const float k  = k_.next();
@@ -306,16 +311,15 @@ private:
     float tone_ = -1.0f, loGain_ = 1.0f, hiGain_ = 1.0f;
 };
 
-// ---- ToneReturn: the Big Knob on the wet (TONE placement 1-2, PROTOTYPE) -----
-// DriveVoicing.h "TONE placement". Stereo, after the pickups and the shelf,
-// before the limiter: the Big Knob's sections the placement puts on the
-// return (bigKnobPost), the same coefficients the Tilt would use, redesigned
+// ---- ToneReturn: the Big Knob on the wet (TONE placement post, the default) --
+// DriveVoicing.h "TONE placement", ADR 0036 amendment (owner, 4 Oct 2026).
+// Stereo, after the pickups and the shelf, before the limiter: the Big
+// Knob (bigKnobPost), the same coefficients the Tilt used, redesigned
 // once per control tick while TONE moves (TONE is smoothed over ~5 ms first,
 // as for the Tilt). Each section is crossfaded from an exact pass-through
 // (depth, k ramped per sample), so noon and below are bit-for-bit dry here.
 // Voicing 5 (bump on hits): the gentle-bump path runs beside the plain one
 // and is blended in while a hit lasts, as in the Tilt.
-// Not built into the firmware (Tank: #ifndef RV_FIXED_VOICINGS).
 class ToneReturn {
 public:
     void prepare(float sampleRate)
@@ -334,21 +338,20 @@ public:
         k_.snap(0.0f);
         hit_.snap(0.0f);
     }
-    void set(int place, int voicing, float tone, bool snap, int interval)
+    void set(int voicing, float tone, bool snap, int interval)
     {
-        if (tone != tone_ || place != place_ || voicing != voicing_) {
-            const drive::PostKnob p = drive::bigKnobPost(place, voicing, tone);
+        if (tone != tone_ || voicing != voicing_) {
+            const drive::PostKnob p = drive::bigKnobPost(drive::kTonePlacePost, voicing, tone);
             for (auto& f : lc_) f.setHighpass(p.b.hz, p.b.q, sampleRate_);
             for (auto& f : ord_) f.setCutoff(p.b.hz1, sampleRate_);
             if (voicing == drive::kToneVoicingHits) {
-                const drive::PostKnob g = drive::bigKnobPost(place, drive::kToneVoicingGentle, tone);
+                const drive::PostKnob g = drive::bigKnobPost(drive::kTonePlacePost, drive::kToneVoicingGentle, tone);
                 for (auto& f : lcB_) f.setHighpass(g.b.hz, g.b.q, sampleRate_);
                 for (auto& f : ordB_) f.setCutoff(g.b.hz1, sampleRate_);
             }
             depthTo_ = p.depth;
             kTo_     = p.b.k;
             tone_    = tone;
-            place_   = place;
             voicing_ = voicing;
         }
         if (snap) {
@@ -360,6 +363,24 @@ public:
         }
     }
     void setHitBlend(float target, int interval) { hit_.aim(target, interval); }
+    // At noon and left of it, once the crossfades have landed on 0, the
+    // stage passes the wet through exactly whatever its filters hold, so the
+    // Tank skips it (CPU; the profile's worst corners sit at TONE noon).
+    // Checked once per control tick, after set(); the ramps land exactly on
+    // their targets at each aim(), so skipped next() calls don't drift.
+    bool idle() const
+    {
+        return depth_.value == 0.0f && depth_.target == 0.0f && k_.value == 0.0f && k_.target == 0.0f;
+    }
+    // Leaving idle: the filters start from rest. The crossfades rise from an
+    // exact pass-through, so the output starts at the dry wet (no jump).
+    void clearFilters()
+    {
+        for (auto& f : lc_) f.reset();
+        for (auto& f : lcB_) f.reset();
+        for (auto& f : ord_) f.reset();
+        for (auto& f : ordB_) f.reset();
+    }
     void process(float& l, float& r)
     {
         const float d = depth_.next(), k = k_.next();
@@ -382,7 +403,7 @@ private:
     std::array<OnePoleLowpass, 2> ord_{}, ordB_{};
     Ramp depth_, k_, hit_;
     float sampleRate_ = 48000.0f, tone_ = -1.0f, depthTo_ = 0.0f, kTo_ = 0.0f;
-    int place_ = -1, voicing_ = -1;
+    int voicing_ = -1;
 };
 
 // ---- LoopSat: inside a Spring's feedback path -------------------------------

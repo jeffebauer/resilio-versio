@@ -1,5 +1,13 @@
 # TONE placement prototype: filter before, after, or split
 
+> **Decided (owner, 4 Oct 2026, by ear): B, after the springs.** It is now
+> the behaviour everywhere (firmware, plugin, Renderer); see ADR 0036
+> "Placement: after the springs". Placement 0 (before) stays renderable with
+> `tone_place_voicing=0`; the split (2) was dropped, so the sweeps here
+> render 0 and 1 only. The numbers below are the prototype's, measured
+> against the older main it was built on. Before / after renders on the
+> shipped code: `presets/sweeps/tone_after_*.json`.
+
 Owner's question (3 Oct 2026): "When you turn TONE right during a ringing
 tail, what should thin out?" Source: `docs/research/dub-lens-critique.md`
 §3.2, direction B ("Return Knob"), §8 answer 2 ("hear all three first").

@@ -14,8 +14,8 @@
 //   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), in --set, a
 //   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
-//   tone_place_voicing = 0 / 1 / 2 (the Big Knob before the Springs / on the wet / split,
-//   DriveVoicing.h "TONE placement", prototype). A sweep JSON may name an automation file
+//   tone_place_voicing = 0 / 1 (the Big Knob before the Springs, for reference / on the wet,
+//   the default; DriveVoicing.h "TONE placement", ADR 0036). A sweep JSON may name an automation file
 //   ("auto": "a.json", Automation.h), applied to every render (gesture renders).
 
 #include "Automation.h"

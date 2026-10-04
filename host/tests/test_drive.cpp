@@ -1231,7 +1231,7 @@ double sectionDb(const rv::drive::BigKnob& b, double hz)
 void bigKnob()
 {
     const float tones[] = {0.5f, 0.7f, 0.85f, 1.0f};
-    const char* const vName[5] = {"0 today", "1 steep", "2 bump", "3 driven", "4 gentle"};
+    const char* const vName[6] = {"0 today", "1 steep", "2 bump", "3 driven", "4 gentle", "5 hits (default)"};
     for (int v = 0; v < 5; ++v)
         for (float tn : tones) {
             const rv::drive::BigKnob b = rv::drive::bigKnob(v, tn);
@@ -1345,7 +1345,10 @@ void bigKnob()
             }
 
     // The Chirp at full CW (as tone(): highs after the 200-500 Hz band in the first echo).
-    for (int v = 0; v < 4; ++v)
+    // Also the default voicing 5, at the default placement (the Big Knob
+    // after the Springs, ADR 0036 amendment: it thins the 200-500 Hz band on
+    // the wet, so the Chirp is measured through it).
+    for (int v : {0, 1, 2, 3, 5})
         for (float tension : {0.0f, 1.0f}) {
             Settings s;
             s.decay = 0.5f;
