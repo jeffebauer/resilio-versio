@@ -290,7 +290,7 @@ public:
 
 private:
     void  advanceGlides();
-    float processLow(float in, float lMod, float tapMod, float highIn, float& high); // runs processHigh too
+    float processLow(float in, float lMod, float tapMod);
     void  loopWrite(float x); // the Loop after its input sum (coupledFinish): Chirp chain, filters, into the delay line
     float processHigh(float in, float lhMod);
     // The redesign in its three parts (M3 run 12). The Loop gain design

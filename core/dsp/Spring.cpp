@@ -487,7 +487,7 @@ inline float chirpSections(float x, float* rings, size_t S, int iw, int ir0, int
 }
 } // namespace
 
-inline float Spring::processLow(float in, float lMod, float tapMod, float highIn, float& high)
+inline float Spring::processLow(float in, float lMod, float tapMod)
 {
     const float fb  = readLow(lMod);
     // Pickup ~half way: first echo after ~half a round trip (+ the fixed
@@ -503,12 +503,6 @@ inline float Spring::processLow(float in, float lMod, float tapMod, float highIn
 #if RV_TANKV_BUILT >= 3
     for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
 #endif
-
-    // The high path (high path unmodulated, see "Micro-mod floor") runs
-    // here, in the same straight stretch of code as the LoopSat: the two
-    // share no state, so the M7 works on one chain of multiply-adds while
-    // the other waits (perf/run16; the order changes no result).
-    high = processHigh(highIn, lhCur_);
 
     float x = dc_.process(in + g_ * loopSat_.process(fbd));
 
@@ -632,8 +626,8 @@ void Spring::process(const float* in, const float* highIn, const float* lFrac, c
         const float mod  = advanceModulation() + (lFrac ? lFrac[i] : 0.0f);
         float       lMod = lCur_ * mod + (lSamples ? lSamples[i] : 0.0f);
         lMod = lMod < 2.0f ? 2.0f : (lMod > lMax ? lMax : lMod);
-        float       high;
-        const float low = processLow(x, lMod, tapSamples ? tapSamples[i] : 0.0f, xh, high); // and the high path
+        const float low  = processLow(x, lMod, tapSamples ? tapSamples[i] : 0.0f);
+        const float high = processHigh(xh, lhCur_); // high path unmodulated, see "Micro-mod floor"
         out[i] = low + highPathLevel_ * high;
     }
 }
