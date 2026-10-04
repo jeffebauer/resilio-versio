@@ -12,14 +12,14 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
 
-**Plugin in Ableton:** `835c5c2` (installed 5 Oct, AU validated): CPU savings, TONE after the springs, echo mode (SPRINGS 3), Throw + Hold. Not yet µ-law (a second install after it merges). **Rescan needed:** open Ableton, hold ⌥ and click Rescan; in the plugin, THROW is a latching button next to KICK, and in SPRINGS 3 the echo follows Ableton's tempo
+**Plugin in Ableton:** `843c5fc` (installed 5 Oct, AU validated): everything merged: CPU savings, TONE after the springs, echo mode (SPRINGS 3, follows Ableton's tempo), Throw + Hold (THROW is a latching button next to KICK), µ-law in DRIVEN/KICKED. **Rescan needed:** hold ⌥, Rescan, then insert a fresh instance
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private): universal plugin, firmware, read-me. A/B candidate: [v2026.10.02-cef6a77-candidate-F](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F). Both predate this week's features; the next release (after the merge) replaces them.
 
 ## Now (in this order)
 
-### 1. Plugin install with µ-law (≈2 min of yours)
-- [ ] **Close Ableton and tell Claude**: it installs `843c5fc` (everything below, plus µ-law in DRIVEN/KICKED) and validates the AU. Then rescan (hold ⌥, Rescan) and insert a fresh instance
+### 1. Plugin install with µ-law · done 5 Oct
+- [x] `843c5fc` installed and the AU validated. Rescan in Ableton (hold ⌥, Rescan) and insert a fresh instance
 
 ### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
 - [ ] **Run 17** (rack power unplugged, USB): flash `dist/resilio_versio_m3_profile_run17.bin`, `screen /dev/tty.usbmodem* 115200` in this app's Terminal, two laps, tell Claude. First chip measurement of echo mode (SPRINGS 3 no longer runs three Springs) and the µ-law box (~+3–4 points expected; run 16 was 72.8 % peak). Budget ≤ 75 % target, 80 % ceiling
