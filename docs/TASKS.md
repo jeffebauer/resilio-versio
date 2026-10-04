@@ -27,8 +27,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Worst case 2 Springs **67.7 % average / 72.8 % peak** (run 15: 76.1 / 80.7), 1 Spring 66.0 / ~74, 3 Springs (old coupled) 72.1 / 77.8. Within the 75 % target for 1–2 Springs, under the 80 % ceiling for 3. Flash `dist/resilio_versio_release_d74ddc5.bin` back if you haven't
 - [x] **CPU savings merged** (4 Oct, `c8ca07e`)
 
-### 3. µ-law grit for DRIVEN and KICKED (when Claude says it's ready)
-- [ ] Page `renders/feat_output_mulaw/` (being built): today vs µ-law on the whole output, dry and wet, 12-bit in DRIVEN, 8-bit in KICKED, every SPRINGS position, CLEAN untouched. Note: MIX fully left in DRIVEN/KICKED would no longer be a clean passthrough
+### 3. µ-law grit for DRIVEN and KICKED · ready to hear
+- [ ] [`renders/feat_output_mulaw/`](../renders/feat_output_mulaw/index.html): A today, B µ-law on the whole output (dry and wet), columns CLEAN / DRIVEN / KICKED. CLEAN is identical. DRIVEN (12-bit) mostly loses the top octave (nothing above ~11 kHz), grain ~57 dB down: a bit duller rather than gritty. KICKED (8-bit): clear grit on everything, tails end in grain then silence. Listen for grit on the dry hits (MIX 0 / MIX 1 rows), whether DRIVEN reads as character or just darker (a 10-bit DRIVEN is a middle option), and flips mid-tail. Cost if picked: ~3.6 KB firmware, ~3–4 CPU points (≈71–72 %)
 
 ### 4. After the merge: play it (plugin and module)
 - [ ] **Echo mode feel**, on the plugin or module: is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to a long build? Is the **KICKED runaway** in the right place (top ~13 % of DECAY)? Is the **swoop** (~0.3 s) the right speed?
