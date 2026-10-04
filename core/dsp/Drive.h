@@ -447,6 +447,35 @@ public:
         envOut_.process(y * y + kEnvFloor);
         return makeup_.next() * hp_.process(y);
     }
+    // Both pickups (left, right), one sample each: xl = l.process(xl), xr =
+    // r.process(xr). At full saturation the two channels' steps are written
+    // side by side in one stretch of code, so the M7 works on one channel's
+    // multiply-adds and divides while the other's wait (each channel alone
+    // is one long chain; perf/run16). Same steps per channel, same results.
+    static void processPair(DriveOut& l, DriveOut& r, float& xl, float& xr)
+    {
+        if (l.amount_ < 1.0f || r.amount_ < 1.0f) {
+            xl = l.process(xl);
+            xr = r.process(xr);
+            return;
+        }
+        const float kP0 = l.kPos_, kN0 = l.kNeg_, iP0 = l.invPos_, iN0 = l.invNeg_;
+        const float kP1 = r.kPos_, kN1 = r.kNeg_, iP1 = r.invPos_, iN1 = r.invNeg_;
+        const float x0 = l.lp_.process(xl);
+        const float x1 = r.lp_.process(xr);
+        l.envIn_.process(x0 * x0 + kEnvFloor);
+        r.envIn_.process(x1 * x1 + kEnvFloor);
+        const float u0 = l.fluxPre_.process(x0);
+        const float u1 = r.fluxPre_.process(x1);
+        const float s0 = l.os_.process(u0, [kP0, kN0, iP0, iN0](float u) { return asymClip(u, kP0, kN0, iP0, iN0); });
+        const float s1 = r.os_.process(u1, [kP1, kN1, iP1, iN1](float u) { return asymClip(u, kP1, kN1, iP1, iN1); });
+        const float y0 = l.fluxPost_.process(s0);
+        const float y1 = r.fluxPost_.process(s1);
+        l.envOut_.process(y0 * y0 + kEnvFloor);
+        r.envOut_.process(y1 * y1 + kEnvFloor);
+        xl = l.makeup_.next() * l.hp_.process(y0);
+        xr = r.makeup_.next() * r.hp_.process(y1);
+    }
 
 private:
     float sampleRate_ = 48000.0f;
