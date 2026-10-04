@@ -1,5 +1,6 @@
 #include "dsp/Spring.h"
 #include "dsp/SizeOpt.h"
+#include "dsp/StretchedChain.h"
 
 #include "params/AntiRes.h"
 #include "params/SplashVoicing.h"
@@ -408,8 +409,10 @@ RV_SIZE_OPT void Spring::setDiffusion(float* const* bufs, const int* sizes, cons
 
 void Spring::clearStage(int j)
 {
-    float* ring = rings_ + size_t(j) * size_t(ringMask_ + 1);
-    std::fill(ring, ring + ringMask_ + 1, 0.0f);
+    // Rings are section-interleaved (chirpSections below): stage j is
+    // every maxStages_-th float.
+    const size_t S = size_t(maxStages_);
+    for (size_t p = 0; p <= size_t(ringMask_); ++p) rings_[p * S + size_t(j)] = 0.0f;
     thiranY1_[size_t(j)] = 0.0f;
 }
 
@@ -472,6 +475,18 @@ inline float Spring::advanceModulation()
     return modNow_;
 }
 
+namespace {
+// The Chirp's spectral delay filter for one sample: M stretched allpass
+// sections (dsp/StretchedChain.h: the rings section-interleaved, row p
+// (ring position), section j at rings[p * S + j]; pipelined for the M7).
+inline float chirpSections(float x, float* rings, size_t S, int iw, int ir0, int ir1, float* thiranY1, int full,
+                           float frac, int maxStages, float a, float eta)
+{
+    return dsp::stretchedChain(x, rings + size_t(ir0) * S, rings + size_t(ir1) * S, rings + size_t(iw) * S, thiranY1,
+                               full, frac, maxStages, a, eta);
+}
+} // namespace
+
 inline float Spring::processLow(float in, float lMod, float tapMod)
 {
     const float fb  = readLow(lMod);
@@ -486,52 +501,45 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     // smears the echo a little more; the first echo never passes them).
     float fbd = fb;
 #if RV_TANKV_BUILT >= 3
-    for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+    if (numFbDiff_ == 3) {
+        // The three (voicing 3+ always has three) written out, each one's
+        // delayed sample read before the chain starts: the reads don't wait
+        // on x, so on the M7 only the three multiply-adds stay in line
+        // (perf/run16). The same steps as FbDiffuser::process, in order.
+        FbDiffuser& f0 = fbDiff_[0];
+        FbDiffuser& f1 = fbDiff_[1];
+        FbDiffuser& f2 = fbDiff_[2];
+        int r0 = f0.w - f0.d, r1 = f1.w - f1.d, r2 = f2.w - f2.d;
+        if (r0 < 0) r0 += f0.size;
+        if (r1 < 0) r1 += f1.size;
+        if (r2 < 0) r2 += f2.size;
+        const float z0 = f0.buf[r0], z1 = f1.buf[r1], z2 = f2.buf[r2];
+        const float c  = fbDiffC_;
+        float v = fbd - c * z0;
+        f0.buf[f0.w] = v;
+        fbd = c * v + z0;
+        v = fbd - c * z1;
+        f1.buf[f1.w] = v;
+        fbd = c * v + z1;
+        v = fbd - c * z2;
+        f2.buf[f2.w] = v;
+        fbd = c * v + z2;
+        if (++f0.w == f0.size) f0.w = 0;
+        if (++f1.w == f1.size) f1.w = 0;
+        if (++f2.w == f2.size) f2.w = 0;
+    } else {
+        for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+    }
 #endif
 
     float x = dc_.process(in + g_ * loopSat_.process(fbd));
 
-    // Spectral delay filter: M stretched allpass sections, each
-    //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
-    // Schroeder form: v = x - a·D{v}, y = a·v + D{v}.
+    // Spectral delay filter (chirpSections).
     const int   full = int(mPos_);
     const float frac = mPos_ - float(full);
     const int   iw   = ringW_;
-    const int   ir0  = (iw - n_) & ringMask_;
-    const int   ir1  = (iw - n_ - 1) & ringMask_;
-    const size_t stride = size_t(ringMask_ + 1);
-    const float a = a_, eta = eta_;
-    // D{v} of a section needs only last sample's state, not this sample's x.
-    // So the next section's D{v} is worked out while this section's x chain
-    // waits on its multiply-adds (the M7 issues in order: without other work
-    // in between, a section was a 7-step chain at ~21 cycles; this way ~14,
-    // firmware/m3_bench.cpp "pipe"). Same arithmetic, same order per value.
-    if (full > 0) {
-        float* ring = rings_;
-        float  d    = eta * (ring[ir0] - thiranY1_[0]) + ring[ir1];
-        for (int j = 0; j < full - 1; ++j) {
-            float* const next = ring + stride;
-            const float  dn   = eta * (next[ir0] - thiranY1_[size_t(j + 1)]) + next[ir1];
-            thiranY1_[size_t(j)] = d;
-            const float v = x - a * d;
-            ring[iw] = v;
-            x = a * v + d;
-            d    = dn;
-            ring = next;
-        }
-        thiranY1_[size_t(full - 1)] = d;
-        const float v = x - a * d;
-        ring[iw] = v;
-        x = a * v + d;
-    }
-    if (frac > 0.0f && full < maxStages_) {
-        float* ring = rings_ + size_t(full) * stride;
-        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
-        thiranY1_[size_t(full)] = dOut;
-        const float v = x - a * dOut;
-        ring[iw] = v;
-        x += frac * (a * v + dOut - x);
-    }
+    x = chirpSections(x, rings_, size_t(maxStages_), iw, (iw - n_) & ringMask_, (iw - n_ - 1) & ringMask_,
+                      thiranY1_.data(), full, frac, maxStages_, a_, eta_);
     ringW_ = (iw + 1) & ringMask_;
 
     x = chirpLowpass_.process(x);
@@ -547,47 +555,12 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
 // (processLow, which never sees the coupling) compiles exactly as before.
 void Spring::loopWrite(float x)
 {
-    // Spectral delay filter: M stretched allpass sections, each
-    //   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
-    // Schroeder form: v = x - a·D{v}, y = a·v + D{v}.
+    // Spectral delay filter (chirpSections).
     const int   full = int(mPos_);
     const float frac = mPos_ - float(full);
     const int   iw   = ringW_;
-    const int   ir0  = (iw - n_) & ringMask_;
-    const int   ir1  = (iw - n_ - 1) & ringMask_;
-    const size_t stride = size_t(ringMask_ + 1);
-    const float a = a_, eta = eta_;
-    // D{v} of a section needs only last sample's state, not this sample's x.
-    // So the next section's D{v} is worked out while this section's x chain
-    // waits on its multiply-adds (the M7 issues in order: without other work
-    // in between, a section was a 7-step chain at ~21 cycles; this way ~14,
-    // firmware/m3_bench.cpp "pipe"). Same arithmetic, same order per value.
-    if (full > 0) {
-        float* ring = rings_;
-        float  d    = eta * (ring[ir0] - thiranY1_[0]) + ring[ir1];
-        for (int j = 0; j < full - 1; ++j) {
-            float* const next = ring + stride;
-            const float  dn   = eta * (next[ir0] - thiranY1_[size_t(j + 1)]) + next[ir1];
-            thiranY1_[size_t(j)] = d;
-            const float v = x - a * d;
-            ring[iw] = v;
-            x = a * v + d;
-            d    = dn;
-            ring = next;
-        }
-        thiranY1_[size_t(full - 1)] = d;
-        const float v = x - a * d;
-        ring[iw] = v;
-        x = a * v + d;
-    }
-    if (frac > 0.0f && full < maxStages_) {
-        float* ring = rings_ + size_t(full) * stride;
-        const float dOut = eta * (ring[ir0] - thiranY1_[size_t(full)]) + ring[ir1];
-        thiranY1_[size_t(full)] = dOut;
-        const float v = x - a * dOut;
-        ring[iw] = v;
-        x += frac * (a * v + dOut - x);
-    }
+    x = chirpSections(x, rings_, size_t(maxStages_), iw, (iw - n_) & ringMask_, (iw - n_ - 1) & ringMask_,
+                      thiranY1_.data(), full, frac, maxStages_, a_, eta_);
     ringW_ = (iw + 1) & ringMask_;
 
     x = chirpLowpass_.process(x);

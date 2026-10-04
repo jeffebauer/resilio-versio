@@ -18,6 +18,7 @@
 // times are in ms and converted with the rate passed to prepare().
 
 #include "dsp/Filters.h"
+#include "dsp/Select.h"
 #include "dsp/Seed.h"
 #include "params/SplashVoicing.h"
 
@@ -40,13 +41,14 @@ public:
     void pushHighpassed(float x)
     {
         // +1e-20: the followers settle at ~1e-20 in silence, never denormal.
-        const float a = (x < 0.0f ? -x : x) + 1.0e-20f;
-        fast_ += (a > fast_ ? fastAtt_ : fastRel_) * (a - fast_);
+        // (Select.h: branch-free choices on the firmware, same results.)
+        const float a = absSel(x) + 1.0e-20f;
+        fast_ += selGt(a, fast_, fastAtt_, fastRel_) * (a - fast_);
         // The slow follower tracks the fast envelope (not |x|): on sustained
         // sound it settles onto it, so d -> ~0 (only the fast one's ripple).
-        slow_ += (fast_ > slow_ ? slowAtt_ : slowRel_) * (fast_ - slow_);
+        slow_ += selGt(fast_, slow_, slowAtt_, slowRel_) * (fast_ - slow_);
         const float d = fast_ - slow_;
-        if (d > dMax_) dMax_ = d;
+        dMax_ = selGt(d, dMax_, d, dMax_);
     }
     // Control tick: Hit (level-adaptive, SplashVoicing.h) from the largest d
     // since the last take(), judged against R = max(T, q · P); then P (the
@@ -125,17 +127,18 @@ public:
     {
         lp_ += lpC_ * (h - lp_);
         const float hi = h - lp_; // the part above splash::kClangHz
-        const float a = (h < 0.0f ? -h : h) + 1.0e-20f, ah = hi < 0.0f ? -hi : hi;
-        fast_ += (a > fast_ ? fa_ : fr_) * (a - fast_);
-        hiFast_ += (ah > hiFast_ ? fa_ : fr_) * (ah - hiFast_);
-        slow_ += (fast_ > slow_ ? sa_ : sr_) * (fast_ - slow_);
+        // (Select.h: branch-free choices on the firmware, same results.)
+        const float a = absSel(h) + 1.0e-20f, ah = absSel(hi);
+        fast_ += selGt(a, fast_, fa_, fr_) * (a - fast_);
+        hiFast_ += selGt(ah, hiFast_, fa_, fr_) * (ah - hiFast_);
+        slow_ += selGt(fast_, slow_, sa_, sr_) * (fast_ - slow_);
         const float inv    = 1.0f / fast_;
-        const float sudden = fast_ > slow_ ? (fast_ - slow_) * inv : 0.0f;
+        const float sudden = selGt(fast_, slow_, (fast_ - slow_) * inv, 0.0f);
         const float lf     = fast_ * fast_ * invRef2_;
         const float e0     = splash_ * sudden * (lf < 1.0f ? lf : 1.0f);
         const float e      = e0 < 1.0f ? e0 : 1.0f;
         float sh = (hiFast_ * inv - splash::kShortLo) * (1.0f / (splash::kShortHi - splash::kShortLo));
-        sh = sh < 0.0f ? 0.0f : (sh > 1.0f ? 1.0f : sh);
+        sh = selGt(0.0f, sh, 0.0f, selGt(sh, 1.0f, 1.0f, sh)); // sh < 0 ? 0 : (sh > 1 ? 1 : sh)
         if constexpr (splash::kVoicingsBuilt) {
             const float held = eh_ * hold_;
             eh_ = e > held ? e : held; // = e without a hold
@@ -146,7 +149,7 @@ public:
         short_ = sh;
         // A sharp hit before the SPLASH knob scales it (Big Knob voicing 5).
         const float hit = sudden * (lf < 1.0f ? lf : 1.0f) * sh;
-        if (hit > hitMax_) hitMax_ = hit;
+        hitMax_ = selGt(hit, hitMax_, hit, hitMax_);
         clang  = (clang_ + clangShortDelta_ * sh) * eh_;
         bite   = biteGain_ * sh * e;
         if constexpr (splash::kVoicingsBuilt) {

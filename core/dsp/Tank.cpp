@@ -1513,8 +1513,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             const float lo = clangLp_.process(x);
             float c = clang[i];
             if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
-                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
-                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float hi = x - lo, a = dsp::absSel(hi); // (Select.h: no branch on the chip)
+                clangEnv_ += dsp::selGt(a, clangEnv_, clangAtt_, clangRel_) * (a - clangEnv_);
                 const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
                 c = c < cmax ? c : cmax;
                 c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang
@@ -1548,8 +1548,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
         // Voicing 1: the shared Sweep, once for every Spring (Loop and high path).
 #if RV_TANKV_BUILT >= 1
-        if (tankv::hasSweep(tankVoicing_))
-            for (int i = 0; i < n; ++i) mono[i] = sweep_.process(mono[i]);
+        if (tankv::hasSweep(tankVoicing_)) sweep_.process(mono, n);
 #endif
         // One transport for every pickup: the first echoes move together. Its
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
