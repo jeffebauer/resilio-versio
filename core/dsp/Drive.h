@@ -32,14 +32,19 @@ namespace rv::dsp {
 // Never steeper than 1 anywhere: a saturator built from it can only ever
 // *reduce* gain, which is what keeps the Loop safe (gain < 1 stays < 1).
 // One division, no libm: cheap on the Cortex-M7.
-//
-// RV_VSEL (dsp/Select.h: the firmware): the hold here and asymClip's choice
-// of half are VSEL selects, written out because GCC turned the plain
-// choices into branches (perf/run16): a branch on the signal's sign is a
-// coin flip for the branch predictor, and it splits the code so the M7
-// can't overlap one clip's multiplies and divide with the next one's (the
-// oversampled pair, the two output pickups).
 inline float softClip(float x)
+{
+    x = x > 3.0f ? 3.0f : (x < -3.0f ? -3.0f : x);
+    const float x2 = x * x;
+    return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+}
+// The same, the hold done with selects on the firmware (RV_VSEL,
+// dsp/Select.h), where GCC makes it a branch: no branch in the oversampled
+// pair, so the M7 overlaps one clip's multiplies and divide with the
+// other's. Pays in the LoopSat and DriveIn; in DriveOut the branchy form
+// reads faster (perf/run16, in-order issue model), so it keeps softClip.
+// Same result for every input.
+inline float softClipSel(float x)
 {
 #if RV_VSEL
     const float hi = 3.0f, lo = -3.0f;
@@ -52,11 +57,11 @@ inline float softClip(float x)
         : [x] "+t"(x)
         : [hi] "t"(hi), [lo] "t"(lo)
         : "cc");
-#else
-    x = x > 3.0f ? 3.0f : (x < -3.0f ? -3.0f : x);
-#endif
     const float x2 = x * x;
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+#else
+    return softClip(x);
+#endif
 }
 // Slope of softClip (for tests and the small-signal Loop analysis).
 inline float softClipSlope(float x)
@@ -77,9 +82,14 @@ inline float asymClip(float x, float kPos, float kNeg)
 }
 // The same with 1/k worked out beforehand (at control rate): a divide costs
 // ~14 cycles on the M7 and nothing overlaps it (M3). Differs from the plain
-// form in the last bit only. (RV_VSEL: the half's k and 1/k by select, see
-// softClip; the same arithmetic as clipping each half on its own.)
+// form in the last bit only.
 inline float asymClip(float x, float kPos, float kNeg, float invPos, float invNeg)
+{
+    return x >= 0.0f ? softClip(kPos * x) * invPos : softClip(kNeg * x) * invNeg;
+}
+// The same, branch-free on the firmware (see softClipSel): the half's k and
+// 1/k by select, the same arithmetic as clipping each half on its own.
+inline float asymClipSel(float x, float kPos, float kNeg, float invPos, float invNeg)
 {
 #if RV_VSEL
     float k, inv;
@@ -90,9 +100,9 @@ inline float asymClip(float x, float kPos, float kNeg, float invPos, float invNe
         : [k] "=&t"(k), [i] "=&t"(inv)
         : [x] "t"(x), [kp] "t"(kPos), [kn] "t"(kNeg), [ip] "t"(invPos), [in] "t"(invNeg)
         : "cc");
-    return softClip(k * x) * inv;
+    return softClipSel(k * x) * inv;
 #else
-    return x >= 0.0f ? softClip(kPos * x) * invPos : softClip(kNeg * x) * invNeg;
+    return asymClip(x, kPos, kNeg, invPos, invNeg);
 #endif
 }
 
@@ -220,9 +230,9 @@ public:
         const float kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_, tk = tapeK_, itk = invTapeK_,
                     amt = tapeAmt_.next();
         float y = back * os_.process(x, [&](float u) {
-            const float t = asymClip(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
+            const float t = asymClipSel(fluxPre_.process(u), kP, kN, iP, iN); // transducer (flux domain)
             const float p = preEmph_.process(t);                            // tape
-            const float s = p + amt * (softClip(tk * p) * itk - p);
+            const float s = p + amt * (softClipSel(tk * p) * itk - p);
             return fluxPost_.process(deEmph_.process(s));               // restore highs
         });
         envOut_.process(y * y + kEnvFloor);
@@ -376,7 +386,7 @@ public:
     {
         const float a = amount_, kP = kPos_, kN = kNeg_, iP = invPos_, iN = invNeg_;
         const float y = os_.process(fluxPre_.process(x),
-                                    [a, kP, kN, iP, iN](float u) { return u + a * (asymClip(u, kP, kN, iP, iN) - u); });
+                                    [a, kP, kN, iP, iN](float u) { return u + a * (asymClipSel(u, kP, kN, iP, iN) - u); });
         return fluxPost_.process(y);
     }
     // Latency (samples) at freqHz, counted in the Loop round trip (the
