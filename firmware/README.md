@@ -192,7 +192,7 @@ block (1 ms at 48 frames), `main.cpp`'s release section reads:
   (ADR 0028; `kPotKnob` is the pot → libDaisy index table, `kPotParams` the
   pot → function table).
 - **SW0 → SPRINGS, SW1 → ATTITUDE** (CLEAN / DRIVEN / KICKED).
-- **Button → Kick**, on the rising edge, at the start of the block. **Gate → THROW** (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes).
+- **Button → Kick**, on the rising edge, at the start of the block. **Held 1 s** (`TimeHeldMs()`, ThrowHold.h `kThrowExitHoldSeconds`): throw mode off, once per press (`Tank::exitThrowMode()`); if it was on, all four LEDs show white for 150 ms in the main loop (ADR 0039). **Gate → THROW** (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes).
 - **Output trim**: undoes the Versio's polarity flip and +1.2 dB (M0), so
   MIX 0 sounds like a patch cable.
 - **LEDs**: level meters (ADR 0031, `LedMeter.h`).
