@@ -19,7 +19,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (suggested order)
 
 ### 0. CPU run 15 on the module · done 4 Oct: **over budget**
-- [x] Run 15: worst case **82 % average / 86 % peak** (target ≤ 70 % peak; run 13 was 63 / 66). The Wellspring F tank's shared Sweep costs ~16 % and the coupled SPRINGS 3 ~40 % more. Still under the dropout point, so it plays, but the safety margin is gone. Claude is finding sound-neutral savings first (no decision needed); echo mode removes the coupled S3; a bigger audio block (+1 ms) is the reserve you already approved. Details: `firmware/README.md` "Run 15"
+- [x] Run 15: worst case **82 % average / 86 % peak** (target was ≤ 70 % peak, **now ≤ 75 %, ceiling 80 %**, your call 4 Oct; run 13 was 63 / 66). The Wellspring F tank's shared Sweep costs ~16 % and the coupled SPRINGS 3 ~40 % more. Still under the dropout point, so it plays, but the safety margin is gone. Claude is finding sound-neutral savings first (no decision needed); echo mode removes the coupled S3; a bigger audio block (+1 ms) is the reserve you already approved. Details: `firmware/README.md` "Run 15"
 
 ### 1. Flash the Versio and play (≈2 min + play)
 - [x] Click check passed (4 Oct, on `327af86`, same sound and CPU as 340b542): no clicks or dropouts. Was: flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)

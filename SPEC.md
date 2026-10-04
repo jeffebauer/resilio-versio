@@ -292,7 +292,7 @@ Measurable criterion (starting thresholds — tune/confirm in interview):
 ## 5. Performance budget
 
 - 48 kHz, block 48 initial. 480 MHz ÷ 48 kHz ≈ **10,000 cycles/sample**.
-- Target **≤ 70% CPU peak** worst case (3 springs, KICKED, loosest TENSION (0), max DRIVE), measured by the M3 profile build; every release is also checked by ear on the module for clicks/dropouts at heavy settings (owner, 30 Sep 2026; was 65 %, ADR 0030).
+- Target **≤ 75% CPU peak** worst case, **80 % ceiling** for a release that passes its click check (ADR 0030 amendment, 4 Oct 2026; was 70 %) (3 springs, KICKED, loosest TENSION (0), max DRIVE), measured by the M3 profile build; every release is also checked by ear on the module for clicks/dropouts at heavy settings (owner, 30 Sep 2026; was 65 %, ADR 0030).
 - Main costs: allpass cascades, oversampled nonlinear stages. Mitigations:
   1. Delay lines + filter state in internal SRAM, not SDRAM.
   2. Decimated low-chirp path (×2/×4) per Parker 2011.
