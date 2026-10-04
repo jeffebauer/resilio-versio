@@ -225,6 +225,9 @@ Run render(rv::Tank& t, const Set& s, const Buf& in, const std::vector<double>& 
     using rv::ParamId;
     t.reset();
     t.setParam(ParamId::Attitude, rv::switchToNormalised(s.att));
+    // SPRINGS 3 here is the three-Spring reference (setEchoMode(false), Renderer-only since
+    // ADR 0041): these checks hold the Springs to their bars; echo mode has test_echo_mode.
+    t.setEchoMode(false);
     t.setParam(ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setParam(ParamId::Decay, s.decay);
     t.setParam(ParamId::Tone, s.tone);
@@ -474,18 +477,21 @@ void heldSoundsAcrossWobble()
 // The Big Knob (ADR 0036 Proposed, Renderer voicings 1-3): with the right
 // half thinned, made up and (voicings 2-3) bumped, held sounds still stay
 // off the limiter: the same limits as heldSoundsAcrossWobble, default WOBBLE,
-// TONE 0.7 / 0.85 / 1.
+// TONE 0.7 / 0.85 / 1. Also the default voicing 5 (bump on hits) at the
+// default placement, the Big Knob after the Springs (ADR 0036 amendment).
 void bigKnobHeld()
 {
     const auto stims = heldStims();
+    const int tvs[] = {0, 1, 2, 3, rv::drive::kToneDefaultVoicing};
     std::vector<std::future<Grid>> jobs;
-    for (int tv = 0; tv <= 3; ++tv) // 0: today's, for reference (printed)
+    for (int tv : tvs) // 0: today's, for reference (printed)
         for (const Stim& st : stims)
             jobs.push_back(std::async(std::launch::async, runGrid, std::cref(st), kWobbles[2], rv::drive::kSusDefaultVoicing,
                                       rv::drive::kSusDefaultVoicing, tv));
-    for (int tv = 0; tv <= 3; ++tv)
+    for (size_t i = 0; i < std::size(tvs); ++i)
         for (size_t k = 0; k < stims.size(); ++k) {
-            const Grid g = jobs[size_t(tv) * stims.size() + k].get();
+            const int tv = tvs[i];
+            const Grid g = jobs[i * stims.size() + k].get();
             std::printf("INFO    tone_voicing %d", tv);
             printGrid(stims[k].name, g);
             std::printf("\n");

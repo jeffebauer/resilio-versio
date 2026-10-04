@@ -1,6 +1,6 @@
 # 0036 — TONE's right side as King Tubby's Big Knob
 
-**Status:** Accepted, 2 Oct 2026 (owner: **voicing 5, the bump on hits only**, after two check pages). TONE's right half: an 18 dB/oct low cut from 20 Hz at noon to **800 Hz** fully right (the research's 1.2 kHz rang in one KICKED corner), plus the Altec's console-loading bump (+4.1 dB fully right, easing off over the top) blended in only while a sharp, cracking hit lasts (the Splash's hit reading, SPLASH-independent). Left of noon and noon unchanged. Default `kToneDefaultVoicing = 5`; voicings 0–4 stay as Renderer-only references (`tone_voicing`). Rounds: `docs/m8-tuning-backlog.md` "Big Knob TONE".
+**Status:** Accepted, 2 Oct 2026 (owner: **voicing 5, the bump on hits only**, after two check pages). Amended 4 Oct 2026: the Big Knob sits after the Springs, on the wet return (see "Amendment" below). TONE's right half: an 18 dB/oct low cut from 20 Hz at noon to **800 Hz** fully right (the research's 1.2 kHz rang in one KICKED corner), plus the Altec's console-loading bump (+4.1 dB fully right, easing off over the top) blended in only while a sharp, cracking hit lasts (the Splash's hit reading, SPLASH-independent). Left of noon and noon unchanged. Default `kToneDefaultVoicing = 5`; voicings 0–4 stay as Renderer-only references (`tone_voicing`). Rounds: `docs/m8-tuning-backlog.md` "Big Knob TONE".
 
 **Context:**
 - King Tubby's "Big Knob" was the stepped high-pass filter on his MCI desk (an Altec 9069B: two capacitors and a coil, 18 dB/oct, 70 Hz–7.5 kHz). He swept it on the reverb and echo sends to thin a sound out, telephone-like, before it reached the spring.
@@ -24,3 +24,28 @@
 - Held bass pads at TONE 0.7–1 reach the limiter a little more than today: worst moment 2.3 dB vs 1.3, red LED in 8–9 of 27 cells vs 5. That is within the Sustain trim's limits.
 - **The M6 grid doesn't fully pass yet.** One noise-burst cell flags Ringing in every voicing 1–3: KICKED, DECAY 0.75, 3 Springs, TENSION 0, TONE 1, 19–20 dB at 3.1 kHz (limit 15; today 6.4). It isn't the bump or the makeup. It looks like KICKED's Loop saturation letting a ~3.1 kHz mode ring once the lows stop driving it. This must be fixed (in the Loop, not by limiting TONE) before any pick ships. The `steady_tone` flags at DECAY 1 / TENSION 1 / TONE ≥ 0.7 also happen with today's voicing (6 cells), so they predate this work.
 - If the owner picks 1–3, `kToneDefaultVoicing` changes, test_drive's TONE checks are re-read (its low-cut check gets steeper numbers), and the firmware carries only that voicing.
+
+## Amendment: Placement: after the springs (owner, 4 Oct 2026)
+
+**Question** (`docs/research/dub-lens-critique.md` §3.2, direction B): "When you turn TONE right during a ringing tail, what should thin out?" The prototype (`docs/prototypes/tone-place/`, branch `proto/tone-place`) rendered the Big Knob before the Springs (A, as shipped), on the wet return (B) and split (C). **The owner picked B by ear** (`renders/proto_tone_place`): Black Ark's low cut on the return; turning TONE right thins the ringing tail at once, and turning back gives its body back.
+
+**Decision:**
+- The Big Knob (this ADR's low cut: slope, cutoff curve, the bump on hits, voicing 5) runs on the **stereo wet, after the pickups and the high shelf, before the limiter and MIX** (`dsp::ToneReturn`, `DriveVoicing.h` "TONE placement"). Firmware, plugin and Renderer all play it (`kTonePlaceDefault = kTonePlacePost`). Left of noon and noon are unchanged, bit for bit.
+- The Tilt keeps the tilt and noon's 20 Hz guard; its own Big Knob sections are skipped (they are pass-throughs there).
+- **Level:** the wet's own makeup: slow followers (0.3 s) of the wet's power above ~90 Hz into and out of the return filter, ¾ back (in dB), at most 12 dB, held in silence, ramped per sample; the bump correction (−1.2 dB × u) moves with it. The pre makeup's squash correction is dropped (nothing in front of the tank changes). A sweep thins the tail at once and the level swells back over ~0.3 s.
+- The Kick's direct thump joins the wet before the pickups, so it is thinned with the wet.
+- Renderer key `tone_place_voicing`: 0 = before the Springs (reference: main `c6df657`'s sound bit for bit, 25 of 25 renders: hits and skank, every ATTITUDE, TONE 0.2 / 0.5 / 0.85 / 1 at DRIVE 0.8, and a TONE sweep on a ringing tail), 1 = after (default). The split (2) was dropped. The firmware builds only placement 1 (`RV_FIXED_VOICINGS`).
+- CPU: at noon and left of it (once its crossfades sit at 0 and its makeup at 1) the return stage is an exact pass-through and is skipped; only its into-follower runs.
+
+**Numbers** (branch `feat/tone-after`, desktop unless stated):
+- Slope / bump: unchanged filter (`test_drive` bigknob: 18.0 dB/oct; voicing 2 bump +5.8 dB at 1.39 × cutoff, voicing 4 +4.3 dB at 1.35 ×).
+- Thinning a tail already ringing (TONE noon → 1 in one step, lows < 250 Hz 0.25 s later vs no move): **−22.7 / −22.6 / −20.1 dB** CLEAN / DRIVEN / KICKED (before the Springs: −0.0). New gate in `test_tone_place`: ≤ −10 dB.
+- Loudness vs noon at TONE 0.7 / 0.85 / 1, hits / skank / held chords, every ATTITUDE, DRIVE 0.25 and 0.8 (limit ±3 dB): worst **+1.3 dB** (KICKED / DRIVEN hits at TONE 1); skank −0.8 to −1.2; held within ±0.7. Before the Springs on the same grid: worst −2.2 (KICKED held, DRIVE 0.8).
+- Clicks: fast TONE noon → 1 → noon on a ringing tail, every ATTITUDE: 0 (worst ratio 4.2, limit 10).
+- Chirp at TONE 1 (voicings 0–3 and the default 5): highs still after lows (TENSION 0: 74.3 vs 46.3 ms; TENSION 1: 22.3 vs 14.6 ms).
+- Sustain trim (ADR 0035), held pad / drone / organ at TONE 0.7 / 0.85 / 1, default voicing 5 (now checked too): limiter pulls at most **1.59 / 0.00 / 1.73 dB** (before the Springs: 2.10 / 0.00 / 1.40; limit 3.0), 0 s past 2.5 dB.
+- **Kick (ADR 0016)**, < 100 Hz down ≥ 20 dB within 300 ms, DECAY max (KICKED also 0.88), now also at TONE 0.85 and 1: worst **24.2 dB** (KICKED DECAY 1, TONE 1; before the Springs 38.2). At TONE 1 the thump is gone (its < 100 Hz energy ~50 dB lower than before); what is left is the knock and the crash, brighter and with a sharper peak (CLEAN −3.8 vs −9.0 dBFS).
+- M6 grid (`presets/sweeps/proto_big_knob_m6_*`, 270 Ringing-grid cells, TONE 0.7 / 0.85 / 1): **0 Ringing, 0 steady_tone**; worst `ringing_db` 7.9 at TONE 0.85 / 1 and 8.4 at 0.7 (before: 7.4 / 8.2; limit 15). The Howl-zone sweeps (DECAY 1, where a Howl is meant to happen) read a more prominent Howl at TONE ≥ 0.85 (worst 67.5 vs 40.6 dB), since its lows are now cut on the wet; they are not part of the Ringing gate.
+- test_tank stereo / mono margins unchanged (the return filter is the same on L and R, and its makeup is one gain).
+- CPU, whole Tank, KICKED, 2 Springs, hits: TONE noon −1.6 %, TONE 1 +0.4 % vs before the Springs; across 36 corners (SPRINGS 1–3, TENSION 0 / 1, TONE 0.5 / 0.85 / 1, CLEAN / KICKED, DECAY 1) vs main: worst corner −1.1 %, TONE-right corners up to +2.5 % (busy machine; ±2 % noise).
+- Flash: release 114,868 B (main 112,628: +2,240), profile 116,800 B (main 114,600: +2,200); 128 KB limit. No `vfma` in our objects (`-ffp-contract=off` holds).

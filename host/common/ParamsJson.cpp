@@ -63,6 +63,42 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setOutputBitsVoicing(int(std::lround(value)));
         return true;
     }
+    if (key == kHoldVoicingKey) {
+        tank.setHoldVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kDuckVoicingKey) {
+        tank.setDuckVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kTonePlaceVoicingKey) {
+        tank.setTonePlaceVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kEchoModeKey) {
+        tank.setEchoMode(value >= 0.5);
+        return true;
+    }
+    if (key == kEchoBitsKey) {
+        tank.setEchoBitsVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kBbdKey) {
+        tank.setBbdVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kEchoWearKey) {
+        tank.setEchoWearVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kEchoDiffuseKey) {
+        tank.setEchoDiffuseVoicing(int(std::lround(value)));
+        return true;
+    }
+    if (key == kHostBpmKey) {
+        tank.setHostTempo(float(value));
+        return true;
+    }
     if (key == kSprings3VoicingKey) {
         tank.setSprings3Voicing(int(std::lround(value)));
         return true;
@@ -93,7 +129,7 @@ bool applySetArg(Tank& tank, const std::string& arg, std::string& error)
     if (eq == std::string::npos) { error = "expected key=value"; return false; }
     const std::string key  = arg.substr(0, eq);
     const std::string text = arg.substr(eq + 1);
-    {   // Hidden, Renderer-only keys (wobble_voicing, sustain_voicing, splash_voicing, tone_voicing, springs3_voicing, tank_voicing): a plain number.
+    {   // Hidden, Renderer-only keys (wobble_voicing, sustain_voicing, splash_voicing, tone_voicing, springs3_voicing, tank_voicing, f_lowcut_voicing, tone_place_voicing, echo_mode, host_bpm): a plain number.
         char* end = nullptr;
         const double v = std::strtod(text.c_str(), &end);
         if (!text.empty() && *end == '\0' && applyHidden(tank, key, v)) return true;

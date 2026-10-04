@@ -810,6 +810,7 @@ void leds()
             t.prepare(kFs, 48);
             apply(t, s);
             t.setSustainTrimEnabled(false);
+            t.setEchoMode(false); // three Springs (SPRINGS 3's reference since ADR 0041), as test_led_meter
             t.setOutputBitsVoicing(v);
             Buf l(48), r(48);
             for (size_t pos = 0; pos + 48 <= in.size(); pos += 48) {

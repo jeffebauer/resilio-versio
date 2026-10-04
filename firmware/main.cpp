@@ -318,12 +318,20 @@ constexpr size_t kTankPoolFloats = 30000; // 120,000 bytes, in DTCM (RV_DTCM)
 RV_DTCM float     kTankPool[kTankPoolFloats];
 bool              gTankPrepared = false;
 
+// ---- Echo mode's tape (SPRINGS 3, ADR 0041) --------------------------------
+// 2 s at 48 kHz plus a margin (Tank::requiredTapeFloats): 388 KB, too big for
+// DTCM, so ordinary .bss in AXI SRAM (zeroed at startup; the echo reads only
+// from its own sequential write position, the cache copes). A Versio runs at
+// 48 kHz; at another rate the Tank caps the longest echo to what fits.
+constexpr size_t kEchoTapeFloats = rv::echo::tapeFloats(48000.0f);
+float            kEchoTape[kEchoTapeFloats];
+
 bool PrepareTank()
 {
     const float  fs   = hw.AudioSampleRate();
     const size_t need = rv::Tank::requiredPoolFloats(fs);
     std::memset(kTankPool, 0, sizeof kTankPool); // NOLOAD section: not zeroed at startup
-    tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats);
+    tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats, kEchoTape, kEchoTapeFloats);
     return need <= kTankPoolFloats; // Tank itself falls back to passthrough if this is false
 }
 
@@ -331,9 +339,11 @@ bool PrepareTank()
 // Full grid: SPRINGS 1/2/3 x DECAY {0,1} x TENSION {0,1} x TONE {0.5,1} = 24
 // corners, all at MIX 1 (fully wet, so the meter sees Tank cost, not dry
 // mix), ATTITUDE KICKED and DRIVE max on every corner (see block comment
-// above). The SPEC §5 worst case ("3 springs, KICKED, loosest TENSION (0), max
-// DRIVE") is already inside this grid once DRIVE matters; until then it is
-// the springs=3/decay=1/tension=0 corners, flagged in the printed name.
+// above). The SPEC §5 worst case was "3 springs, KICKED, loosest TENSION (0),
+// max DRIVE"; since echo mode (ADR 0041) no position runs three Springs, so
+// the candidates are SPRINGS 2 at the loosest tank and SPRINGS 3 (2 Springs
+// at the fixed tank + the tape echo, DECAY 1 = most feedback), both flagged
+// "(worst?)" in the printed name.
 struct Corner {
     int   springsPos; // 0/1/2 -> 1/2/3 Springs (Switch3 encoding)
     float decay, tension, tone;
@@ -369,7 +379,9 @@ void BuildCornerTable()
                     c.decay      = decay;
                     c.tension      = tension;
                     c.tone       = tone;
-                    const bool worst = springsPos == 2 && decay >= 1.0f && tension <= 0.0f; // loosest tank: most stages
+                    // Loosest tank (most stages), 2 Springs: position 2, and position 3 (echo
+                    // mode, ADR 0041: Springs A and B at the fixed tank plus the tape echo).
+                    const bool worst = springsPos >= 1 && decay >= 1.0f && tension <= 0.0f;
                     char*      p     = c.name;
                     const char* end  = c.name + sizeof(c.name);
                     *p++ = 'S';
@@ -380,7 +392,7 @@ void BuildCornerTable()
                     AppendStr(p, end, Decimal1Str(tension));
                     AppendStr(p, end, " TO");
                     AppendStr(p, end, Decimal1Str(tone));
-                    if (worst) AppendStr(p, end, " (SPEC worst case)");
+                    if (worst) AppendStr(p, end, " (worst?)");
                     *p = '\0';
                 }
             }
@@ -593,7 +605,7 @@ int main()
             // Where the time goes, each section as % of the whole budget
             // (10,000 cycles per sample at 480 MHz / 48 kHz): cycles / (samples x 10) = tenths of a %.
             static const char* const kSectionNames[kNumSections] = {
-                "ctl", "drvIn", "splash", "tilt", "sprA", "sprB", "sprC", "out"};
+                "ctl", "drvIn", "splash", "tilt", "sprA", "sprB", "echo", "out"}; // echo mode: Spring C's slot times the tape (Tank.cpp)
             // Same buffer, one transmit: the USB CDC send is non-blocking and
             // drops a second call made while the first is still going out.
             AppendStr(p, end, "  SPLIT");
@@ -645,9 +657,10 @@ int main()
 #else // RV_MODE_RELEASE
 // =============================================================================
 // The real instrument (SPEC §3, §6.4). 7 knobs (+CV) -> ParamSpec Normalised
-// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; tap + gate -> Kick
-// on the rising edge, applied at the start of the block (offset 0) so it
-// lands within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
+// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; tap -> Kick on the
+// rising edge, gate -> THROW in positions 1-2 (ADR 0039: the Springs' send open while high,
+// from its first rising edge) and the echo clock in 3 (ADR 0041), both applied at the start of the block
+// (offset 0) so they land within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
 // (ADR 0011: flash-size watch item at M3, ~35 KB left for DSP code once the
 // M0 test firmware's 94 KB baseline is accounted for).
 //
@@ -706,12 +719,20 @@ constexpr size_t kTankPoolFloats = 30000; // 120,000 bytes; ~104 KB measured nee
 RV_DTCM float     kTankPool[kTankPoolFloats];
 bool              gTankPrepared = false;
 
+// ---- Echo mode's tape (SPRINGS 3, ADR 0041) --------------------------------
+// 2 s at 48 kHz plus a margin (Tank::requiredTapeFloats): 388 KB, too big for
+// DTCM, so ordinary .bss in AXI SRAM (zeroed at startup; the echo reads only
+// from its own sequential write position, the cache copes). A Versio runs at
+// 48 kHz; at another rate the Tank caps the longest echo to what fits.
+constexpr size_t kEchoTapeFloats = rv::echo::tapeFloats(48000.0f);
+float            kEchoTape[kEchoTapeFloats];
+
 bool PrepareTank()
 {
     const float  fs   = hw.AudioSampleRate();
     const size_t need = rv::Tank::requiredPoolFloats(fs);
     std::memset(kTankPool, 0, sizeof kTankPool); // NOLOAD section: not zeroed at startup
-    tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats);
+    tank.prepare(fs, kBlockSize, kTankPool, kTankPoolFloats, kEchoTape, kEchoTapeFloats);
     return need <= kTankPoolFloats;
 }
 
@@ -737,6 +758,7 @@ constexpr size_t kMeterLed[kNumMeters] = {
 // 1 ms LED can't show anyway.
 volatile float gPeak[kNumMeters] = {};
 volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
+volatile bool  gThrowExited      = false; // KICK held: throw mode was on and is now off (LED blink)
 
 // ---- LED PWM by timer + DMA (30 Sep 2026 fix, "LEDs flicker rather than dim")
 // libDaisy's software PWM needs UpdateLeds() called at its sample rate
@@ -936,17 +958,34 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     hw.ProcessAllControls();
     hw.tap.Debounce(); // ProcessAllControls() only handles knobs (SPEC §8.1)
 
+    const int springsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
+    const int attitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
+
+    // The gate (ThrowHold.h gateRole): in positions 1-2 it is THROW (ADR
+    // 0039: the Tank gets every change at the block's start and keeps the
+    // latch; unpatched it reads low, so the send stays open until the first
+    // rising edge); in position 3 it is echo mode's clock (ADR 0041). Every
+    // rising edge also feeds the clock in every position, so the tempo is
+    // known before SPRINGS reaches 3. The button always kicks.
     static bool lastGate = false;
     const bool  gate     = hw.Gate();
-    if (gate && !lastGate) tank.kick(0);
+    if (gate != lastGate) tank.gate(gate, 0);
+    if (gate && !lastGate) tank.clock(0);
     lastGate = gate;
     if (hw.tap.RisingEdge()) tank.kick(0);
+    // KICK held >= kThrowExitHoldSeconds: throw mode off (ADR 0039), once
+    // per press; the Kick itself already fired on the press. Holding it
+    // with throw mode off does nothing more (ADR 0013).
+    static bool exitDone = false;
+    if (!hw.tap.Pressed()) exitDone = false;
+    else if (!exitDone && hw.tap.TimeHeldMs() >= 1000.0f * rv::throwhold::kThrowExitHoldSeconds) {
+        exitDone = true;
+        if (tank.exitThrowMode()) gThrowExited = true;
+    }
 
     for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
         tank.setParam(kPotParams[p], rvpot::endStops(hw.GetKnobValue(kPotKnob[p]))); // exact 0 / 1 at the stops
 
-    const int springsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
-    const int attitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
     tank.setParam(rv::ParamId::Springs, rv::switchToNormalised(springsPos));
     tank.setParam(rv::ParamId::Attitude, rv::switchToNormalised(attitudePos));
 
@@ -1021,8 +1060,16 @@ int main()
             gLedPwm.stop();
             ledDma = false;
         }
+        // Throw mode off (ADR 0039): all four white for a moment, the one
+        // exception to the meters-only LEDs (ADR 0031).
+        static uint32_t blinkUntilUs = 0;
+        if (gThrowExited) {
+            gThrowExited = false;
+            blinkUntilUs = nowUs + uint32_t(1.0e6f * rv::throwhold::kThrowExitBlinkSeconds);
+        }
+        const bool blink = int32_t(blinkUntilUs - nowUs) > 0;
         for (int m = 0; m < kNumMeters; ++m) {
-            const rvled::Rgb c = meters[m].colour();
+            const rvled::Rgb c = blink ? rvled::Rgb{1.0f, 1.0f, 1.0f} : meters[m].colour();
             if (ledDma) gLedPwm.set(int(kMeterLed[m]), c);
             else hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
         }

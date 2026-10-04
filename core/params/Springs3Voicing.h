@@ -135,9 +135,9 @@ constexpr int kDefaultVoicing = kCoupledGauges; // firmware + plugin
 #endif
 
 #if defined(RV_FIXED_VOICINGS) || defined(RV_MODE_RELEASE) || defined(RV_MODE_PROFILE) || defined(RV_MODE_M0TEST)
-// The firmware's voicing is fixed (Tank::s3Voicing_ is constexpr), so only the
-// picked voicing's paths survive the optimiser.
-constexpr bool kPaletteBuilt = kDefaultVoicing != kToday;
+// The firmware's SPRINGS 3 is echo mode (ADR 0041): the palette is a
+// Renderer-only reference now and isn't built (~3.8 KB of flash).
+constexpr bool kPaletteBuilt = false;
 #else
 constexpr bool kPaletteBuilt = true;
 #endif

@@ -67,7 +67,7 @@ TAKE_STIMULUS = {
         # Session 2 (docs/recording-recipe.md): level series, stereo matrix, octave
         # bursts, steady and held material, the noise floor.
         "H": "13_sweep_quiet.wav", "I": "14_sweep_hot.wav",
-        "D-L": "03_sweep.wav", "D-R": "03_sweep.wav",
+        "D-L": "03_sweep.wav", "D-R": "03_sweep.wav", "D2": "03_sweep.wav",
         "J": "15_tone_bursts.wav", "K": "09_pink_noise.wav",
         "L": "08_held_tones.wav", "M": "10_pad_cminor.wav", "N": "16_silence_30s.wav",
     },
@@ -81,7 +81,7 @@ TAKE_STIMULUS = {
 }
 CORE_TAKES = {"wellspring": ["0", "A", "B", "C", "D", "E"], "magneto": ["0", "MA", "MB", "ME"]}
 OPTIONAL_TAKES = {
-    "wellspring": ["E2", "F", "G", "G2", "A-L", "A-R", "H", "I", "D-L", "D-R", "J", "K", "L", "M", "N"],
+    "wellspring": ["E2", "F", "G", "G2", "A-L", "A-R", "H", "I", "D2", "D-L", "D-R", "J", "K", "L", "M", "N"],
     "magneto": ["MS", "MW0", "MW1", "MW2", "MW3", "MW4", "MD1", "MD2", "MD3"],
 }
 ALL_TAKES = {u: CORE_TAKES[u] + OPTIONAL_TAKES[u] for u in CORE_TAKES}

@@ -3,7 +3,7 @@
 **Status:** Accepted, 4 Oct 2026 (owner: B on every panel and ATTITUDE of `renders/feat_output_mulaw/`). Amends SPEC §3 (MIX, ATTITUDE), §4.8, §7 M7. Numbers: `core/params/OutputVoicing.h`; code: `core/dsp/OutputBits.h`; method and measurements: `docs/prototypes/output-mulaw/README.md`; tests: `host/tests/test_output_bits.cpp`.
 
 **Context:** On the echo branch's bit-depth round the owner picked 8-bit µ-law on the repeats (`echo_bits_voicing` D), then: "I really like the sound of the 8-bit µ-law, but because it's only applied to the repeats, the character is still quite subtle. Could we apply µ-law to both the dry and wet signals when the ATTITUDE switch is set to DRIVEN or KICKED?" The owner's answers:
-- every SPRINGS position;
+- every SPRINGS position (position 3 is echo mode since ADR 0041: the box is after it too);
 - DRIVEN = 24 kHz / 12-bit µ-law, KICKED = 24 kHz / 8-bit µ-law, CLEAN untouched (CLEAN stays a clean passthrough at MIX 0, bit for bit);
 - dry and wet both: the whole output after MIX goes through the box, so MIX fully left in DRIVEN / KICKED is no longer a clean passthrough.
 
@@ -24,10 +24,12 @@
 - "Peak < 1" stability bars (`test_tank`, `test_spring`, `test_springs3`, `test_drive`) read the Tank **before the box** (`setOutputBitsVoicing(0)`, a test hook): the box's filters and steps can lift a limited peak past 1.0, which is the converter, not the Tank. Each also checks the shipped output (box in) finite and, where they check decay, ending no louder (`<=`: the box's tail can be exact silence, where `<` would read 0 < 0), and reports its peak and the Versio's after `kOutputTrim`.
 - `test_drive` aliasing (the drive chain's oversampling) reads **before the box**; the box's own products (µ-law's slightly curved expansion runs at 24 kHz, so its highest products fold) are printed as INFO, ~30 dB under the box's own grain; `test_output_bits` checks the box for new pitches, with a positive control.
 - `test_output_bits`: the default is 1, an untouched Tank = voicing 1; the LEDs' red unchanged by the box.
+- After merging Throw + Hold and echo mode (ADR 0039–0041): `test_echo_mode`'s stability peaks read **before the box** (shipped output checked finite and fading, peak reported: worst 1.066, the Versio's 0.932); `test_drive`'s shipped-output check skips the Hold cells as main's own check does; `test_kick`'s "Kick < 100 Hz down ≥ 20 dB within 300 ms" (ADR 0016, the Tank's tight low end) reads **before the box**, the box's number printed (see Consequences); the LED check runs SPRINGS 3 with echo mode off (three Springs), as `test_led_meter`.
 
 **Consequences to watch (owner, by ear):**
 - KICKED is gritty on everything, dry included; at MIX fully left DRIVEN / KICKED are no longer clean (by choice). For a clean dry at MIX 0, use CLEAN.
 - The top octave is gone in DRIVEN / KICKED: bright dry material (hi-hats, the air on drums) reads ~1.2 dB quieter K-weighted on 02_hits at MIX 0 (0 dB on the wet, skank, pad).
+- KICKED with TONE right of noon: after a Kick, the box's grain from the still-ringing highs fills the lows, so the Kick's < 100 Hz tail falls 10–23 dB in 300 ms with the box instead of 24–35 dB before it (TONE 1 / 0.85, DECAY 1 / 0.88; at the default TONE unchanged, 38–45 dB). Heard as grain under the tail, not a boomy thump.
 - Very hot moments at mid MIX can clip at the box's full scale; the shipped output can peak a little above 0 dBFS in the Plugin at extreme settings (worst in the stability grids 1.107, the Versio's 0.968 after `kOutputTrim`: under the DAC's clip in every test grid).
 - On the Versio the ADC's own noise (~−90 dBFS) passes through DRIVEN as an occasional bottom step (~−100 dBFS); KICKED gates it to silence (its lowest step is ~−75 dBFS).
 

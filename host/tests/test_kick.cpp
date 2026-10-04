@@ -44,6 +44,8 @@ constexpr int   kKickAt = 12345;
 
 struct Settings {
     float decay = 0.5f, attitude = 0.5f, splash = 0.3f, wobble = 0.45f, springs = 0.5f;
+    float tone = -1.0f; // < 0: the ParamSpec default
+    int   outBits = -1;  // output_bits_voicing: -1 the default (ADR 0042's mu-law box), 0 before the box (a test hook)
 };
 
 struct Out {
@@ -62,6 +64,8 @@ Out render(int block, const std::vector<long>& kicks, size_t length, const Setti
     tank.setParam(rv::ParamId::Splash, st.splash);
     tank.setParam(rv::ParamId::Wobble, st.wobble);
     tank.setParam(rv::ParamId::Springs, st.springs);
+    if (st.tone >= 0.0f) tank.setParam(rv::ParamId::Tone, st.tone);
+    if (st.outBits >= 0) tank.setOutputBitsVoicing(st.outBits);
     Buf in(length, 0.0f);
     Out o{Buf(length), Buf(length), {}};
     int started = 0;
@@ -161,22 +165,40 @@ int main()
     // mono sum: the 50 ms window at the Kick vs the loudest 50 ms window from
     // 300 ms on. KICKED at DECAY max is inside the Howl zone (a Kick there
     // starts a Howl); KICKED is also checked just below the zone, DECAY 0.88.
-    {
+    // At the default TONE and right of noon (0.85, 1): since the Big Knob
+    // moved after the Springs (ADR 0036 amendment, 4 Oct 2026) it thins the
+    // Kick's direct thump with the wet, and its makeup swells the tail back.
+    // Read before the output's mu-law box (ADR 0042; output_bits_voicing 0 as a
+    // test hook): this is the Tank's low end. The box's grain follows the whole
+    // output's level, broadband, so in KICKED (8-bit, ~33 dB under the signal)
+    // with TONE's low cut thinning the thump, the grain of the still-ringing
+    // highs fills the < 100 Hz band after 300 ms; printed as INFO.
+    for (float tone : {-1.0f, 0.85f, 1.0f}) {
         const size_t len = size_t(3.0f * kFs), s0 = size_t(0.1f * kFs), w = size_t(0.05f * kFs);
         struct Case { int att; float decay; bool required; };
         const Case cases[] = {{0, 1.0f, true}, {1, 1.0f, true}, {2, 0.88f, true}, {2, 1.0f, true}};
         for (const Case& c : cases) {
             Settings st;
             st.decay    = c.decay;
+            st.tone     = tone;
             st.attitude = rv::switchToNormalised(c.att);
-            const Out o = render(48, {long(s0)}, len, st);
-            Buf mono(len);
-            for (size_t i = 0; i < len; ++i) mono[i] = 0.5f * (o.l[i] + o.r[i]);
-            const Buf low = lowBand(mono);
-            const double e0 = energy(low, s0, s0 + w), e300 = worstWindow(low, s0 + size_t(0.3f * kFs));
-            std::snprintf(msg, sizeof msg, "%s DECAY %.2f: Kick < 100 Hz energy down %.1f dB within 300 ms (>= 20)%s",
-                          kAttName[c.att], c.decay, db(e0 / e300), c.required ? "" : " [Howl zone: report only]");
-            if (c.required) check(db(e0 / e300) >= 20.0, msg);
+            auto lowDrop = [&](int outBits) {
+                Settings sb = st;
+                sb.outBits  = outBits;
+                const Out o = render(48, {long(s0)}, len, sb);
+                Buf mono(len);
+                for (size_t i = 0; i < len; ++i) mono[i] = 0.5f * (o.l[i] + o.r[i]);
+                const Buf low = lowBand(mono);
+                return db(energy(low, s0, s0 + w) / worstWindow(low, s0 + size_t(0.3f * kFs)));
+            };
+            const double drop = lowDrop(0), shipped = lowDrop(-1);
+            char toneTxt[24] = "";
+            if (tone >= 0.0f) std::snprintf(toneTxt, sizeof toneTxt, " TONE %.2f", tone);
+            std::snprintf(msg, sizeof msg,
+                          "%s DECAY %.2f%s: Kick < 100 Hz energy down %.1f dB within 300 ms before the output box (>= 20)%s; INFO with "
+                          "the box %.1f dB",
+                          kAttName[c.att], c.decay, toneTxt, drop, c.required ? "" : " [Howl zone: report only]", shipped);
+            if (c.required) check(drop >= 20.0, msg);
             else std::printf("INFO  %s\n", msg);
         }
     }

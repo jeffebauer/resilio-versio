@@ -17,6 +17,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout makeLayout()
             layout.add(std::make_unique<juce::AudioParameterChoice>(
                 id, p.name, juce::StringArray{p.choices[0], p.choices[1], p.choices[2]},
                 rv::normalisedToSwitch(p.defaultValue)));
+        } else if (p.kind == rv::ParamKind::Toggle) {
+            // THROW (ADR 0039): the gate, automatable. Raw value 0 / 1.
+            layout.add(std::make_unique<juce::AudioParameterBool>(id, p.name, p.defaultValue >= 0.5f));
         } else {
             layout.add(std::make_unique<juce::AudioParameterFloat>(
                 id, p.name, juce::NormalisableRange<float>(0.0f, 1.0f), p.defaultValue));
@@ -61,9 +64,22 @@ public:
             tank_.setParam(p.id, p.kind == rv::ParamKind::Switch3 ? rv::switchToNormalised(int(v)) : v);
         }
 
+        // SPRINGS 3 echo mode's clock (ADR 0041): the DAW's tempo, one beat
+        // = its quarter note (the Versio's gate pulse); none = free time.
+        float bpm = 0.0f;
+        if (auto* head = getPlayHead())
+            if (const auto pos = head->getPosition())
+                if (const auto b = pos->getBpm()) bpm = float(*b);
+        tank_.setHostTempo(bpm);
+
         // The panel's KICK button: one Kick at the start of this block.
         if (panel_.takeKick())
             tank_.kick(0);
+        // THROW (the throw_gate param above, ADR 0039) is the gate: the Tank
+        // reads its changes at the block's start. MIDI notes stay Kicks.
+        // KICK held >= 1 s on the panel: throw mode off (as on the module).
+        if (panel_.takeThrowExit() && tank_.exitThrowMode())
+            panel_.noteThrowExited();
         // Any note-on = one Kick at its exact sample position; velocity ignored (ADR 0005).
         for (const auto m : midi)
             if (m.getMessage().isNoteOn())
