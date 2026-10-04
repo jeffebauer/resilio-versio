@@ -61,6 +61,14 @@ public:
             tank_.setParam(p.id, p.kind == rv::ParamKind::Switch3 ? rv::switchToNormalised(int(v)) : v);
         }
 
+        // SPRINGS 3 echo mode's clock (ADR 0041): the DAW's tempo, one beat
+        // = its quarter note (the Versio's gate pulse); none = free time.
+        float bpm = 0.0f;
+        if (auto* head = getPlayHead())
+            if (const auto pos = head->getPosition())
+                if (const auto b = pos->getBpm()) bpm = float(*b);
+        tank_.setHostTempo(bpm);
+
         // The panel's KICK button: one Kick at the start of this block.
         if (panel_.takeKick())
             tank_.kick(0);

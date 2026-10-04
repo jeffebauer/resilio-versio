@@ -141,8 +141,12 @@ CORNER S3 D1.0 TN0.0 TO1.0 (SPEC worst case)  avg  42.3% max  58.1% min  39.0% |
 ```
 
 - `CORNER S3 D1.0 TN0.0 TO1.0` — 3 Springs, DECAY 1.0 (max), TENSION 0.0 (loosest tank),
-  TONE 1.0 (brightest). `(SPEC worst case)` marks the corner matching the
+  TONE 1.0 (brightest). `(SPEC worst case)` marked the corner matching the
   budget's named worst case (SPEC §5: 3 springs, loosest TENSION, max DECAY).
+  Since echo mode (ADR 0041) no position runs 3 Springs: the candidates are
+  marked `(worst?)` (S2 and S3 at DECAY 1.0, TENSION 0.0; S3 is 2 Springs at
+  the fixed tank plus the tape echo), and the `SPLIT` line's `echo` column
+  (Spring C's old slot) is the tape's share.
 - `avg / max / min` — CPU load over that corner's ~3 s window, as a
   percentage of the audio block's time budget. **The number to watch is
   `max`; SPEC §5's target is ≤ 65%.**
@@ -182,7 +186,10 @@ fastest RAM available apart from the tiny 128 KB DTCM (already needed for the
 stack and other libDaisy internals, too small to also fit the reverb). If a
 future milestone ever needs more RAM than SRAM has spare, there's one line in
 `firmware/main.cpp` (search for `kTankPool`) that moves just this block out to
-the 64 MB external SDRAM instead — everything else stays the same. The
+the 64 MB external SDRAM instead — everything else stays the same.
+Echo mode's tape (SPRINGS 3, ADR 0041) is a second block, 2 s at 48 kHz plus a
+margin (379 KB, `kEchoTape`), in ordinary AXI SRAM (.bss, zeroed at start-up):
+about 407 KB (release) / 418 KB (profile) of the 512 KB is then in use. The
 `m0test` build is left exactly as it was and manages its own memory the
 original way, since it must not change behaviour while the M0 check is still
 in progress.

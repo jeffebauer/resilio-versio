@@ -3,10 +3,11 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0038). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0041). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
 - v1.0.32 — ADR 0030 amendment (owner, 4 Oct 2026): CPU target raised to **≤ 75 % peak** worst case, with an **80 % ceiling** for a release that passes its click check (run 15 measured 87.6 % peak and passed). §5. (v1.0.29–31 are reserved by the TONE-after, Throw/Hold and echo-mode branches, merging next.)
+- v1.0.31 — ADR 0041 (owner, 4 Oct 2026): SPRINGS position 3 is **echo mode**: a tape echo into the springs (each repeat splashes into the tank, darker each pass). In position 3 DECAY is the echo's feedback (0 = one repeat; KICKED's top runs away and dies down with DECAY), TENSION its time (2 s → 80 ms, 0.4 s at noon) or, with a clock in the gate (one pulse = a quarter note), one of seven divisions 1/2 … 1/16 incl. dotted; time changes swoop like tape. The springs behind it are fixed (the noon tank, ~1.7 s tail). The gate kicks only in positions 1–2; the plugin follows the DAW's tempo. Spring C no longer runs (heard nowhere); the coupled Springs (ADR 0037) stay a Renderer reference. §3 SW0, P2, P5, Button + Gate; §4.3; §5.
 - v1.0.29 — ADR 0036 amendment "Placement: after the springs" (owner, 4 Oct 2026, by ear on the placement prototype): the Big Knob (TONE right of noon: the 18 dB/oct low cut, 20 Hz at noon → 800 Hz fully right, the coil bump on sharp hits) moves from in front of the Springs to the wet return, after the pickups and shelf, before the limiter and MIX (Black Ark's low cut on the return). Turning TONE right now thins the tail already ringing at once, and turning back gives its body back; a slow makeup of its own (¾ back, ≤ 12 dB, over ~0.3 s) keeps the level. The Kick's direct thump is thinned with the wet. Left of noon and noon unchanged. §3 P3, §4.2, §4.8.
 - v1.0.28 — ADR 0038 / 0037 "Round F2" (owner, 3 Oct 2026): a little more low end at every TONE left of the Big Knob's own cut (the low cut in front of the Springs eased from 220 Hz / −3 dB to 155 Hz / −2 dB, level kept; held sounds trimmed a little sooner so they meet the limiter no harder), and SPRINGS position 3 is three coupled wire gauges (crisp short boing left, lower longer one right, high one in the centre, sharing energy every trip; repeat timing unchanged). §4.3, §4.8.
 - v1.0.27 — ADR 0038 (owner, 2 Oct 2026, "F, plus gentler"): the tank is the Wellspring fit, voicing 7. A shared Sweep in front of the Springs (every echo the same smooth pew), short diffusers on each Loop's feedback (repeats blur into a wash), the transducers (a resonant low-pass where the coil drives the springs and where the pickups hear them, with the coil's even-order colour: gentle highs from the first moment, repeats that darken slowly), the stereo from decorrelated mid and Spring difference (wide, no left-right flicker), a low cut in front of the Springs with a level makeup. TONE re-mapped: fully left about as dark as before, noon the fitted sound, right of noon the Big Knob. DRIVE still grows the tail ~+6 dB; SPLASH at least as strong as before relative to SPLASH 0. §3 P3, §4.2, §4.3, §4.8.
@@ -123,10 +124,16 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 
 | Switch | Left | Centre | Right |
 |---|---|---|---|
-| SW0 **SPRINGS** | 1 spring — sparse, most splashy | 2 springs — classic tank | 3 springs, coupled — they share energy every trip: echoes bloom instead of dripping (ADR 0037) |
+| SW0 **SPRINGS** | 1 spring — sparse, most splashy | 2 springs — classic tank | Echo mode — a tape echo into the 2-spring tank: each repeat splashes into the springs (ADR 0041). DECAY = echo feedback, TENSION = echo time, gate = clock |
 | SW1 **ATTITUDE** | CLEAN — linear tank, light transducer colour | DRIVEN — tape saturation, moderate clatter | KICKED — hard drive in loop, full chaos, collisions, Howl allowed |
 
-Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003).
+Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003). Into echo mode the echo fades in over 80 ms on a fresh tape while the springs glide to their fixed tank; out of it the echo fades out over 80 ms, its last repeats ringing on in the springs (ADR 0041).
+
+**Echo mode (SPRINGS 3, ADR 0041).** The panel changes meaning in position 3 only:
+- **DECAY** = the echo's feedback, and every repeat is a step down from the hit, the first included (repeat n ≈ hit × gⁿ; owner, 4 Oct): 0 = one repeat about 10 dB down, noon = a few (−6 dB each), the top a long build that still fades (CLEAN, DRIVEN); in KICKED the top ~13 % runs away (held by the tape's saturation and the limiter) and dies away when DECAY comes back down.
+- **TENSION** = the echo time. Unclocked: 2 s (CCW) → 0.4 s (noon) → 80 ms (CW), log. Clocked: seven zones CCW → CW, 1/2, dotted 1/4, 1/4, dotted 1/8, 1/8, dotted 1/16, 1/16 of the clock's beat (a time over 2 s plays at half).
+- **Gate** = the clock: one pulse = a quarter note (30–300 bpm); lost after 2.25 beats without a pulse (back to free time).
+- Every time change swoops like tape (~0.3 s, the repeats bend in pitch). WOBBLE moves the tape too. The springs behind the echo are fixed: the noon tank, T60 ~1.7 s.
 
 CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–100 ms) for DECAY, WOBBLE, TENSION (ADR 0015).
 
@@ -138,7 +145,7 @@ CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–1
 ### Button + Gate
 
 - **Button = KICK.** Injects "tank kick" impulse (§4.6). Momentary. Fixed strength, scaled by ATTITUDE (ADR 0005). Tight thud + big crash (ADR 0016). Hold does nothing extra in v1 (ADR 0013).
-- **Gate in = KICK.** Same as button. Digital on/off input — no velocity. Sequencer/envelope can hit tank rhythmically.
+- **Gate in = KICK** in SPRINGS 1–2. Same as button. Digital on/off input — no velocity. Sequencer/envelope can hit tank rhythmically. In SPRINGS 3 the gate is the echo's clock instead (one pulse = one beat, ADR 0041); its rising edges set the tempo in every position, so it is already known when SPRINGS reaches 3.
 
 ### LEDs
 
@@ -185,7 +192,8 @@ out_spring = DriveOut( C_lf + hf_level(tone) × C_hf )
 ### 4.3 Multiple springs (SW0)
 
 - 1/2/3 instances of §4.2 in parallel, **detuned** L, K, `a` per spring (±3–8%, tune by ear), and (ADR 0027) each a step darker and shorter than the one before (damping × 1 / 0.85 / 0.72, T60 × 1 / 0.93 / 0.865), so modes that line up between Springs die at different rates instead of singing. Detuning = beating + density, and helps prevent shared resonances (§4.10).
-- Position 3 (ADR 0037): the three Loops are **coupled**: each round trip their returns are turned by a 40° rotation about the axis (1, 2, 3)/√14 before going back in (energy in = energy out, each Loop's g < 1, so it always decays), keeping today's repeat timing. The coupling fades out across the Howl zone so the Springs howl apart.
+- Position 3 (ADR 0041) is **echo mode**: a tape echo (one delay line up to 2 s + a margin, 379 KB in AXI SRAM on the Daisy) on the mono input before the Splash, feeding Springs A and B at position 2's mix and a fixed tank (TENSION noon, T60 1.7 s). The playback head darkens (2-pole LPF 3.5 kHz) and thins (HPF 140 Hz) every pass; the record head loses the top (LPF 6 kHz, no folding) and saturates; feedback stays on the tape. On the feedback, a bucket-brigade "wear" (owner's pick, 4 Oct): each pass sample-and-held at a low clock with gentle filters (aliasing grit that builds), a 2:1 compander that breathes, a faint clock whine (`EchoVoicing.h` kBbd; strength to be picked). Spring C is heard nowhere, so its audio doesn't run (its settings still follow, keeping positions 1–2 bit for bit). Numbers: `core/params/EchoVoicing.h`.
+- Before ADR 0041, position 3 (ADR 0037) was three **coupled** Loops: each round trip their returns turned by a 40° rotation about the axis (1, 2, 3)/√14 (energy-preserving), let go across the Howl zone. Kept as a Renderer-only reference (`echo_mode=0`).
 - Stereo (ADR 0038): no Spring is panned. L = mid + X, R = mid − X, where X is the bass-cut (150 Hz) sum of the mid through a decorrelator and the Springs' difference (A − B) through its own decorrelator: every echo reaches both ears at once (no left-right flicker), the fine detail differs (width), and mono is exactly the mid. (Before: Spring A → L, B → R, C centre; 1 Spring decorrelated R.)
 - Input summed to mono before tank (real tanks are mono). Dry path stays stereo.
 - ~20 ms crossfade on spring-count change.
@@ -295,7 +303,7 @@ Measurable criterion (starting thresholds — tune/confirm in interview):
 ## 5. Performance budget
 
 - 48 kHz, block 48 initial. 480 MHz ÷ 48 kHz ≈ **10,000 cycles/sample**.
-- Target **≤ 75% CPU peak** worst case, **80 % ceiling** for a release that passes its click check (ADR 0030 amendment, 4 Oct 2026; was 70 %) (3 springs, KICKED, loosest TENSION (0), max DRIVE), measured by the M3 profile build; every release is also checked by ear on the module for clicks/dropouts at heavy settings (owner, 30 Sep 2026; was 65 %, ADR 0030).
+- Target **≤ 75% CPU peak** worst case, **80 % ceiling** for a release that passes its click check (ADR 0030 amendment, 4 Oct 2026; was 70 %) (since ADR 0041 no position runs 3 Springs: 2 Springs at the loosest TENSION (0), or echo mode at DECAY 1; KICKED, max DRIVE), measured by the M3 profile build; every release is also checked by ear on the module for clicks/dropouts at heavy settings (owner, 30 Sep 2026; was 65 %, ADR 0030).
 - Main costs: allpass cascades, oversampled nonlinear stages. Mitigations:
   1. Delay lines + filter state in internal SRAM, not SDRAM.
   2. Decimated low-chirp path (×2/×4) per Parker 2011.

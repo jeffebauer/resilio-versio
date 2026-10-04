@@ -61,6 +61,9 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Tone, s.tone);
     t.setParam(rv::ParamId::Mix, s.mix);
+    // SPRINGS 3 here is the three-Spring reference (setEchoMode(false), Renderer-only since
+    // ADR 0041): these checks hold the Springs to their bars; echo mode has test_echo_mode.
+    t.setEchoMode(false);
     t.setParam(rv::ParamId::Springs, springsValue(s.mode));
     if (s.splash >= 0.0f) t.setParam(rv::ParamId::Splash, s.splash);
 }

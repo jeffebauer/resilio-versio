@@ -33,6 +33,10 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // "tone_place_voicing" (where the Big Knob acts: 0 = before the Springs, as
 // first shipped, for reference; 1 = on the wet, the default since the
 // owner's pick of 4 Oct 2026; DriveVoicing.h "TONE placement", ADR 0036).
+// "echo_mode" (1 = SPRINGS 3 is echo mode, the default and what ships; 0 =
+// the coupled Springs reference, springs3_voicing; ADR 0041) and "host_bpm"
+// (echo mode's clock as the Plugin gets it from the DAW: a tempo in bpm, 0 =
+// none; Tank::setHostTempo).
 // Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
@@ -42,6 +46,12 @@ inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
 inline constexpr const char* kTonePlaceVoicingKey = "tone_place_voicing";
+inline constexpr const char* kEchoModeKey        = "echo_mode";
+inline constexpr const char* kHostBpmKey         = "host_bpm";
+inline constexpr const char* kEchoDiffuseKey     = "echo_diffuse_voicing"; // 0 none ... 3 heavy (EchoVoicing.h kDiffuse)
+inline constexpr const char* kEchoWearKey        = "echo_wear_voicing";    // 0 none, 1 worn tape, 2 radio band, 3 BBD grit (default), 4 crushed
+inline constexpr const char* kBbdKey             = "bbd_voicing";          // BBD strength: 0 A today, 1 B, 2 C, 3 D tracks the echo time
+inline constexpr const char* kEchoBitsKey        = "echo_bits_voicing";    // 0 none, 1 24 kHz/12-bit, 2 24 kHz/8-bit, 3 24 kHz/8-bit mu-law
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 

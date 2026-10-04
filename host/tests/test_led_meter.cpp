@@ -155,6 +155,9 @@ void limiterFromTank()
     auto run = [&](float gainDb, int springs) {
         t.reset();
         t.setSustainTrimEnabled(false);
+        // Three Springs (setEchoMode(false): SPRINGS 3's reference since ADR
+        // 0041): their modes add up into the limiter, which is what this needs.
+        t.setEchoMode(false);
         t.setParam(rv::ParamId::Decay, 0.62f);
         t.setParam(rv::ParamId::Tension, 0.5f);
         t.setParam(rv::ParamId::Tone, 0.5f);
