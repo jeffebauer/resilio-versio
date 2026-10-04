@@ -623,9 +623,11 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
         echoSecs_ = echo::kFreeLongSeconds
                   * std::exp(tensionKnob * std::log(echo::kFreeShortSeconds / echo::kFreeLongSeconds));
     }
-    // DECAY = feedback: CLEAN and DRIVEN's curve, KICKED's (runaway at the
-    // top), blended with the ATTITUDE Morph.
-    const float fb = (attW_[0] + attW_[1]) * echo::feedbackClean(decayKnob) + attW_[2] * echo::feedbackKicked(decayKnob);
+    // DECAY = feedback: CLEAN and DRIVEN's curve, KICKED's (both persistent
+    // at the top, KICKED from a little lower), blended with the ATTITUDE Morph.
+    const float base = echo::feedbackBase(decayKnob);
+    const float fb   = (attW_[0] + attW_[1]) * echo::feedbackRise(base, decayKnob, echo::kCleanFrom)
+                     + attW_[2] * echo::feedbackRise(base, decayKnob, echo::kKickedFrom);
     fbFrom_ = snap ? fb : fbTo_;
     fbTo_   = fb;
     // The input onto the tape at the feedback's own gain: every repeat a step

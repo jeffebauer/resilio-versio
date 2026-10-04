@@ -19,10 +19,14 @@
 //   swoop     A time change glides (~0.3 s), never faster than 0.5 samples
 //             per sample, and doesn't click (TENSION jumps, the clock arriving
 //             and being lost).
-//   feedback  DECAY 0 = one repeat; noon 0.5; the top 0.95 (CLEAN, DRIVEN):
-//             repeats fade at DECAY 1 (no runaway); KICKED's top runs away,
-//             held under 1 by the tape and the limiter, finite, and dies
-//             away (>= 30 dB within 4 s) when DECAY comes back to noon.
+//   feedback  DECAY 0 = one repeat; noon 0.5; the top the same in every
+//             ATTITUDE (kFeedbackTop = KICKED's old DECAY 0.92; ADR 0041
+//             amendment, owner 5 Oct 2026), below the rise bit for bit as
+//             before. At DECAY 1, every ATTITUDE: a single rim's repeats
+//             persist at a steady level held by the tape (no fade, no
+//             growth, under the limiter); with continuous input bounded
+//             (limiter threshold), not growing; backing DECAY off to noon:
+//             >= 30 dB down within 3.5 s, no clicks while riding DECAY.
 //   steps     The level fix: every repeat a step down from the hit (the
 //             first included), geometric; DECAY 0 one repeat at ~-10 dB.
 //   springs   The springs behind it are fixed: DECAY and TENSION don't touch
@@ -37,7 +41,8 @@
 //   stability Extremes (DECAY 1, every ATTITUDE, DRIVE 1, TENSION 0 / 1,
 //             WOBBLE 0 / 1, a clock): finite, peaks under 1.
 //             And the grid as test_tank / test_drive: finite, peak < 1, the
-//             repeats fade outside KICKED's runaway.
+//             repeats fade outside the top's persistent zone (KICKED DECAY
+//             0.89 and 1, CLEAN / DRIVEN DECAY 1).
 //   hothighs  The tape's saturation on a hot 15 kHz tone: its folds under -90 dBFS.
 //   blocks    Block size 16 / 48 / 333 / 512 render the same (with clock edges).
 //   diffuse   PROTOTYPE diffuse repeats (echo_diffuse_voicing 1-3): the first
@@ -56,8 +61,8 @@
 //             wear since 4 Oct): aliasing measured on a tone (inharmonic energy
 //             in 0.3-5 kHz), A < B < C and B-D clearly above crushed; level per
 //             repeat steady; D's clock follows the echo time and swoops;
-//             deterministic, no clicks, runaway bounded and dying, CLEAN DECAY 1
-//             fades, M6 (Ringing and steady tone) clean.
+//             deterministic, no clicks, KICKED's top bounded and dying, CLEAN's
+//             long build (DECAY 0.9) fades, M6 (Ringing and steady tone) clean.
 //   bits      The repeats' bit depth (echo_bits_voicing A-D, on BBD A):
 //             level per repeat, the echo time, no new narrow (pitched) peaks
 //             in repeats 2-6 beyond A's, tails ending in silence (no stuck
@@ -696,25 +701,60 @@ void swoop()
     }
 }
 
+const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
+
 // ---- feedback -------------------------------------------------------------------------------
+Buf rimLike(double seconds, double at, float peak = 0.5f); // the bits section's rim
+
 void feedback()
 {
-    // The curve.
+    // The curve (ADR 0041 amendment, owner 5 Oct 2026): the base curve
+    // (0.95 x DECAY^0.926) up to each ATTITUDE's start, then a smoothstep
+    // rise to the same top in every ATTITUDE, kFeedbackTop = what KICKED's
+    // DECAY 0.92 gave before (when its rise went to 1.25 and ran away).
     {
-        const float f0 = rv::echo::feedbackClean(0.0f), fn = rv::echo::feedbackClean(0.5f), f1 = rv::echo::feedbackClean(1.0f);
-        const float k1 = rv::echo::feedbackKicked(1.0f), k7 = rv::echo::feedbackKicked(0.7f);
+        using namespace rv::echo;
+        const float f0 = feedbackClean(0.0f), fn = feedbackClean(0.5f), f1 = feedbackClean(1.0f), k1 = feedbackKicked(1.0f);
+        // KICKED's curve as it was (its top 1.25), at DECAY 0.92.
+        const float b92 = feedbackBase(0.92f), u92 = (0.92f - kKickedFrom) / (1.0f - kKickedFrom);
+        const float old92 = b92 + u92 * u92 * (3.0f - 2.0f * u92) * (1.25f - b92);
+        // Bit for bit as before below each start (the base curve is the old CLEAN curve).
+        bool below = true;
+        for (int k = 0; k <= 1000; ++k) {
+            const float d = k / 1000.0f;
+            if (d <= kCleanFrom) below &= feedbackClean(d) == feedbackBase(d);
+            if (d <= kKickedFrom) below &= feedbackKicked(d) == feedbackBase(d);
+        }
+        // Even travel: rising all the way (no flat, dead end), no jump.
+        bool  rising  = true;
+        float maxStep = 0.0f;
+        for (int k = 1; k <= 100; ++k) {
+            const float a = (k - 1) / 100.0f, b = k / 100.0f;
+            for (float (*f)(float) : {&feedbackClean, &feedbackKicked}) {
+                rising &= f(b) > f(a);
+                maxStep = std::max(maxStep, f(b) - f(a));
+            }
+        }
         std::snprintf(msg, sizeof msg,
-                      "Feedback: DECAY 0 / noon / 1 = %.3f / %.3f / %.3f (0, 0.5, 0.95); KICKED 0.7 %.3f (as CLEAN %.3f), 1 %.3f (1.25)",
-                      double(f0), double(fn), double(f1), double(k7), double(rv::echo::feedbackClean(0.7f)), double(k1));
-        check(f0 == 0.0f && std::fabs(fn - 0.5f) < 1e-4f && std::fabs(f1 - 0.95f) < 1e-4f && k7 == rv::echo::feedbackClean(0.7f)
-                  && std::fabs(k1 - 1.25f) < 1e-4f,
+                      "Feedback: DECAY 0 / noon / 1 = %.3f / %.3f / %.3f, KICKED 1 %.3f (want 0, 0.5, the top %.3f in every ATTITUDE = "
+                      "KICKED's old DECAY 0.92 %.4f); bit for bit as before below DECAY %.2f (CLEAN, DRIVEN) / %.2f (KICKED) %d; rising "
+                      "to the end %d (largest step per 1 %% of the knob %.3f; DECAY 0.92 -> 1 adds %.3f)",
+                      double(f0), double(fn), double(f1), double(k1), double(kFeedbackTop), double(old92), double(kCleanFrom),
+                      double(kKickedFrom), int(below), int(rising), double(maxStep), double(k1 - feedbackKicked(0.92f)));
+        check(f0 == 0.0f && std::fabs(fn - 0.5f) < 1e-4f && f1 == kFeedbackTop && k1 == kFeedbackTop
+                  && std::fabs(kFeedbackTop - old92) < 0.002f && below && rising && maxStep < 0.05f
+                  && k1 - feedbackKicked(0.92f) > 0.05f,
               msg);
-        // Each pass's gain at the heads' peak (~0.965): where KICKED runs away.
-        float runaway = -1.0f;
-        for (int k = 0; k <= 1000 && runaway < 0; ++k)
-            if (rv::echo::feedbackKicked(k / 1000.0f) * 0.965f > 1.0f) runaway = k / 1000.0f;
-        std::snprintf(msg, sizeof msg, "Feedback: KICKED's repeats grow from DECAY %.3f (x 0.965, the heads' peak); CLEAN never",
-                      double(runaway));
+        // Each pass's gain at the heads' peak (~0.965): where repeats stop fading.
+        float grow[2] = {-1.0f, -1.0f};
+        for (int k = 0; k <= 1000; ++k) {
+            if (grow[0] < 0 && feedbackClean(k / 1000.0f) * 0.965f > 1.0f) grow[0] = k / 1000.0f;
+            if (grow[1] < 0 && feedbackKicked(k / 1000.0f) * 0.965f > 1.0f) grow[1] = k / 1000.0f;
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Feedback: a pass gains (x 0.965, the heads' peak) from DECAY %.3f in CLEAN / DRIVEN, %.3f in KICKED (was 0.873 in "
+                      "KICKED, never in CLEAN / DRIVEN)",
+                      double(grow[0]), double(grow[1]));
         info(msg);
     }
     // DECAY 0 = one repeat: a burst, TENSION 1 (80 ms); the echo's share
@@ -741,39 +781,116 @@ void feedback()
                       int(sameTo2nd), aRise, bRise);
         check(sameTo2nd && aRise < 0.0 && bRise > 6.0, msg);
     }
-    // CLEAN / DRIVEN, DECAY 1: the repeats fade (a hit, then 30 s).
-    for (int att = 0; att < 2; ++att) {
+    // DECAY 1, every ATTITUDE: a single rim (-6 dBFS, TENSION noon: 0.4 s)
+    // and 30 s. The repeats persist (no fade), settle to a steady level held
+    // by the tape (1 s windows over 10-30 s within 3 dB: +-1.5), don't keep
+    // growing (25-30 s within 1 dB of 20-25 s) and stay under the limiter
+    // (its gain never moves). Read before the output box (its grain is not
+    // the echo); the shipped output checked finite.
+    for (int att = 0; att < 3; ++att) {
         Settings s;
-        s.att = att, s.decay = 1.0f, s.tension = 0.75f; // ~0.18 s: many passes
-        const Buf in = burst(30.0, 0.5);
-        const Stereo o = render(s, in);
-        const double early = stereoDb(o, sec(2.0), sec(4.0)), late = stereoDb(o, sec(26.0), sec(28.0));
-        std::snprintf(msg, sizeof msg, "Feedback %s DECAY 1: repeats fade, 2-4 s %.1f dB, 26-28 s %.1f dB (want >= 20 dB lower)",
-                      att ? "DRIVEN" : "CLEAN", early, late);
-        check(late < early - 20.0 && finite(o), msg);
-    }
-    // KICKED DECAY 1: a runaway, held under 1, and it dies when DECAY comes down.
-    {
-        Settings s;
-        s.att = 2, s.decay = 1.0f, s.tension = 0.75f, s.drive = 1.0f;
-        const size_t n = sec(20.0);
-        const Buf in = burst(20.0, 0.5);
+        s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.outBits = 0;
+        const Buf in = rimLike(30.0, 0.5, 0.5f);
         rv::Tank t;
         t.prepare(kFs, 48);
         apply(t, s);
-        Stereo o{Buf(n), Buf(n)};
-        for (size_t pos = 0; pos < n; pos += 48) {
-            if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+        Stereo o{Buf(in.size()), Buf(in.size())};
+        float lim = 1.0f;
+        for (size_t pos = 0; pos < in.size(); pos += 48) {
             t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            lim = std::min(lim, t.limiterGain());
         }
-        const double early = stereoDb(o, sec(1.0), sec(2.0)), held = stereoDb(o, sec(8.0), sec(10.0));
-        const double after = stereoDb(o, sec(13.5), sec(14.0));
-        const float  pk    = peakOf(o);
+        s.outBits = -1;
+        const Stereo sh = render(s, in);
+        const double hit = stereoDb(o, sec(0.5), sec(0.85)), early = stereoDb(o, sec(2.0), sec(4.0));
+        double lo = 1e9, hi = -1e9;
+        for (int w = 10; w < 30; ++w) {
+            const double v = stereoDb(o, sec(w), sec(w + 1));
+            lo = std::min(lo, v), hi = std::max(hi, v);
+        }
+        const double a = stereoDb(o, sec(20.0), sec(25.0)), b = stereoDb(o, sec(25.0), sec(30.0));
         std::snprintf(msg, sizeof msg,
-                      "Feedback KICKED DECAY 1 (DRIVE 1): runaway (8-10 s %.1f dB vs 1-2 s %.1f), peak %.3f (< 1), finite %d; "
-                      "DECAY back to noon at 10 s: 13.5-14 s %.1f dB (want >= 30 dB under)",
-                      held, early, double(pk), int(finite(o)), after);
-        check(held > early && pk < 1.0f && finite(o) && after < held - 30.0, msg);
+                      "Feedback %s DECAY 1, a single rim: repeats persist at %.1f dB re the hit (%.1f dBFS; 2-4 s %+.1f), 1 s windows "
+                      "over 10-30 s within %.1f dB (want <= 3), 25-30 s vs 20-25 s %+.2f dB (want < +1: no growth); peak %.3f, "
+                      "limiter gain never under %.3f (want 1: under the limiter); shipped finite %d",
+                      kAttName[att], b - hit, b, early - hit, hi - lo, b - a, double(peakOf(o)), double(lim), int(finite(sh)));
+        check(b > early && hi - lo <= 3.0 && b - a < 1.0 && lim >= 1.0f && finite(o) && finite(sh), msg);
+    }
+    // DECAY 1 with continuous input (skank stabs, 30 s; DRIVE 0 and 1):
+    // bounded (peak under the limiter's threshold, before the box) and not
+    // growing (the last 5 s within 1 dB of the 5 s before). The limiter's
+    // deepest gain is reported.
+    {
+        const Buf in = stabs(30.0);
+        bool ok = true;
+        char line[420] = "";
+        for (int att = 0; att < 3; ++att)
+            for (float dr : {0.0f, 1.0f}) {
+                Settings s;
+                s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.drive = dr, s.outBits = 0;
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                apply(t, s);
+                Stereo o{Buf(in.size()), Buf(in.size())};
+                float lim = 1.0f;
+                for (size_t pos = 0; pos < in.size(); pos += 48) {
+                    t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                    lim = std::min(lim, t.limiterGain());
+                }
+                const double grow = stereoDb(o, sec(25.0), sec(30.0)) - stereoDb(o, sec(20.0), sec(25.0));
+                const float  pk   = peakOf(o);
+                ok &= finite(o) && pk <= rv::Tank::kLimitThreshold + 1e-3f && grow < 1.0;
+                char one[100];
+                std::snprintf(one, sizeof one, "%s%s DRIVE %.0f peak %.3f limiter %.1f dB growth %+.2f", line[0] ? "; " : "",
+                              kAttName[att], double(dr), double(pk), 20.0 * std::log10(double(lim)), grow);
+                std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+            }
+        std::snprintf(msg, sizeof msg, "Feedback DECAY 1, skank for 30 s (bounded <= %.2f before the box, growth < 1 dB): %s",
+                      double(rv::Tank::kLimitThreshold), line);
+        check(ok, msg);
+    }
+    // Backing off (ADR 0018's spirit): DECAY 1 for 10 s, then noon, every
+    // ATTITUDE at DRIVE 1: >= 30 dB down within 3.5 s. Riding DECAY up and
+    // down (0.5 -> 1 -> 0.5 ..., 4 s legs) adds no clicks to the same note
+    // at DECAY 1 held.
+    for (int att = 0; att < 3; ++att) {
+        Settings s;
+        s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.drive = 1.0f;
+        s.outBits = 0; // the echo itself, before the output box (its 12 / 10-bit steps at the limiter's level read as edges)
+        const size_t n  = sec(20.0);
+        const Buf    rim = rimLike(20.0, 0.5, 0.5f);
+        // For the clicks, a smooth note (a Hann-shaped 0.3 s chord, -6 dBFS):
+        // a rim's own edge, repeated and saturated, reads as a click.
+        Buf note(n, 0.0f);
+        for (size_t i = 0; i < sec(0.3); ++i) {
+            const double t = double(i) / kFs, w = 0.5 - 0.5 * std::cos(2 * kPi * t / 0.3);
+            note[sec(0.5) + i] = float(0.25 * w * (std::sin(2 * kPi * 330 * t) + std::sin(2 * kPi * 495 * t)));
+        }
+        auto go = [&](int mode, const Buf& in) {
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, s);
+            Stereo o{Buf(n), Buf(n)};
+            for (size_t pos = 0; pos < n; pos += 48) {
+                if (mode == 1 && pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                if (mode == 2) {
+                    const double ts = double(pos) / kFs, ph = std::fmod(ts, 8.0) / 4.0;
+                    t.setParam(rv::ParamId::Decay, float(ph < 1.0 ? 0.5 + 0.5 * ph : 1.0 - 0.5 * (ph - 1.0)));
+                }
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            return o;
+        };
+        const Stereo back = go(1, rim), held = go(0, note), ride = go(2, note);
+        const double before = stereoDb(back, sec(8.0), sec(10.0)), after = stereoDb(back, sec(13.2), sec(13.5));
+        double w0 = 0, w1 = 0;
+        const int cHeld = clicksBoth(held, sec(0.4), &w0), cRide = clicksBoth(ride, sec(0.4), &w1);
+        std::snprintf(msg, sizeof msg,
+                      "Feedback %s DECAY 1 (DRIVE 1), back to noon at 10 s: 8-10 s %.1f dB, 13.2-13.5 s %.1f dB (want >= 30 dB under); "
+                      "riding DECAY 0.5 <-> 1: %d clicks (worst ratio %.1f) vs %d held at 1 (%.1f); peak %.3f, finite %d",
+                      kAttName[att], before, after, cRide, w1, cHeld, w0, double(std::max(peakOf(back), peakOf(ride))),
+                      int(finite(back) && finite(ride)));
+        check(after < before - 30.0 && cRide <= cHeld && finite(back) && finite(ride), msg);
     }
 }
 
@@ -1052,7 +1169,8 @@ void stability()
     // The grid (as test_tank / test_drive): impulse + 1 s full-scale noise,
     // ATTITUDE x DRIVE {0, 1} x DECAY {0, .5, .89, 1} x TENSION {0, .5, 1}:
     // finite, peak < 1, and the repeats fade (>= 10 dB from 3-5 s to 33-35 s)
-    // everywhere but KICKED's runaway (DECAY >= kKickedFrom + its top).
+    // everywhere but the top's persistent repeats (KICKED DECAY 0.89 and 1, where a pass
+    // gains or nearly; CLEAN / DRIVEN DECAY 1; ADR 0041 amendment).
     {
         Buf in(sec(36.0), 0.0f);
         in[sec(0.1)] = 1.0f;
@@ -1073,7 +1191,7 @@ void stability()
                         const Stereo o = render(st, in, 48);
                         const float pk = peakOf(o);
                         shWorst = std::max(shWorst, peakOf(sh));
-                        const bool runaway = a == 2 && dc > 0.87f;
+                        const bool runaway = dc > (a == 2 ? 0.87f : 0.93f); // the top: persistent by design
                         const double fall = stereoDb(o, sec(3.0), sec(5.0)) - stereoDb(o, sec(33.0), sec(35.0));
                         const double shFall = stereoDb(sh, sec(3.0), sec(5.0)) - stereoDb(sh, sec(33.0), sec(35.0));
                         const bool good = finite(o) && pk < 1.0f && (runaway || fall >= 10.0) && finite(sh) && (runaway || shFall >= 10.0);
@@ -1087,7 +1205,7 @@ void stability()
         std::snprintf(msg, sizeof msg,
                       "Stability grid ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x TENSION {0,.5,1} (%d cells, impulse + 1 s full-scale "
                       "noise, 36 s): finite, peak before the output box < 1 (worst %.3f), repeats fade >= 10 dB over 30 s outside "
-                      "KICKED's runaway (least %.1f dB; with the box too); %d bad (first: %s); shipped output peak %.3f (Versio after "
+                      "the top's persistent zone (least %.1f dB; with the box too); %d bad (first: %s); shipped output peak %.3f (Versio after "
                       "kOutputTrim %.3f)",
                       cells, double(pkWorst), fadeWorst, bad, badAt, double(shWorst), double(shWorst * 0.874f));
         check(bad == 0, msg);
@@ -1249,8 +1367,8 @@ void diffuse()
     }
 
     // M6 Ringing on position 3 tails: click + noise burst, every ATTITUDE,
-    // DECAY 0.85 and 1 (KICKED 1 is the runaway: Howl, not Ringing; KICKED
-    // 0.85 instead), TENSION 0 / 0.5. Flags and worst ringing_db per voicing;
+    // DECAY 0.85 and 1 (KICKED 1 included since its top is persistent
+    // repeats rather than a runaway, ADR 0041 amendment), TENSION 0 / 0.5. Flags and worst ringing_db per voicing;
     // no voicing worse than none.
     {
         Buf clk(sec(14.0), 0.0f);
@@ -1268,7 +1386,6 @@ void diffuse()
                 for (float dc : {0.85f, 1.0f})
                     for (float tn : {0.0f, 0.5f})
                         for (const Buf* in : {static_cast<const Buf*>(&clk), &nb}) {
-                            if (a == 2 && dc > 0.9f) continue; // the runaway: checked below
                             Settings s;
             s.wear = 0; // the diffuse round was built without wear
                             s.att = a, s.decay = dc, s.tension = tn;
@@ -1316,31 +1433,41 @@ void diffuse()
             std::snprintf(one, sizeof one, "%s%d: %.1f dB held, peak %.2f, %.1f dB after", line[0] ? "; " : "", v, held, double(pk), after);
             std::strncat(line, one, sizeof line - std::strlen(line) - 1);
         }
-        std::snprintf(msg, sizeof msg, "Diffuse, KICKED DECAY 1 runaway then DECAY noon at 10 s (want peak < 1, >= 30 dB down by 13.5 s): %s", line);
+        std::snprintf(msg, sizeof msg, "Diffuse, KICKED DECAY 1 (the held top) then DECAY noon at 10 s (want peak < 1, >= 30 dB down by 13.5 s): %s", line);
         check(ok, msg);
     }
-    // Extremes per voicing.
+    // Extremes per voicing. Peaks read before the output's mu-law box, as
+    // "stability" (ADR 0042: the box's filters and steps can lift a limited
+    // peak past 1.0, the converter, not the echo); the shipped output is
+    // checked finite and its peak reported. (Since CLEAN and DRIVEN hold at
+    // the top of DECAY, ADR 0041 amendment, their wet sits at the limiter
+    // here, as KICKED's did.)
     {
         const Buf h = hits(10.0);
         bool ok = true;
-        float worstPk = 0.0f;
+        float worstPk = 0.0f, shipped = 0.0f;
         for (int v = 1; v < 4; ++v)
             for (int a = 0; a < 3; ++a)
-                for (float tn : {0.0f, 1.0f}) {
-                    Settings s;
-            s.wear = 0; // the diffuse round was built without wear
-                    s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = 0.0f;
-                    rv::Tank t;
-                    t.prepare(kFs, 48);
-                    apply(t, s);
-                    t.setEchoDiffuseVoicing(v);
-                    Stereo o{Buf(h.size()), Buf(h.size())};
-                    for (size_t pos = 0; pos < h.size(); pos += 48)
-                        t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
-                    worstPk = std::max(worstPk, peakOf(o));
-                    ok &= finite(o) && peakOf(o) < 1.0f;
-                }
-        std::snprintf(msg, sizeof msg, "Diffuse 1-3 extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f", double(worstPk));
+                for (float tn : {0.0f, 1.0f})
+                    for (int box = 0; box < 2; ++box) {
+                        Settings s;
+                        s.wear = 0; // the diffuse round was built without wear
+                        s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = 0.0f;
+                        s.outBits = box ? -1 : 0;
+                        rv::Tank t;
+                        t.prepare(kFs, 48);
+                        apply(t, s);
+                        t.setEchoDiffuseVoicing(v);
+                        Stereo o{Buf(h.size()), Buf(h.size())};
+                        for (size_t pos = 0; pos < h.size(); pos += 48)
+                            t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                        (box ? shipped : worstPk) = std::max(box ? shipped : worstPk, peakOf(o));
+                        ok &= finite(o) && (box || peakOf(o) < 1.0f);
+                    }
+        std::snprintf(msg, sizeof msg,
+                      "Diffuse 1-3 extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak before the output box %.3f "
+                      "(< 1); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
+                      double(worstPk), double(shipped), double(shipped * 0.874f));
         check(ok, msg);
     }
     // Cost (desktop): position 3, KICKED, DRIVE 1, DECAY 1, TENSION 0, per voicing.
@@ -1463,31 +1590,37 @@ void wear()
         }
         // Extremes.
         {
+            // Peaks before the output's mu-law box, as "stability" and the
+            // diffuse extremes (ADR 0042); shipped output finite, peak reported.
             bool ok = true;
-            float worstPk = 0.0f;
+            float worstPk = 0.0f, shipped = 0.0f;
+            const Buf hh = hits(10.0);
             for (int a2 = 0; a2 < 3; ++a2)
-                for (float tn : {0.0f, 1.0f}) {
-                    Settings x;
-                    x.att = a2, x.decay = 1.0f, x.drive = 1.0f, x.tension = tn, x.wobble = 0.0f;
-                    rv::Tank t;
-                    t.prepare(kFs, 48);
-                    apply(t, x);
-                    t.setEchoWearVoicing(v);
-                    const Buf hh = hits(10.0);
-                    Stereo o{Buf(hh.size()), Buf(hh.size())};
-                    for (size_t pos = 0; pos < hh.size(); pos += 48)
-                        t.process(hh.data() + pos, hh.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
-                    worstPk = std::max(worstPk, peakOf(o));
-                    ok &= finite(o) && peakOf(o) < 1.0f;
-                }
-            std::snprintf(msg, sizeof msg, "Wear %s extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f",
-                          kWearName[v], double(worstPk));
+                for (float tn : {0.0f, 1.0f})
+                    for (int box = 0; box < 2; ++box) {
+                        Settings x;
+                        x.att = a2, x.decay = 1.0f, x.drive = 1.0f, x.tension = tn, x.wobble = 0.0f;
+                        x.outBits = box ? -1 : 0;
+                        rv::Tank t;
+                        t.prepare(kFs, 48);
+                        apply(t, x);
+                        t.setEchoWearVoicing(v);
+                        Stereo o{Buf(hh.size()), Buf(hh.size())};
+                        for (size_t pos = 0; pos < hh.size(); pos += 48)
+                            t.process(hh.data() + pos, hh.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                        (box ? shipped : worstPk) = std::max(box ? shipped : worstPk, peakOf(o));
+                        ok &= finite(o) && (box || peakOf(o) < 1.0f);
+                    }
+            std::snprintf(msg, sizeof msg,
+                          "Wear %s extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak before the output box %.3f "
+                          "(< 1); shipped output peak %.3f",
+                          kWearName[v], double(worstPk), double(shipped));
             check(ok, msg);
         }
     }
 
     // M6 Ringing at SPRINGS 3 per voicing: click + burst, every ATTITUDE x
-    // DECAY .85 / 1 (KICKED 1 is the runaway: checked above) x TENSION 0 / .5.
+    // DECAY .85 / 1 (every ATTITUDE: KICKED's top no longer runs away) x TENSION 0 / .5.
     {
         Buf clk(sec(14.0), 0.0f);
         clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
@@ -1504,7 +1637,6 @@ void wear()
                 for (float dc : {0.85f, 1.0f})
                     for (float tn : {0.0f, 0.5f})
                         for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
-                            if (a == 2 && dc > 0.9f) continue;
                             Settings x;
                             x.att = a, x.decay = dc, x.tension = tn;
                             rv::Tank t;
@@ -1707,14 +1839,17 @@ void bbd()
             const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(12.7), sec(13.0));
             std::snprintf(msg, sizeof msg,
                           "BBD %s, KICKED DECAY 1 (DRIVE 1): held 8-10 s %.1f dB, peak %.2f; DECAY to noon at 10 s: 12.7-13 s %.1f dB "
-                          "(want >= 30 dB under); CLEAN DECAY 1 fades: see below",
+                          "(want >= 30 dB under); CLEAN DECAY 0.9 fades: see below",
                           kName[v], held, double(peakOf(o)), after);
             check(finite(o) && peakOf(o) < 1.0f && after < held - 30.0, msg);
         }
-        {   // CLEAN DECAY 1 at a long echo (TENSION 0.15): the repeats fade.
+        {   // CLEAN's long build at a long echo (TENSION 0.15): the repeats fade.
+            // DECAY 0.9 (feedback 0.94): what DECAY 1 gave before CLEAN's top
+            // became persistent repeats (0.95; ADR 0041 amendment), which
+            // "feedback" checks.
             const Buf in = burst(30.0, 0.5);
             Settings k;
-            k.decay = 1.0f, k.tension = 0.15f;
+            k.decay = 0.9f, k.tension = 0.15f;
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
@@ -1723,7 +1858,7 @@ void bbd()
             for (size_t pos = 0; pos < in.size(); pos += 48)
                 t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
             const double early = stereoDb(o, sec(2.0), sec(5.0)), late = stereoDb(o, sec(26.0), sec(29.0));
-            std::snprintf(msg, sizeof msg, "BBD %s, CLEAN DECAY 1 at 1.2 s echo: 2-5 s %.1f dB, 26-29 s %.1f dB (want >= 10 dB lower)",
+            std::snprintf(msg, sizeof msg, "BBD %s, CLEAN DECAY 0.9 at 1.2 s echo: 2-5 s %.1f dB, 26-29 s %.1f dB (want >= 10 dB lower)",
                           kName[v], early, late);
             check(late < early - 10.0, msg);
         }
@@ -1743,7 +1878,6 @@ void bbd()
                 for (float dc : {0.85f, 1.0f})
                     for (float tn : {0.0f, 0.5f})
                         for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
-                            if (a == 2 && dc > 0.9f) continue;
                             Settings x;
                             x.att = a, x.decay = dc, x.tension = tn;
                             rv::Tank t;
@@ -1797,7 +1931,7 @@ void bbd()
 
 // ---- bits (the repeats' bit depth, PROTOTYPE) ----------------------------------------------
 // A rim-like hit: a click plus three decaying partials (420, 1150, 2300 Hz).
-Buf rimLike(double seconds, double at, float peak = 0.5f)
+Buf rimLike(double seconds, double at, float peak)
 {
     Buf b(sec(seconds), 0.0f);
     rv::dsp::Rng rng;
@@ -1999,7 +2133,6 @@ void bits()
                 for (float dc : {0.85f, 1.0f})
                     for (float tn : {0.0f, 0.5f})
                         for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
-                            if (a == 2 && dc > 0.9f) continue;
                             Settings x;
                             x.att = a, x.decay = dc, x.tension = tn;
                             rv::Tank t;
