@@ -6,7 +6,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M3 CPU | Run 15 (Wellspring F tank): **82 % average / 86 % peak**, over budget but no clicks. New budget (your call): **≤ 75 % peak target, 80 % ceiling**. **Run 16 ready** (§2): same sound, expected ~68 % peak |
+| M3 CPU | Run 16: **67.7 % average / 72.8 % peak** (2 Springs; 3 coupled Springs 77.8 % peak). Budget: ≤ 75 % peak target, 80 % ceiling. Run 15 was 82 / 87.6. Next run after the merge measures echo mode |
 | Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops: MIX fully right is fully wet). Click check passed |
 | M8 sound | Three features built on branches, waiting on your OK to merge (§1): **TONE after the springs**, **Throw + Hold**, **Echo mode** (SPRINGS 3). µ-law grit for DRIVEN/KICKED being prototyped. Wellspring round 5 next, from session 2 |
 | M2 Ableton check | Ready: the plugin is installed |
@@ -23,8 +23,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Echo repeats, confirm:** BBD A only, no extra diffusion or bit depth on the repeats (the µ-law idea below covers the grit). Say if you'd rather keep a diffusion or bit-depth option
 - [ ] **OK to merge** TONE after the springs, Throw + Hold, and Echo mode. Claude then merges them one at a time, re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware for the module
 
-### 2. CPU run 16 on the module (≈10 min, USB only)
-- [ ] **Rack power unplugged**, Versio on USB. Flash `dist/resilio_versio_m3_profile_run16.bin` (Firmware Swap → Select Custom File), run `screen /dev/tty.usbmodem* 115200` in this app's Terminal, let the CORNER lines go round twice, and tell Claude (it reads the Terminal panel). Same sound, bit for bit; expected ~62 % average / ~68 % peak for 1–2 Springs (run 15: 74–76 / 80–81). Then flash `dist/resilio_versio_release_d74ddc5.bin` back
+### 2. CPU run 16 · done 4 Oct: **back under budget**
+- [x] Worst case 2 Springs **67.7 % average / 72.8 % peak** (run 15: 76.1 / 80.7), 1 Spring 66.0 / ~74, 3 Springs (old coupled) 72.1 / 77.8. Within the 75 % target for 1–2 Springs, under the 80 % ceiling for 3. Flash `dist/resilio_versio_release_d74ddc5.bin` back if you haven't
+- [ ] **OK to merge the CPU savings** (`perf/run16`, no sound change: bit-identical renders) into `main`, before the three features?
 
 ### 3. µ-law grit for DRIVEN and KICKED (when Claude says it's ready)
 - [ ] Page `renders/feat_output_mulaw/` (being built): today vs µ-law on the whole output, dry and wet, 12-bit in DRIVEN, 8-bit in KICKED, every SPRINGS position, CLEAN untouched. Note: MIX fully left in DRIVEN/KICKED would no longer be a clean passthrough
