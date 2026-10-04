@@ -8,7 +8,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 |---|---|
 | M3 CPU | Run 17 (everything merged): 2 Springs 68.9 / 74.6 %, echo mode 73.3 / 79.1 %, **82.4 % spike on switching echo → Springs**. Budget ≤ 75 % target, 80 % ceiling. Savings round for run 18 under way |
 | Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops). **New release ready:** `843c5fc` with all of today's features (§2) |
-| M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 next, from session 2 |
+| M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 (last fit) being built |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
 
@@ -31,6 +31,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3b. Echo tuning from your Ableton notes (5 Oct) · being built
 - In echo mode (SPRINGS 3): DECAY fully right becomes the steady, persistent feedback you liked at ~91 %, in **every** ATTITUDE (CLEAN/DRIVEN reach it too); KICKED's runaway goes (the top is today's 92 %). µ-law KICKED becomes **10-bit** (DRIVEN stays 12). Short before/after page `renders/tune_echo_feedback/`, then merge and reinstall so you can judge in Ableton
+
+### 3c. Wellspring round 5, the last fit · being built (started 5 Oct)
+- From your session 2 recordings: a softer echo front (the Wellspring swells in over ~0.5 s; ours hits and drops in ~35 ms), the longest ring moved from 1 kHz to ~500 Hz with the presence peak up to ~1.4 kHz, lows centred (front included) and the mids no longer left-heavy, a wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Retunes existing stages only (the module's CPU and flash are tight). Page `renders/fit_round5/` with your Wellspring as the reference; your pick, then merge
 
 ### 4. Play it (plugin and module)
 - [ ] **KICKED, TONE fully right, hit KICK:** with µ-law the grain from the ringing highs fills the lows after a Kick (the low end falls 10 dB in 300 ms instead of 24). Gritty longer thud, or mud?
@@ -57,7 +60,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Wellspring round 5**, the last fit (your call), from session 2 (ingested 4 Oct; findings in the backlog): a softer front (the first echo's energy, not only its rise), the longest ring moved from 1 kHz to ~500 Hz and the presence peak up to ~1.5 kHz, lows centred and the mids no longer left-heavy, wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Built after the merge
 - **Merging** the three features once you've said OK (§1), then the plugin install, release and CPU-test firmware
 - **Docs after the merge:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
 - **CPU, if run 16 comes in above 75 %:** more sound-neutral savings first (the tilt loop, the springs' per-sample work); a bigger audio block (+1 ms) stays the reserve
