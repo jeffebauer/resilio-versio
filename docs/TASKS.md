@@ -19,7 +19,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (in this order)
 
 ### 1. Last listen, then OK to merge the three features (≈10 min)
-- [ ] **Hold ducking, round 3: ready to hear** [`renders/feat_hold_duck3/`](../renders/feat_hold_duck3/index.html): A round 1, B the whole bed ducks only to kick and bass (input below ~120 Hz), 12 dB, no swell into the next beat, C the same at 18 dB. New row: snare + hats only, where the bed should stay put. **Pick 12 or 18 dB**
+- [x] **Hold ducking: B, 12 dB** (4 Oct, every panel): the whole bed dips only to kick and bass, snares and hats leave it alone
 - [x] **Echo repeats: BBD A only** (4 Oct), no extra diffusion or bit depth
 - [x] **OK to merge** (4 Oct): TONE after the springs and echo mode are going in now; Throw + Hold right after your depth pick (12 or 18 dB). Then Claude re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware
 
