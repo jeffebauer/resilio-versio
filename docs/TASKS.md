@@ -6,7 +6,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M3 CPU | Run 16: **67.7 % average / 72.8 % peak** (2 Springs; 3 coupled Springs 77.8 % peak). Budget: ≤ 75 % peak target, 80 % ceiling. Run 15 was 82 / 87.6. Next run after the merge measures echo mode |
+| M3 CPU | Run 17 (everything merged): 2 Springs 68.9 / 74.6 %, echo mode 73.3 / 79.1 %, **82.4 % spike on switching echo → Springs**. Budget ≤ 75 % target, 80 % ceiling. Savings round for run 18 under way |
 | Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops). **New release ready:** `843c5fc` with all of today's features (§2) |
 | M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 next, from session 2 |
 | M2 Ableton check | Ready: the plugin is installed |
@@ -22,8 +22,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] `843c5fc` installed and the AU validated. Rescan in Ableton (hold ⌥, Rescan) and insert a fresh instance
 
 ### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
-- [ ] **Run 17** (rack power unplugged, USB): flash `dist/resilio_versio_m3_profile_run17.bin`, `screen /dev/tty.usbmodem* 115200` in this app's Terminal, two laps, tell Claude. First chip measurement of echo mode (SPRINGS 3 no longer runs three Springs) and the µ-law box (~+3–4 points expected; run 16 was 72.8 % peak). Budget ≤ 75 % target, 80 % ceiling
-- [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: 3 Springs (echo mode), KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in. Any click or dropout → tell Claude
+- [x] **Run 17 done (5 Oct):** 2 Springs 68.9 % avg / 74.6 % peak, echo mode 73.3 / 79.1, but a **82.4 % spike when switching from echo mode back to the Springs** (over the 80 % ceiling). The µ-law box costs ~8–9 points (twice its estimate). Claude is finding sound-neutral savings (the µ-law box, the switch) for run 18
+- [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (that's the 82 % moment). Any click or dropout → tell Claude
 
 ### 3. Merged today (5 Oct), for reference
 - [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
