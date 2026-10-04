@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 3 Oct 2026, evening (Wellspring F merged with your picks: low end D, SPRINGS 3 wire gauges; one plugin in Ableton again; CPU run 15 and the new release ready for tomorrow)
+**Last updated:** 4 Oct 2026 (throw + hold listening page ready, on its branch); before that 3 Oct 2026, evening (Wellspring F merged with your picks: low end D, SPRINGS 3 wire gauges; one plugin in Ableton again; CPU run 15 and the new release ready for tomorrow)
 
 | Milestone | State |
 |---|---|
@@ -83,7 +83,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
 - **TONE after the springs** (your pick B): becomes the real behaviour in firmware and plugin
-- **Throw on the gate + hold at the top of DECAY** (CLEAN/DRIVEN, ducked under new hits): two hold versions for you to pick by ear (freeze vs layer)
+- **Throw on the gate + hold at the top of DECAY: ready to listen** (branch `feat/throw-hold`, ADR 0039 / 0040, not merged). Open `renders/feat_throw_hold/index.html` in the throw-hold worktree (`.claude/worktrees/agent-af8b4e666229b7d74`; ~120 MB, rebuild with `docs/prototypes/throw-hold/make_page.sh`). Two pages:
+  - [ ] **THROW:** a dub beat with only three hits thrown into the springs vs today. Do the throws read like a dub throw? Any tick when the send opens or closes? In the plugin it's the **THROW** switch next to KICK (automatable)
+  - [ ] **HOLD:** pick **freeze** (B: the bed keeps what was in it, new hits stay dry on top; the gate throws new sound in, D) or **layer** (C: new sound still goes in, 6 dB down). Is the dip under new playing (up to 12 dB) about right? Does the bed hold long enough (~3 dB per 10 s at max)?
+  - [ ] **Question:** in KICKED at DECAY max, flipping ATTITUDE to DRIVEN or CLEAN now hands the Howl over to the held, ducked bed instead of a 9 s fade (page "howl flip"). Keep that, or should leaving the Howl that way fade as before? (Pulling DECAY down still ends it either way.)
 - **Echo mode = SPRINGS 3:** tape echo into the noon tank (fixed ~1.5–2 s tail). DECAY = echo feedback, TENSION = echo time (free) or, with a clock in the gate (one pulse = one beat), seven divisions 1/2 … 1/16 incl. dotted; up to 2 s; changes swoop like tape. In the plugin it follows Ableton's tempo. The coupled wire gauges go
 - Each comes with a listening page; then your OK to merge, merged one at a time with the tests re-run on the combination
 

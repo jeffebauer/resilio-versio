@@ -192,7 +192,7 @@ block (1 ms at 48 frames), `main.cpp`'s release section reads:
   (ADR 0028; `kPotKnob` is the pot → libDaisy index table, `kPotParams` the
   pot → function table).
 - **SW0 → SPRINGS, SW1 → ATTITUDE** (CLEAN / DRIVEN / KICKED).
-- **Button and gate → Kick**, on the rising edge, at the start of the block.
+- **Button → Kick**, on the rising edge, at the start of the block. **Gate → THROW** (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes).
 - **Output trim**: undoes the Versio's polarity flip and +1.2 dB (M0), so
   MIX 0 sounds like a patch cable.
 - **LEDs**: level meters (ADR 0031, `LedMeter.h`).
@@ -202,7 +202,7 @@ each knob does on the module what it does in the Plugin (same Core, same
 ParamSpec). Tuning continues in M8 (`docs/m8-tuning-backlog.md`; SPLASH is
 being reworked). Not in the release build: USB serial (flash budget, see
 "How to build") and MIDI (the Plugin's
-MIDI-note Kick has no Versio equivalent; the gate does that job).
+MIDI-note Kick has no Versio equivalent; since ADR 0039 the gate is the throw, and the button the only Kick).
 
 ## M3 results
 
