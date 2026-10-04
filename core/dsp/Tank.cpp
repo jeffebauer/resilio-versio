@@ -1513,8 +1513,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             const float lo = clangLp_.process(x);
             float c = clang[i];
             if (splash::kVoicingsBuilt && clangCeil > 0.0f) { // SPLASH stronger voicings: the Clang's ceiling (SplashVoicing.h)
-                const float hi = x - lo, a = hi < 0.0f ? -hi : hi;
-                clangEnv_ += (a > clangEnv_ ? clangAtt_ : clangRel_) * (a - clangEnv_);
+                const float hi = x - lo, a = dsp::absSel(hi); // (Select.h: no branch on the chip)
+                clangEnv_ += dsp::selGt(a, clangEnv_, clangAtt_, clangRel_) * (a - clangEnv_);
                 const float cmax = clangCeil / (clangEnv_ + 1.0e-9f);
                 c = c < cmax ? c : cmax;
                 c = c > clangToday[i] ? c : clangToday[i]; // never below today's Clang

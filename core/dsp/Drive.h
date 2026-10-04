@@ -16,6 +16,7 @@
 #include "dsp/Filters.h"
 #include "dsp/SizeOpt.h"
 #include "dsp/Oversampler.h"
+#include "dsp/Select.h"
 #include "params/DriveVoicing.h"
 
 #include <array>
@@ -32,18 +33,12 @@ namespace rv::dsp {
 // *reduce* gain, which is what keeps the Loop safe (gain < 1 stays < 1).
 // One division, no libm: cheap on the Cortex-M7.
 //
-// RV_VSEL (the firmware, Cortex-M7 FPv5): the hold here and asymClip's
-// choice of half are VSEL selects, written out because GCC turned the plain
-// choices into branches (perf/run16). A branch on the signal's sign is a
+// RV_VSEL (dsp/Select.h: the firmware): the hold here and asymClip's choice
+// of half are VSEL selects, written out because GCC turned the plain
+// choices into branches (perf/run16): a branch on the signal's sign is a
 // coin flip for the branch predictor, and it splits the code so the M7
 // can't overlap one clip's multiplies and divide with the next one's (the
-// oversampled pair, the two output pickups). Same comparisons, same
-// results for every input (NaN included); other builds use the plain C.
-#if defined(__GNUC__) && !defined(__clang__) && defined(__ARM_ARCH_7EM__) && defined(__ARM_FP) && __ARM_FP == 14
-#define RV_VSEL 1
-#else
-#define RV_VSEL 0
-#endif
+// oversampled pair, the two output pickups).
 inline float softClip(float x)
 {
 #if RV_VSEL
