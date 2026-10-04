@@ -88,7 +88,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
   - **Hold: freeze or layer?** Freeze: nothing new gets into the held bed, new hits play dry over it, and a throw lets one stab in. Layer: new sound keeps building into the bed (measured: it doesn't creep up). Ducking: the bed dips ~13 dB under playing, back within ~1–1.5 s
   - **Flipping KICKED → CLEAN/DRIVEN at DECAY max** now hands the Howl to a held, ducked bed instead of fading over ~9 s. Keep, or fade as before? (Pulling DECAY down ends it either way)
   - The Hold slowly fades (~3 dB per 10 s after the first 20 s) rather than truly freezing; it never grows
-- [ ] **Echo mode: built (`feat/echo-mode`), your listen + OK to merge.** Pages: [`renders/feat_echo_mode/`](../renders/feat_echo_mode/index.html) (SPRINGS 2 vs echo mode at the same knobs) and [`gestures/`](../renders/feat_echo_mode/gestures/index.html) (swoop, a 100 bpm clock stepping through the seven divisions, DECAY ridden into the KICKED runaway and back, switching 2 → 3 → 2, WOBBLE on the tape). Decide:
+- [ ] **Echo mode: picked (4 Oct)** in every panel. Being built next on the branch: your idea, **repeats getting more diffuse with each pass** (none / light / medium / heavy, a new page `renders/feat_echo_diffuse/`). Still open from the first page (answer when you've played it):
   - Is TENSION noon's **0.4 s** a good resting echo time (free, unclocked)? Range 2 s → 80 ms
   - Does **DECAY** feel right, from one repeat (DECAY 0) to a long build?
   - Is the **KICKED runaway** in the right place (top ~13 % of DECAY)?
