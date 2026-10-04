@@ -7,7 +7,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | Milestone | State |
 |---|---|
 | M3 CPU | Run 16: **67.7 % average / 72.8 % peak** (2 Springs; 3 coupled Springs 77.8 % peak). Budget: ≤ 75 % peak target, 80 % ceiling. Run 15 was 82 / 87.6. Next run after the merge measures echo mode |
-| Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops: MIX fully right is fully wet). Click check passed |
+| Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops). **New release ready:** `843c5fc` with all of today's features (§2) |
 | M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 next, from session 2 |
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
@@ -18,19 +18,19 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (in this order)
 
-### 1. Last listen, then OK to merge the three features (≈10 min)
-- [x] **Hold ducking: B, 12 dB** (4 Oct, every panel): the whole bed dips only to kick and bass, snares and hats leave it alone
-- [x] **Echo repeats: BBD A only** (4 Oct), no extra diffusion or bit depth
-- [x] **Merged** (4–5 Oct): CPU savings, TONE after the springs, echo mode, Throw + Hold. `main` passes all 24 test suites; firmware 91 % of flash. One behaviour change to know: the gate no longer fires a Kick in SPRINGS 1–2 (it throws); in position 3 it clocks the echo; the button kicks everywhere. µ-law merges next, then the plugin install, a release and a CPU-test firmware
+### 1. Plugin install with µ-law (≈2 min of yours)
+- [ ] **Close Ableton and tell Claude**: it installs `843c5fc` (everything below, plus µ-law in DRIVEN/KICKED) and validates the AU. Then rescan (hold ⌥, Rescan) and insert a fresh instance
 
-### 2. CPU run 16 · done 4 Oct: **back under budget**
-- [x] Worst case 2 Springs **67.7 % average / 72.8 % peak** (run 15: 76.1 / 80.7), 1 Spring 66.0 / ~74, 3 Springs (old coupled) 72.1 / 77.8. Within the 75 % target for 1–2 Springs, under the 80 % ceiling for 3. Flash `dist/resilio_versio_release_d74ddc5.bin` back if you haven't
-- [x] **CPU savings merged** (4 Oct, `c8ca07e`)
+### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
+- [ ] **Run 17** (rack power unplugged, USB): flash `dist/resilio_versio_m3_profile_run17.bin`, `screen /dev/tty.usbmodem* 115200` in this app's Terminal, two laps, tell Claude. First chip measurement of echo mode (SPRINGS 3 no longer runs three Springs) and the µ-law box (~+3–4 points expected; run 16 was 72.8 % peak). Budget ≤ 75 % target, 80 % ceiling
+- [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: 3 Springs (echo mode), KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in. Any click or dropout → tell Claude
 
-### 3. µ-law grit for DRIVEN and KICKED · picked 4 Oct
-- [x] **B, µ-law, in every panel:** DRIVEN 12-bit, KICKED 8-bit on the whole output (dry and wet), every SPRINGS position; CLEAN untouched. Being made the default with its tests and ADR; merges into `main` right after Throw + Hold
+### 3. Merged today (5 Oct), for reference
+- [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
+- Behaviour changes to know: the gate **throws** in SPRINGS 1–2 and **clocks the echo** in 3 (it no longer kicks); the button kicks everywhere, hold it 1 s to leave throw mode. MIX fully left in DRIVEN/KICKED is no longer a clean passthrough (µ-law); CLEAN still is
 
-### 4. After the merge: play it (plugin and module)
+### 4. Play it (plugin and module)
+- [ ] **KICKED, TONE fully right, hit KICK:** with µ-law the grain from the ringing highs fills the lows after a Kick (the low end falls 10 dB in 300 ms instead of 24). Gritty longer thud, or mud?
 - [ ] **Echo mode feel**, on the plugin or module: is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to a long build? Is the **KICKED runaway** in the right place (top ~13 % of DECAY)? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Throw on the module:** gate into the gate jack opens the springs' send; hold KICK 1 s to leave throw mode (all four LEDs blink white)
 - [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
