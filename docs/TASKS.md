@@ -25,7 +25,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Click check passed (4 Oct, on `327af86`, same sound and CPU as 340b542): no clicks or dropouts. Was: flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
-- [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
+- [x] Done 4 Oct: the module's tails match the desktop at both DECAY ends (the pot reads 0.00 / ~0.99); the 30 Sep noon shortfall is the knob's mid-travel, not the DSP. Was: optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
 
 - [x] **Input LEDs flashing red: solved (4 Oct).** Real input peaks: the shaker's loudest grains touched the Versio's clip point (amber shows the overall level; transients sit 6–10 dB above it). With the clip 6 dB lower, no more red. Not a firmware fault, and the same in older builds. **Dry at MIX fully right:** the pots stop short of 100 %; fixed with knob end stops (merged, `d74ddc5`)
 
