@@ -29,6 +29,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
 - Behaviour changes to know: the gate **throws** in SPRINGS 1–2 and **clocks the echo** in 3 (it no longer kicks); the button kicks everywhere, hold it 1 s to leave throw mode. MIX fully left in DRIVEN/KICKED is no longer a clean passthrough (µ-law); CLEAN still is
 
+### 3b. Echo tuning from your Ableton notes (5 Oct) · being built
+- In echo mode (SPRINGS 3): DECAY fully right becomes the steady, persistent feedback you liked at ~91 %, in **every** ATTITUDE (CLEAN/DRIVEN reach it too); KICKED's runaway goes (the top is today's 92 %). µ-law KICKED becomes **10-bit** (DRIVEN stays 12). Short before/after page `renders/tune_echo_feedback/`, then merge and reinstall so you can judge in Ableton
+
 ### 4. Play it (plugin and module)
 - [ ] **KICKED, TONE fully right, hit KICK:** with µ-law the grain from the ringing highs fills the lows after a Kick (the low end falls 10 dB in 300 ms instead of 24). Gritty longer thud, or mud?
 - [ ] **Echo mode feel**, on the plugin or module: is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to a long build? Is the **KICKED runaway** in the right place (top ~13 % of DECAY)? Is the **swoop** (~0.3 s) the right speed?
