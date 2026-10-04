@@ -1,4 +1,7 @@
 #!/bin/bash
+# SUPERSEDED by make_page3.sh: round 2's low-band split is gone from the
+# Tank, so this now renders round 3's ducking under round 2's labels; kept as
+# the record of the round-2 page (judged 4 Oct 2026).
 # Hold ducking page (ADR 0040 round 2). Run from the repo root or a worktree:
 #   FEAT=build-feat/rv_render ROUND1=<round-1 rv_render (feat/throw-hold 354ad40)> \
 #   MAIN=<main's rv_render> docs/prototypes/hold-duck/make_page.sh [out]

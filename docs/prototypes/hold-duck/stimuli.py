@@ -9,6 +9,8 @@ deterministic. 48 kHz 24-bit mono WAVs + automation into the folder given.
                     8ths) to 16.8 s, tail.
   pad_drums.wav     a C minor pad 0.5-4 s, then the 4-on-the-floor loop
                     from 5 s to 15 s, tail.
+  stab_snarehats.wav  the stab, then snare on 2 and 4 + 8th hats at 120 bpm
+                    (no kick, no bass): the bed must not duck.
   kick_times_*.txt  the kick times, for hump.py.
   howl_beat.wav     snare / thump beat for the KICKED Howl flip (as the
                     throw page's dub beat), and howl_flip.json (KICKED until
@@ -84,6 +86,17 @@ def rim(rng):
         t = i / SR
         out.append((math.sin(2 * math.pi * 1700 * t) + 0.5 * math.sin(2 * math.pi * 480 * t)
                     + 0.5 * rng.uniform(-1, 1)) * math.exp(-t / 0.008))
+    p = max(abs(s) for s in out)
+    return [s / p for s in out]
+
+
+def snare(rng):
+    n = int(0.25 * SR)
+    noise = [rng.uniform(-1, 1) for _ in range(n)]
+    lo = lp(noise, 800)
+    noise = [h - l for h, l in zip(lp(noise, 7000), lo)]
+    out = [0.6 * math.sin(2 * math.pi * 185 * i / SR) * math.exp(-i / SR / 0.03)
+           + 1.2 * noise[i] * math.exp(-i / SR / 0.06) for i in range(n)]
     p = max(abs(s) for s in out)
     return [s / p for s in out]
 
@@ -166,6 +179,18 @@ def main():
     tp = four(x, 5.0, 15.0, rng)
     write("pad_drums.wav", x)
     (OUT / "kick_times_pad_drums.txt").write_text(" ".join(f"{t:.4f}" for t in tp))
+
+    # Snare + hats only (no kick, no bass): the bed must not duck.
+    x = [0.0] * int(19 * SR)
+    add(x, st, 0.5, db(-6))
+    sn = snare(rng)
+    t = 4.0
+    while t < 15.0 - 1e-6:
+        add(x, sn, t + 0.5, db(-6))  # on 2 and 4 at 120 bpm
+        for e in range(4):
+            add(x, hat(rng), t + 0.25 * e, db(-14))
+        t += 1.0
+    write("stab_snarehats.wav", x)
 
     # The Howl flip: thump on 1 and 3, snare-ish rim on 2 and 4, 75 bpm.
     x = [0.0] * int(22 * SR)
