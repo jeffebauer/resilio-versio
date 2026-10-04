@@ -223,8 +223,21 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     // THROW's send ramp and the Hold's ducking follower (ThrowHold.h).
     thrOpenStep_  = 1.0f / (throwhold::kThrowOpenSeconds * sampleRate);
     thrCloseStep_ = 1.0f / (throwhold::kThrowCloseSeconds * sampleRate);
-    duckAtt_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckAttackSeconds * sampleRate));
-    duckRel_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckReleaseSeconds * sampleRate));
+    duckAtt_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyAttackSeconds * sampleRate));
+    duckRel_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyReleaseSeconds * sampleRate));
+    {
+        const float tick = float(kControlInterval) / sampleRate;
+        duckDbAtt_     = 1.0f - std::exp(-tick / throwhold::kDuckAttackSeconds);
+        duckDbRel_     = 1.0f - std::exp(-tick / throwhold::kDuckReleaseSeconds);
+        duckHoldTicks_ = int(throwhold::kDuckHoldSeconds / tick + 0.5f);
+        for (auto& k : duckKey_) k.setLowpass(throwhold::kDuckKeyHz, 0.70710678f, sampleRate);
+        for (int c = 0; c < 2; ++c)
+            for (int k = 0; k < 2; ++k) {
+                duckLo_[c][k].setLowpass(throwhold::kDuckSplitHz, 0.70710678f, sampleRate);
+                duckHi_[c][k].setHighpass(throwhold::kDuckSplitHz, 0.70710678f, sampleRate);
+            }
+        duckXfStep_ = 1.0f / (throwhold::kDuckSplitFadeSeconds * sampleRate);
+    }
 #if RV_TANKV_BUILT >= 2 // Tank voicings 2 and 4 (TankVoicing.h)
     dBass_.setCutoff(tankv::tuning().togetherBassHz, sampleRate);
 #endif
@@ -503,6 +516,16 @@ RV_SIZE_OPT void Tank::reset()
     holdSendFrom_ = holdSendTo_ = 1.0f;
     duckEnv_ = 0.0f;
     duckFrom_ = duckTo_ = 1.0f;
+    duckDb_       = 0.0f;
+    duckHoldLeft_ = 0;
+    for (auto& k : duckKey_) k.reset();
+    for (int c = 0; c < 2; ++c)
+        for (int k = 0; k < 2; ++k) {
+            duckLo_[c][k].reset();
+            duckHi_[c][k].reset();
+        }
+    duckXf_ = 0.0f;
+    holdArmed_ = true;
     tick_     = 0;
     gridTick_ = 0;
     springTurn_ = 0;
@@ -644,21 +667,35 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     // sets the Springs' T60 (updateBaseSettings); the bed weight sets the
     // freeze / layer send and the ducking, ramped over the next tick.
     {
-        const float notKicked = attW_[0] + attW_[1];
         const float z = throwhold::zone(decay);
+        // Armed when DECAY enters the zone outside KICKED; KICKED inside the
+        // zone disarms it until DECAY leaves the zone (the Howl flip calms
+        // into the plain DECAY tail, as before the Hold; ADR 0040).
+        if (z <= 0.0f) holdArmed_ = true;
+        else if (attW_[2] > 0.0f) holdArmed_ = false;
+        const float notKicked = holdNotKicked();
         holdZ_   = z * notKicked;
         holdBed_ = throwhold::bedWeight(z) * notKicked;
         const float hs = throwhold::holdSend(holdVoicing_, holdBed_);
         holdSendFrom_ = snap ? hs : holdSendTo_;
         holdSendTo_   = hs;
-        float duck = 1.0f;
+        float target = 0.0f; // dB of dip asked for by the key
         if (holdBed_ > 0.0f) {
-            // The dry input's peak level (dBFS) -> the dip, x the bed weight.
+            // The key's peak level (dBFS) -> the dip, x the bed weight.
             constexpr float kDb = 20.0f / 2.302585093f;
             const float envDb = kDb * std::log(std::max(duckEnv_, 1.0e-9f));
             const float amt = std::clamp((envDb - throwhold::kDuckFloorDb) / (throwhold::kDuckFullDb - throwhold::kDuckFloorDb), 0.0f, 1.0f);
-            duck = drive::dbToGain(-throwhold::kDuckDepthDb * holdBed_ * amt);
+            target = throwhold::kDuckDepthDb[duckVoicing_] * holdBed_ * amt;
         }
+        // Falls fast, holds, then comes back on a short curve.
+        if (snap) duckDb_ = target, duckHoldLeft_ = 0;
+        else if (target >= duckDb_) {
+            duckDb_ += duckDbAtt_ * (target - duckDb_);
+            duckHoldLeft_ = duckHoldTicks_;
+        } else if (duckHoldLeft_ > 0) --duckHoldLeft_;
+        else duckDb_ += duckDbRel_ * (target - duckDb_);
+        if (duckDb_ < 1.0e-4f) duckDb_ = 0.0f;
+        const float duck = duckDb_ > 0.0f ? drive::dbToGain(-duckDb_) : 1.0f;
         duckFrom_ = snap ? duck : duckTo_;
         duckTo_   = duck;
     }
@@ -1084,7 +1121,7 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
         // HOLD (ADR 0040): the zone glides T60 out toward minutes, in CLEAN
         // and DRIVEN; the Spring lets its Loop gain cap follow (hold), and
         // the high path keeps the plain DECAY's T60 (ThrowHold.h).
-        const float hz = throwhold::zone(decay) * (attW_[0] + attW_[1]);
+        const float hz = throwhold::zone(decay) * holdNotKicked();
         if (hz > 0.0f) {
             base.highT60Seconds = base.t60Seconds;
             base.t60Seconds     = throwhold::t60Seconds(base.t60Seconds, hz);
@@ -1496,6 +1533,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // the first rising edge. Thrown, the send follows the gate (an open
         // throw overrides the freeze: it is how new sound gets into a held
         // bed; the layer voicing keeps its lower send under the throw).
+        // HOLD's ducking: the key's follower runs per sample below; the dip
+        // is read on the tick (controlTick) and ramped over it.
+        const bool  duckLive  = holdBed_ > 0.0f || duckFrom_ != 1.0f || duckTo_ != 1.0f;
+        const bool  splitLive = duckLive || duckXf_ > 0.0f; // the wet's split, fading in / out
+        const float duckStep = (duckTo_ - duckFrom_) * (1.0f / float(kControlInterval));
         const bool sendLive = throwOn_ || gateIdx < numPendingGates_ || holdSendFrom_ != 1.0f || holdSendTo_ != 1.0f;
         if (sendLive) {
             const float hStep = (holdSendTo_ - holdSendFrom_) * (1.0f / float(kControlInterval));
@@ -1522,20 +1564,22 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                         }
                     }
                 }
+                // Layer: what goes into the bed dips with it (kicks and bass
+                // don't pile up in the bed during the dip).
+                if (layer && duckLive) g *= duckFrom_ + duckStep * float(tick_ + i);
                 sendG[i] = g;
             }
             sendNow_ = sendG[n - 1];
         }
-        // HOLD's ducking: a peak follower on the dry input, read on the tick.
-        const bool duckLive = holdBed_ > 0.0f || duckFrom_ != 1.0f || duckTo_ != 1.0f;
 
         // Real tanks are mono: sum the input (SPEC §4.3). Dry stays stereo.
         // The Splash listens first, to the input after the INPUT gain G and
         // before any saturation (ADR 0032, 0033).
         for (int i = 0; i < n; ++i) {
             float x = 0.5f * (inL[pos + i] + inR[pos + i]);
-            if (duckLive) {
-                const float a = x < 0.0f ? -x : x;
+            if (duckLive) { // the key: the input's lows (kick, bass)
+                const float k = duckKey_[1].process(duckKey_[0].process(x));
+                const float a = k < 0.0f ? -k : k;
                 duckEnv_ += (a > duckEnv_ ? duckAtt_ : duckRel_) * (a - duckEnv_);
             }
             if (sendLive) x *= sendG[i];
@@ -1758,7 +1802,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         constexpr float outTrim = 1.0f;
         constexpr float kickIn  = kWetGain;
 #endif
-        const float duckStep = (duckTo_ - duckFrom_) * (1.0f / float(kControlInterval));
         for (int i = 0; i < n; ++i) {
             const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
             // DRIVE's heard share (ADR 0033): the tail comes back louder by
@@ -1859,8 +1902,24 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             // (it was the DECAY-0.5 held-chord tick). The overshoot the glide
             // lets through is caught by a soft clip: identity up to the knee,
             // then a smooth curve that holds at the threshold T (softLimit).
+            // The Sustain trim reads the bed's own peaks (before the ducking).
+            susPeak_ = std::max(susPeak_, std::max(std::fabs(wl), std::fabs(wr)));
+            if (splitLive) { // HOLD: the held wet's lows dip under the input's (before the limiter: the split's phase can raise peaks)
+                const float g = duckFrom_ + duckStep * float(tick_ + i);
+                const float sl = g * duckLo_[0][1].process(duckLo_[0][0].process(wl)) + duckHi_[0][1].process(duckHi_[0][0].process(wl));
+                const float sr = g * duckLo_[1][1].process(duckLo_[1][0].process(wr)) + duckHi_[1][1].process(duckHi_[1][0].process(wr));
+                duckXf_ = duckLive ? std::min(1.0f, duckXf_ + duckXfStep_) : std::max(0.0f, duckXf_ - duckXfStep_);
+                wl += duckXf_ * (sl - wl);
+                wr += duckXf_ * (sr - wr);
+                if (duckXf_ <= 0.0f) { // faded out: the split sleeps from clean state
+                    for (int c = 0; c < 2; ++c)
+                        for (int k = 0; k < 2; ++k) {
+                            duckLo_[c][k].reset();
+                            duckHi_[c][k].reset();
+                        }
+                }
+            }
             const float peak = std::max(std::fabs(wl), std::fabs(wr));
-            susPeak_ = std::max(susPeak_, peak); // Sustain trim: the peaks the limiter reads
             if (peak >= limitEnv_ * kLimitHoldRefresh) {  // hold (kLimitHoldS)
                 limitEnv_  = std::max(peak, limitEnv_);
                 limitHold_ = limitHoldSamples_;
@@ -1874,11 +1933,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             else limitGain_ = gainTarget;
             wl = softLimit(wl * limitGain_);
             wr = softLimit(wr * limitGain_);
-            if (duckLive) { // HOLD: the held wet dips under new input (after the limiter: it reads the bed's own level)
-                const float dg = duckFrom_ + duckStep * float(tick_ + i);
-                wl *= dg;
-                wr *= dg;
-            }
 
             const float mixNow = mix_.process(values_[size_t(ParamId::Mix)]);
             if (mixNow != mixAt_) { // two square roots, only while MIX moves

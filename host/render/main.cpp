@@ -12,7 +12,8 @@
 //   core/params/DriveVoicing.h), splash_voicing = 0 / 1 / 2 / 3 (today / stronger top / + DRIVE-free /
 //   bolder, core/params/SplashVoicing.h), tone_voicing = 0..5 (the Big Knob, DriveVoicing.h) and
 //   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), hold_voicing =
-//   0 / 1 (the Hold at the top of DECAY: A freeze / B layer, core/params/ThrowHold.h), in --set, a
+//   0 / 1 (the Hold at the top of DECAY: freeze / layer, core/params/ThrowHold.h), duck_voicing = 0 / 1
+//   (the Hold's ducking on the lows: 12 / 18 dB), in --set, a
 //   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
 
@@ -236,6 +237,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool s3Voiced = setsKey(rv::paramsjson::kSprings3VoicingKey);
         bool lcVoiced = setsKey(rv::paramsjson::kFLowCutVoicingKey);
         bool holdVoiced = setsKey(rv::paramsjson::kHoldVoicingKey);
+        bool duckVoiced = setsKey(rv::paramsjson::kDuckVoicingKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
             if (key == rv::paramsjson::kSplashVoicingKey) splVoiced = true;
@@ -244,6 +246,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             if (key == rv::paramsjson::kSprings3VoicingKey) s3Voiced = true;
             if (key == rv::paramsjson::kFLowCutVoicingKey) lcVoiced = true;
             if (key == rv::paramsjson::kHoldVoicingKey) holdVoiced = true;
+            if (key == rv::paramsjson::kDuckVoicingKey) duckVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
@@ -274,6 +277,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (s3Voiced) params.set(rv::paramsjson::kSprings3VoicingKey, rv::json::Value::makeNumber(tank.springs3Voicing()));
         if (lcVoiced) params.set(rv::paramsjson::kFLowCutVoicingKey, rv::json::Value::makeNumber(tank.fLowCutVoicing()));
         if (holdVoiced) params.set(rv::paramsjson::kHoldVoicingKey, rv::json::Value::makeNumber(tank.holdVoicing()));
+        if (duckVoiced) params.set(rv::paramsjson::kDuckVoicingKey, rv::json::Value::makeNumber(tank.duckVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }

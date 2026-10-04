@@ -609,8 +609,8 @@ void howlZone()
 
     // Exit by flipping ATTITUDE (KICKED -> DRIVEN / CLEAN) at DECAY max: an
     // open owner decision (ADR 0018 says ~1-2 s; DECAY 1's T60 is ~9 s).
-    // Since ADR 0040 CLEAN / DRIVEN DECAY 1 is the Hold: the Howl hands over
-    // to a held (ducked) bed. Reported, not checked, not changed.
+    // Reported, not checked, not changed (the Hold, ADR 0040, arms only when
+    // DECAY enters its zone outside KICKED, so this flip fades as before).
     for (int to : {1, 0}) {
         const size_t n = 20 * sec, flipAt = 10 * sec;
         const Buf in = click(20.0);

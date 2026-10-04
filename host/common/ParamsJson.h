@@ -30,8 +30,9 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
 // 1-4 round 3, 5-7 round 4; core/params/TankVoicing.h, ADR 0038) and
 // "f_lowcut_voicing" (tank voicing 7's low cut: 0 = F's own, 1-3 gentler
 // steps; TankVoicing.h kFLowCutSteps, ADR 0038 "Round F2") and "hold_voicing"
-// (the Hold at the top of DECAY in CLEAN / DRIVEN: 0 = A freeze, 1 = B layer;
-// core/params/ThrowHold.h, ADR 0040).
+// (the Hold at the top of DECAY in CLEAN / DRIVEN: 0 = freeze, 1 = layer, the
+// default; core/params/ThrowHold.h, ADR 0040) and "duck_voicing" (the Hold's
+// ducking depth on the lows: 0 = 12 dB, the default, 1 = 18 dB).
 // Returns false if `key` isn't one.
 inline constexpr const char* kWobbleVoicingKey   = "wobble_voicing";
 inline constexpr const char* kSustainVoicingKey  = "sustain_voicing";
@@ -41,6 +42,7 @@ inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
 inline constexpr const char* kHoldVoicingKey     = "hold_voicing";
+inline constexpr const char* kDuckVoicingKey     = "duck_voicing";
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 

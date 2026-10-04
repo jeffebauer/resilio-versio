@@ -1541,9 +1541,8 @@ void stabilityGrid()
                     for (int input = 0; input < 2; ++input) {
                         const bool howl = a == 2 && d >= rv::drive::kHowlZoneStart;
                         // CLEAN / DRIVEN from DECAY 0.9: the Hold (ADR 0040). It
-                        // holds by design, so it must only never grow; rendered
-                        // in the layer voicing so the input gets in (the
-                        // default freeze closes the send at DECAY 1).
+                        // holds by design, so it must only never grow; in the
+                        // layer voicing (the default) the input gets in.
                         const bool hold = a < 2 && d > rv::throwhold::kZoneStart;
                         Buf in;
                         if (input == 0) {
@@ -1720,11 +1719,10 @@ void howl()
         check(floorDb >= -25.0 && (fDev >= 0.5 || lDev >= 3.0), msg);
     }
 
-    // Leaving via ATTITUDE (KICKED -> DRIVEN at DECAY 1): since ADR 0040
-    // DRIVEN DECAY 1 is the Hold, so the Howl hands over to a held (ducked)
-    // bed instead of fading at DECAY 1's ~9 s T60. Whether that is right is
-    // an open owner question (TASKS); here it must only stay bounded: never
-    // grow, stay under the limiter.
+    // Leaving via ATTITUDE (KICKED -> DRIVEN at DECAY 1): falls back to a
+    // normal tail, which then fades at DECAY 1's T60 (reported). Unchanged
+    // by the Hold (ADR 0040, owner's pick): it arms only when DECAY enters
+    // its zone outside KICKED, so this flip is bit for bit as before.
     const size_t n = 12 * sec, flipAt = 6 * sec;
     Buf in = snareHits(n, 0.5f, 1);
     rv::Tank t;
@@ -1742,14 +1740,11 @@ void howl()
     const double before = db(power(o.l, flipAt - sec / 2, flipAt));
     const double a3 = db(power(o.l, flipAt + 3 * sec - sec / 4, flipAt + 3 * sec + sec / 4));
     const double a5 = db(power(o.l, flipAt + 5 * sec, flipAt + 5 * sec + sec / 2));
-    const float  pk = std::max(peakAbs(o.l), peakAbs(o.r));
     std::snprintf(msg, sizeof msg,
-                  "Howl exit via ATTITUDE KICKED -> DRIVEN at DECAY 1 (into the Hold, ADR 0040; open owner question): "
-                  "%.1f dB lower after 3 s, %.1f dB after 5 s, peak %.3f (bounded: at most +3 dB, then never grows; under the limiter)",
-                  before - a3, before - a5, pk);
-    // Bounded: the hand-over may bloom a little as KICKED's LoopSat lets go
-    // (+1.2 dB at 3 s measured), but at most 3 dB, then never grows again.
-    check(before - a3 > -3.0 && a5 <= a3 + 0.5 && pk <= rv::Tank::kLimitThreshold + 1e-3f, msg);
+                  "Howl exit via ATTITUDE KICKED -> DRIVEN at DECAY 1: %.1f dB lower after 3 s, %.1f dB after 5 s "
+                  "(falls steadily; DECAY 1 T60 ~9 s)",
+                  before - a3, before - a5);
+    check(before - a3 > 10.0 && a5 < a3, msg);
 }
 
 // ---- Determinism with ATTITUDE / DRIVE / TONE moves -------------------------------------------

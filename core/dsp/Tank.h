@@ -267,7 +267,7 @@ public:
     float holdWeight() const { return holdZ_; }
     float duckGain() const { return duckTo_; }
     // Renderer / test hook (not a panel control, ADR 0040): which Hold
-    // voicing (ThrowHold.h: 0 = A "freeze", 1 = B "layer"). The firmware
+    // voicing (ThrowHold.h: 0 = "freeze", 1 = "layer", the default). The firmware
     // and plugin never call it (throwhold::kDefaultVoicing). Set it before
     // rendering.
     void setHoldVoicing([[maybe_unused]] int v)
@@ -277,6 +277,18 @@ public:
 #endif
     }
     int holdVoicing() const { return holdVoicing_; }
+    // Renderer / test hook: the ducking's depth on the lows (ThrowHold.h
+    // kDuckDepthDb: 0 = 12 dB, the default; 1 = 18 dB).
+    void setDuckVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        duckVoicing_ = std::clamp(v, 0, throwhold::kNumDuckVoicings - 1);
+#endif
+    }
+    int duckVoicing() const { return duckVoicing_; }
+    // Test hook: no Hold at all (the Tank as before ADR 0040), to check the
+    // Howl flip against it bit for bit.
+    void setHoldEnabled(bool on) { holdOn_ = on; }
 
     void process(const float* inL, const float* inR, float* outL, float* outR, int numSamples);
 
@@ -499,7 +511,27 @@ private:
     // Hold's send gain over the tick, the ducking follower and its gain over
     // the tick (from -> to, ramped per sample).
     float holdZ_ = 0.0f, holdBed_ = 0.0f, holdSendFrom_ = 1.0f, holdSendTo_ = 1.0f;
+    // Ducking (round 2, ThrowHold.h): the key (input low-passed), its peak
+    // follower, the dip in dB with its hold, the gain over the tick, and the
+    // wet's low band (one-pole per side).
+    dsp::Biquad duckKey_[2];
     float duckEnv_ = 0.0f, duckAtt_ = 1.0f, duckRel_ = 1.0f, duckFrom_ = 1.0f, duckTo_ = 1.0f;
+    float duckDb_ = 0.0f, duckDbAtt_ = 1.0f, duckDbRel_ = 1.0f;
+    int   duckHoldTicks_ = 0, duckHoldLeft_ = 0;
+    dsp::Biquad duckLo_[2][2], duckHi_[2][2]; // [side][stage]: the LR4 split
+    float duckXf_ = 0.0f, duckXfStep_ = 1.0f;  // 0 = the wet as is, 1 = through the split
+    // The Hold arms when DECAY enters its zone outside KICKED; leaving KICKED
+    // inside the zone keeps it disarmed (the Howl calms into the plain long
+    // tail, ADR 0018) until DECAY leaves the zone and comes back.
+    bool holdArmed_ = true;
+    bool holdOn_    = true; // test hook (setHoldEnabled)
+    // CLEAN + DRIVEN Morph weight while the Hold is armed (else 0).
+    float holdNotKicked() const { return holdOn_ && holdArmed_ ? attW_[0] + attW_[1] : 0.0f; }
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int duckVoicing_ = 0;
+#else
+    int duckVoicing_ = 0; // setDuckVoicing
+#endif
 #ifdef RV_FIXED_VOICINGS
     static constexpr int holdVoicing_ = throwhold::kDefaultVoicing; // firmware: Drive.h RV_FIXED_VOICINGS
 #else

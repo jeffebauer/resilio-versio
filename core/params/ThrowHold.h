@@ -116,29 +116,65 @@ constexpr float kPeakGain = 0.998f;
 // most of the zone is a held bed, eased in over its first half.
 inline float bedWeight(float z) { return smooth01(std::min(1.0f, 2.0f * z)); }
 
-// Ducking: while the input plays, the held wet dips and comes back between
-// phrases. A peak follower on the dry input (mono), attack kDuckAttackSeconds,
-// release kDuckReleaseSeconds; its level maps to the dip in dB: none below
-// kDuckFloorDb, the full kDuckDepthDb from kDuckFullDb up (linear in dB in
-// between), x bedWeight. Applied to the wet only, after the limiter.
-constexpr float kDuckDepthDb       = 12.0f;
-constexpr float kDuckAttackSeconds = 0.006f;
-constexpr float kDuckReleaseSeconds = 0.30f;
-constexpr float kDuckFloorDb       = -48.0f; // dBFS peak: below this the input isn't "playing"
-constexpr float kDuckFullDb        = -30.0f;
+// Ducking (round 2, owner 4 Oct 2026: "only duck the lower frequencies,
+// like sidechaining against a kick or bass"; round 1's full-band duck on a
+// 300 ms release swelled back audibly before each kick). The held bed's LOW
+// band dips under the input's kick and bass, like a sidechain:
+// - Key: the dry input (mono) through a 4th-order low-pass at kDuckKeyHz
+//   (two Butterworth biquads), so hats, chords and stabs barely move it
+//   (a 220 Hz chord ~22 dB down); a peak follower on it (attack
+//   kDuckKeyAttackSeconds, release kDuckKeyReleaseSeconds). Its level maps
+//   to the dip in dB: none below kDuckFloorDb, all of the depth from
+//   kDuckFullDb up (linear in dB in between), x bedWeight.
+// - The dip itself is smoothed on the control tick: falls fast
+//   (kDuckAttackSeconds), holds kDuckHoldSeconds, then comes back on a short
+//   kDuckReleaseSeconds curve, so it is back well before the next beat
+//   (a dip, then flat) instead of still rising into it (the hump).
+// - Split: a Linkwitz-Riley crossover (4th order, 24 dB/oct) at
+//   kDuckSplitHz; out = g x low + high. Its two halves are in phase at every
+//   frequency, so the sum is flat when not ducking and never rises above
+//   unity at any depth (a plain "wet minus its low-pass" shelf is only
+//   6 dB/oct: -7 dB at 100 Hz for 12 dB asked; steeper versions of that
+//   bump up to +1-2 dB around the split). The crossover's sum is an
+//   all-pass (phase only), so it fades in over kDuckSplitFadeSeconds when
+//   the bed comes in (DECAY past 0.9) and out when it leaves: no step.
+//   200 Hz: the kick's and bass's own range (50-200 Hz) is what they fight
+//   with in the bed; with 12 dB asked the bed is -10.6 dB at 100 Hz, -4 at
+//   200 and within 0.5 dB from 400 Hz up.
+// - The layer voicing's send is ducked by the same gain, so kicks and bass
+//   don't pile into the bed during the dip (it came back fuller each time:
+//   the other half of the hump).
+// Applied to the wet only, before the safety limiter (the split's phase can
+// raise peaks; the Sustain trim still reads the bed's own, unducked, peaks).
+constexpr float kDuckKeyHz             = 120.0f;
+constexpr float kDuckKeyAttackSeconds  = 0.001f;
+constexpr float kDuckKeyReleaseSeconds = 0.030f;
+constexpr float kDuckFloorDb           = -24.0f; // key (lows) peak dBFS: below this nothing is "playing"
+constexpr float kDuckFullDb            = -12.0f;
+constexpr float kDuckAttackSeconds     = 0.003f;
+constexpr float kDuckHoldSeconds       = 0.020f;
+constexpr float kDuckReleaseSeconds    = 0.035f; // time constant (to within 1 dB of 12: ~90 ms)
+constexpr float kDuckSplitHz           = 200.0f;
+constexpr float kDuckSplitFadeSeconds  = 0.020f;
+// Depth on the lows: voicing 0 (default) and 1 (deeper), Renderer key
+// duck_voicing; 2 = no ducking (a reference for tests and pages). The
+// firmware builds the default.
+constexpr float kDuckDepthDb[3] = {12.0f, 18.0f, 0.0f};
+constexpr int   kNumDuckVoicings = 3;
 
-// Voicings (owner picks by ear; Renderer key hold_voicing, the firmware
-// compiles only the default):
-// A "freeze": while held the Springs' input closes (nothing new gets in);
+// Voicings (Renderer key hold_voicing, the firmware compiles only the
+// default; the owner picked layer, 4 Oct 2026):
+// "freeze": while held the Springs' input closes (nothing new gets in);
 //   new hits are heard dry over the ducked bed. Leaving the zone reopens it.
-// B "layer": new input still enters, kLayerSendDb down, and builds into the
-//   held bed (bounded by the LoopSat, the Sustain trim and the limiter), ducked.
+// "layer" (default): new input still enters, kLayerSendDb down (and less
+//   while the bed's lows are ducked), and builds into the held bed (bounded
+//   by the LoopSat, the Sustain trim and the limiter).
 // With the throw on, an OPEN throw overrides the freeze: the gate is how new
 // sound gets into a frozen bed (throw a chord into it).
 constexpr int   kVoicingFreeze  = 0;
 constexpr int   kVoicingLayer   = 1;
 constexpr int   kNumVoicings    = 2;
-constexpr int   kDefaultVoicing = kVoicingFreeze;
+constexpr int   kDefaultVoicing = kVoicingLayer; // owner's pick, 4 Oct 2026 (C on the hold page)
 constexpr float kLayerSendDb    = -6.0f;
 
 // The send's gain the Hold asks for (1 = open) at bed weight b.

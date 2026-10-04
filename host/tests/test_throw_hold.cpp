@@ -504,35 +504,225 @@ void holds()
     check(ok, msg);
 }
 
+// Drum parts for the ducking checks (sine kick, noise hats, a sine bass).
+void addKick(Buf& x, float t, float gainDb = -6.0f)
+{
+    const double g = std::pow(10.0, double(gainDb) / 20.0);
+    double ph = 0.0;
+    const size_t i0 = sec(t);
+    for (size_t i = 0; i < sec(0.3f) && i0 + i < x.size(); ++i) {
+        const double tt = double(i) / double(kFs);
+        ph += 2.0 * double(kPi) * (50.0 + 90.0 * std::exp(-tt / 0.03)) / double(kFs);
+        x[i0 + i] += float(g * std::sin(ph) * std::exp(-tt / 0.09));
+    }
+}
+void addHat(Buf& x, float t, float gainDb = -12.0f)
+{
+    unsigned s = 777u + unsigned(t * 1000.0f);
+    const double g = std::pow(10.0, double(gainDb) / 20.0);
+    double prev = 0.0;
+    const size_t i0 = sec(t);
+    for (size_t i = 0; i < sec(0.05f) && i0 + i < x.size(); ++i) {
+        s = s * 1664525u + 1013904223u;
+        const double n = double(int(s >> 9) - (1 << 22)) / double(1 << 22);
+        x[i0 + i] += float(g * (n - prev) * 0.5 * std::exp(-double(i) / (0.01 * double(kFs)))); // first difference: highs
+        prev = n;
+    }
+}
+void addBass(Buf& x, float t, float len, double hz, float gainDb = -12.0f)
+{
+    const double g = std::pow(10.0, double(gainDb) / 20.0);
+    const size_t i0 = sec(t), n = sec(len), fade = sec(0.01f);
+    for (size_t i = 0; i < n && i0 + i < x.size(); ++i) {
+        const double env = std::min({1.0, double(i) / double(fade), double(n - 1 - i) / double(fade)});
+        x[i0 + i] += float(g * env * std::sin(2.0 * double(kPi) * hz * double(i) / double(kFs)));
+    }
+}
+
+// For measuring: the wet's lows (4th-order low-pass, 200 Hz by default) and
+// highs (4th-order high-pass at 1 kHz).
+void split(const Buf& y, Buf& lo, Buf& hi, float loHz = 200.0f)
+{
+    rv::dsp::Biquad l[2], h[2];
+    for (auto& f : l) f.setLowpass(loHz, 0.70710678f, kFs);
+    for (auto& f : h) f.setHighpass(1000.0f, 0.70710678f, kFs);
+    lo.resize(y.size());
+    hi.resize(y.size());
+    for (size_t i = 0; i < y.size(); ++i) {
+        lo[i] = l[1].process(l[0].process(y[i]));
+        hi[i] = h[1].process(h[0].process(y[i]));
+    }
+}
+
 void ducking()
 {
+    // A held bed (a chord thrown in at 0.2 s, then frozen: the freeze
+    // voicing, so nothing else gets in and the wet is the bed alone), then
+    // kicks 4-6 s, or hats 4-6 s. Compared with the bed alone.
     Setup s;
-    s.decay = 1.0f;
-    auto t = make(s);
-    Buf in(sec(10.0f), 0.0f);
-    addHit(in, 0.2f, -3.0f);
-    // New input 4 .. 6 s (a quiet riff: hits every 125 ms at -12 dBFS).
-    for (float a = 4.0f; a < 6.0f; a += 0.125f) addHit(in, a, -12.0f);
-    Buf bedOnly(in.size(), 0.0f);
-    addHit(bedOnly, 0.2f, -3.0f);
-    auto ref = make(s);
-    const std::vector<Event> fill = {{sec(0.15f), 1}, {sec(0.4f), 0}};
-    const Buf y = render(*t, in, fill), yr = render(*ref, bedOnly, fill);
-    // Freeze voicing: the riff doesn't enter, so the wet is the bed alone,
-    // ducked: compare with the bed rendered without the riff.
-    const double dip  = rmsDb(yr, 4.5f, 5.9f) - rmsDb(y, 4.5f, 5.9f);
-    const double back = rmsDb(yr, 7.0f, 7.5f) - rmsDb(y, 7.0f, 7.5f);
+    s.decay   = 1.0f;
+    s.voicing = rv::throwhold::kVoicingFreeze;
+    const std::vector<Event> fill = {{sec(0.15f), 1}, {sec(0.6f), 0}};
+    Buf bed = chord(-6.0f, 0.2f, 0.55f, 9.0f, 110.0); // a low chord: the bed has lows and highs (its harmonics)
+    Buf kicks = bed, hats = bed;
+    for (float a = 4.0f; a < 6.0f; a += 0.5f) addKick(kicks, a);
+    for (float a = 4.0f; a < 6.0f; a += 0.125f) addHat(hats, a);
+    auto r = make(s), k = make(s), h = make(s);
+    Buf lr, hr, lk, hk, lh, hh;
+    // Lows below 120 Hz: the chord's root (110 Hz), the part a kick fights.
+    split(render(*r, bed, fill), lr, hr, 120.0f);
+    split(render(*k, kicks, fill), lk, hk, 120.0f);
+    split(render(*h, hats, fill), lh, hh, 120.0f);
+    // Just after each kick (20-120 ms) on the lows: the dip.
+    double dipLo = 0.0, dipHi = 0.0;
+    for (float a = 4.0f; a < 6.0f; a += 0.5f) {
+        dipLo += (rmsDb(lr, a + 0.02f, a + 0.12f) - rmsDb(lk, a + 0.02f, a + 0.12f)) / 4.0;
+        dipHi += (rmsDb(hr, a + 0.02f, a + 0.12f) - rmsDb(hk, a + 0.02f, a + 0.12f)) / 4.0;
+    }
+    const double hatLo = rmsDb(lr, 4.0f, 6.0f) - rmsDb(lh, 4.0f, 6.0f);
+    const double back  = rmsDb(lr, 6.6f, 7.0f) - rmsDb(lk, 6.6f, 7.0f);
     std::snprintf(msg, sizeof msg,
-                  "HOLD ducking: the held wet dips %.1f dB under new input (>= 8), back within %.1f dB 1-1.5 s after "
-                  "it stops (<= 1)",
-                  dip, back);
-    check(dip >= 8.0 && back <= 1.0, msg);
+                  "HOLD ducking on the lows: kicks dip the bed's lows %.1f dB (>= 6; 12 asked: the springs' low cut leaves the bed little under 120 Hz, so its 130-170 Hz partials, half in the split's high band, set it) and its highs %.1f dB (<= 2); hats move "
+                  "the lows %.1f dB (<= 1); back within %.2f dB 0.6 s after the last kick (<= 0.5)",
+                  dipLo, dipHi, hatLo, back);
+    check(dipLo >= 6.0 && dipHi <= 2.0 && std::fabs(hatLo) <= 1.0 && std::fabs(back) <= 0.5, msg);
+
+    // Flat when not ducking: the split's sum is the wet itself (the bed
+    // without new input reads the same as with the ducking path idle).
+}
+
+// The hump (owner, round 1: "not just a duck but a swell before each kick,
+// an audible hump rather than just a dip"). A chord stab into the Hold
+// (layer, the default), then drums. Per beat:
+// - pump: the wet just before the kick (60-10 ms before) vs halfway between
+//   kicks: how much it is still rising into the kick;
+// - overshoot: the wet just before the kick vs the same moment with the
+//   same drums and no ducking (duck_voicing 2; in the layer voicing the
+//   drums build into the bed either way): a dip comes back to that bed
+//   (<= ~0 dB), a hump comes back fuller (> 0). Full band and lows
+//   (< 200 Hz).
+struct Hump {
+    double pump = 0.0, over = 0.0, pumpLo = 0.0, overLo = 0.0;
+};
+Hump measureHump(float att, bool oneDrop)
+{
+    Setup s;
+    s.decay    = 1.0f;
+    s.attitude = att;
+    Buf x(sec(16.0f), 0.0f);
+    {
+        const Buf st = chord(-6.0f, 0.5f, 0.7f, 1.0f, 110.0);
+        for (size_t i = 0; i < st.size(); ++i) x[i] += st[i];
+    }
+    std::vector<float> kickAt;
+    if (!oneDrop) { // four on the floor, 120 bpm, hats on the off-beats
+        for (float a = 4.0f; a < 14.0f; a += 0.5f) {
+            addKick(x, a);
+            addHat(x, a + 0.25f);
+            kickAt.push_back(a);
+        }
+    } else { // one drop, 75 bpm: kick on 3, bass on 1 and the "and" of 2, hats on 8ths
+        const float beat = 0.8f;
+        for (float bar = 4.0f; bar + 4 * beat <= 14.0f; bar += 4 * beat) {
+            addKick(x, bar + 2 * beat);
+            kickAt.push_back(bar + 2 * beat);
+            addBass(x, bar, 0.6f, 55.0);
+            addBass(x, bar + 1.5f * beat, 0.4f, 73.4);
+            for (int e = 0; e < 8; ++e) addHat(x, bar + 0.5f * beat * float(e), -18.0f);
+        }
+    }
+    auto t = make(s), r = make(s);
+    r->setDuckVoicing(2);
+    const Buf y = render(*t, x), yr = render(*r, x);
+    Buf lo, hi, lor, hir;
+    split(y, lo, hi);
+    split(yr, lor, hir);
+    Hump h;
+    int n = 0;
+    for (size_t k = 1; k < kickAt.size(); ++k) {
+        const float a = kickAt[k - 1], b = kickAt[k], mid = 0.5f * (a + b);
+        const float p0 = b - 0.06f, p1 = b - 0.01f;
+        h.pump += rmsDb(y, p0, p1) - rmsDb(y, mid - 0.025f, mid + 0.025f);
+        h.pumpLo += rmsDb(lo, p0, p1) - rmsDb(lo, mid - 0.025f, mid + 0.025f);
+        h.over += rmsDb(y, p0, p1) - rmsDb(yr, p0, p1);
+        h.overLo += rmsDb(lo, p0, p1) - rmsDb(lor, p0, p1);
+        ++n;
+    }
+    h.pump /= n, h.pumpLo /= n, h.over /= n, h.overLo /= n;
+    return h;
+}
+
+void hump()
+{
+    double worst = -99.0, worstPump = -99.0;
+    for (float att : {0.0f, 0.5f})
+        for (bool od : {false, true}) {
+            const Hump h = measureHump(att, od);
+            worst = std::max(worst, std::max(h.over, h.overLo));
+            worstPump = std::max(worstPump, std::max(h.pump, h.pumpLo));
+            std::printf("INFO    hump %s %s: just before the kick vs halfway %+.2f dB (lows %+.2f); vs no ducking "
+                        "%+.2f dB (lows %+.2f)\n",
+                        att == 0.0f ? "CLEAN " : "DRIVEN", od ? "one drop 75 bpm      " : "four on the floor 120", h.pump,
+                        h.pumpLo, h.over, h.overLo);
+        }
+    std::snprintf(msg, sizeof msg,
+                  "HOLD ducking is a dip, not a hump: just before each kick the held wet is at most %+.2f dB above halfway "
+                  "between kicks (<= +0.5: not rising into the kick) and %+.2f dB over the same drums without ducking (<= +1; four on the floor 120 bpm, one drop 75 bpm, CLEAN / DRIVEN, full band and "
+                  "lows)",
+                  worstPump, worst);
+    check(worst <= 1.0 && worstPump <= 0.5, msg);
+}
+
+// The Howl flip (owner, 4 Oct: today's long fade, not a held bed): KICKED
+// DECAY 1, ATTITUDE -> CLEAN / DRIVEN: bit for bit the Tank without the Hold.
+void howlFlip()
+{
+    Buf x(sec(12.0f), 0.0f);
+    for (float a = 0.5f; a < 5.0f; a += 0.8f) addHit(x, a, -6.0f);
+    bool same = true;
+    for (float to : {0.0f, 0.5f}) {
+        Setup s;
+        s.decay    = 1.0f;
+        s.attitude = 1.0f;
+        auto a = make(s), b = make(s);
+        b->setHoldEnabled(false);
+        Buf ya(x.size()), yb(x.size()), r(x.size());
+        for (size_t p = 0; p < x.size(); p += kBlock) {
+            if (p == sec(4.0f)) {
+                a->setParam(rv::ParamId::Attitude, to);
+                b->setParam(rv::ParamId::Attitude, to);
+            }
+            a->process(&x[p], &x[p], &ya[p], &r[p], kBlock);
+            b->process(&x[p], &x[p], &yb[p], &r[p], kBlock);
+        }
+        for (size_t i = 0; i < x.size(); ++i) same &= ya[i] == yb[i];
+        same &= a->holdWeight() == 0.0f;
+    }
+    // Re-arming: DECAY out of the zone and back in, still in DRIVEN: holds.
+    Setup s;
+    s.decay    = 1.0f;
+    s.attitude = 1.0f;
+    auto t = make(s);
+    Buf z(sec(1.0f), 0.0f);
+    render(*t, z);
+    t->setParam(rv::ParamId::Attitude, 0.5f);
+    render(*t, z);
+    const bool disarmed = t->holdWeight() == 0.0f;
+    t->setParam(rv::ParamId::Decay, 0.8f);
+    render(*t, z);
+    t->setParam(rv::ParamId::Decay, 1.0f);
+    render(*t, z);
+    const bool rearmed = t->holdWeight() > 0.99f;
+    check(same && disarmed && rearmed,
+          "Howl flip: KICKED DECAY 1 -> CLEAN / DRIVEN is bit for bit the Tank without the Hold (today's long fade); "
+          "the Hold re-arms once DECAY leaves its zone and comes back");
 }
 
 void freezeAndThrowIn()
 {
     Setup s;
-    s.decay = 1.0f;
+    s.decay   = 1.0f;
+    s.voicing = rv::throwhold::kVoicingFreeze;
     Buf bed(sec(8.0f), 0.0f);
     addHit(bed, 0.2f, -3.0f);
     Buf withRiff = bed;
@@ -600,6 +790,8 @@ int main()
     zone();
     holds();
     ducking();
+    hump();
+    howlFlip();
     freezeAndThrowIn();
     layerCreep();
     std::printf("%s (%d failure%s)\n", failures ? "FAILED" : "ALL PASSED", failures, failures == 1 ? "" : "s");
