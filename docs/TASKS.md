@@ -86,9 +86,18 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
   - the ringing tail thinning as you sweep TONE right, and a gentle level swell ~0.3 s after a fast move
   - **the Kick at TONE fully right** (turn level matching off): the thud is gone, a sharper knock and crash remain. Keep, or should the Kick's thump skip the TONE filter?
   - **Howls at TONE right** (KICKED, DECAY max) now lean more toward one pitch, since their low body is cut. Fine, or too tonal?
-- **Throw on the gate + hold at the top of DECAY** (CLEAN/DRIVEN, ducked under new hits): two hold versions for you to pick by ear (freeze vs layer)
-- **Echo mode = SPRINGS 3:** tape echo into the noon tank (fixed ~1.5–2 s tail). DECAY = echo feedback, TENSION = echo time (free) or, with a clock in the gate (one pulse = one beat), seven divisions 1/2 … 1/16 incl. dotted; up to 2 s; changes swoop like tape. In the plugin it follows Ableton's tempo. The coupled wire gauges go
-- Each comes with a listening page; then your OK to merge, merged one at a time with the tests re-run on the combination
+- [ ] **Throw + Hold: built (`feat/throw-hold`), your listen + OK to merge.** Page: [`renders/feat_throw_hold/`](../renders/feat_throw_hold/index.html) (links a Throw page and a Hold page). Listen for / decide:
+  - **Throws:** a dub beat, today vs three hits thrown (CLEAN, DRIVEN, KICKED). Do they read like dub throws? In the plugin there's a latching THROW button next to KICK (automatable)
+  - **Hold: freeze or layer?** Freeze: nothing new gets into the held bed, new hits play dry over it, and a throw lets one stab in. Layer: new sound keeps building into the bed (measured: it doesn't creep up). Ducking: the bed dips ~13 dB under playing, back within ~1–1.5 s
+  - **Flipping KICKED → CLEAN/DRIVEN at DECAY max** now hands the Howl to a held, ducked bed instead of fading over ~9 s. Keep, or fade as before? (Pulling DECAY down ends it either way)
+  - The Hold slowly fades (~3 dB per 10 s after the first 20 s) rather than truly freezing; it never grows
+- [ ] **Echo mode: built (`feat/echo-mode`), your listen + OK to merge.** Pages: [`renders/feat_echo_mode/`](../renders/feat_echo_mode/index.html) (SPRINGS 2 vs echo mode at the same knobs) and [`gestures/`](../renders/feat_echo_mode/gestures/index.html) (swoop, a 100 bpm clock stepping through the seven divisions, DECAY ridden into the KICKED runaway and back, switching 2 → 3 → 2, WOBBLE on the tape). Decide:
+  - Is TENSION noon's **0.4 s** a good resting echo time (free, unclocked)? Range 2 s → 80 ms
+  - Does **DECAY** feel right, from one repeat (DECAY 0) to a long build?
+  - Is the **KICKED runaway** in the right place (top ~13 % of DECAY)?
+  - Is the **swoop** speed (~0.3 s) right?
+  - Firmware gets smaller (the coupled springs code is gone) and the module works less in every SPRINGS position; the chip's CPU is measured at the next profile run
+- All three tested (each branch 100 % of its suites, re-run by Claude). After your OKs Claude merges them one at a time (TONE, then Throw + Hold, then Echo mode), re-runs every test on the combination, and makes a release + CPU-test build for the module
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [x] **Dub-lens critique (3 Oct):** answered ([research/dub-lens-critique.md](research/dub-lens-critique.md) §8): gate = throw, button = Kick; hold at DECAY's top (CLEAN/DRIVEN, ducked); Howl stays KICKED-only, no feedback return; round 5 is the last Wellspring fit. To hear first: TONE filter pre / post / split, tape echo into springs for SPRINGS 3, hiss levels. Still open: what In R is for (duck key, second send, or stereo).
