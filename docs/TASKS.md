@@ -22,7 +22,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Run 15: worst case **82 % average / 86 % peak** (target ≤ 70 % peak; run 13 was 63 / 66). The Wellspring F tank's shared Sweep costs ~16 % and the coupled SPRINGS 3 ~40 % more. Still under the dropout point, so it plays, but the safety margin is gone. Claude is finding sound-neutral savings first (no decision needed); echo mode removes the coupled S3; a bigger audio block (+1 ms) is the reserve you already approved. Details: `firmware/README.md` "Run 15"
 
 ### 1. Flash the Versio and play (≈2 min + play)
-- [ ] Flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
+- [x] Click check passed (4 Oct, on `327af86`, same sound and CPU as 340b542): no clicks or dropouts. Was: flash `dist/resilio_versio_release_340b542.bin` (after run 15) and do the **click check**: 3 Springs, KICKED, DRIVE and DECAY up, move knobs fast and hit KICK. Any click or dropout → tell Claude (the CPU target is 70 %; this is the safety net with every release)
 - [ ] Play your low-mid pad again at the old settings (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
 - [ ] Play it more thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 - [ ] Optional: one OPTX take of `01_clicks` at DECAY **fully left** and one at **fully right** (rest as H2), to check the ~10 % shorter tails on the hardware come from DECAY's noon position, not the DSP
@@ -76,7 +76,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 1b. Flash room for the new features (4 Oct) · your OK to merge
 - [x] **Flash study merged** (4 Oct, `327af86`): release 18.4 KB free, CPU-test 16.5 KB free (were 4.8 KB and 576 B). No sound change
-- [ ] **Module check (≈5 min, after run 15 and the click check):** flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
+- [x] Release `327af86` boots and plays, click check passed (4 Oct). Still to see: the CPU-test build's CORNER lines (next time you run a profile). Was: flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
 
 ### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
 - [x] **TONE after the springs: picked (4 Oct)** B in every panel, the Kick at TONE fully right included (no thud, sharper knock: keep); Howls leaning to a pitch at TONE right: fine. Merge waits until you've heard the other two, then all three go in together (`feat/tone-after`, page [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html))
