@@ -495,7 +495,9 @@ RV_SIZE_OPT void Tank::reset()
     // THROW: off again until the gate's next first rising edge (power-up).
     numPendingGates_ = 0;
     gateHigh_ = throwOn_ = throwParamHigh_ = false;
-    thrPos_  = 1.0f;
+    thrReleasing_ = releaseThrow_ = false;
+    thrPos_    = 1.0f;
+    thrRelPos_ = 0.0f;
     sendNow_ = 1.0f;
     holdZ_ = holdBed_ = 0.0f;
     holdSendFrom_ = holdSendTo_ = 1.0f;
@@ -511,6 +513,26 @@ void Tank::kick(int sampleOffset)
 {
     if (numPendingKicks_ < kMaxPendingKicks)
         pendingKicks_[size_t(numPendingKicks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
+}
+
+bool Tank::exitThrowMode()
+{
+    if (!throwOn_ || thrReleasing_) return false;
+    releaseThrow_ = true;
+    return true;
+}
+
+// The throw switches on (the first rising edge, or the next one after
+// exitThrowMode()). The ramp starts from the send now in effect, so the
+// switch itself never steps the send.
+void Tank::latchThrow(float hs)
+{
+    if (throwOn_ && !thrReleasing_) return;
+    const bool  layer = holdVoicing_ == throwhold::kVoicingLayer;
+    const float now   = layer ? (hs > 1.0e-6f ? sendNow_ / hs : 1.0f) : sendNow_;
+    thrPos_       = std::clamp(now, 0.0f, 1.0f);
+    throwOn_      = true;
+    thrReleasing_ = false;
 }
 
 void Tank::gate(bool high, int sampleOffset)
@@ -1434,8 +1456,17 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         const bool p = values_[size_t(ParamId::Throw)] >= 0.5f;
         if (p != throwParamHigh_) {
             throwParamHigh_ = p;
-            if (p && !gateHigh_) throwOn_ = true;
+            if (p && !gateHigh_) latchThrow(holdSendFrom_);
             gateHigh_ = p;
+        }
+    }
+    // Throw mode off (a long press of KICK, ADR 0039): crossfade from the
+    // throw's send to the plain one over the open ramp, then unlatch.
+    if (releaseThrow_) {
+        releaseThrow_ = false;
+        if (throwOn_ && !thrReleasing_) {
+            thrReleasing_ = true;
+            thrRelPos_    = 0.0f;
         }
     }
     int gateIdx = 0; // next pending gate change
@@ -1473,7 +1504,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             for (int i = 0; i < n; ++i) {
                 while (gateIdx < numPendingGates_ && std::min(pendingGates_[size_t(gateIdx)].at, numSamples - 1) <= pos + i) {
                     const bool high = pendingGates_[size_t(gateIdx++)].high;
-                    if (high && !gateHigh_ && throwRole) throwOn_ = true;
+                    if (high && !gateHigh_ && throwRole) latchThrow(holdSendFrom_ + hStep * float(tick_ + i));
                     gateHigh_ = high;
                 }
                 const float hs = holdSendFrom_ + hStep * float(tick_ + i);
@@ -1482,6 +1513,14 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                     thrPos_ = gateHigh_ ? std::min(1.0f, thrPos_ + thrOpenStep_) : std::max(0.0f, thrPos_ - thrCloseStep_);
                     const float t = throwhold::smooth01(thrPos_);
                     g = layer ? t * hs : t;
+                    if (thrReleasing_) { // leaving throw mode: glide to the plain send, then unlatch
+                        thrRelPos_ = std::min(1.0f, thrRelPos_ + thrOpenStep_);
+                        g += throwhold::smooth01(thrRelPos_) * (hs - g);
+                        if (thrRelPos_ >= 1.0f) {
+                            g        = hs; // exactly the plain send from here on
+                            throwOn_ = thrReleasing_ = false;
+                        }
+                    }
                 }
                 sendG[i] = g;
             }

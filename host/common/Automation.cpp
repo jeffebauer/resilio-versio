@@ -46,6 +46,11 @@ bool parse(const json::Value& root, Automation& out, std::string& error)
         for (const auto& item : kicks->items()) out.kicksSeconds.push_back(item.numberValue());
         std::sort(out.kicksSeconds.begin(), out.kicksSeconds.end());
     }
+    if (const json::Value* exits = root.find("throw_exits")) {
+        if (!exits->isArray()) { error = "throw_exits must be an array of times (seconds)"; return false; }
+        for (const auto& item : exits->items()) out.throwExitsSeconds.push_back(item.numberValue());
+        std::sort(out.throwExitsSeconds.begin(), out.throwExitsSeconds.end());
+    }
     if (const json::Value* gates = root.find("gates")) {
         if (!gates->isArray()) { error = "gates must be an array of [rise, fall] pairs"; return false; }
         for (const auto& item : gates->items()) {

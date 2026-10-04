@@ -97,6 +97,10 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
     if (autom)
         for (const auto& [t, high] : autom->gateEvents) gateSamples.emplace_back(size_t(std::lround(t * double(sr))), high);
     size_t nextGate = 0;
+    std::vector<size_t> exitSamples; // a long press of KICK: throw mode off (ADR 0039)
+    if (autom)
+        for (double t : autom->throwExitsSeconds) exitSamples.push_back(size_t(std::lround(t * double(sr))));
+    size_t nextExit = 0;
 
     const int microBlock = autom ? std::min(block, 16) : block;
     for (size_t pos = 0; pos < frames; pos += size_t(microBlock)) {
@@ -114,6 +118,10 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
             const size_t at = std::max(gateSamples[nextGate].first, pos);
             tank.gate(gateSamples[nextGate].second, int(at - pos));
             ++nextGate;
+        }
+        while (nextExit < exitSamples.size() && exitSamples[nextExit] < pos + size_t(n)) {
+            tank.exitThrowMode();
+            ++nextExit;
         }
         tank.process(srcL.data() + pos, srcR.data() + pos, out.channels[0].data() + pos, dstR + pos, n);
     }

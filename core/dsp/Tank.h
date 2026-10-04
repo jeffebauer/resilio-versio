@@ -248,6 +248,13 @@ public:
     // only while the gate is high (opens over 2 ms, closes over 15 ms).
     // Up to kMaxPendingGates per block; extras are dropped.
     void gate(bool high, int sampleOffset);
+    // Throw mode off (ADR 0039: a long press of KICK, ThrowHold.h
+    // kThrowExitHoldSeconds; the Plugin's KICK held as long): at the next
+    // block's start the send glides back to open over the open ramp and the
+    // latch clears, so the next rising edge switches the throw on again.
+    // Returns true if throw mode was on (the firmware's LED confirmation);
+    // false, and nothing changes, if it was off.
+    bool exitThrowMode();
     // The throw has latched on (the first rising edge has come).
     bool throwOn() const { return throwOn_; }
     // The send's gain now in effect (1 = open), throw x Hold, for tests.
@@ -484,7 +491,9 @@ private:
     std::array<GateEvent, kMaxPendingGates> pendingGates_{};
     int   numPendingGates_ = 0;
     bool  gateHigh_ = false, throwOn_ = false, throwParamHigh_ = false;
-    float thrPos_ = 1.0f, thrOpenStep_ = 0.0f, thrCloseStep_ = 0.0f;
+    bool  thrReleasing_ = false, releaseThrow_ = false; // exitThrowMode(): gliding back / asked
+    float thrPos_ = 1.0f, thrOpenStep_ = 0.0f, thrCloseStep_ = 0.0f, thrRelPos_ = 0.0f;
+    void  latchThrow(float holdSend);
     float sendNow_ = 1.0f; // last sample's send gain (tests)
     // HOLD (ADR 0040): zone weight, bed weight (freeze / duck / layer), the
     // Hold's send gain over the tick, the ducking follower and its gain over

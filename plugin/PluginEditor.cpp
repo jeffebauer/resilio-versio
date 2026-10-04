@@ -8,6 +8,7 @@
 
 #include "../firmware/LedMeter.h"
 #include "params/ParamSpec.h"
+#include "params/ThrowHold.h"
 #include "params/WobbleVoicing.h"
 
 #include <cmath>
@@ -329,7 +330,8 @@ public:
             const auto  c = kLeds[m];
             const float r = px(kLedRadiusMm);
             const auto  e = juce::Rectangle<float>(2.0f * r, 2.0f * r).withCentre({px(c.x), px(c.y)});
-            g.setColour(ledColour(meters_[static_cast<size_t>(m)].colour()));
+            const bool blink = juce::Time::getMillisecondCounterHiRes() < blinkUntilMs_;
+            g.setColour(blink ? juce::Colours::white : ledColour(meters_[static_cast<size_t>(m)].colour()));
             g.fillEllipse(e);
             g.setColour(kOutlineColour);
             g.drawEllipse(e, 1.0f);
@@ -350,6 +352,20 @@ private:
 
         // Red: input near full scale; output while the Tank's safety limiter
         // pulls the wet down (stereo-linked: both output LEDs together).
+        // KICK held (ADR 0039): after kThrowExitHoldSeconds, throw mode off
+        // once per press; the LEDs blink white if it was on (as the module).
+        if (kick_.isDown()) {
+            if (kickDownMs_ < 0.0) kickDownMs_ = now;
+            if (!exitSent_ && now - kickDownMs_ >= 1000.0 * double(rv::throwhold::kThrowExitHoldSeconds)) {
+                link_.requestThrowExit();
+                exitSent_ = true;
+            }
+        } else {
+            kickDownMs_ = -1.0;
+            exitSent_   = false;
+        }
+        if (link_.takeThrowExited()) blinkUntilMs_ = now + 1000.0 * double(rv::throwhold::kThrowExitBlinkSeconds);
+
         const bool limiting = rvled::limiterReducing(link_.takeLimiterGain());
         meters_[PanelLink::kInL].update(peak[PanelLink::kInL], rvled::inputNearClip(peak[PanelLink::kInL]), dt);
         meters_[PanelLink::kInR].update(peak[PanelLink::kInR], rvled::inputNearClip(peak[PanelLink::kInR]), dt);
@@ -369,6 +385,8 @@ private:
     std::array<std::array<juce::TextButton, 3>, std::size(kToggles)> toggles_;
     std::array<std::unique_ptr<juce::ParameterAttachment>, std::size(kToggles)> toggleAttach_;
     juce::TextButton                kick_;
+    double                          kickDownMs_ = -1.0, blinkUntilMs_ = 0.0; // KICK held -> throw mode off
+    bool                            exitSent_   = false;
     juce::TextButton                throw_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> throwAttach_;
     std::array<juce::TextButton, 3> sizes_;

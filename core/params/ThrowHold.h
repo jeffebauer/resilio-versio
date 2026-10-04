@@ -44,6 +44,18 @@ namespace rv::throwhold {
 constexpr float kThrowOpenSeconds  = 0.002f;
 constexpr float kThrowCloseSeconds = 0.015f;
 
+// Leaving throw mode (ADR 0039, owner 4 Oct 2026): unplugging the gate
+// leaves it low, so the send would stay closed until power-off. Holding KICK
+// this long switches throw mode off: the send glides open (the open ramp)
+// and the latch clears; the next rising edge switches it on again. The Kick
+// still fires on the press, as always. 1 s: long enough that no played Kick
+// trips it, short enough to feel like a deliberate hold.
+constexpr float kThrowExitHoldSeconds = 1.0f;
+// The confirmation (only if throw mode was on): all four LEDs white this
+// long, then the meters again (ADR 0039: the one exception to ADR 0031's
+// meters-only LEDs).
+constexpr float kThrowExitBlinkSeconds = 0.15f;
+
 enum class GateRole : unsigned char {
     Throw, // positions 1 and 2 (and, for now, 3)
     Clock  // position 3, once the echo lands (not built)

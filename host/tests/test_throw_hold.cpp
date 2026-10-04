@@ -13,6 +13,11 @@
 //   5. clicks: a hot (0 dBFS) sustained low chord thrown on and off, every
 //      ATTITUDE, MIX 1: the Renderer's click detector reads 0;
 //   6. the THROW param is the gate (Plugin, Renderer).
+//   6b. leaving throw mode (a long press of KICK, exitThrowMode()): the
+//      send reopens over the open ramp without a click, the latch clears,
+//      the next rising edge switches it on again; a short press only kicks;
+//      a long press with throw mode off changes nothing, bit for bit; the
+//      Renderer's "throw_exits" reaches the Tank.
 // HOLD: CLEAN and DRIVEN, DECAY 0.9 -> 1.
 //   7. the zone: weight 0 below DECAY 0.9 and in KICKED (the Howl unchanged),
 //      1 at CLEAN / DRIVEN DECAY 1; T60 continuous and rising through it;
@@ -26,6 +31,8 @@
 // test_antires judges the T60 and evenness outside the zone (DECAY <= 0.9
 // for CLEAN / DRIVEN since ADR 0040).
 
+#include "Automation.h"
+#include "Json.h"
 #include "Metrics.h"
 #include "dsp/Tank.h"
 #include "params/Mappings.h"
@@ -296,6 +303,130 @@ void throwParam()
     check(same && b->throwOn(), "THROW param (Plugin, Renderer) is the gate: same output as gate() at the block's start");
 }
 
+// Gate / Kick / long press (exit) events in time order, then the render.
+// what: 0 / 1 gate, 2 Kick, 3 exitThrowMode() (at the block's start).
+Buf renderEx(rv::Tank& t, const Buf& in, const std::vector<Event>& ev, bool* exitReturned = nullptr)
+{
+    const size_t n = in.size();
+    Buf l(n), r(n);
+    size_t e = 0;
+    for (size_t p = 0; p < n; p += kBlock) {
+        const int m = int(std::min<size_t>(kBlock, n - p));
+        while (e < ev.size() && ev[e].at < p + size_t(m)) {
+            const int off = int(ev[e].at - p);
+            if (ev[e].what == 2) t.kick(off);
+            else if (ev[e].what == 3) {
+                const bool was = t.exitThrowMode();
+                if (exitReturned) *exitReturned = was;
+            } else t.gate(ev[e].what == 1, off);
+            ++e;
+        }
+        t.process(&in[p], &in[p], &l[p], &r[p], m);
+    }
+    return l;
+}
+
+void leaveThrowMode()
+{
+    // 1. Exit with the gate low (the send closed) under a 0 dBFS low chord,
+    // every ATTITUDE, DECAY 0.5 and 0.95 (in the Hold, freeze: the plain
+    // send there is the freeze's): the send must go back to the plain send
+    // within 3 ms, no click, the latch cleared.
+    const Buf in = chord(0.0f, 0.0f, 4.0f, 5.0f);
+    long worstClicks = 0;
+    float worstOpen  = 0.0f;
+    bool  cleared = true, returned = true;
+    for (float att : {0.0f, 0.5f, 1.0f})
+        for (float d : {0.5f, 0.95f}) {
+            Setup s;
+            s.attitude = att;
+            s.decay    = d;
+            auto t = make(s);
+            bool ret = false;
+            // Latch at 0.3 s (closes at 0.5 s), exit at 1.5 s (mid-chord).
+            const Buf y = renderEx(*t, in, {{sec(0.3f), 1}, {sec(0.5f), 0}, {sec(1.5f), 3}}, &ret);
+            worstClicks = std::max(worstClicks, clicks(y));
+            returned &= ret;
+            cleared &= !t->throwOn() && (d > 0.9f || t->sendGain() == 1.0f);
+            // How long the reopening takes, per block (outside the Hold: in
+            // its freeze the plain send is closed, so the exit goes there).
+            if (d > 0.9f) continue;
+            auto u = make(s);
+            const Buf pre = renderEx(*u, Buf(sec(1.5f), 0.0f), {{sec(0.3f), 1}, {sec(0.5f), 0}});
+            (void)pre;
+            u->exitThrowMode();
+            Buf z(kBlock, 0.0f), zl(kBlock), zr(kBlock);
+            float openIn = -1.0f;
+            for (int b = 0; b < 20 && openIn < 0.0f; ++b) {
+                u->process(z.data(), z.data(), zl.data(), zr.data(), kBlock);
+                if (u->sendGain() >= 1.0f && !u->throwOn()) openIn = float((b + 1) * kBlock) / kFs;
+            }
+            worstOpen = std::max(worstOpen, openIn < 0.0f ? 1.0f : openIn);
+        }
+    std::snprintf(msg, sizeof msg,
+                  "THROW exit (KICK held): send reopens in %.1f ms (<= 3), latch cleared, 0 dBFS chord: worst click_count "
+                  "%ld (must be 0), exitThrowMode() reports throw mode was on",
+                  1000.0f * worstOpen, worstClicks);
+    check(worstClicks == 0 && worstOpen <= 0.003f && cleared && returned, msg);
+
+    // 2. After the exit the input reaches the springs again; the next rising
+    // edge latches again (send follows the gate).
+    {
+        Setup s;
+        s.decay = 0.75f;
+        auto t = make(s);
+        renderEx(*t, Buf(sec(0.1f), 0.0f), {{0, 1}, {sec(0.05f), 0}, {sec(0.08f), 3}});
+        const bool off = !t->throwOn();
+        renderEx(*t, Buf(sec(0.1f), 0.0f), {{sec(0.02f), 1}, {sec(0.04f), 0}});
+        const bool relatched = t->throwOn() && t->sendGain() <= 1e-6f;
+        std::snprintf(msg, sizeof msg, "THROW exit: off after the long press, and the next rising edge switches it on again "
+                                       "(the send then follows the gate: closed after the fall)");
+        check(off && relatched, msg);
+    }
+
+    // 3. A short press only kicks: throw mode stays on, the send stays closed.
+    {
+        Setup s;
+        s.decay = 0.75f;
+        auto t = make(s);
+        const Buf y = renderEx(*t, Buf(sec(1.0f), 0.0f), {{0, 1}, {sec(0.05f), 0}, {sec(0.3f), 2}});
+        const double lvl = rmsDb(y, 0.3f, 0.6f);
+        std::snprintf(msg, sizeof msg, "KICK short press: a Kick (%.1f dBFS), throw mode stays on, the send stays closed", lvl);
+        check(t->throwOn() && t->sendGain() <= 1e-6f && lvl > -50.0, msg);
+    }
+
+    // 4. A long press with throw mode off changes nothing, bit for bit
+    // (outside and inside the Hold, every ATTITUDE).
+    {
+        Buf x = chord(-12.0f, 0.1f, 1.5f, 3.0f);
+        addHit(x, 2.0f);
+        bool same = true, none = true;
+        for (float att : {0.0f, 0.5f, 1.0f})
+            for (float d : {0.5f, 1.0f}) {
+                Setup s;
+                s.attitude = att;
+                s.decay    = d;
+                auto a = make(s), b = make(s);
+                bool ret = true;
+                const Buf ya = renderEx(*a, x, {}), yb = renderEx(*b, x, {{sec(1.0f), 3}, {sec(2.2f), 3}}, &ret);
+                for (size_t i = 0; i < ya.size(); ++i) same &= ya[i] == yb[i];
+                none &= !ret;
+            }
+        check(same && none, "KICK held with throw mode off: nothing changes, bit for bit (DECAY 0.5 and the Hold, every ATTITUDE)");
+    }
+
+    // 5. The Renderer's "throw_exits" automation reaches the Tank.
+    {
+        rv::json::Value v;
+        rv::automation::Automation au;
+        std::string err;
+        const bool ok = rv::json::parse(R"({"throw_exits": [2.5, 1.0], "gates": [[0.5, 0.75]]})", v, err)
+                        && rv::automation::parse(v, au, err);
+        check(ok && au.throwExitsSeconds.size() == 2 && au.throwExitsSeconds[0] == 1.0,
+              "Renderer automation \"throw_exits\": parsed, in time order");
+    }
+}
+
 // ---- HOLD ---------------------------------------------------------------------
 
 void zone()
@@ -465,6 +596,7 @@ int main()
     kickNotGated();
     throwClicks();
     throwParam();
+    leaveThrowMode();
     zone();
     holds();
     ducking();

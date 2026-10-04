@@ -737,6 +737,7 @@ constexpr size_t kMeterLed[kNumMeters] = {
 // 1 ms LED can't show anyway.
 volatile float gPeak[kNumMeters] = {};
 volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
+volatile bool  gThrowExited      = false; // KICK held: throw mode was on and is now off (LED blink)
 
 // ---- LED PWM by timer + DMA (30 Sep 2026 fix, "LEDs flicker rather than dim")
 // libDaisy's software PWM needs UpdateLeds() called at its sample rate
@@ -945,6 +946,15 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     if (gate != lastGate) tank.gate(gate, 0);
     lastGate = gate;
     if (hw.tap.RisingEdge()) tank.kick(0);
+    // KICK held >= kThrowExitHoldSeconds: throw mode off (ADR 0039), once
+    // per press; the Kick itself already fired on the press. Holding it
+    // with throw mode off does nothing more (ADR 0013).
+    static bool exitDone = false;
+    if (!hw.tap.Pressed()) exitDone = false;
+    else if (!exitDone && hw.tap.TimeHeldMs() >= 1000.0f * rv::throwhold::kThrowExitHoldSeconds) {
+        exitDone = true;
+        if (tank.exitThrowMode()) gThrowExited = true;
+    }
 
     for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
         tank.setParam(kPotParams[p], hw.GetKnobValue(kPotKnob[p]));
@@ -1025,8 +1035,16 @@ int main()
             gLedPwm.stop();
             ledDma = false;
         }
+        // Throw mode off (ADR 0039): all four white for a moment, the one
+        // exception to the meters-only LEDs (ADR 0031).
+        static uint32_t blinkUntilUs = 0;
+        if (gThrowExited) {
+            gThrowExited = false;
+            blinkUntilUs = nowUs + uint32_t(1.0e6f * rv::throwhold::kThrowExitBlinkSeconds);
+        }
+        const bool blink = int32_t(blinkUntilUs - nowUs) > 0;
         for (int m = 0; m < kNumMeters; ++m) {
-            const rvled::Rgb c = meters[m].colour();
+            const rvled::Rgb c = blink ? rvled::Rgb{1.0f, 1.0f, 1.0f} : meters[m].colour();
             if (ledDma) gLedPwm.set(int(kMeterLed[m]), c);
             else hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
         }

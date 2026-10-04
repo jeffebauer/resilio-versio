@@ -69,6 +69,9 @@ public:
             tank_.kick(0);
         // THROW (the throw_gate param above, ADR 0039) is the gate: the Tank
         // reads its changes at the block's start. MIDI notes stay Kicks.
+        // KICK held >= 1 s on the panel: throw mode off (as on the module).
+        if (panel_.takeThrowExit() && tank_.exitThrowMode())
+            panel_.noteThrowExited();
         // Any note-on = one Kick at its exact sample position; velocity ignored (ADR 0005).
         for (const auto m : midi)
             if (m.getMessage().isNoteOn())
