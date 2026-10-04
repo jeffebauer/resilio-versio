@@ -1548,8 +1548,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
         // Voicing 1: the shared Sweep, once for every Spring (Loop and high path).
 #if RV_TANKV_BUILT >= 1
-        if (tankv::hasSweep(tankVoicing_))
-            for (int i = 0; i < n; ++i) mono[i] = sweep_.process(mono[i]);
+        if (tankv::hasSweep(tankVoicing_)) sweep_.process(mono, n);
 #endif
         // One transport for every pickup: the first echoes move together. Its
         // flutter tremolo (WOBBLE left, WobbleVoicing.h) scales the wet below.
