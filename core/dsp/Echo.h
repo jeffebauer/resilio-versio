@@ -52,6 +52,13 @@ public:
     // advances the tape.
     void record(const float* in, int n);
 
+    // Diffuse repeats (EchoVoicing.h kDiffuse): 0 none ... 3 heavy. Clears
+    // the diffuser. diffuse() smears the feedback (in place) before it goes
+    // back on the tape; a no-op at voicing 0.
+    void setDiffuseVoicing(int v);
+    int  diffuseVoicing() const { return diffuse_; }
+    void diffuse(float* x, int n);
+
     bool ok() const { return buf_ != nullptr; }
     const Wobble& wow() const { return wow_; }
 
@@ -64,6 +71,16 @@ private:
     float  floorDepth_ = 0.0f, floorStep1_ = 0.0f, floorStep2_ = 0.0f; // the tape's own wander (kFloorMs)
     float  ph1_ = 0.0f, ph2_ = 0.0f, floorFrom_ = 0.0f, floorTo_ = 0.0f;
     Biquad         lp_{}, recLp_{}; // playback head, record head
+    // The diffuser (only built where a voicing can use it: EchoVoicing.h kDiffuseBuilt).
+    static constexpr int kApSize = echo::kDiffuseBuilt ? 2048 : 1; // >= kDiffuseMaxMs at 96 kHz + the drift
+    struct Allpass {
+        float buf[kApSize];
+        int   w = 0;
+        float base = 1.0f, depth = 0.0f, ph = 0.0f, step = 0.0f;
+    };
+    Allpass ap_[echo::kDiffuseStages];
+    int     diffuse_ = echo::kDiffuseDefault;
+    void    clearDiffuser();
     OnePoleLowpass hp_{};
     Wobble         wow_;
 };

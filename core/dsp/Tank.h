@@ -402,6 +402,15 @@ public:
 #endif
     }
     bool echoMode() const { return echoMode_; }
+    // Renderer / test hook (PROTOTYPE, owner 4 Oct): diffuse repeats, 0 none
+    // (default) ... 3 heavy (EchoVoicing.h kDiffuse). Set it before rendering.
+    void setEchoDiffuseVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        echo_.setDiffuseVoicing(v);
+#endif
+    }
+    int echoDiffuseVoicing() const { return echo_.diffuseVoicing(); }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
     // glides over springs3::kGlideSeconds), the time it aims for (seconds),
     // the feedback in use, the clock division (-1 = free time), the clock.

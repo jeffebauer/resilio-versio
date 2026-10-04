@@ -138,6 +138,43 @@ constexpr int kTapeMargin = 1024;
 constexpr float kSpringsTension    = 0.5f;
 constexpr float kSpringsT60Seconds = 1.7f;
 
+// ---- Diffuse repeats (PROTOTYPE, owner 4 Oct 2026) -------------------------------------------
+// "Repeats become slightly diffuse as they repeat, so there's a feeling of
+// sound degradation with each repeat." A short diffuser (kDiffuseStages
+// Schroeder allpasses) on the tape's FEEDBACK only, so it compounds: the
+// first repeat is the input itself (bit for bit as voicing 0), the second has
+// passed it once, the third twice ... Allpasses keep every frequency's level
+// (no energy added), they only smear each repeat in time. Their lengths drift
+// slowly (kDiffuseModHz, a fraction of a ms) so the smear doesn't settle into
+// a metallic comb. Renderer key echo_diffuse_voicing; the firmware builds
+// only kDiffuseDefault (0 = none: no diffuser compiled in).
+constexpr int kDiffuseStages = 3;
+struct DiffuseVoicing {
+    float g;                      // allpass coefficient (how much each pass smears)
+    float ms[kDiffuseStages];     // allpass lengths
+    float modMs;                  // their slow drift, +- ms
+    float trim;                   // KICKED's feedback x this: a smeared repeat's lower peaks saturate less on the tape, so near the runaway it lasted longer (T60 +10-25 %)
+};
+constexpr int kNumDiffuseVoicings = 4;
+constexpr DiffuseVoicing kDiffuse[kNumDiffuseVoicings] = {
+    {0.0f, {0.0f, 0.0f, 0.0f}, 0.0f, 1.0f},        // 0 none: today's echo
+    {0.35f, {2.3f, 4.1f, 6.7f}, 0.15f, 0.985f},    // 1 light: each pass a little softer-edged
+    {0.5f, {3.1f, 6.9f, 10.3f}, 0.25f, 0.975f},    // 2 medium: worn by the 3rd-4th repeat
+    {0.62f, {4.3f, 9.1f, 14.7f}, 0.35f, 0.965f},   // 3 heavy: blurred into a smear by the 4th-5th
+};
+constexpr float kDiffuseModHz[kDiffuseStages] = {0.31f, 0.47f, 0.73f};
+constexpr float kDiffuseMaxMs = 16.0f; // allpass memory (each stage), at 48 kHz: 768 floats
+#ifdef RV_ECHO_DIFFUSE_DEFAULT
+constexpr int kDiffuseDefault = RV_ECHO_DIFFUSE_DEFAULT;
+#else
+constexpr int kDiffuseDefault = 0;
+#endif
+#if defined(RV_FIXED_VOICINGS)
+constexpr bool kDiffuseBuilt = kDiffuseDefault != 0;
+#else
+constexpr bool kDiffuseBuilt = true;
+#endif
+
 // ---- Level -----------------------------------------------------------------------------------
 // The wet's trim in echo mode (x position 2's): the repeats add ~1.5 dB at
 // DECAY noon; position 3 within +-2 dB of 2 on hits and skank (K-weighted,

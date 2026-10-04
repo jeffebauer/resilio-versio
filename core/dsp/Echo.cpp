@@ -27,7 +27,59 @@ RV_SIZE_OPT void TapeEcho::prepare(float sampleRate, uint32_t seed, float* tape,
     floorStep1_ = echo::kFloorHz1 * float(kGrid) / sampleRate;
     floorStep2_ = echo::kFloorHz2 * float(kGrid) / sampleRate;
     wow_.prepare(sampleRate, 0, seed, Wobble::Role::Transport);
+    setDiffuseVoicing(diffuse_); // the diffuser's lengths at this rate
     reset();
+}
+
+RV_SIZE_OPT void TapeEcho::setDiffuseVoicing(int v)
+{
+    diffuse_ = echo::kDiffuseBuilt && v > 0 && v < echo::kNumDiffuseVoicings ? v : 0;
+    if (!echo::kDiffuseBuilt) return;
+    const echo::DiffuseVoicing& d = echo::kDiffuse[diffuse_];
+    const float maxD = float(kApSize - 4);
+    for (int s = 0; s < echo::kDiffuseStages; ++s) {
+        Allpass& a = ap_[s];
+        a.depth = std::min(0.001f * d.modMs * sampleRate_, 0.25f * maxD);
+        a.base  = std::clamp(0.001f * d.ms[s] * sampleRate_, a.depth + 2.0f, maxD - a.depth);
+        a.step  = echo::kDiffuseModHz[s] / sampleRate_;
+        a.ph    = 0.25f * float(s);
+    }
+    clearDiffuser();
+}
+
+RV_SIZE_OPT void TapeEcho::clearDiffuser()
+{
+    if (!echo::kDiffuseBuilt) return;
+    for (auto& a : ap_) {
+        std::fill(a.buf, a.buf + kApSize, 0.0f);
+        a.w = 0;
+    }
+}
+
+void TapeEcho::diffuse(float* x, int n)
+{
+    if (!echo::kDiffuseBuilt || diffuse_ == 0) return;
+    const float g = echo::kDiffuse[diffuse_].g;
+    for (auto& a : ap_) {
+        for (int i = 0; i < n; ++i) {
+            // Schroeder allpass, H = (-g + z^-D) / (1 - g z^-D), D drifting
+            // slowly (a triangle, read with linear interpolation).
+            a.ph += a.step;
+            if (a.ph >= 1.0f) a.ph -= 1.0f;
+            const float tri = a.ph < 0.5f ? 4.0f * a.ph - 1.0f : 3.0f - 4.0f * a.ph;
+            const float d   = a.base + a.depth * tri;
+            const int   di  = int(d);
+            const float fr  = d - float(di);
+            int r0 = a.w - di;
+            if (r0 < 0) r0 += kApSize;
+            const int   r1 = r0 == 0 ? kApSize - 1 : r0 - 1;
+            const float dl = a.buf[r0] + fr * (a.buf[r1] - a.buf[r0]);
+            const float v  = x[i] + g * dl;
+            a.buf[a.w]     = v;
+            if (++a.w == kApSize) a.w = 0;
+            x[i] = dl - g * v;
+        }
+    }
 }
 
 RV_SIZE_OPT void TapeEcho::clearTape()
@@ -39,6 +91,7 @@ RV_SIZE_OPT void TapeEcho::clearTape()
     lp_.reset();
     hp_.reset();
     recLp_.reset();
+    clearDiffuser();
 }
 
 RV_SIZE_OPT void TapeEcho::reset()

@@ -63,6 +63,10 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setEchoMode(value >= 0.5);
         return true;
     }
+    if (key == kEchoDiffuseKey) {
+        tank.setEchoDiffuseVoicing(int(std::lround(value)));
+        return true;
+    }
     if (key == kHostBpmKey) {
         tank.setHostTempo(float(value));
         return true;

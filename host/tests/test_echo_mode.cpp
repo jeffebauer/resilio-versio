@@ -38,6 +38,12 @@
 //             repeats fade outside KICKED's runaway.
 //   hothighs  The tape's saturation on a hot 15 kHz tone: its folds under -90 dBFS.
 //   blocks    Block size 16 / 48 / 333 / 512 render the same (with clock edges).
+//   diffuse   PROTOTYPE diffuse repeats (echo_diffuse_voicing 1-3): the first
+//             repeat bit for bit as voicing 0, each later one more smeared
+//             (the tape alone: spread per repeat), level per repeat as voicing
+//             0 (+-1.5 dB, allpasses add no energy); M6 Ringing on position 3
+//             at DECAY 0.85 / 1, every ATTITUDE, no worse than voicing 0;
+//             KICKED's runaway bounded and dying away; extremes finite.
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
 
@@ -46,6 +52,7 @@
 #include "params/EchoVoicing.h"
 #include "params/Mappings.h"
 #include "params/ParamSpec.h"
+#include "Metrics.h"
 
 #include <algorithm>
 #include <chrono>
@@ -1064,6 +1071,213 @@ void blocks()
     check(ok, "Blocks: 16 / 48 / 333 / 512 bit for bit (clocked, WOBBLE Drift, repeats)");
 }
 
+// ---- diffuse (PROTOTYPE) ----------------------------------------------------------------------
+// The tape on its own, looped as the Tank loops it (rec = input + fb x play,
+// diffused when the voicing has it): a burst, then each repeat's energy and
+// its spread (the time between 10 % and 90 % of its energy).
+struct RepeatStats {
+    double db[8], spreadMs[8];
+    Buf    play;
+};
+RepeatStats tapeRepeats(int voicing, float fb, double secs)
+{
+    rv::dsp::TapeEcho e;
+    std::vector<float> tapeBuf(rv::Tank::requiredTapeFloats(kFs));
+    e.prepare(kFs, 0x1234u, tapeBuf.data(), tapeBuf.size());
+    e.setDiffuseVoicing(voicing);
+    const size_t n = sec(9.0), d = sec(secs);
+    const Buf in = burst(9.0, 0.1);
+    RepeatStats r{};
+    r.play.assign(n, 0.0f);
+    constexpr int G = rv::dsp::TapeEcho::kGrid;
+    float pl[G], rec[G], fbs[G];
+    for (size_t pos = 0; pos < n; pos += G) {
+        e.tick(float(secs), 0.5f, pos == 0);
+        e.play(pl, G);
+        for (int i = 0; i < G; ++i) fbs[i] = fb * pl[i];
+        e.diffuse(fbs, G);
+        for (int i = 0; i < G; ++i) {
+            rec[i]            = in[pos + size_t(i)] + fbs[i];
+            r.play[pos + size_t(i)] = pl[i];
+        }
+        e.record(rec, G);
+    }
+    for (int k = 0; k < 8; ++k) {
+        const size_t a = sec(0.1) + size_t(k + 1) * d - sec(0.02), b = std::min(n, a + d);
+        double tot = 0;
+        for (size_t i = a; i < b; ++i) tot += double(r.play[i]) * r.play[i];
+        double acc = 0, t10 = -1, t90 = -1;
+        for (size_t i = a; i < b; ++i) {
+            acc += double(r.play[i]) * r.play[i];
+            if (t10 < 0 && acc >= 0.1 * tot) t10 = double(i);
+            if (t90 < 0 && acc >= 0.9 * tot) t90 = double(i);
+        }
+        r.db[k]       = db(tot);
+        r.spreadMs[k] = (t90 - t10) * 1000.0 / kFs;
+    }
+    return r;
+}
+
+void diffuse()
+{
+    // On the tape: 0.6 s echo, feedback 0.8.
+    RepeatStats st[rv::echo::kNumDiffuseVoicings];
+    for (int v = 0; v < rv::echo::kNumDiffuseVoicings; ++v) st[v] = tapeRepeats(v, 0.8f, 0.6);
+    for (int v = 1; v < rv::echo::kNumDiffuseVoicings; ++v) {
+        bool first = std::memcmp(st[v].play.data(), st[0].play.data(), sec(0.1 + 2 * 0.6 - 0.05) * sizeof(float)) == 0;
+        double worstLvl = 0;
+        for (int k = 0; k < 6; ++k) worstLvl = std::max(worstLvl, std::fabs(st[v].db[k] - st[0].db[k]));
+        std::snprintf(msg, sizeof msg,
+                      "Diffuse %d on the tape (0.6 s, feedback 0.8): repeat 1 bit for bit as none %d; spread per repeat 1-6 "
+                      "%.1f %.1f %.1f %.1f %.1f %.1f ms (none: %.1f %.1f %.1f %.1f %.1f %.1f); level per repeat vs none, worst %.2f dB "
+                      "(limit 1.5)",
+                      v, int(first), st[v].spreadMs[0], st[v].spreadMs[1], st[v].spreadMs[2], st[v].spreadMs[3], st[v].spreadMs[4],
+                      st[v].spreadMs[5], st[0].spreadMs[0], st[0].spreadMs[1], st[0].spreadMs[2], st[0].spreadMs[3],
+                      st[0].spreadMs[4], st[0].spreadMs[5], worstLvl);
+        check(first && worstLvl <= 1.5 && st[v].spreadMs[4] > st[v].spreadMs[1] && st[v].spreadMs[4] > st[v - 1].spreadMs[4], msg);
+    }
+
+    // In the Tank: voicing 0 set explicitly = the default, bit for bit; the
+    // first repeat bit for bit in every voicing (TENSION 0.25: 0.89 s).
+    {
+        const Buf in = burst(2.4, 0.2);
+        Settings s;
+        s.tension = 0.25f, s.decay = 0.85f;
+        const Stereo ref = render(s, in);
+        bool ok = true;
+        for (int v = 0; v < rv::echo::kNumDiffuseVoicings; ++v) {
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, s);
+            t.setEchoDiffuseVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48)
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            ok &= same(ref, o, v == 0 ? SIZE_MAX : sec(0.2 + 2 * 0.894 - 0.01));
+        }
+        check(ok, "Diffuse in the Tank: voicing 0 bit for bit as the default; voicings 1-3 bit for bit until the 2nd repeat");
+    }
+
+    // M6 Ringing on position 3 tails: click + noise burst, every ATTITUDE,
+    // DECAY 0.85 and 1 (KICKED 1 is the runaway: Howl, not Ringing; KICKED
+    // 0.85 instead), TENSION 0 / 0.5. Flags and worst ringing_db per voicing;
+    // no voicing worse than none.
+    {
+        Buf clk(sec(14.0), 0.0f);
+        clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
+        const Buf nb = [&] {
+            Buf b(sec(14.0), 0.0f);
+            const Buf z = noise(sec(0.5), 0.43f, 77u);
+            std::copy(z.begin(), z.end(), b.begin() + long(sec(0.5)));
+            return b;
+        }();
+        int    flagged[4] = {0, 0, 0, 0}, cells = 0;
+        double worst[4]   = {0, 0, 0, 0};
+        for (int v = 0; v < 4; ++v)
+            for (int a = 0; a < 3; ++a)
+                for (float dc : {0.85f, 1.0f})
+                    for (float tn : {0.0f, 0.5f})
+                        for (const Buf* in : {static_cast<const Buf*>(&clk), &nb}) {
+                            if (a == 2 && dc > 0.9f) continue; // the runaway: checked below
+                            Settings s;
+                            s.att = a, s.decay = dc, s.tension = tn;
+                            rv::Tank t;
+                            t.prepare(kFs, 48);
+                            apply(t, s);
+                            t.setEchoDiffuseVoicing(v);
+                            Stereo o{Buf(in->size()), Buf(in->size())};
+                            for (size_t pos = 0; pos < in->size(); pos += 48)
+                                t.process(in->data() + pos, in->data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                            const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                            if (m.ringing || m.steadyTone) ++flagged[v];
+                            if (!std::isnan(m.ringingDb)) worst[v] = std::max(worst[v], m.ringingDb);
+                            if (v == 0) ++cells;
+                        }
+        std::snprintf(msg, sizeof msg,
+                      "Diffuse, M6 Ringing at SPRINGS 3 (%d cells each: click + burst, ATTITUDE x DECAY .85/1 x TENSION 0/.5): "
+                      "flagged / worst ringing_db: none %d / %.1f, light %d / %.1f, medium %d / %.1f, heavy %d / %.1f",
+                      cells, flagged[0], worst[0], flagged[1], worst[1], flagged[2], worst[2], flagged[3], worst[3]);
+        check(flagged[1] <= flagged[0] && flagged[2] <= flagged[0] && flagged[3] <= flagged[0], msg);
+    }
+
+    // KICKED's runaway per voicing: bounded, and dying away when DECAY comes back.
+    {
+        bool ok = true;
+        char line[300] = "";
+        const Buf in = burst(20.0, 0.5);
+        for (int v = 0; v < 4; ++v) {
+            Settings s;
+            s.att = 2, s.decay = 1.0f, s.tension = 0.75f, s.drive = 1.0f;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, s);
+            t.setEchoDiffuseVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(13.5), sec(14.0));
+            const float  pk   = peakOf(o);
+            ok &= finite(o) && pk < 1.0f && after < held - 30.0;
+            char one[80];
+            std::snprintf(one, sizeof one, "%s%d: %.1f dB held, peak %.2f, %.1f dB after", line[0] ? "; " : "", v, held, double(pk), after);
+            std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+        }
+        std::snprintf(msg, sizeof msg, "Diffuse, KICKED DECAY 1 runaway then DECAY noon at 10 s (want peak < 1, >= 30 dB down by 13.5 s): %s", line);
+        check(ok, msg);
+    }
+    // Extremes per voicing.
+    {
+        const Buf h = hits(10.0);
+        bool ok = true;
+        float worstPk = 0.0f;
+        for (int v = 1; v < 4; ++v)
+            for (int a = 0; a < 3; ++a)
+                for (float tn : {0.0f, 1.0f}) {
+                    Settings s;
+                    s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = 0.0f;
+                    rv::Tank t;
+                    t.prepare(kFs, 48);
+                    apply(t, s);
+                    t.setEchoDiffuseVoicing(v);
+                    Stereo o{Buf(h.size()), Buf(h.size())};
+                    for (size_t pos = 0; pos < h.size(); pos += 48)
+                        t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                    worstPk = std::max(worstPk, peakOf(o));
+                    ok &= finite(o) && peakOf(o) < 1.0f;
+                }
+        std::snprintf(msg, sizeof msg, "Diffuse 1-3 extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f", double(worstPk));
+        check(ok, msg);
+    }
+    // Cost (desktop): position 3, KICKED, DRIVE 1, DECAY 1, TENSION 0, per voicing.
+    {
+        const Buf in = hits(6.0);
+        double ns[4];
+        for (int v = 0; v < 4; ++v) {
+            double best = 1e30;
+            for (int run = 0; run < 3; ++run) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings s;
+                s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = 0.0f;
+                apply(t, s);
+                t.setEchoDiffuseVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            ns[v] = best;
+        }
+        std::snprintf(msg, sizeof msg, "Diffuse cost (desktop, SPRINGS 3 worst case): none %.1f, light %.1f, medium %.1f, heavy %.1f ns/sample",
+                      ns[0], ns[1], ns[2], ns[3]);
+        info(msg);
+    }
+}
+
 // ---- cost -----------------------------------------------------------------------------------
 void cost()
 {
@@ -1112,7 +1326,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"cost", cost}};
+                                {"diffuse", diffuse}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

@@ -44,6 +44,7 @@ inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
 inline constexpr const char* kEchoModeKey        = "echo_mode";
 inline constexpr const char* kHostBpmKey         = "host_bpm";
+inline constexpr const char* kEchoDiffuseKey     = "echo_diffuse_voicing"; // 0 none ... 3 heavy (EchoVoicing.h kDiffuse)
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 
