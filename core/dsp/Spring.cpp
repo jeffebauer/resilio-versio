@@ -1,5 +1,6 @@
 #include "dsp/Spring.h"
 #include "dsp/SizeOpt.h"
+#include "dsp/StretchedChain.h"
 
 #include "params/AntiRes.h"
 #include "params/SplashVoicing.h"
@@ -476,50 +477,13 @@ inline float Spring::advanceModulation()
 
 namespace {
 // The Chirp's spectral delay filter for one sample: M stretched allpass
-// sections, each
-//   H(z) = (a + D(z)) / (1 + a D(z)),  D(z) = z^-N · Thiran(d) ≈ z^-K.
-// Schroeder form: v = x - a·D{v}, y = a·v + D{v}.
-// The rings are section-interleaved: row p (ring position), section j at
-// rings[p * S + j]. A sample reads rows w - N and w - N - 1 and writes row
-// w, so the loop walks four plain runs (the two rows, the written row and
-// the Thiran state) with post-increment loads and stores and no
-// per-section address arithmetic (perf/run16: 19 -> 15 instructions per
-// section on the M7).
-// D{v} of a section needs only last sample's state, not this sample's x.
-// So the next section's D{v} is worked out while this section's x chain
-// waits on its multiply-adds (the M7 issues in order: without other work
-// in between, a section was a 7-step chain at ~21 cycles; this way ~14,
-// firmware/m3_bench.cpp "pipe"). Same arithmetic, same order per value.
+// sections (dsp/StretchedChain.h: the rings section-interleaved, row p
+// (ring position), section j at rings[p * S + j]; pipelined for the M7).
 inline float chirpSections(float x, float* rings, size_t S, int iw, int ir0, int ir1, float* thiranY1, int full,
                            float frac, int maxStages, float a, float eta)
 {
-    const float* __restrict p0 = rings + size_t(ir0) * S;
-    const float* __restrict p1 = rings + size_t(ir1) * S;
-    float* __restrict pw = rings + size_t(iw) * S;
-    float* __restrict y  = thiranY1;
-    if (full > 0) {
-        float d = eta * (p0[0] - y[0]) + p1[0];
-        for (int j = 0; j < full - 1; ++j) {
-            const float dn = eta * (p0[j + 1] - y[j + 1]) + p1[j + 1];
-            y[j] = d;
-            const float v = x - a * d;
-            pw[j] = v;
-            x = a * v + d;
-            d = dn;
-        }
-        y[full - 1] = d;
-        const float v = x - a * d;
-        pw[full - 1] = v;
-        x = a * v + d;
-    }
-    if (frac > 0.0f && full < maxStages) {
-        const float dOut = eta * (p0[full] - y[full]) + p1[full];
-        y[full] = dOut;
-        const float v = x - a * dOut;
-        pw[full] = v;
-        x += frac * (a * v + dOut - x);
-    }
-    return x;
+    return dsp::stretchedChain(x, rings + size_t(ir0) * S, rings + size_t(ir1) * S, rings + size_t(iw) * S, thiranY1,
+                               full, frac, maxStages, a, eta);
 }
 } // namespace
 

@@ -20,6 +20,7 @@
 
 #include "params/Mappings.h"
 #include "dsp/SizeOpt.h"
+#include "dsp/StretchedChain.h"
 
 #include <algorithm>
 #include <cmath>
@@ -117,46 +118,15 @@ private:
             active_ = act;
         }
     }
-    // The chain for one sample written at ring row w. Rows are
-    // section-interleaved (row p, section j at rows_[p * maxStages_ + j]),
-    // so a sample's reads (rows w - N, w - N - 1, the y1 row) and writes
-    // (row w, y1) are four plain runs: no per-section address arithmetic.
-    // Pipelined as Spring::processLow (ADR 0030): a section's D{v} needs
-    // only last sample's state, so the next section's D{v} is worked out
-    // while this section's x chain waits on its multiplies and adds. Same
-    // arithmetic, same order per value as the one-section-at-a-time loop.
+    // The chain for one sample written at ring row w (dsp/StretchedChain.h:
+    // rows section-interleaved, row p, section j at rows_[p * maxStages_ +
+    // j], so a sample walks four plain runs; pipelined for the M7, as the
+    // Spring's Chirp).
     float step(float x, int w, int full, float frac)
     {
-        const size_t S   = size_t(maxStages_);
-        const int    msk = ringMask_;
-        const float* __restrict p0 = rows_ + size_t((w - n_) & msk) * S;
-        const float* __restrict p1 = rows_ + size_t((w - n_ - 1) & msk) * S;
-        float* __restrict pw = rows_ + size_t(w) * S;
-        float* __restrict y  = y1_;
-        const float a = a_, eta = eta_;
-        if (full > 0) {
-            float d = eta * (p0[0] - y[0]) + p1[0];
-            for (int j = 0; j < full - 1; ++j) {
-                const float dn = eta * (p0[j + 1] - y[j + 1]) + p1[j + 1];
-                y[j] = d;
-                const float v = x - a * d;
-                pw[j] = v;
-                x = a * v + d;
-                d = dn;
-            }
-            y[full - 1] = d;
-            const float v = x - a * d;
-            pw[full - 1] = v;
-            x = a * v + d;
-        }
-        if (frac > 0.0f && full < maxStages_) {
-            const float d = eta * (p0[full] - y[full]) + p1[full];
-            y[full] = d;
-            const float v = x - a * d;
-            pw[full] = v;
-            x += frac * (a * v + d - x);
-        }
-        return x;
+        const size_t S = size_t(maxStages_);
+        return stretchedChain(x, rows_ + size_t((w - n_) & ringMask_) * S, rows_ + size_t((w - n_ - 1) & ringMask_) * S,
+                              rows_ + size_t(w) * S, y1_, full, frac, maxStages_, a_, eta_);
     }
     void clear(int j)
     {
