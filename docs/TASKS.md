@@ -12,7 +12,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready: the plugin is installed |
 | M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
 
-**Plugin in Ableton:** `340b542`, version 1.3.29 (Wellspring F with your picks). The three new features aren't in it yet: Claude installs them right after the merge.
+**Plugin in Ableton:** `835c5c2` (installed 5 Oct, AU validated): CPU savings, TONE after the springs, echo mode (SPRINGS 3), Throw + Hold. Not yet µ-law (a second install after it merges). **Rescan needed:** open Ableton, hold ⌥ and click Rescan; in the plugin, THROW is a latching button next to KICK, and in SPRINGS 3 the echo follows Ableton's tempo
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private): universal plugin, firmware, read-me. A/B candidate: [v2026.10.02-cef6a77-candidate-F](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F). Both predate this week's features; the next release (after the merge) replaces them.
 
