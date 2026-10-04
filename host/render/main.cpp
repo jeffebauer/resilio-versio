@@ -11,7 +11,9 @@
 //   core/params/WobbleVoicing.h), sustain_voicing = 0 / 1 / 2 (off / round 2 / gentle,
 //   core/params/DriveVoicing.h), splash_voicing = 0 / 1 / 2 / 3 (today / stronger top / + DRIVE-free /
 //   bolder, core/params/SplashVoicing.h), tone_voicing = 0..5 (the Big Knob, DriveVoicing.h) and
-//   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), in --set, a
+//   springs3_voicing = 0..10 (SPRINGS position 3, core/params/Springs3Voicing.h), echo_mode = 1 / 0
+//   (SPRINGS 3 = echo mode / the coupled reference, ADR 0041), host_bpm = a tempo (echo mode's
+//   clock as the Plugin's DAW gives it), in --set, a
 //   --preset, or a sweep base / grid. A sweep's
 //   --set applies after its base and before its grid (one sweep JSON, several voicings).
 
@@ -92,6 +94,19 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
         for (double t : autom->kicksSeconds) kickSamples.push_back(size_t(std::lround(t * double(sr))));
     }
     size_t nextKick = 0;
+    // Echo mode's clock (ADR 0041): gate rising edges, sample-accurate like the kicks.
+    std::vector<size_t> clockSamples;
+    if (autom) {
+        std::vector<double> secs = autom->clocksSeconds;
+        if (autom->clockBpm > 0.0) {
+            const double len = double(frames) / double(sr);
+            const double end = autom->clockEnd >= 0.0 ? std::min(autom->clockEnd, len) : len;
+            for (double t = autom->clockStart; t < end; t += 60.0 / autom->clockBpm) secs.push_back(t);
+            std::sort(secs.begin(), secs.end());
+        }
+        for (double t : secs) clockSamples.push_back(size_t(std::lround(t * double(sr))));
+    }
+    size_t nextClock = 0;
 
     const int microBlock = autom ? std::min(block, 16) : block;
     for (size_t pos = 0; pos < frames; pos += size_t(microBlock)) {
@@ -104,6 +119,10 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
         while (nextKick < kickSamples.size() && kickSamples[nextKick] < pos + size_t(n)) {
             if (kickSamples[nextKick] >= pos) tank.kick(int(kickSamples[nextKick] - pos));
             ++nextKick;
+        }
+        while (nextClock < clockSamples.size() && clockSamples[nextClock] < pos + size_t(n)) {
+            if (clockSamples[nextClock] >= pos) tank.clock(int(clockSamples[nextClock] - pos));
+            ++nextClock;
         }
         tank.process(srcL.data() + pos, srcR.data() + pos, out.channels[0].data() + pos, dstR + pos, n);
     }

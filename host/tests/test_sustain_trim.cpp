@@ -225,6 +225,9 @@ Run render(rv::Tank& t, const Set& s, const Buf& in, const std::vector<double>& 
     using rv::ParamId;
     t.reset();
     t.setParam(ParamId::Attitude, rv::switchToNormalised(s.att));
+    // SPRINGS 3 here is the three-Spring reference (setEchoMode(false), Renderer-only since
+    // ADR 0041): these checks hold the Springs to their bars; echo mode has test_echo_mode.
+    t.setEchoMode(false);
     t.setParam(ParamId::Springs, rv::switchToNormalised(s.springs));
     t.setParam(ParamId::Decay, s.decay);
     t.setParam(ParamId::Tone, s.tone);

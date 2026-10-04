@@ -69,6 +69,9 @@ void apply(rv::Tank& t, const Settings& s)
     t.setParam(rv::ParamId::Mix, s.mix);
     t.setParam(rv::ParamId::Drive, s.drive);
     t.setParam(rv::ParamId::Attitude, attValue(s.att));
+    // SPRINGS 3 here is the three-Spring reference (setEchoMode(false), Renderer-only since
+    // ADR 0041): these checks hold the Springs to their bars; echo mode has test_echo_mode.
+    t.setEchoMode(false);
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
     if (s.splash >= 0.0f) t.setParam(rv::ParamId::Splash, s.splash);
     if (s.wobble >= 0.0f) t.setParam(rv::ParamId::Wobble, s.wobble);
