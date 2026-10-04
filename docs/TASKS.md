@@ -82,10 +82,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Module check (≈5 min, after run 15 and the click check):** flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
 
 ### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
-- [ ] **TONE after the springs: built (`feat/tone-after`), your listen + OK to merge.** Page: [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html), before / after, CLEAN and KICKED. Listen for:
-  - the ringing tail thinning as you sweep TONE right, and a gentle level swell ~0.3 s after a fast move
-  - **the Kick at TONE fully right** (turn level matching off): the thud is gone, a sharper knock and crash remain. Keep, or should the Kick's thump skip the TONE filter?
-  - **Howls at TONE right** (KICKED, DECAY max) now lean more toward one pitch, since their low body is cut. Fine, or too tonal?
+- [x] **TONE after the springs: picked (4 Oct)** B in every panel, the Kick at TONE fully right included (no thud, sharper knock: keep); Howls leaning to a pitch at TONE right: fine. Merge waits until you've heard the other two, then all three go in together (`feat/tone-after`, page [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html))
 - [ ] **Throw + Hold: built (`feat/throw-hold`), your listen + OK to merge.** Page: [`renders/feat_throw_hold/`](../renders/feat_throw_hold/index.html) (links a Throw page and a Hold page). Listen for / decide:
   - **Throws:** a dub beat, today vs three hits thrown (CLEAN, DRIVEN, KICKED). Do they read like dub throws? In the plugin there's a latching THROW button next to KICK (automatable)
   - **Hold: freeze or layer?** Freeze: nothing new gets into the held bed, new hits play dry over it, and a throw lets one stab in. Layer: new sound keeps building into the bed (measured: it doesn't creep up). Ducking: the bed dips ~13 dB under playing, back within ~1–1.5 s
