@@ -19,13 +19,13 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (in this order)
 
 ### 1. Last listen, then OK to merge the three features (≈10 min)
-- [ ] **Hold ducking, round 3** (being built): round 2 picked **A, round 1** everywhere; you meant the *trigger* should be low-passed (kick/bass duck the bed, snares/hats don't), with the whole bed ducking. Page `renders/feat_hold_duck3/` coming: A round 1, B full-range duck keyed on kick/bass only at 12 dB (no swell), C the same at 18 dB, plus a snares/hats-only row that shouldn't duck. Howl flip: today's fade, settled
-- [ ] **Echo repeats, confirm:** BBD A only, no extra diffusion or bit depth on the repeats (the µ-law idea below covers the grit). Say if you'd rather keep a diffusion or bit-depth option
-- [ ] **OK to merge** TONE after the springs, Throw + Hold, and Echo mode. Claude then merges them one at a time, re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware for the module
+- [ ] **Hold ducking, round 3: ready to hear** [`renders/feat_hold_duck3/`](../renders/feat_hold_duck3/index.html): A round 1, B the whole bed ducks only to kick and bass (input below ~120 Hz), 12 dB, no swell into the next beat, C the same at 18 dB. New row: snare + hats only, where the bed should stay put. **Pick 12 or 18 dB**
+- [x] **Echo repeats: BBD A only** (4 Oct), no extra diffusion or bit depth
+- [x] **OK to merge** (4 Oct): TONE after the springs and echo mode are going in now; Throw + Hold right after your depth pick (12 or 18 dB). Then Claude re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware
 
 ### 2. CPU run 16 · done 4 Oct: **back under budget**
 - [x] Worst case 2 Springs **67.7 % average / 72.8 % peak** (run 15: 76.1 / 80.7), 1 Spring 66.0 / ~74, 3 Springs (old coupled) 72.1 / 77.8. Within the 75 % target for 1–2 Springs, under the 80 % ceiling for 3. Flash `dist/resilio_versio_release_d74ddc5.bin` back if you haven't
-- [ ] **OK to merge the CPU savings** (`perf/run16`, no sound change: bit-identical renders) into `main`, before the three features?
+- [x] **CPU savings merged** (4 Oct, `c8ca07e`)
 
 ### 3. µ-law grit for DRIVEN and KICKED (when Claude says it's ready)
 - [ ] Page `renders/feat_output_mulaw/` (being built): today vs µ-law on the whole output, dry and wet, 12-bit in DRIVEN, 8-bit in KICKED, every SPRINGS position, CLEAN untouched. Note: MIX fully left in DRIVEN/KICKED would no longer be a clean passthrough
