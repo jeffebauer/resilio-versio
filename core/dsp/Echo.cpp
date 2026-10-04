@@ -29,6 +29,7 @@ RV_SIZE_OPT void TapeEcho::prepare(float sampleRate, uint32_t seed, float* tape,
     wow_.prepare(sampleRate, 0, seed, Wobble::Role::Transport);
     setDiffuseVoicing(diffuse_); // the diffuser's lengths at this rate
     wear_.prepare(sampleRate, seed ^ 0x5EEDu);
+    bits_.prepare(sampleRate, seed ^ 0xB175u);
     reset();
 }
 
@@ -94,6 +95,7 @@ RV_SIZE_OPT void TapeEcho::clearTape()
     recLp_.reset();
     clearDiffuser();
     wear_.reset();
+    bits_.reset();
 }
 
 RV_SIZE_OPT void TapeEcho::reset()
@@ -111,7 +113,7 @@ RV_SIZE_OPT void TapeEcho::reset()
 void TapeEcho::tick(float seconds, float wobble, bool snap)
 {
     // The wear's fixed delay (the worn tape's) is part of every pass: the tape is that much shorter.
-    const float target = std::clamp(seconds * sampleRate_ - wear_.latencySamples(), minDelay_, maxD_);
+    const float target = std::clamp(seconds * sampleRate_ - wear_.latencySamples() - bits_.latencySamples(), minDelay_, maxD_);
     wear_.setDelaySeconds(dTo_ / sampleRate_); // a time-tracking BBD's clock follows the tape (swoops with it)
     dFrom_ = dTo_;
     if (snap || dTo_ <= 0.0f) {

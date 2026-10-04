@@ -267,6 +267,38 @@ constexpr float kCrackleRate = 5.0f, kCrackleLevel = 0.35f; // per second; re th
 constexpr int kWearDefault = RV_ECHO_WEAR_DEFAULT;
 #else
 constexpr int kWearDefault = kWearBbd; // owner's pick, 4 Oct 2026 (renders/feat_echo_wear D)
+
+// ---- Bits: the repeats' bit depth (PROTOTYPE, owner 4 Oct 2026) ------------------------------
+// The owner kept BBD A (B-D's lower clocks left pitched images in the band:
+// "a higher pitched chirp ... after the 2nd repeat") and asked for bit depth
+// instead, after Mutable Instruments Beads' "Sunny Tape" (24 kHz / 12-bit)
+// and "Scorched Cassette" (24 kHz / 8-bit). dsp/EchoBits.h, on the feedback
+// after the BBD: 24 kHz through proper low-pass filters both ways (no new
+// pitches), quantised against full scale (each quieter repeat has fewer bits,
+// so the grain grows as the echoes fade), rounded toward zero (a fading
+// repeat always reaches silence, never a stuck buzz), dithered while the
+// signal is well above the bottom bit (soft hiss, not a pitched granulation).
+// Renderer key echo_bits_voicing; the firmware builds only kBitsDefault.
+struct BitsVoicing {
+    float bits;
+    bool  muLaw; // 8-bit mu-law (mu 255): steps fine when quiet, coarse when loud
+};
+constexpr int kNumBitsVoicings = 4;
+constexpr BitsVoicing kBits[kNumBitsVoicings] = {
+    {24.0f, false}, // A none (BBD A alone)
+    {12.0f, false}, // B "Sunny Tape": 24 kHz / 12-bit
+    {8.0f, false},  // C "Scorched Cassette": 24 kHz / 8-bit
+    {8.0f, true},   // D 24 kHz / 8-bit mu-law: C's grit on the loud repeats, without C's hiss bed
+                    //   cutting the quiet ones off (linear 8 bits run out at -42 dBFS)
+};
+constexpr int   kBitsTaps          = 63;    // the 24 kHz filters (Blackman-windowed sinc)
+constexpr float kBitsDitherFadeLsb = 4.0f;  // dither fades out below this many steps of signal
+constexpr float kBitsEnvReleaseMs  = 40.0f; // the signal's level for the dither
+#ifdef RV_ECHO_BITS_DEFAULT
+constexpr int kBitsDefault = RV_ECHO_BITS_DEFAULT;
+#else
+constexpr int kBitsDefault = 0;
+#endif
 #endif
 
 // ---- Level -----------------------------------------------------------------------------------

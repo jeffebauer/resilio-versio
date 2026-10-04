@@ -202,3 +202,58 @@ B is 9 dB more obvious than crushed was, C and D 16–18 dB more.
 - On the chip: the per-sample sine (the whine) and three square roots are untested; the M3 profile run should include it.
 
 **Page:** `renders/feat_echo_bbd/` (`tools/echo_bbd_page.sh`).
+
+## BBD strength: A; bit-depth round (owner, 4 Oct 2026)
+
+**Owner's pick on `renders/feat_echo_bbd/`: A, today, in every panel.** "B, C, and D introduce pitch artefacts … a higher pitched chirp is heard after the 2nd repeat." `kBbdDefault` stays 0. The firmware folds B–D and the time-following clock away (the strength is a constant there), so the release is unchanged by them. B–D stay renderable at no cost.
+
+**Where the chirp came from:** two in-band pitched sources at B–D's low clocks.
+- The hold's images (clock − f) of the rim's partials.
+- The clock whine, now at the clock's own pitch (4.8 / 3.8 kHz, inside the band).
+
+The new-peak check below reads 36.7 dB and 35.9 dB for B and C, against 11.8 dB for A.
+
+**The whine in A** sits at 9.7 kHz, above the playback head. A probe on the output put the 9.7 kHz bin level with its 9.4 kHz neighbour, about 100 dB under the repeats: inaudible. It stays.
+
+**Bit-depth round:** a hidden key `echo_bits_voicing` (default 0). It runs inside the feedback after BBD A (`core/dsp/EchoBits.h`; numbers in `EchoVoicing.h` "Bits"), so it compounds.
+
+| | Version |
+|---|---|
+| A | none |
+| B | "Sunny Tape", 24 kHz / 12-bit |
+| C | "Scorched Cassette", 24 kHz / 8-bit |
+| D | 24 kHz / 8-bit µ-law (µ 255) |
+
+- **The rate:** 48 kHz → 24 kHz → 48 kHz through a 63-tap Blackman-windowed half-band low-pass both ways (cut at 12 kHz; half its taps are 0). Nothing folds back and no image stays in the band. Its fixed 62-sample delay comes off the tape and is given to the input, so the echo time holds.
+- **The bits:** fixed point against full scale, so each quieter repeat keeps fewer bits. 8 bits run out at about −42 dBFS, 12 bits at about −66 dBFS.
+- **Rounding:** to the nearest step while the signal is above 4 steps, so no level is lost. Toward zero below that, so a fading repeat always reaches silence: a loop with gain under 1 can't hold a value up, which rules out a limit cycle (a stuck buzz).
+- **Dither:** TPDF, ±1 step, faded out with the signal below 4 steps. Undithered low-bit decays turn into tonal granulation, a pitched buzz on a fading tone. With dither the grain is hiss, and fading it out keeps the hiss from feeding itself round the loop.
+- **Why D:** linear 8 bits cut the quiet repeats off early and leave a coarse hiss bed. µ-law keeps C's crunch on the loud repeats, where grit reads as texture, while the quiet ones keep going under a much finer grain (about 13-bit near silence). It's the companding of telephone audio and early digital delays.
+
+**Checks** (`test_echo_mode` "bits"), on the tape (BBD A, a rim-like hit at −6 dBFS, 0.4 s echo, feedback 0.75):
+- **Level per repeat** within ±0.1 dB of A for repeats 1–6 in B, C and D: no added energy, no loss.
+- **Echo time:** within 0.6 ms of A's.
+- **Pitched artefacts:** for each of repeats 2–6, the new narrow peak, meaning a bin standing above its ±⅓-octave median both in the repeat's own spectrum and relative to repeat 1's. Worst readings:
+
+| | Worst new narrow peak |
+|---|---|
+| A | 11.8 dB (3150 Hz) |
+| B | 9.9 dB |
+| C | 11.3 dB |
+| D | 10.1 dB |
+| Rejected BBD B / C | 36.7 / 35.9 dB |
+
+  So none of the bit versions adds a pitch beyond what A already has.
+- **Tails:** a rim at CLEAN DECAY 0.85 and KICKED 0.8, 30 s, ends under −100 dBFS and keeps falling, with no M6 steady tone. One 8-bit KICKED tail read ringing_db 16.7 at 7.7 kHz. A probe put that bin level with its neighbours about 90 dB under the tail (the float floor, as the tail drops out in a few seconds), so the tail check reports Ringing without gating on it.
+- **In the Tank:** deterministic, the same at block 48 and 333, no clicks or NaN. KICKED DECAY 1 stays bounded (peak 0.72) and falls 58–66 dB within 3 s of backing off.
+- **M6** at position 3 (20 cells each): 0 flagged, no steady tone; worst ringing_db 9.4 / 11.6 / 11.2 / 10.2 for A–D.
+- **The page's runaway rides:** 8-bit reads 12–13 dB at ~4 kHz, under the 15 dB flag. A probe found no peak there (the 3996 Hz bin is below its 3700 Hz neighbour).
+
+**Seen along the way:** BBD A's compander gates the tail. Below about −56 dBFS the compressor's gain hits its cap and the expander keeps taking level, so quiet tails fall away faster than the feedback alone would make them. This is already in what the owner picked; noted in case long, quiet tails ever sound cut short.
+
+**Cost as the default:**
+- Firmware: release 115,068 B for B or C (+1,624 over BBD A's 113,444), 116,276 B for D (+2,832: µ-law's log and exp). Profile 117,000 / 118,232 B. AXI SRAM +2 KB.
+- Desktop: SPRINGS 3 worst case about +15 % (≈560 vs 489 ns/sample); the half-band filters are ~34 multiply-adds a sample.
+- On the chip: estimated 1.5–3 % of the budget, unmeasured; the M3 profile run should include it.
+
+**Page:** `renders/feat_echo_bits/` (`tools/echo_bits_page.sh`). The judged `renders/feat_echo_bbd/` WAVs were deleted for room; its index remains.

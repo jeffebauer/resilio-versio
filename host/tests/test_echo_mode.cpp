@@ -58,6 +58,10 @@
 //             repeat steady; D's clock follows the echo time and swoops;
 //             deterministic, no clicks, runaway bounded and dying, CLEAN DECAY 1
 //             fades, M6 (Ringing and steady tone) clean.
+//   bits      The repeats' bit depth (echo_bits_voicing A-D, on BBD A):
+//             level per repeat, the echo time, no new narrow (pitched) peaks
+//             in repeats 2-6 beyond A's, tails ending in silence (no stuck
+//             buzz), deterministic, no clicks, runaway, M6.
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
 
@@ -1138,7 +1142,7 @@ struct RepeatStats {
     double db[8], spreadMs[8];
     Buf    play;
 };
-RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0, int bbd = 0, const Buf* stim = nullptr)
+RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0, int bbd = 0, const Buf* stim = nullptr, int bits = 0)
 {
     rv::dsp::TapeEcho e;
     std::vector<float> tapeBuf(rv::Tank::requiredTapeFloats(kFs));
@@ -1146,6 +1150,7 @@ RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0, int bb
     e.setDiffuseVoicing(voicing);
     e.setWearVoicing(wear);
     e.setBbdVoicing(bbd);
+    e.setBitsVoicing(bits);
     const size_t n = sec(9.0), d = sec(secs);
     const Buf in = stim ? *stim : burst(9.0, 0.1);
     RepeatStats r{};
@@ -1774,6 +1779,261 @@ void bbd()
     }
 }
 
+// ---- bits (the repeats' bit depth, PROTOTYPE) ----------------------------------------------
+// A rim-like hit: a click plus three decaying partials (420, 1150, 2300 Hz).
+Buf rimLike(double seconds, double at, float peak = 0.5f)
+{
+    Buf b(sec(seconds), 0.0f);
+    rv::dsp::Rng rng;
+    rng.seed(99u);
+    for (size_t i = 0; i < sec(0.12); ++i) {
+        const double t = double(i) / kFs;
+        const double v = 0.5 * std::exp(-t / 0.002) * rng.bipolar() + 0.35 * std::exp(-t / 0.03) * std::sin(2 * kPi * 420 * t)
+                       + 0.3 * std::exp(-t / 0.02) * std::sin(2 * kPi * 1150 * t) + 0.2 * std::exp(-t / 0.012) * std::sin(2 * kPi * 2300 * t);
+        b[sec(at) + i] = float(v);
+    }
+    normalise(b, 20.0f * std::log10(peak));
+    return b;
+}
+
+// New narrow peaks in repeat k that repeat 1 didn't have: Hann-windowed
+// Goertzel every 10 Hz, 200 Hz-6 kHz, over each repeat's first 0.25 s. A bin
+// counts when it stands above its +-1/3-octave median both in repeat k itself
+// and in repeat k's spectrum relative to repeat 1's (so darkening, which
+// moves whole regions, doesn't count; a new pitch, narrow, does). Returns the
+// largest such prominence (dB) over repeats 2-6 and where.
+double newPeakDb(const RepeatStats& r, double secs, double* atHz, int* atRep)
+{
+    const int nF = 581; // 200 .. 6000 Hz
+    auto spec = [&](int k, std::vector<double>& out) {
+        const size_t d = sec(secs), a = sec(0.1) + size_t(k + 1) * d - sec(0.02), b = a + sec(0.25);
+        out.assign(size_t(nF), 0.0);
+        for (int j = 0; j < nF; ++j) {
+            const double hz = 200.0 + 10.0 * j, c = 2 * std::cos(2 * kPi * hz / kFs);
+            double s1 = 0, s2 = 0;
+            for (size_t i = a; i < b; ++i) {
+                const double w = 0.5 - 0.5 * std::cos(2 * kPi * double(i - a) / double(b - a));
+                const double y = w * r.play[i] + c * s1 - s2;
+                s2 = s1, s1 = y;
+            }
+            out[size_t(j)] = db(s1 * s1 + s2 * s2 - c * s1 * s2);
+        }
+    };
+    auto prominence = [&](const std::vector<double>& v, int j) {
+        const double hz = 200.0 + 10.0 * j, lo = hz / 1.26, hi = hz * 1.26;
+        std::vector<double> nb;
+        for (int m = 0; m < nF; ++m) {
+            const double f = 200.0 + 10.0 * m;
+            if (f >= lo && f <= hi && std::abs(m - j) > 2) nb.push_back(v[size_t(m)]);
+        }
+        if (nb.empty()) return 0.0;
+        std::nth_element(nb.begin(), nb.begin() + long(nb.size() / 2), nb.end());
+        return v[size_t(j)] - nb[nb.size() / 2];
+    };
+    std::vector<double> s1, sk, rel;
+    rel.assign(size_t(nF), 0.0);
+    spec(0, s1);
+    double worst = 0;
+    for (int k = 1; k < 6; ++k) {
+        spec(k, sk);
+        const double floorDb = *std::max_element(sk.begin(), sk.end()) - 60.0; // ignore the float floor
+        for (int j = 0; j < nF; ++j) rel[size_t(j)] = sk[size_t(j)] - s1[size_t(j)];
+        for (int j = 0; j < nF; ++j) {
+            if (sk[size_t(j)] < floorDb) continue;
+            const double p = std::min(prominence(sk, j), prominence(rel, j));
+            if (p > worst) {
+                worst = p;
+                if (atHz) *atHz = 200.0 + 10.0 * j;
+                if (atRep) *atRep = k + 1;
+            }
+        }
+    }
+    return worst;
+}
+
+void bits()
+{
+    const char* const kName[4] = {"A none", "B 24k/12-bit", "C 24k/8-bit", "D 24k/8-bit mu-law"};
+    const int bbd = rv::echo::kWearBbd;
+    // On the tape (BBD A, 0.4 s echo, feedback 0.75; a rim at -6 dBFS):
+    // level per repeat vs A, the echo time, new pitches.
+    const Buf rim = rimLike(9.0, 0.1);
+    const RepeatStats base = tapeRepeats(0, 0.75f, 0.4, bbd, 0, &rim, 0);
+    double peakA = 0;
+    for (int v = 0; v < 4; ++v) {
+        const RepeatStats r = v == 0 ? base : tapeRepeats(0, 0.75f, 0.4, bbd, 0, &rim, v);
+        double up = -99, lvl[6], drift = 0, hz = 0;
+        int    at = 0;
+        for (int k = 0; k < 6; ++k) {
+            lvl[k] = r.db[k] - base.db[k];
+            up     = std::max(up, lvl[k]);
+            drift  = std::max(drift, std::fabs(repeatCentreMs(r, k, 0.4) - repeatCentreMs(base, k, 0.4)));
+        }
+        const double pk = newPeakDb(r, 0.4, &hz, &at);
+        if (v == 0) peakA = pk;
+        std::snprintf(msg, sizeof msg,
+                      "Bits %s on the tape (BBD A, rim -6 dBFS, 0.4 s, feedback 0.75): level per repeat 1-6 vs A %+.1f %+.1f %+.1f "
+                      "%+.1f %+.1f %+.1f dB (never above +1); timing %.2f ms off A's (limit 1.5); new narrow peak in repeats 2-6 %.1f dB "
+                      "(%.0f Hz, repeat %d; limit A's %.1f + 3)",
+                      kName[v], lvl[0], lvl[1], lvl[2], lvl[3], lvl[4], lvl[5], drift, pk, hz, at, peakA);
+        check(up <= 1.0 && drift <= 1.5 && pk <= peakA + 3.0, msg);
+    }
+    // The same metric on the BBD round's rejected B and C (the owner's "higher
+    // pitched chirp"), to show it sees what the owner heard.
+    {
+        double hzB = 0, hzC = 0;
+        int    kB = 0, kC = 0;
+        const double pB = newPeakDb(tapeRepeats(0, 0.75f, 0.4, bbd, 1, &rim, 0), 0.4, &hzB, &kB);
+        const double pC = newPeakDb(tapeRepeats(0, 0.75f, 0.4, bbd, 2, &rim, 0), 0.4, &hzC, &kC);
+        std::snprintf(msg, sizeof msg,
+                      "Bits: the new-peak check on the rejected BBD B / C (owner heard a pitched chirp): %.1f dB at %.0f Hz (repeat %d) / "
+                      "%.1f dB at %.0f Hz (repeat %d), vs BBD A %.1f",
+                      pB, hzB, kB, pC, hzC, kC, peakA);
+        info(msg);
+    }
+
+    // In the Tank, per version: deterministic, block-size free, no clicks;
+    // the tail ends in silence (no stuck buzz or low tone): a rim at DECAY
+    // 0.85, 30 s; the last seconds keep falling and end under -100 dBFS,
+    // and M6 flags no steady tone; KICKED's runaway bounded and dying.
+    for (int v = 0; v < 4; ++v) {
+        {
+            const Buf h = hits(8.0);
+            Settings x;
+            x.decay = 0.85f, x.tension = 0.6f;
+            auto go = [&](int block) {
+                rv::Tank t;
+                t.prepare(kFs, block);
+                apply(t, x);
+                t.setEchoBitsVoicing(v);
+                Stereo o{Buf(h.size()), Buf(h.size())};
+                for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
+                    const int m = int(std::min<size_t>(size_t(block), h.size() - pos));
+                    t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, m);
+                }
+                return o;
+            };
+            const Stereo a = go(48), b = go(48), c = go(333);
+            double w = 0;
+            const int clicks = clicksBoth(a, sec(0.5), &w);
+            std::snprintf(msg, sizeof msg, "Bits %s in the Tank (hits, DECAY 0.85): the same twice %d, block 48 = 333 %d, finite %d, %d clicks "
+                                           "(worst ratio %.1f)",
+                          kName[v], int(same(a, b)), int(same(a, c)), int(finite(a)), clicks, w);
+            check(same(a, b) && same(a, c) && finite(a) && clicks == 0, msg);
+        }
+        {
+            const Buf in = rimLike(30.0, 0.5);
+            for (int att : {0, 2}) {
+                Settings x;
+                x.decay = 0.85f, x.tension = 0.5f, x.att = att;
+                if (att == 2) x.decay = 0.8f; // under KICKED's runaway
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                apply(t, x);
+                t.setEchoBitsVoicing(v);
+                Stereo o{Buf(in.size()), Buf(in.size())};
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                const double l1 = stereoDb(o, sec(26.0), sec(28.0)), l2 = stereoDb(o, sec(28.0), sec(30.0));
+                const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                std::snprintf(msg, sizeof msg,
+                              "Bits %s, a rim's tail (%s DECAY %.2f, 0.4 s, 30 s): 26-28 s %.1f dB, 28-30 s %.1f dB (falling, under -100); "
+                              "steady tone %d, ringing_db %.1f (%.0f Hz)",
+                              kName[v], att ? "KICKED" : "CLEAN", double(x.decay), l1, l2, int(m.steadyTone), m.ringingDb, m.ringingHz);
+                // Ringing reported only: on a tail that drops to silence in a few
+                // seconds (8-bit) it reads the float floor (a probe put the flagged
+                // 7.7 kHz bin level with its neighbours, ~90 dB under the tail).
+                check(l2 <= l1 + 0.5 && l2 < -100.0 && !m.steadyTone, msg);
+            }
+        }
+        {
+            const Buf in = burst(16.0, 0.5);
+            Settings k;
+            k.att = 2, k.decay = 1.0f, k.tension = 0.75f, k.drive = 1.0f;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, k);
+            t.setEchoBitsVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(12.7), sec(13.0));
+            std::snprintf(msg, sizeof msg,
+                          "Bits %s, KICKED DECAY 1 (DRIVE 1): held 8-10 s %.1f dB, peak %.2f; DECAY to noon at 10 s: 12.7-13 s %.1f dB "
+                          "(want >= 30 dB under)",
+                          kName[v], held, double(peakOf(o)), after);
+            check(finite(o) && peakOf(o) < 1.0f && after < held - 30.0, msg);
+        }
+    }
+    // M6 at SPRINGS 3 per version (click + burst, ATTITUDE x DECAY .85/1 x TENSION 0/.5).
+    {
+        Buf clk(sec(14.0), 0.0f);
+        clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
+        Buf nb(sec(14.0), 0.0f);
+        {
+            const Buf z = noise(sec(0.5), 0.43f, 77u);
+            std::copy(z.begin(), z.end(), nb.begin() + long(sec(0.5)));
+        }
+        int    flagged[4] = {0, 0, 0, 0}, steady[4] = {0, 0, 0, 0}, cells = 0;
+        double worst[4]   = {0, 0, 0, 0};
+        for (int v = 0; v < 4; ++v)
+            for (int a = 0; a < 3; ++a)
+                for (float dc : {0.85f, 1.0f})
+                    for (float tn : {0.0f, 0.5f})
+                        for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
+                            if (a == 2 && dc > 0.9f) continue;
+                            Settings x;
+                            x.att = a, x.decay = dc, x.tension = tn;
+                            rv::Tank t;
+                            t.prepare(kFs, 48);
+                            apply(t, x);
+                            t.setEchoBitsVoicing(v);
+                            Stereo o{Buf(in->size()), Buf(in->size())};
+                            for (size_t pos = 0; pos < in->size(); pos += 48)
+                                t.process(in->data() + pos, in->data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                            const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                            if (m.ringing || m.steadyTone) ++flagged[v];
+                            if (m.steadyTone) ++steady[v];
+                            if (!std::isnan(m.ringingDb)) worst[v] = std::max(worst[v], m.ringingDb);
+                            if (v == 0) ++cells;
+                        }
+        std::snprintf(msg, sizeof msg,
+                      "Bits, M6 at SPRINGS 3 (%d cells each): flagged (steady tone) / worst ringing_db: A %d (%d) / %.1f, B %d (%d) / %.1f, "
+                      "C %d (%d) / %.1f, D %d (%d) / %.1f",
+                      cells, flagged[0], steady[0], worst[0], flagged[1], steady[1], worst[1], flagged[2], steady[2], worst[2], flagged[3],
+                      steady[3], worst[3]);
+        check(flagged[0] + flagged[1] + flagged[2] + flagged[3] == 0, msg);
+    }
+    // Cost (desktop).
+    {
+        const Buf in = hits(6.0);
+        double ns[4];
+        for (int v = 0; v < 4; ++v) {
+            double best = 1e30;
+            for (int run2 = 0; run2 < 3; ++run2) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings x;
+                x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
+                apply(t, x);
+                t.setEchoBitsVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            ns[v] = best;
+        }
+        std::snprintf(msg, sizeof msg, "Bits cost (desktop, SPRINGS 3 worst case): A %.1f, B %.1f, C %.1f, D %.1f ns/sample", ns[0], ns[1],
+                      ns[2], ns[3]);
+        info(msg);
+    }
+}
+
 // ---- cost -----------------------------------------------------------------------------------
 void cost()
 {
@@ -1822,7 +2082,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

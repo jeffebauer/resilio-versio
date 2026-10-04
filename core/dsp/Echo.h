@@ -18,6 +18,7 @@
 // Block-size independent: everything advances per sample or per grid step.
 
 #include "dsp/Drive.h"
+#include "dsp/EchoBits.h"
 #include "dsp/EchoWear.h"
 #include "dsp/Filters.h"
 #include "dsp/Wobble.h"
@@ -66,10 +67,21 @@ public:
     int  bbdVoicing() const { return wear_.bbdVoicing(); }
     float bbdClockHz() const { return wear_.bbdClockHz(); }
     int  wearVoicing() const { return wear_.voicing(); }
-    bool wearActive() const { return wear_.active(); }
-    // On the feedback (in place) / on the input (the wear's fixed delay).
-    void wear(float* x, int n) { wear_.process(x, n); }
-    void delayInput(float* x, int n) { wear_.delayInput(x, n); }
+    bool wearActive() const { return wear_.active() || bits_.active(); }
+    // Bit depth (EchoVoicing.h "Bits", dsp/EchoBits.h): 0 none ... 3 mu-law.
+    void setBitsVoicing(int v) { bits_.setVoicing(v); }
+    int  bitsVoicing() const { return bits_.voicing(); }
+    // On the feedback (in place: the wear, then the bits) / on the input (their fixed delay).
+    void wear(float* x, int n)
+    {
+        wear_.process(x, n);
+        bits_.process(x, n);
+    }
+    void delayInput(float* x, int n)
+    {
+        wear_.delayInput(x, n);
+        bits_.delayInput(x, n);
+    }
 
     bool ok() const { return buf_ != nullptr; }
     const Wobble& wow() const { return wow_; }
@@ -93,6 +105,7 @@ private:
     Allpass ap_[echo::kDiffuseStages];
     int     diffuse_ = echo::kDiffuseDefault;
     TapeWear wear_;
+    TapeBits bits_;
     void    clearDiffuser();
     OnePoleLowpass hp_{};
     Wobble         wow_;

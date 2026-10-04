@@ -429,6 +429,15 @@ public:
 #endif
     }
     int   bbdVoicing() const { return echo_.bbdVoicing(); }
+    // Renderer / test hook (PROTOTYPE, owner 4 Oct): the repeats' bit depth,
+    // 0 none ... 3 8-bit mu-law (EchoVoicing.h "Bits"), on top of the wear.
+    void setEchoBitsVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        echo_.setBitsVoicing(v);
+#endif
+    }
+    int echoBitsVoicing() const { return echo_.bitsVoicing(); }
     float bbdClockHz() const { return echo_.bbdClockHz(); }
     float echoFirstRepeatGain() const { return ginTo_; }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
