@@ -44,6 +44,10 @@ shift slightly as DSP work continues):
 - m0test 82,320 B (62%): plain passthrough, no Core linked (identical output to the Tank at MIX 0)
 - profile 114,600 B (87%, 16.5 KB free) on `main` `327af86` (flash study: also skips the ADC/controls and the Seed 1.1 codec set-up; audio code byte-identical, so run 15's numbers hold). Binary: `dist/resilio_versio_m3_profile_327af86.bin`. Before: 130,496 B (99.6%) at `340b542`, **run 15 binary `dist/resilio_versio_m3_profile_run15.bin`** (first chip measurement since run 13), release for after it `dist/resilio_versio_release_340b542.bin`
 
+### Knob end stops (release, 4 Oct 2026)
+
+The Versio's pots (summed with their CV in hardware) stop a little short of 0 and 1; M0 only showed "within 2 %". With MIX equal-power, a pot topping out at 0.98 let the dry through at about -30 dB (owner: un-TONE'd dry at MIX fully right on the module, none in the plugin). `firmware/PotEndStops.h` snaps the outer 2.5 % at each end to exactly 0 / 1 and stretches the rest linearly (noon stays noon), for every knob in the release build. Tested in `host/tests/test_pot_endstops.cpp`. +24 B.
+
 ### Flash-budget techniques in use (ADR 0011)
 
 All firmware/-only (no changes inside `libs/libDaisy`):
