@@ -99,7 +99,8 @@ Same patch, same Ableton set, **same "spring only" settings and the same base IN
 | Take | Export as | Stimulus | Change from "spring only" | Purpose |
 |---|---|---|---|---|
 | H | `wellspring_H_sweep_quiet.wav` | `13_sweep_quiet` | none | Level series: the response at a low level |
-| I | `wellspring_I_sweep_hot.wav` | `14_sweep_hot` | none (it's 9 dB hotter than D on purpose; check the recording doesn't clip in Ableton) | Level series: how the input stage darkens, squashes or distorts when pushed |
+| I | `wellspring_I_sweep_hot.wav` | `14_sweep_hot` | none (it's 9 dB hotter than D on purpose; check the recording doesn't clip in Ableton). **If the return clips** (4 Oct 2026): keep INPUT, turn the Wellspring's OUTPUT down until I peaks ~−6 dBFS, and record H, I and D2 all at that OUTPUT, then set OUTPUT back to top centre | Level series: how the input stage darkens, squashes or distorts when pushed |
+| D2 | `wellspring_D2_sweep_outlow.wav` | `03_sweep` | Only when OUTPUT was lowered for H/I: the normal sweep again at that same lowered OUTPUT, so H, D2 and I compare at one output setting | Level series reference at the lowered OUTPUT |
 | D-L | `wellspring_D-L_sweep_left.wav` | `03_sweep` | **Dummy plug in the R input**, as for A-L (left tank only) | Stereo matrix: how the left tank reaches each output |
 | D-R | `wellspring_D-R_sweep_right.wav` | `03_sweep` | Stimulus into **R only**, L input empty (right tank only) | Stereo matrix: the right tank |
 | J | `wellspring_J_tone_bursts.wav` | `15_tone_bursts` | none (back to the default: L in, R unplugged, so both tanks) | Per-octave decay and darkening, the metallic modes |
