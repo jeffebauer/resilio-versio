@@ -63,6 +63,16 @@ public:
         fadeStep_ = 1.0f / (outbits::kFadeSeconds * sampleRate);
         envRel_   = 1.0f - std::exp(-1000.0f / (outbits::kEnvReleaseMs * 0.5f * sampleRate)); // runs at the half rate
         for (int d = 1; d < 3; ++d) q_[d] = std::exp2(outbits::kDepth[d].bits - 1.0f);
+        // The expansion of every code |v| = 0 .. q - 1, worked out here with
+        // the very expression quantise() used per sample (same exp, same
+        // float steps), so a table read gives the same bits (M3 run 17: an
+        // exp and a divide per half-rate sample and channel were most of the
+        // box's cost on the chip).
+        for (int d = 1; d < 3; ++d) {
+            float* const t = expand_ + kTabOffset[d];
+            const float  q = q_[d];
+            for (int k = 0; k < kTabSize[d]; ++k) t[k] = (std::exp(float(k) * (kLnMu1 / q)) - 1.0f) * (1.0f / kMu);
+        }
         reset();
     }
 
@@ -158,6 +168,18 @@ public:
     }
 
 private:
+    static constexpr float kMu = 255.0f, kLnMu1 = 5.5451774445f; // ln(1 + mu)
+    // The expansion tables (prepare): q = 2^(bits - 1) codes per depth. Whole
+    // bits only, so every code is a whole number and indexes its entry.
+    static constexpr int kCodes1 = kBuilt ? 1 << int(outbits::kDepth[1].bits - 1.0f) : 1;
+    static constexpr int kCodes2 = kBuilt ? 1 << int(outbits::kDepth[2].bits - 1.0f) : 1;
+    static_assert(outbits::kDepth[1].bits == float(int(outbits::kDepth[1].bits))
+                      && outbits::kDepth[2].bits == float(int(outbits::kDepth[2].bits))
+                      && outbits::kDepth[1].bits >= 2.0f && outbits::kDepth[1].bits <= 16.0f
+                      && outbits::kDepth[2].bits >= 2.0f && outbits::kDepth[2].bits <= 16.0f,
+                  "OutputBits: the expansion tables need whole bit depths (2-16)");
+    static constexpr int kTabSize[3]   = {0, kCodes1, kCodes2};
+    static constexpr int kTabOffset[3] = {0, 0, kCodes1};
     static constexpr int kDrain   = 96;  // samples the up filter rings on after a fade back to CLEAN (2 ms)
     static constexpr int kZeroRun = 64;  // half-rate steps of exact zeros before the up filter is cleared (2.7 ms)
     struct Chan {
@@ -187,7 +209,6 @@ private:
     // depth quantised and expanded only while it has weight.
     float quantise(Chan& ch, float y)
     {
-        constexpr float kMu = 255.0f, kLnMu1 = 5.5451774445f; // ln(1 + mu)
         float a = std::fabs(y);
         a = a > 1.0f ? 1.0f : a;
         const float cpr = std::log(1.0f + kMu * a) * (1.0f / kLnMu1); // compressed, 0..1 (log, exp: already in the firmware; log1p, expm1 cost 4.8 KB of flash)
@@ -205,7 +226,7 @@ private:
                                                                : (lsbs - outbits::kDitherOffLsb) * (1.0f / (outbits::kDitherFullLsb - outbits::kDitherOffLsb)));
             float v = std::nearbyint(sc * q + tpdf * amt);
             v = v < 1.0f - q ? 1.0f - q : (v > q - 1.0f ? q - 1.0f : v);
-            const float m = (std::exp(std::fabs(v) * (kLnMu1 / q)) - 1.0f) * (1.0f / kMu); // expand
+            const float m = expand_[kTabOffset[d] + int(std::fabs(v))]; // expand: (exp(|v| ln(1 + mu) / q) - 1) / mu, the table (prepare)
             out += w_[d] * (v < 0.0f ? -m : m);
         }
         return out;
@@ -222,6 +243,7 @@ private:
     float w_[3] = {1.0f, 0.0f, 0.0f};
     float q_[3] = {1.0f, 1.0f, 1.0f};
     float fadeStep_ = 1.0f, envRel_ = 0.0f;
+    float expand_[kCodes1 + kCodes2] = {};
 };
 
 } // namespace rv::dsp
