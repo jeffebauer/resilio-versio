@@ -19,7 +19,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (in this order)
 
 ### 1. Last listen, then OK to merge the three features (≈10 min)
-- [ ] **Hold ducking:** open [`renders/feat_hold_duck/`](../renders/feat_hold_duck/index.html). A round 1 (full-range duck), B lows-only duck at 12 dB (below ~200 Hz, triggered only by kick and bass, no swell into the next beat), C the same at 18 dB. **Pick 12 or 18 dB.** The KICKED row checks today's Howl fade is back
+- [ ] **Hold ducking, round 3** (being built): round 2 picked **A, round 1** everywhere; you meant the *trigger* should be low-passed (kick/bass duck the bed, snares/hats don't), with the whole bed ducking. Page `renders/feat_hold_duck3/` coming: A round 1, B full-range duck keyed on kick/bass only at 12 dB (no swell), C the same at 18 dB, plus a snares/hats-only row that shouldn't duck. Howl flip: today's fade, settled
 - [ ] **Echo repeats, confirm:** BBD A only, no extra diffusion or bit depth on the repeats (the µ-law idea below covers the grit). Say if you'd rather keep a diffusion or bit-depth option
 - [ ] **OK to merge** TONE after the springs, Throw + Hold, and Echo mode. Claude then merges them one at a time, re-runs every test on the combination, installs the plugin and builds a release + CPU-test firmware for the module
 
