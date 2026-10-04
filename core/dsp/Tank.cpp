@@ -1681,9 +1681,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 inr = tdOut_[1].process(inr);
             }
 #endif
-            dsp::DriveOut::processPair(driveOut_[0], driveOut_[1], inl, inr); // both pickups side by side
-            float wl = outTrim * inl;
-            float wr = outTrim * inr;
+            float wl = outTrim * driveOut_[0].process(inl);
+            float wr = outTrim * driveOut_[1].process(inr);
             // Clatter share straight to the wet (M8 round 1; 0 since round 2,
             // splash::kClatterWet: it read as a hi-hat on top of the reverb):
             // the crash on top of the tail, after the pickups (an asymmetric
