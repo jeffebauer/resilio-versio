@@ -479,7 +479,7 @@ RV_SIZE_OPT void Tank::reset()
     clock_.reset();
     numPendingClocks_ = numClockQ_ = 0;
     sampleClock_      = 0;
-    echoW_ = echoWFrom_ = fbFrom_ = fbTo_ = 0.0f;
+    echoW_ = echoWFrom_ = fbFrom_ = fbTo_ = ginFrom_ = ginTo_ = 0.0f;
     division_ = -1;
     levelAcc_ = levelMs_ = 0.0f;
     for (auto& f : excHp_) f.reset();
@@ -565,6 +565,11 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
     const float fb = (attW_[0] + attW_[1]) * echo::feedbackClean(decayKnob) + attW_[2] * echo::feedbackKicked(decayKnob);
     fbFrom_ = snap ? fb : fbTo_;
     fbTo_   = fb;
+    // The input onto the tape at the feedback's own gain: every repeat a step
+    // down from the hit, the first included (EchoVoicing.h "The first repeat").
+    const float gin = std::clamp(fb, echo::kFirstRepeatMin, echo::kFirstRepeatMax);
+    ginFrom_ = snap ? gin : ginTo_;
+    ginTo_   = gin;
     if (echoW_ > 0.0f || echoWFrom_ > 0.0f)
         echo_.tick(echoSecs_, smoothed_[size_t(ParamId::Wobble)], snap || fresh); // a fresh tape starts at the time
 }
@@ -1505,28 +1510,29 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         const bool echoRun = echoW_ > 0.0f || echoWFrom_ > 0.0f;
         if (echoRun) {
             echo_.play(echoPlay, n);
-            // Diffuse repeats (EchoVoicing.h): the feedback smeared before it
-            // goes back on the tape, so each pass compounds.
-            float      fbs[kControlInterval];
-            const bool diffuse = echo::kDiffuseBuilt && echo_.diffuseVoicing() != 0;
-            if (diffuse) {
-                const float fs   = (fbTo_ - fbFrom_) * (1.0f / float(kControlInterval));
-                // KICKED only (with the Morph): its runaway zone is where the tape saturates.
-                const float trim = 1.0f - attW_[2] * (1.0f - echo::kDiffuse[echo_.diffuseVoicing()].trim);
-                for (int i = 0; i < n; ++i) fbs[i] = trim * (fbFrom_ + fs * float(tick_ + i)) * echoPlay[i];
-            }
             const float gStep = (echoW_ - echoWFrom_) * (1.0f / float(kControlInterval));
             const float fStep = (fbTo_ - fbFrom_) * (1.0f / float(kControlInterval));
+            const float iStep = (ginTo_ - ginFrom_) * (1.0f / float(kControlInterval));
+            // The feedback (diffused and worn when a prototype voicing asks,
+            // EchoVoicing.h), and the input at the first repeat's gain.
+            float fbs[kControlInterval], xs[kControlInterval];
+            const bool diffuse = echo::kDiffuseBuilt && echo_.diffuseVoicing() != 0;
+            // KICKED only (with the Morph): its runaway zone is where the tape saturates.
+            const float trim = diffuse ? 1.0f - attW_[2] * (1.0f - echo::kDiffuse[echo_.diffuseVoicing()].trim) : 1.0f;
             for (int i = 0; i < n; ++i) {
-                const float x = 0.5f * (inL[pos + i] + inR[pos + i]);
+                fbs[i] = trim * (fbFrom_ + fStep * float(tick_ + i)) * echoPlay[i];
+                xs[i]  = (ginFrom_ + iStep * float(tick_ + i)) * (0.5f * (inL[pos + i] + inR[pos + i]));
+            }
+            if (diffuse) echo_.diffuse(fbs, n);
+            if (echo_.wearActive()) {
+                echo_.wear(fbs, n);
+                echo_.delayInput(xs, n);
+            }
+            for (int i = 0; i < n; ++i) {
                 const float w = echoWFrom_ + gStep * float(tick_ + i);
                 echoGain[i]   = w;
-                echoRec[i]    = w * x + (fbFrom_ + fStep * float(tick_ + i)) * echoPlay[i];
+                echoRec[i]    = w * xs[i] + fbs[i];
                 echoPlay[i] *= w;
-            }
-            if (diffuse) {
-                echo_.diffuse(fbs, n);
-                for (int i = 0; i < n; ++i) echoRec[i] = echoGain[i] * (0.5f * (inL[pos + i] + inR[pos + i])) + fbs[i];
             }
             prof::mark(prof::kSpringC); // echo mode: the echo's share (Spring C doesn't run)
         }

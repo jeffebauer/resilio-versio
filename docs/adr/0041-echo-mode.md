@@ -67,3 +67,78 @@
 - Desktop: SPRINGS 3 worst case +3 %, about 13 ns/sample.
 
 **Page:** `renders/feat_echo_diffuse/` (`tools/echo_diffuse_page.sh`).
+
+## Level fix: the first repeat steps down too (owner, 4 Oct 2026; default)
+
+**Context:** on the diffuse page the owner heard that "the first repeat is the same amplitude as the hit, which makes it feel like the decay isn't linear". The input went onto the tape at full level, so repeat 1 = hit and only later repeats stepped down by DECAY's feedback.
+
+**Decision:** the input goes onto the tape at the feedback's own gain, so repeat n ≈ hit × gⁿ in CLEAN and DRIVEN. The gain is clamped to `kFirstRepeatMin` 0.316 and `kFirstRepeatMax` 0.95:
+- **DECAY 0** stays a single repeat, now about 10 dB down (measured −11.2 dB with the heads' loss).
+- **In KICKED** the first repeat is never louder than 0.95; the runaway climbs from the second repeat on, from DECAY ~0.87 as before.
+
+The whole wet's trim `kTrim` went 0.84 → 0.98, so position 3 at DECAY / TENSION noon is again within ±2 dB of position 2. Measured −0.1 … +0.3 dB K-weighted, hits and stabs, every ATTITUDE. The bar still makes sense: it keeps a switch between 2 and 3 from jumping in level, and with this trim the hit itself through the springs is within 0.2 dB of position 2's.
+
+**Checks** (`test_echo_mode` "steps", new): band-limited burst, 2 s echo, CLEAN. Each step is repeat k against repeat k − 1, with repeat 0 the hit:
+
+| DECAY | g | steps (dB) |
+|---|---|---|
+| 0.3 | −10.1 dB | −11.2, −10.9, −10.8 |
+| 0.5 | −6.0 dB | −7.2, −6.8, −6.7 |
+| 0.7 | −3.3 dB | −4.5, −4.1, −4.0 |
+| 0.9 | −1.3 dB | −2.5, −2.1, −2.0 |
+| 0 | | −11.2, then nothing (−65) |
+
+The first step is ~0.4 dB larger than the rest because it is the heads' first darkening. Everything else still passes:
+- The runaway threshold is unchanged (DECAY 0.873), with peak 0.72; it falls 95 dB once DECAY returns to noon.
+- The 72-cell stability grid passes (worst peak 0.890; least fade 10.4 dB over 30 s).
+- ctest passes (100 % of 21), and positions 1–2 still match `main` in all 104 renders.
+
+**Firmware:** release 111,340 B and profile 113,240 B with both prototypes at 0 (+672 B over the diffuse commit: the gain ramp and the shared feedback buffer).
+
+## Prototype: the repeats break up (owner, 4 Oct 2026; open)
+
+**Context:** the owner asked for "more degradation in the repeats … make it sound like it's breaking up: aliasing, bitcrushing, or something more tape-centric". This is not more diffusion.
+
+**Proposal:** a hidden Renderer key `echo_wear_voicing`, default 0 = none. Each voicing is a process inside the tape's feedback (`core/dsp/EchoWear.h`, numbers in `EchoVoicing.h` "Wear"), so it compounds: repeat 1 is untouched, and repeat k has been through it k − 1 times. Every random choice is seeded, so renders are deterministic and identical at block 48 and 333. The firmware builds only the default.
+1. **Worn tape** (Space Echo, Black Ark):
+   - Each pass gets its own wow (0.6 ms deep, 0.55 / 1.3 Hz) and flutter (7.5 Hz), out of step with the echo, so the pitch wanders more on each repeat.
+   - Random oxide dropouts: 2 per second, 3–40 ms long, 4–14 dB deep, raised-cosine. Older repeats carry more of them.
+   - A saturation (`softClip(2.5x)/2.5`) that bites as a build grows.
+   - The wow line's fixed delay is taken off the tape, so the echo time holds.
+2. **Radio band** (dub techno): each pass through a 2-pole high-pass at 250 Hz and low-pass at 900 Hz, with the band's centre at unity. Repeats narrow to telephone / radio while keeping their level in the band.
+3. **BBD grit** (Memory Man, the Wellspring's delay):
+   - Each pass is sample-and-held at a 9.7 kHz clock between gentle 1-pole 4.5 kHz filters, so it aliases a little more every pass.
+   - A 2:1 compander whose expander tracks slightly differently, so it pumps and breathes.
+   - A clock whine at 5.2 kHz, −55 dB under the signal, which builds as repeats pass again.
+4. **Crushed** (SDE-3000, samplers, Pole's crackle):
+   - Each pass is re-sampled at 11.3 kHz with no anti-alias filter.
+   - It is re-quantised to 7 bits relative to the signal's level (gain-ranging), so it never leaves a stuck tone.
+   - Sparse crackle (5 per second) rides on the signal's level.
+
+**Checks** (`test_echo_mode` "wear"). On the tape (0.6 s, feedback 0.8), level per repeat 1–6 against none:
+
+| Voicing | Level per repeat 1–6 vs none |
+|---|---|
+| Worn tape | 0, −0.1, −0.2, −0.2, −0.2, −0.2 dB |
+| Radio band | 0, −4.6, −5.1, −5.0, −4.9, −4.8 dB (the first pass takes a broadband hit down to the band, then steady) |
+| BBD | 0, −2.0, −2.7, −2.7, −2.4, −2.0 dB |
+| Crushed | 0, −0.3 … −0.7 dB |
+
+- No repeat is ever louder than none's.
+- Echo time: each repeat's centre is within 0.4 ms of none's (radio band 2.8 ms by the 6th repeat, from its filters' own delay).
+- In the Tank: no clicks, no NaN, deterministic.
+- KICKED DECAY 1 stays bounded (peak 0.72) and falls 57–65 dB within 3 s of DECAY coming back to noon.
+- Extremes are finite with peaks under 1.
+- M6 Ringing (click and burst, every ATTITUDE × DECAY 0.85/1 × TENSION 0/0.5) flags 0 of 20 cells in every voicing; worst ringing_db is 12.2 (none 8.4).
+- The page's 60 renders show no clicks, clipping or NaN.
+
+**Cost if it became the default:**
+
+| Voicing | Release | Profile | AXI SRAM | Desktop, SPRINGS 3 worst case |
+|---|---|---|---|---|
+| Worn tape | 113,588 B (+2,248) | 115,488 B | +2 KB | +2.8 % |
+| Radio band | 112,820 B (+1,480) | 115,472 B | +2 KB | +1.5 % |
+| BBD grit | 113,236 B (+1,896) | 115,136 B | +2 KB | +1.9 % |
+| Crushed | 112,948 B (+1,608) | 115,136 B | +2 KB | +0.8 % |
+
+**Page:** `renders/feat_echo_wear/` (`tools/echo_wear_page.sh`). Version A there includes the level fix; `renders/feat_echo_diffuse/` was built before it.

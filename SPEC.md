@@ -128,7 +128,7 @@ Pots P1–P7 in reading order (top to bottom, left to right; drawing: `docs/pane
 Switch changes: ATTITUDE Morphs the live tail (all attitude params smoothed); SPRINGS crossfades ~20 ms (ADR 0003). Into echo mode the echo fades in over 80 ms on a fresh tape while the springs glide to their fixed tank; out of it the echo fades out over 80 ms, its last repeats ringing on in the springs (ADR 0041).
 
 **Echo mode (SPRINGS 3, ADR 0041).** The panel changes meaning in position 3 only:
-- **DECAY** = the echo's feedback: 0 = one repeat, noon = a few, the top a long build that still fades (CLEAN, DRIVEN); in KICKED the top ~13 % runs away (held by the tape's saturation and the limiter) and dies away when DECAY comes back down.
+- **DECAY** = the echo's feedback, and every repeat is a step down from the hit, the first included (repeat n ≈ hit × gⁿ; owner, 4 Oct): 0 = one repeat about 10 dB down, noon = a few (−6 dB each), the top a long build that still fades (CLEAN, DRIVEN); in KICKED the top ~13 % runs away (held by the tape's saturation and the limiter) and dies away when DECAY comes back down.
 - **TENSION** = the echo time. Unclocked: 2 s (CCW) → 0.4 s (noon) → 80 ms (CW), log. Clocked: seven zones CCW → CW, 1/2, dotted 1/4, 1/4, dotted 1/8, 1/8, dotted 1/16, 1/16 of the clock's beat (a time over 2 s plays at half).
 - **Gate** = the clock: one pulse = a quarter note (30–300 bpm); lost after 2.25 beats without a pulse (back to free time).
 - Every time change swoops like tape (~0.3 s, the repeats bend in pitch). WOBBLE moves the tape too. The springs behind the echo are fixed: the noon tank, T60 ~1.7 s.

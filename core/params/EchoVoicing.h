@@ -175,11 +175,71 @@ constexpr bool kDiffuseBuilt = kDiffuseDefault != 0;
 constexpr bool kDiffuseBuilt = true;
 #endif
 
+// ---- The first repeat (owner, 4 Oct 2026: a level correction) ---------------------------------
+// "The first repeat is the same amplitude as the hit, which makes it feel
+// like the decay isn't linear." The input goes on the tape at the feedback's
+// own gain, so every repeat is a step down from the hit, the first included:
+// repeat n = hit x g^n (g = DECAY's feedback, less the heads' small loss each
+// pass). Never quieter than kFirstRepeatMin (DECAY 0 = a single repeat at
+// -10 dB), never louder than kFirstRepeatMax (KICKED's runaway zone climbs
+// from the second repeat on).
+constexpr float kFirstRepeatMin = 0.316f; // -10 dB
+constexpr float kFirstRepeatMax = kFeedbackMax;
+
+// ---- Wear: the repeats break up (PROTOTYPE, owner 4 Oct 2026) --------------------------------
+// "More degradation in the repeats ... make it sound like it's breaking up:
+// aliasing, bitcrushing, or something more tape-centric." Each voicing is a
+// process INSIDE the tape's feedback (dsp/EchoWear.h), so it compounds: the
+// first repeat is the input itself, the second has been through it once, the
+// sixth five times. None adds energy (small-signal gain <= 1). Renderer key
+// echo_wear_voicing; the firmware builds only kWearDefault (0 = none).
+constexpr int kNumWearVoicings = 5;
+constexpr int kWearNone = 0, kWearTape = 1, kWearRadio = 2, kWearBbd = 3, kWearCrushed = 4;
+// 1 WORN TAPE (Space Echo, Black Ark): each pass adds its own wow and
+// flutter (a short modulated delay: two slow sines + a flutter, out of step
+// with the echo, so it accumulates like a worn transport), random oxide
+// dropouts (a brief dip, more of them on older repeats because they've passed
+// more tape), and a saturation that bites harder as repeats build.
+constexpr float kTapeWowMs = 0.6f, kTapeWowHz1 = 0.55f, kTapeWowHz2 = 1.3f;
+constexpr float kTapeFlutterMs = 0.03f, kTapeFlutterHz = 7.5f;
+constexpr float kTapeDropoutsPerSecond = 2.0f;
+constexpr float kTapeDropoutMinMs = 3.0f, kTapeDropoutMaxMs = 40.0f;
+constexpr float kTapeDropoutMinDb = 4.0f, kTapeDropoutMaxDb = 14.0f;
+constexpr float kTapeSatDrive = 2.5f; // softClip(k x) / k: unity when quiet, bites as a build grows
+// 2 RADIO BAND (dub techno's band-pass in the delay feedback): each pass
+// through a 2-pole high-pass and low-pass around ~450 Hz, so the repeats
+// narrow to a telephone / radio band.
+constexpr float kRadioHpHz = 250.0f, kRadioLpHz = 900.0f, kRadioQ = 0.6f;
+// 3 BBD GRIT (Memory Man, the Wellspring's delay): the feedback through a
+// bucket brigade at a low clock (kBbdClockHz, sample-and-hold, no exact
+// relation to 48 kHz) with a gentle anti-alias filter (so each pass folds a
+// little more back down), a 2:1 compander whose expander tracks a little
+// differently from the compressor (pumping, breathing), and a faint clock
+// whine riding on the signal, which builds as the repeats pass again.
+constexpr float kBbdClockHz = 9700.0f, kBbdFilterHz = 4500.0f;
+constexpr float kBbdCompAttackMs = 2.0f, kBbdCompReleaseMs = 40.0f;
+constexpr float kBbdExpAttackMs = 2.5f, kBbdExpReleaseMs = 36.0f;
+constexpr float kBbdWhineHz = 5200.0f, kBbdWhineDb = -55.0f;
+// 4 CRUSHED (SDE-3000 digital dub, samplers, Pole's crackle): each pass
+// re-sampled at kCrushRateHz without an anti-alias filter and re-quantised
+// to kCrushBits (relative to the signal's own level, as a gain-ranging
+// sampler: the crunch stays as the repeats fade, never a stuck tone), plus
+// sparse crackle riding on the signal.
+constexpr float kCrushRateHz = 11300.0f, kCrushBits = 7.0f;
+constexpr float kCrushReleaseMs = 120.0f;
+constexpr float kCrackleRate = 5.0f, kCrackleLevel = 0.35f; // per second; re the signal's level
+#ifdef RV_ECHO_WEAR_DEFAULT
+constexpr int kWearDefault = RV_ECHO_WEAR_DEFAULT;
+#else
+constexpr int kWearDefault = kWearNone;
+#endif
+
 // ---- Level -----------------------------------------------------------------------------------
-// The wet's trim in echo mode (x position 2's): the repeats add ~1.5 dB at
-// DECAY noon; position 3 within +-2 dB of 2 on hits and skank (K-weighted,
-// test_echo_mode "level").
-constexpr float kTrim = 0.84f;
+// The wet's trim in echo mode (x position 2's). Since the first-repeat level
+// fix the repeats add little at DECAY noon (-6 dB each), so the trim is near
+// unity: position 3 within +-2 dB of 2 on hits and skank (measured -0.1 ...
+// +0.3 dB K-weighted, test_echo_mode "level"); was 0.84 before the fix.
+constexpr float kTrim = 0.98f;
 
 // Tape floats a host must provide for sample rate fs (Tank::prepare).
 constexpr unsigned tapeFloats(float fs) { return unsigned(kMaxSeconds * fs) + unsigned(kTapeMargin); }

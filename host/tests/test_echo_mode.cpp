@@ -23,6 +23,8 @@
 //             repeats fade at DECAY 1 (no runaway); KICKED's top runs away,
 //             held under 1 by the tape and the limiter, finite, and dies
 //             away (>= 30 dB within 4 s) when DECAY comes back to noon.
+//   steps     The level fix: every repeat a step down from the hit (the
+//             first included), geometric; DECAY 0 one repeat at ~-10 dB.
 //   springs   The springs behind it are fixed: DECAY and TENSION don't touch
 //             them (bit for bit up to the first / second repeat); their tail
 //             rings ~1.5-2 s (owner: "one classic medium tail").
@@ -44,6 +46,12 @@
 //             0 (+-1.5 dB, allpasses add no energy); M6 Ringing on position 3
 //             at DECAY 0.85 / 1, every ATTITUDE, no worse than voicing 0;
 //             KICKED's runaway bounded and dying away; extremes finite.
+//   wear      PROTOTYPE break-up (echo_wear_voicing 1-4: worn tape, radio
+//             band, BBD grit, crushed), inside the feedback: repeat 1
+//             untouched, no repeat louder than none's, the echo time kept;
+//             deterministic, block-size independent, no clicks; KICKED's
+//             runaway bounded and >= 30 dB down ~3 s after backing off;
+//             extremes finite; M6 no worse than none.
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
 
@@ -703,18 +711,18 @@ void feedback()
         const Buf in = burst(1.5, 0.2);
         Settings s;
         s.tension = 0.0f, s.decay = 0.0f, s.splash = 0.0f; // 2 s: the repeat far from the hit
-        // Compare DECAY 0 and DECAY 0.5 up to the second repeat (4.2 s): identical (feedback
-        // only reaches the 2nd), and after it DECAY 0 has nothing new (its level keeps falling).
+        // Compare DECAY 0 and DECAY 0.5 up to the first repeat (2.2 s): identical (DECAY
+        // sets the repeats' level only), and after the 2nd's time DECAY 0 has nothing new.
         Buf in6(sec(6.5), 0.0f);
         std::copy(in.begin(), in.end(), in6.begin());
         const Stereo a = render(s, in6);
         s.decay = 0.5f;
         const Stereo b = render(s, in6);
-        const bool sameTo2nd = same(a, b, sec(4.15));
+        const bool sameTo2nd = same(a, b, sec(2.15));
         const double aRise = stereoDb(a, sec(4.2), sec(4.4)) - stereoDb(a, sec(3.9), sec(4.1));
         const double bRise = stereoDb(b, sec(4.2), sec(4.4)) - stereoDb(b, sec(3.9), sec(4.1));
         std::snprintf(msg, sizeof msg,
-                      "Feedback: DECAY 0 = one repeat (2 s echo: DECAY 0 and noon bit for bit until the 2nd repeat %d; at 4.2 s "
+                      "Feedback: DECAY 0 = one repeat (2 s echo: DECAY 0 and noon bit for bit until the 1st repeat %d; at 4.2 s "
                       "DECAY 0 %+.1f dB (no repeat: falling), noon %+.1f dB (a repeat))",
                       int(sameTo2nd), aRise, bRise);
         check(sameTo2nd && aRise < 0.0 && bRise > 6.0, msg);
@@ -755,19 +763,62 @@ void feedback()
     }
 }
 
+// ---- steps (the level fix) ------------------------------------------------------------------
+// Every repeat a step down from the hit, the first included: a band-limited
+// burst (200 Hz-2 kHz, where the heads barely touch it), 2 s echo (each
+// repeat's window holds it and its springs; the one before has rung ~28 dB
+// down), CLEAN, SPLASH 0. Window k = repeat k (0 = the hit). Steps
+// W1 - W0, W2 - W1, W3 - W2 within 1.5 dB of each other (geometric), all
+// below 0; DECAY 0: one repeat at about -10 dB, then nothing.
+void steps()
+{
+    Buf in(sec(8.4), 0.0f);
+    {
+        const Buf nz = noise(sec(0.06), 0.5f, 31u);
+        Buf b(nz);
+        for (size_t i = 0; i < b.size(); ++i) b[i] *= std::exp(-float(i) / (0.015f * kFs));
+        lowpass(b, 2000.0);
+        // high-pass 200 Hz: subtract a 200 Hz low-pass
+        Buf lp(b);
+        lowpass(lp, 200.0);
+        for (size_t i = 0; i < b.size(); ++i) b[i] -= lp[i];
+        std::copy(b.begin(), b.end(), in.begin() + long(sec(0.2)));
+    }
+    auto win = [&](const Stereo& o, int k) { return stereoDb(o, sec(0.15 + 2.0 * k), sec(0.15 + 2.0 * (k + 1))); };
+    bool ok = true;
+    char line[500] = "";
+    for (float dc : {0.0f, 0.3f, 0.5f, 0.7f, 0.9f}) {
+        Settings s;
+        s.tension = 0.0f, s.decay = dc, s.splash = 0.0f, s.att = 0;
+        const Stereo o = render(s, in);
+        const double s1 = win(o, 1) - win(o, 0), s2 = win(o, 2) - win(o, 1), s3 = win(o, 3) - win(o, 2);
+        const double g = 20.0 * std::log10(std::max(double(rv::echo::feedbackClean(dc)), 1e-9));
+        if (dc == 0.0f) ok &= std::fabs(s1 + 10.0) < 2.0 && s2 < -15.0;
+        else ok &= s1 < -0.5 && std::fabs(s1 - s2) < 1.5 && std::fabs(s2 - s3) < 1.5;
+        char one[90];
+        std::snprintf(one, sizeof one, "%sDECAY %.1f (g %.1f dB): %+.1f %+.1f %+.1f", line[0] ? "; " : "", double(dc), g, s1, s2, s3);
+        std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+    }
+    std::snprintf(msg, sizeof msg,
+                  "Steps: every repeat a step down from the hit, the first included (repeat k vs k-1, dB): %s. Want steps "
+                  "within 1.5 dB of each other, below 0; DECAY 0 one repeat at ~-10 dB, then nothing", line);
+    check(ok, msg);
+}
+
 // ---- springs --------------------------------------------------------------------------------
 void springs()
 {
     const Buf in = burst(4.0, 0.2);
-    // DECAY doesn't touch the springs: 2 s echo, DECAY 0 vs 1: the same until the 2nd repeat.
+    // DECAY doesn't touch the springs: 2 s echo, DECAY 0 vs 1: the same until the first repeat
+    // (whose level is DECAY's since the level fix).
     {
         Settings s;
         s.tension = 0.0f, s.decay = 0.0f;
         const Stereo a = render(s, in);
         s.decay = 1.0f;
         const Stereo b = render(s, in);
-        std::snprintf(msg, sizeof msg, "Springs fixed: DECAY 0 vs 1 bit for bit for the first 4 s (2 s echo: before the 2nd repeat)");
-        check(same(a, b), msg);
+        std::snprintf(msg, sizeof msg, "Springs fixed: DECAY 0 vs 1 bit for bit until the first repeat (2 s echo)");
+        check(same(a, b, sec(2.15)), msg);
     }
     // TENSION doesn't touch the springs: 0 vs 1, the same until the 80 ms repeat.
     {
@@ -1079,12 +1130,13 @@ struct RepeatStats {
     double db[8], spreadMs[8];
     Buf    play;
 };
-RepeatStats tapeRepeats(int voicing, float fb, double secs)
+RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0)
 {
     rv::dsp::TapeEcho e;
     std::vector<float> tapeBuf(rv::Tank::requiredTapeFloats(kFs));
     e.prepare(kFs, 0x1234u, tapeBuf.data(), tapeBuf.size());
     e.setDiffuseVoicing(voicing);
+    e.setWearVoicing(wear);
     const size_t n = sec(9.0), d = sec(secs);
     const Buf in = burst(9.0, 0.1);
     RepeatStats r{};
@@ -1096,8 +1148,14 @@ RepeatStats tapeRepeats(int voicing, float fb, double secs)
         e.play(pl, G);
         for (int i = 0; i < G; ++i) fbs[i] = fb * pl[i];
         e.diffuse(fbs, G);
+        float xs[G];
+        for (int i = 0; i < G; ++i) xs[i] = in[pos + size_t(i)];
+        if (e.wearActive()) {
+            e.wear(fbs, G);
+            e.delayInput(xs, G);
+        }
         for (int i = 0; i < G; ++i) {
-            rec[i]            = in[pos + size_t(i)] + fbs[i];
+            rec[i]            = xs[i] + fbs[i];
             r.play[pos + size_t(i)] = pl[i];
         }
         e.record(rec, G);
@@ -1278,6 +1336,193 @@ void diffuse()
     }
 }
 
+// ---- wear (PROTOTYPE) -------------------------------------------------------------------------
+const char* const kWearName[5] = {"none", "worn tape", "radio band", "BBD grit", "crushed"};
+
+// Energy-weighted centre (ms) of repeat k's window on the tape.
+double repeatCentreMs(const RepeatStats& r, int k, double secs)
+{
+    const size_t d = sec(secs), a = sec(0.1) + size_t(k + 1) * d - sec(0.02), b = std::min(r.play.size(), a + d);
+    double e = 0, t = 0;
+    for (size_t i = a; i < b; ++i) {
+        const double p = double(r.play[i]) * r.play[i];
+        e += p, t += p * double(i - a);
+    }
+    return e > 0 ? 1000.0 * t / e / kFs : 0.0;
+}
+
+void wear()
+{
+    // On the tape (0.6 s, feedback 0.8): the first repeat untouched, level per
+    // repeat vs none (no added energy: no repeat louder than none's + 1 dB),
+    // the echo time kept (each repeat's centre within 1 ms of none's).
+    RepeatStats st[rv::echo::kNumWearVoicings];
+    for (int v = 0; v < rv::echo::kNumWearVoicings; ++v) st[v] = tapeRepeats(0, 0.8f, 0.6, v);
+    for (int v = 1; v < rv::echo::kNumWearVoicings; ++v) {
+        const bool first = std::memcmp(st[v].play.data(), st[0].play.data(), sec(0.1 + 2 * 0.6 - 0.05) * sizeof(float)) == 0;
+        double up = -99, lvl[6], drift = 0;
+        for (int k = 0; k < 6; ++k) {
+            lvl[k] = st[v].db[k] - st[0].db[k];
+            up     = std::max(up, lvl[k]);
+            drift  = std::max(drift, std::fabs(repeatCentreMs(st[v], k, 0.6) - repeatCentreMs(st[0], k, 0.6)));
+        }
+        // Steady: once the first pass has shaped it (radio: broadband -> band), each later pass within 1 dB of none's step.
+        double unsteady = 0;
+        for (int k = 2; k < 6; ++k) unsteady = std::max(unsteady, std::fabs(lvl[k] - lvl[k - 1]));
+        std::snprintf(msg, sizeof msg,
+                      "Wear %s on the tape (0.6 s, feedback 0.8): repeat 1 untouched %d; level per repeat 1-6 vs none %+.1f %+.1f "
+                      "%+.1f %+.1f %+.1f %+.1f dB (never above +1; from the 2nd on, each step within 1 dB of none's: worst %.1f); "
+                      "timing, worst repeat centre %.2f ms off none's (limit 3.5: the filters' own delay, a few tenths of a ms a pass)",
+                      kWearName[v], int(first), lvl[0], lvl[1], lvl[2], lvl[3], lvl[4], lvl[5], unsteady, drift);
+        check(first && up <= 1.0 && unsteady <= 1.0 && drift <= 3.5, msg);
+    }
+
+    // In the Tank, per voicing.
+    for (int v = 1; v < rv::echo::kNumWearVoicings; ++v) {
+        // Deterministic and block-size independent (seeded randomness).
+        const Buf h = hits(8.0);
+        Settings s;
+        s.decay = 0.85f, s.tension = 0.6f;
+        auto go = [&](int block) {
+            rv::Tank t;
+            t.prepare(kFs, block);
+            apply(t, s);
+            t.setEchoWearVoicing(v);
+            Stereo o{Buf(h.size()), Buf(h.size())};
+            for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
+                const int m = int(std::min<size_t>(size_t(block), h.size() - pos));
+                t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, m);
+            }
+            return o;
+        };
+        const Stereo a = go(48), b = go(48), c = go(333);
+        double worst = 0;
+        const int clicks = clicksBoth(a, sec(0.5), &worst);
+        std::snprintf(msg, sizeof msg, "Wear %s in the Tank (hits, DECAY 0.85): the same twice %d, block 48 = 333 %d, finite %d, "
+                                       "%d clicks (worst ratio %.1f)",
+                      kWearName[v], int(same(a, b)), int(same(a, c)), int(finite(a)), clicks, worst);
+        check(same(a, b) && same(a, c) && finite(a) && clicks == 0, msg);
+
+        // KICKED's runaway: bounded, and >= 30 dB down ~3 s after DECAY comes back to noon.
+        {
+            const Buf in = burst(16.0, 0.5);
+            Settings k;
+            k.att = 2, k.decay = 1.0f, k.tension = 0.75f, k.drive = 1.0f;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, k);
+            t.setEchoWearVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(12.7), sec(13.0));
+            const float  pk   = peakOf(o);
+            std::snprintf(msg, sizeof msg,
+                          "Wear %s, KICKED DECAY 1 (DRIVE 1): held 8-10 s %.1f dB, peak %.2f (< 1); DECAY to noon at 10 s: "
+                          "12.7-13 s %.1f dB (want >= 30 dB under)",
+                          kWearName[v], held, double(pk), after);
+            check(finite(o) && pk < 1.0f && after < held - 30.0, msg);
+        }
+        // Extremes.
+        {
+            bool ok = true;
+            float worstPk = 0.0f;
+            for (int a2 = 0; a2 < 3; ++a2)
+                for (float tn : {0.0f, 1.0f}) {
+                    Settings x;
+                    x.att = a2, x.decay = 1.0f, x.drive = 1.0f, x.tension = tn, x.wobble = 0.0f;
+                    rv::Tank t;
+                    t.prepare(kFs, 48);
+                    apply(t, x);
+                    t.setEchoWearVoicing(v);
+                    const Buf hh = hits(10.0);
+                    Stereo o{Buf(hh.size()), Buf(hh.size())};
+                    for (size_t pos = 0; pos < hh.size(); pos += 48)
+                        t.process(hh.data() + pos, hh.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                    worstPk = std::max(worstPk, peakOf(o));
+                    ok &= finite(o) && peakOf(o) < 1.0f;
+                }
+            std::snprintf(msg, sizeof msg, "Wear %s extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f",
+                          kWearName[v], double(worstPk));
+            check(ok, msg);
+        }
+    }
+
+    // M6 Ringing at SPRINGS 3 per voicing: click + burst, every ATTITUDE x
+    // DECAY .85 / 1 (KICKED 1 is the runaway: checked above) x TENSION 0 / .5.
+    {
+        Buf clk(sec(14.0), 0.0f);
+        clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
+        Buf nb(sec(14.0), 0.0f);
+        {
+            const Buf z = noise(sec(0.5), 0.43f, 77u);
+            std::copy(z.begin(), z.end(), nb.begin() + long(sec(0.5)));
+        }
+        int    flagged[5] = {0, 0, 0, 0, 0}, cells = 0;
+        double worst[5]   = {0, 0, 0, 0, 0};
+        char   at[5][80]  = {"", "", "", "", ""};
+        for (int v = 0; v < 5; ++v)
+            for (int a = 0; a < 3; ++a)
+                for (float dc : {0.85f, 1.0f})
+                    for (float tn : {0.0f, 0.5f})
+                        for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
+                            if (a == 2 && dc > 0.9f) continue;
+                            Settings x;
+                            x.att = a, x.decay = dc, x.tension = tn;
+                            rv::Tank t;
+                            t.prepare(kFs, 48);
+                            apply(t, x);
+                            t.setEchoWearVoicing(v);
+                            Stereo o{Buf(in->size()), Buf(in->size())};
+                            for (size_t pos = 0; pos < in->size(); pos += 48)
+                                t.process(in->data() + pos, in->data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                            const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                            if (m.ringing || m.steadyTone) {
+                                if (flagged[v]++ == 0)
+                                    std::snprintf(at[v], sizeof at[v], " (first: att %d DECAY %.2f TENSION %.1f %s, %.0f Hz)", a,
+                                                  double(dc), double(tn), in == &clk ? "click" : "burst", m.ringingHz);
+                            }
+                            if (!std::isnan(m.ringingDb)) worst[v] = std::max(worst[v], m.ringingDb);
+                            if (v == 0) ++cells;
+                        }
+        std::snprintf(msg, sizeof msg,
+                      "Wear, M6 Ringing at SPRINGS 3 (%d cells each): flagged / worst ringing_db: none %d / %.1f%s, worn tape %d / %.1f%s, "
+                      "radio %d / %.1f%s, BBD %d / %.1f%s, crushed %d / %.1f%s",
+                      cells, flagged[0], worst[0], at[0], flagged[1], worst[1], at[1], flagged[2], worst[2], at[2], flagged[3],
+                      worst[3], at[3], flagged[4], worst[4], at[4]);
+        check(flagged[1] <= flagged[0] && flagged[2] <= flagged[0] && flagged[3] <= flagged[0] && flagged[4] <= flagged[0], msg);
+    }
+    // Cost (desktop): SPRINGS 3 worst case per voicing.
+    {
+        const Buf in = hits(6.0);
+        double ns[5];
+        for (int v = 0; v < 5; ++v) {
+            double best = 1e30;
+            for (int run = 0; run < 3; ++run) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings x;
+                x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
+                apply(t, x);
+                t.setEchoWearVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            ns[v] = best;
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Wear cost (desktop, SPRINGS 3 worst case): none %.1f, worn tape %.1f, radio %.1f, BBD %.1f, crushed %.1f ns/sample",
+                      ns[0], ns[1], ns[2], ns[3], ns[4]);
+        info(msg);
+    }
+}
+
 // ---- cost -----------------------------------------------------------------------------------
 void cost()
 {
@@ -1324,9 +1569,9 @@ int main(int argc, char** argv)
         void (*fn)();
     };
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
-                                {"swoop", swoop},       {"feedback", feedback}, {"springs", springs},   {"tape", tape},
+                                {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

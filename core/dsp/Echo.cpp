@@ -28,6 +28,7 @@ RV_SIZE_OPT void TapeEcho::prepare(float sampleRate, uint32_t seed, float* tape,
     floorStep2_ = echo::kFloorHz2 * float(kGrid) / sampleRate;
     wow_.prepare(sampleRate, 0, seed, Wobble::Role::Transport);
     setDiffuseVoicing(diffuse_); // the diffuser's lengths at this rate
+    wear_.prepare(sampleRate, seed ^ 0x5EEDu);
     reset();
 }
 
@@ -92,6 +93,7 @@ RV_SIZE_OPT void TapeEcho::clearTape()
     hp_.reset();
     recLp_.reset();
     clearDiffuser();
+    wear_.reset();
 }
 
 RV_SIZE_OPT void TapeEcho::reset()
@@ -108,7 +110,8 @@ RV_SIZE_OPT void TapeEcho::reset()
 
 void TapeEcho::tick(float seconds, float wobble, bool snap)
 {
-    const float target = std::clamp(seconds * sampleRate_, minDelay_, maxD_);
+    // The wear's fixed delay (the worn tape's) is part of every pass: the tape is that much shorter.
+    const float target = std::clamp(seconds * sampleRate_ - wear_.latencySamples(), minDelay_, maxD_);
     dFrom_ = dTo_;
     if (snap || dTo_ <= 0.0f) {
         dTo_ = dFrom_ = target;

@@ -411,6 +411,16 @@ public:
 #endif
     }
     int echoDiffuseVoicing() const { return echo_.diffuseVoicing(); }
+    // Renderer / test hook (PROTOTYPE, owner 4 Oct): the repeats break up,
+    // 0 none (default) ... 4 crushed (EchoVoicing.h "Wear"). Set it before rendering.
+    void setEchoWearVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        echo_.setWearVoicing(v);
+#endif
+    }
+    int echoWearVoicing() const { return echo_.wearVoicing(); }
+    float echoFirstRepeatGain() const { return ginTo_; }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
     // glides over springs3::kGlideSeconds), the time it aims for (seconds),
     // the feedback in use, the clock division (-1 = free time), the clock.
@@ -695,6 +705,7 @@ private:
     float    hostBpm_ = 0.0f;
     float    echoW_ = 0.0f, echoWFrom_ = 0.0f; // the echo's glide in, at this tick and the last
     float    fbFrom_ = 0.0f, fbTo_ = 0.0f;     // feedback, ramped per sample over a tick
+    float    ginFrom_ = 0.0f, ginTo_ = 0.0f;   // the input's gain onto the tape (the first repeat's step down)
     float    echoSecs_ = 0.0f;                 // the echo time aimed for
     int      division_ = -1;                   // clocked: TENSION's zone (EchoVoicing.h kDivisionBeats)
     float    springsDecay_ = 0.5f;             // DECAY (Normalised) giving echo::kSpringsT60Seconds
