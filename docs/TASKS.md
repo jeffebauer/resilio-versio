@@ -82,7 +82,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Module check (≈5 min, after run 15 and the click check):** flash `dist/resilio_versio_release_327af86.bin`: it boots, plays, the LEDs meter, the knobs and switches work, KICK fires. Then `dist/resilio_versio_m3_profile_327af86.bin`: it prints its CORNER lines in `screen` (no need to wait for two laps). Both only change what the board sets up at power-on; the sound is the same as `340b542`
 
 ### 1c. Building now (4 Oct, Claude; three agents in worktrees, nothing merged without your OK)
-- **TONE after the springs** (your pick B): becomes the real behaviour in firmware and plugin
+- [ ] **TONE after the springs: built (`feat/tone-after`), your listen + OK to merge.** Page: [`renders/feat_tone_after/`](../renders/feat_tone_after/index.html), before / after, CLEAN and KICKED. Listen for:
+  - the ringing tail thinning as you sweep TONE right, and a gentle level swell ~0.3 s after a fast move
+  - **the Kick at TONE fully right** (turn level matching off): the thud is gone, a sharper knock and crash remain. Keep, or should the Kick's thump skip the TONE filter?
+  - **Howls at TONE right** (KICKED, DECAY max) now lean more toward one pitch, since their low body is cut. Fine, or too tonal?
 - **Throw on the gate + hold at the top of DECAY** (CLEAN/DRIVEN, ducked under new hits): two hold versions for you to pick by ear (freeze vs layer)
 - **Echo mode = SPRINGS 3:** tape echo into the noon tank (fixed ~1.5–2 s tail). DECAY = echo feedback, TENSION = echo time (free) or, with a clock in the gate (one pulse = one beat), seven divisions 1/2 … 1/16 incl. dotted; up to 2 s; changes swoop like tape. In the plugin it follows Ableton's tempo. The coupled wire gauges go
 - Each comes with a listening page; then your OK to merge, merged one at a time with the tests re-run on the combination
