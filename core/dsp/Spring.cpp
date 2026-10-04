@@ -109,6 +109,7 @@ RV_SIZE_OPT void Spring::prepare(float sampleRate, float* pool, uint32_t noiseSe
     // Everything else in the caches is per fC / damping: work it out afresh.
     designFc_ = designDampHz_ = magFc_ = lfoHzSet_ = -1.0f;
     pending_  = false;
+    stale_    = false;
     modHold_ = std::max(1, int(antires::kMicroModHoldSeconds * sampleRate));
     modC_    = 1.0f - std::exp(-1.0f / (antires::kMicroModHoldSeconds * sampleRate));
 
@@ -150,6 +151,12 @@ RV_SIZE_OPT void Spring::reset()
 
 bool Spring::setSettings(const SpringSettings& s, bool snap)
 {
+    if (stale_) { // after setSettingsUnheard(): nothing staged or cached is current
+        stale_    = false;
+        pending_  = false;
+        designFc_ = designDampHz_ = magFc_ = -1.0f;
+        snap      = true;
+    }
     if (pending_ && !snap) {
         // Second half of a TENSION redesign: install the filters staged on
         // the last call together with everything else as it is now. fC
