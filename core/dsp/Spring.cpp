@@ -501,7 +501,35 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     // smears the echo a little more; the first echo never passes them).
     float fbd = fb;
 #if RV_TANKV_BUILT >= 3
-    for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+    if (numFbDiff_ == 3) {
+        // The three (voicing 3+ always has three) written out, each one's
+        // delayed sample read before the chain starts: the reads don't wait
+        // on x, so on the M7 only the three multiply-adds stay in line
+        // (perf/run16). The same steps as FbDiffuser::process, in order.
+        FbDiffuser& f0 = fbDiff_[0];
+        FbDiffuser& f1 = fbDiff_[1];
+        FbDiffuser& f2 = fbDiff_[2];
+        int r0 = f0.w - f0.d, r1 = f1.w - f1.d, r2 = f2.w - f2.d;
+        if (r0 < 0) r0 += f0.size;
+        if (r1 < 0) r1 += f1.size;
+        if (r2 < 0) r2 += f2.size;
+        const float z0 = f0.buf[r0], z1 = f1.buf[r1], z2 = f2.buf[r2];
+        const float c  = fbDiffC_;
+        float v = fbd - c * z0;
+        f0.buf[f0.w] = v;
+        fbd = c * v + z0;
+        v = fbd - c * z1;
+        f1.buf[f1.w] = v;
+        fbd = c * v + z1;
+        v = fbd - c * z2;
+        f2.buf[f2.w] = v;
+        fbd = c * v + z2;
+        if (++f0.w == f0.size) f0.w = 0;
+        if (++f1.w == f1.size) f1.w = 0;
+        if (++f2.w == f2.size) f2.w = 0;
+    } else {
+        for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+    }
 #endif
 
     float x = dc_.process(in + g_ * loopSat_.process(fbd));
