@@ -163,6 +163,7 @@
 #include "dsp/Drive.h"
 #include "dsp/Filters.h"
 #include "dsp/Kick.h"
+#include "dsp/OutputBits.h"
 #include "dsp/Splash.h"
 #include "dsp/Spring.h"
 #include "dsp/Sweep.h"
@@ -351,6 +352,14 @@ public:
     // 1 = not limiting, below 1 = pulling the wet down (e.g. a loud Howl).
     // Read-only, for meters (the release firmware's output LEDs, ADR 0031).
     float limiterGain() const { return limitGain_; }
+    // Renderer / test hook (PROTOTYPE, owner 4 Oct 2026, OutputVoicing.h):
+    // the output's bit depth, 0 = today, 1 = DRIVEN 24 kHz / 12-bit mu-law,
+    // KICKED 24 kHz / 8-bit mu-law on the whole output after MIX (CLEAN
+    // untouched). The firmware and plugin never call it (outbits::
+    // kOutputBitsDefault). Set it after prepare(), before rendering.
+    void setOutputBitsVoicing(int v) { outBits_.setVoicing(v); }
+    int  outputBitsVoicing() const { return outBits_.voicing(); }
+    const dsp::OutputBits& outputBits() const { return outBits_; }
 
 private:
     // Schroeder allpass (c + z^-D)/(1 + c z^-D): smears phase, keeps level.
@@ -432,6 +441,7 @@ private:
     std::array<Diffuser, modes::kDecorrSeconds.size()> decorrelator_{};
     std::array<dsp::OnePoleLowpass, 2>  shelfSplit_{};
     dsp::Smoother                       mix_;
+    dsp::OutputBits                     outBits_; // the output's bit depth (PROTOTYPE, after MIX)
     float                               mixAt_ = -1.0f; // MIX value mixGains_ holds
     map::MixGains                       mixGains_{1.0f, 0.0f};
     float hitBlend_ = 0.0f, hitRelease_ = 0.0f; // Big Knob voicing 5

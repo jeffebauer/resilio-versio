@@ -217,6 +217,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         bool tankVoiced = setsKey(rv::paramsjson::kTankVoicingKey);
         bool s3Voiced = setsKey(rv::paramsjson::kSprings3VoicingKey);
         bool lcVoiced = setsKey(rv::paramsjson::kFLowCutVoicingKey);
+        bool obVoiced = setsKey(rv::paramsjson::kOutputBitsKey);
         for (const auto& [key, value] : combo) {
             if (key == rv::paramsjson::kSustainVoicingKey) susVoiced = true;
             if (key == rv::paramsjson::kSplashVoicingKey) splVoiced = true;
@@ -224,6 +225,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
             if (key == rv::paramsjson::kTankVoicingKey) tankVoiced = true;
             if (key == rv::paramsjson::kSprings3VoicingKey) s3Voiced = true;
             if (key == rv::paramsjson::kFLowCutVoicingKey) lcVoiced = true;
+            if (key == rv::paramsjson::kOutputBitsKey) obVoiced = true;
             if (rv::paramsjson::applyHidden(tank, key, value)) { voiced = voiced || key == rv::paramsjson::kWobbleVoicingKey; continue; }
             rv::ParamId id;
             if (!rv::paramsjson::findParamId(key, id)) { std::fprintf(stderr, "sweep: unknown grid key '%s'\n", key.c_str()); return 1; }
@@ -253,6 +255,7 @@ int runSweep(const std::string& sweepPath, const std::string& outDir, const std:
         if (tankVoiced) params.set(rv::paramsjson::kTankVoicingKey, rv::json::Value::makeNumber(tank.tankVoicing()));
         if (s3Voiced) params.set(rv::paramsjson::kSprings3VoicingKey, rv::json::Value::makeNumber(tank.springs3Voicing()));
         if (lcVoiced) params.set(rv::paramsjson::kFLowCutVoicingKey, rv::json::Value::makeNumber(tank.fLowCutVoicing()));
+        if (obVoiced) params.set(rv::paramsjson::kOutputBitsKey, rv::json::Value::makeNumber(tank.outputBitsVoicing()));
         const double durationS = double(out.frames()) / double(out.sampleRate);
         rv::json::Value side = rv::sidecar::build(wavName, out.sampleRate, durationS, params, m, spec);
         if (!rv::json::saveFile(sidecarPath, side, error)) { std::fprintf(stderr, "write: %s\n", error.c_str()); return 1; }

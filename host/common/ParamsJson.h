@@ -38,6 +38,7 @@ inline constexpr const char* kToneVoicingKey     = "tone_voicing";
 inline constexpr const char* kSprings3VoicingKey = "springs3_voicing";
 inline constexpr const char* kTankVoicingKey     = "tank_voicing";
 inline constexpr const char* kFLowCutVoicingKey  = "f_lowcut_voicing";
+inline constexpr const char* kOutputBitsKey      = "output_bits_voicing"; // 0 today, 1 DRIVEN 12-bit / KICKED 8-bit mu-law output (PROTOTYPE)
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 
