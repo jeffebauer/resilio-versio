@@ -420,6 +420,16 @@ public:
 #endif
     }
     int echoWearVoicing() const { return echo_.wearVoicing(); }
+    // Renderer / test hook (PROTOTYPE, owner 4 Oct): the BBD's strength,
+    // 0 A today ... 3 D clock follows the echo time (EchoVoicing.h kBbd).
+    void setBbdVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        echo_.setBbdVoicing(v);
+#endif
+    }
+    int   bbdVoicing() const { return echo_.bbdVoicing(); }
+    float bbdClockHz() const { return echo_.bbdClockHz(); }
     float echoFirstRepeatGain() const { return ginTo_; }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
     // glides over springs3::kGlideSeconds), the time it aims for (seconds),

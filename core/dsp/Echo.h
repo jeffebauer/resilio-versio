@@ -62,6 +62,9 @@ public:
 
     // Wear (EchoVoicing.h "Wear", dsp/EchoWear.h): 0 none ... 4 crushed.
     void setWearVoicing(int v) { wear_.setVoicing(v); }
+    void setBbdVoicing(int v) { wear_.setBbdVoicing(v); }
+    int  bbdVoicing() const { return wear_.bbdVoicing(); }
+    float bbdClockHz() const { return wear_.bbdClockHz(); }
     int  wearVoicing() const { return wear_.voicing(); }
     bool wearActive() const { return wear_.active(); }
     // On the feedback (in place) / on the input (the wear's fixed delay).

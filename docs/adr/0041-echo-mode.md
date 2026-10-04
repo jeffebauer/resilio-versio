@@ -142,3 +142,63 @@ The first step is ~0.4 dB larger than the rest because it is the heads' first da
 | Crushed | 112,948 B (+1,608) | 115,136 B | +2 KB | +0.8 % |
 
 **Page:** `renders/feat_echo_wear/` (`tools/echo_wear_page.sh`). Version A there includes the level fix; `renders/feat_echo_diffuse/` was built before it.
+
+## BBD grit is the default wear; strength round (owner, 4 Oct 2026)
+
+**Decision so far:** the owner picked **D, BBD grit, on every panel** of `renders/feat_echo_wear/`, so `kWearDefault = kWearBbd` and the firmware builds it. Its strength stays at today's (`bbd_voicing` 0, A) until the owner picks from `renders/feat_echo_bbd/`. The owner's note: "increase the aliasing of the BBD repeats … the crushed examples all sounded pretty subtle — no audible aliasing".
+
+**Why crushed (and BBD A) sounded subtle:** the feedback reaching them had already passed the tape's playback head (a 2-pole low-pass at 3.5 kHz).
+- Almost nothing in it sat above half an 11.3 kHz or 9.7 kHz clock, so there was nothing to fold back.
+- The images the hold makes (clock − f, 6–10 kHz) landed above the head, which erased them on the next pass.
+
+A lower clock puts half the clock inside the head's passband. Content between it and 3.5 kHz then folds down to 0.5–3 kHz, and the images fall at 1–5 kHz, under the head, where they are heard and compound. Weaker filters (cutoff a larger share of the clock) let more of both through.
+
+**Two changes to the BBD itself:**
+- **The compander never adds level:** the expander gives back at most what the compressor took (gc × ge ≤ 1). It breathes down, never up. Otherwise CLEAN DECAY 1 grew instead of fading once filter make-up was added.
+- **Make-up and whine:** the filters' and the hold's loss is made up at 500 Hz, and the whine now sits at the clock's own pitch.
+
+**The four strengths** (`EchoVoicing.h` `kBbd`):
+
+| | Clock | Filters (1-pole) | Character |
+|---|---|---|---|
+| A | 9.7 kHz | 4.5 kHz | today's, the reference |
+| B | 4.8 kHz | 2.9 kHz | aliasing heard from the 2nd–3rd repeat |
+| C | 3.8 kHz | 2.6 kHz | gritty, broken by the 3rd–4th repeat |
+| D | follows the echo time | 0.6 × clock | B's 4.8 kHz at 0.4 s, × (0.4 / time)^0.35, within 2.5–12 kHz |
+
+D's clock is 2.73 kHz at 2 s and 8.4 kHz at 80 ms. It follows the tape's gliding delay, so a division change swoops the grit too: at 100 bpm, 1/2 → 1/16 moves the clock 3.25 → 3.52 kHz half a second in, then 6.5 kHz.
+
+**How aliasing is measured** (`test_echo_mode` "bbd"): a 1.7 kHz tone burst on the tape (0.6 s echo, feedback 0.8). On each repeat, the inharmonic energy in 0.3–5 kHz, Hann-windowed and skipping the tone's harmonics, relative to the tone. Repeats 2 / 3 / 4:
+
+| | Repeats 2 / 3 / 4 |
+|---|---|
+| None (the measurement's floor) | −37.7 dB |
+| Crushed | −21.8 dB (repeat 3) |
+| A | −33.6 / −28.9 / −26.8 dB |
+| B | −11.6 / −12.4 / −10.5 dB |
+| C | −3.5 / −4.0 / −2.4 dB |
+| D | −5.9 / −5.4 / −4.7 dB |
+
+B is 9 dB more obvious than crushed was, C and D 16–18 dB more.
+
+**Level per repeat** (broadband burst, vs no wear). No repeat is ever louder. After the first pass it holds within about 0.6 dB a pass on average; single steps wobble up to 1.7 dB in C with the aliasing and the pumping.
+
+**Stuck tones:** judged with M6's Ringing and steady-tone flags on position 3 (click and burst, every ATTITUDE × DECAY 0.85/1 × TENSION 0/0.5):
+- 0 of 20 cells flagged for every strength; worst ringing_db 9.5. The page's runaway rides read 3.6–11.2 dB.
+- CLEAN DECAY 1 at a 1.2 s echo still fades (24–28 dB in 24 s).
+- An aliasing loop can't hold a tone on its own: the hold is clocked and its images move with the material, and the compander and whine follow the signal's level.
+
+**In the Tank, every strength:**
+- Deterministic, and the same at block 48 and 333.
+- No clicks or NaN, at TENSION 0.6 and 0.15.
+- KICKED DECAY 1 stays bounded (peak 0.72) and falls 58–60 dB within 3 s of DECAY coming back to noon.
+- With BBD A as the default, everything else still passes: the level fix's steps (noon −7.2 / −7.3 / −7.0 dB), ±2 dB against SPRINGS 2, and the 72-cell stability grid (least fade 20.9 dB).
+- The diffuse round's checks now run with wear off, as that round was built. Light diffuse on top of BBD flagged 1 of 20 cells at 15.1 dB, just over M6's 15; revisit if the owner combines them.
+
+**Cost as the default:**
+- Firmware: release 113,492 B for A, B or C (+2,152 over no wear), 114,028 B for D (+536 more). Profile 115,392 B.
+- AXI SRAM: 410 KB (release) / 421 KB (profile) of 512 KB.
+- Desktop, SPRINGS 3 worst case: about +1.5 % over no wear for every strength (460 vs 453 ns/sample).
+- On the chip: the per-sample sine (the whine) and three square roots are untested; the M3 profile run should include it.
+
+**Page:** `renders/feat_echo_bbd/` (`tools/echo_bbd_page.sh`).

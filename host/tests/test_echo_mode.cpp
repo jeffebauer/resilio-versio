@@ -52,6 +52,12 @@
 //             deterministic, block-size independent, no clicks; KICKED's
 //             runaway bounded and >= 30 dB down ~3 s after backing off;
 //             extremes finite; M6 no worse than none.
+//   bbd       The BBD's strength (bbd_voicing A-D; BBD grit is the default
+//             wear since 4 Oct): aliasing measured on a tone (inharmonic energy
+//             in 0.3-5 kHz), A < B < C and B-D clearly above crushed; level per
+//             repeat steady; D's clock follows the echo time and swoops;
+//             deterministic, no clicks, runaway bounded and dying, CLEAN DECAY 1
+//             fades, M6 (Ringing and steady tone) clean.
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
 
@@ -94,6 +100,7 @@ struct Settings {
     int   att = 0, springs = 2;
     bool  echo = true;
     float hostBpm = 0.0f;
+    int   wear = -1; // echo_wear_voicing; -1 = the default (BBD grit since 4 Oct)
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -101,6 +108,7 @@ void apply(rv::Tank& t, const Settings& s)
     using rv::ParamId;
     t.setEchoMode(s.echo);
     t.setHostTempo(s.hostBpm);
+    if (s.wear >= 0) t.setEchoWearVoicing(s.wear);
     t.setParam(ParamId::Decay, s.decay);
     t.setParam(ParamId::Tension, s.tension);
     t.setParam(ParamId::Tone, s.tone);
@@ -1130,15 +1138,16 @@ struct RepeatStats {
     double db[8], spreadMs[8];
     Buf    play;
 };
-RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0)
+RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0, int bbd = 0, const Buf* stim = nullptr)
 {
     rv::dsp::TapeEcho e;
     std::vector<float> tapeBuf(rv::Tank::requiredTapeFloats(kFs));
     e.prepare(kFs, 0x1234u, tapeBuf.data(), tapeBuf.size());
     e.setDiffuseVoicing(voicing);
     e.setWearVoicing(wear);
+    e.setBbdVoicing(bbd);
     const size_t n = sec(9.0), d = sec(secs);
-    const Buf in = burst(9.0, 0.1);
+    const Buf in = stim ? *stim : burst(9.0, 0.1);
     RepeatStats r{};
     r.play.assign(n, 0.0f);
     constexpr int G = rv::dsp::TapeEcho::kGrid;
@@ -1178,6 +1187,7 @@ RepeatStats tapeRepeats(int voicing, float fb, double secs, int wear = 0)
 
 void diffuse()
 {
+    // As built (wear none): the diffuse prototype predates BBD grit as the default.
     // On the tape: 0.6 s echo, feedback 0.8.
     RepeatStats st[rv::echo::kNumDiffuseVoicings];
     for (int v = 0; v < rv::echo::kNumDiffuseVoicings; ++v) st[v] = tapeRepeats(v, 0.8f, 0.6);
@@ -1200,6 +1210,7 @@ void diffuse()
     {
         const Buf in = burst(2.4, 0.2);
         Settings s;
+            s.wear = 0; // the diffuse round was built without wear
         s.tension = 0.25f, s.decay = 0.85f;
         const Stereo ref = render(s, in);
         bool ok = true;
@@ -1238,6 +1249,7 @@ void diffuse()
                         for (const Buf* in : {static_cast<const Buf*>(&clk), &nb}) {
                             if (a == 2 && dc > 0.9f) continue; // the runaway: checked below
                             Settings s;
+            s.wear = 0; // the diffuse round was built without wear
                             s.att = a, s.decay = dc, s.tension = tn;
                             rv::Tank t;
                             t.prepare(kFs, 48);
@@ -1265,6 +1277,7 @@ void diffuse()
         const Buf in = burst(20.0, 0.5);
         for (int v = 0; v < 4; ++v) {
             Settings s;
+            s.wear = 0; // the diffuse round was built without wear
             s.att = 2, s.decay = 1.0f, s.tension = 0.75f, s.drive = 1.0f;
             rv::Tank t;
             t.prepare(kFs, 48);
@@ -1294,6 +1307,7 @@ void diffuse()
             for (int a = 0; a < 3; ++a)
                 for (float tn : {0.0f, 1.0f}) {
                     Settings s;
+            s.wear = 0; // the diffuse round was built without wear
                     s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = 0.0f;
                     rv::Tank t;
                     t.prepare(kFs, 48);
@@ -1318,6 +1332,7 @@ void diffuse()
                 rv::Tank t;
                 t.prepare(kFs, 48);
                 Settings s;
+            s.wear = 0; // the diffuse round was built without wear
                 s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = 0.0f;
                 apply(t, s);
                 t.setEchoDiffuseVoicing(v);
@@ -1523,6 +1538,242 @@ void wear()
     }
 }
 
+// ---- bbd (the BBD's strength, PROTOTYPE) ------------------------------------------------------
+// Inharmonic energy in 0.3-5 kHz (where it's heard, under the heads) on
+// repeat k of a 1.7 kHz tone burst on the tape, dB re the tone's own energy
+// there: Goertzel every 25 Hz, skipping +-75 Hz around the tone's harmonics.
+double aliasDb(const RepeatStats& r, int k, double secs)
+{
+    const size_t d = sec(secs), a = sec(0.1) + size_t(k + 1) * d - sec(0.03), b = a + sec(0.2);
+    auto g = [&](double hz) { // Hann-windowed (the window's own leakage stays ~60 dB down)
+        const double c = 2 * std::cos(2 * kPi * hz / kFs);
+        double s1 = 0, s2 = 0;
+        for (size_t i = a; i < b; ++i) {
+            const double w = 0.5 - 0.5 * std::cos(2 * kPi * double(i - a) / double(b - a));
+            const double y = w * r.play[i] + c * s1 - s2;
+            s2 = s1, s1 = y;
+        }
+        return s1 * s1 + s2 * s2 - c * s1 * s2;
+    };
+    double tone = 0, other = 0;
+    for (double f = 300; f <= 5000; f += 25) {
+        bool harm = false;
+        for (int h = 1; h <= 3; ++h) harm |= std::fabs(f - 1700.0 * h) <= 75.0;
+        const double p = g(f);
+        if (std::fabs(f - 1700.0) <= 75.0) tone += p;
+        else if (!harm) other += p;
+    }
+    return db(other) - db(tone);
+}
+
+void bbd()
+{
+    const char* const kName[4] = {"A today", "B stronger", "C strongest", "D follows time"};
+    // A 1.7 kHz tone burst (60 ms) on the tape, 0.6 s echo, feedback 0.8.
+    Buf tone(sec(9.0), 0.0f);
+    for (size_t i = 0; i < sec(0.06); ++i)
+        tone[sec(0.1) + i] = float(0.4 * std::sin(2 * kPi * 1700.0 * double(i) / kFs) * std::sin(kPi * double(i) / double(sec(0.06))));
+    RepeatStats none = tapeRepeats(0, 0.8f, 0.6, 0, 0, &tone), crushed = tapeRepeats(0, 0.8f, 0.6, rv::echo::kWearCrushed, 0, &tone);
+    const double crushedAlias = aliasDb(crushed, 2, 0.6), noneAlias = aliasDb(none, 2, 0.6);
+    double alias3[4];
+    for (int v = 0; v < 4; ++v) {
+        const RepeatStats r = tapeRepeats(0, 0.8f, 0.6, rv::echo::kWearBbd, v, &tone);
+        const RepeatStats b = tapeRepeats(0, 0.8f, 0.6, rv::echo::kWearBbd, v); // broadband burst: level per repeat
+        const RepeatStats n = tapeRepeats(0, 0.8f, 0.6, 0, 0);
+        double up = -99, unsteady = 0, lvl[6];
+        for (int k = 0; k < 6; ++k) {
+            lvl[k] = b.db[k] - n.db[k];
+            up     = std::max(up, lvl[k]);
+            if (k >= 2) unsteady = std::max(unsteady, std::fabs(lvl[k] - lvl[k - 1]));
+        }
+        const double a1 = aliasDb(r, 1, 0.6), a2 = aliasDb(r, 2, 0.6), a3 = aliasDb(r, 3, 0.6);
+        alias3[v] = a2;
+        std::snprintf(msg, sizeof msg,
+                      "BBD %s (0.6 s echo, feedback 0.8): aliasing re the tone on repeats 2 / 3 / 4: %.1f / %.1f / %.1f dB "
+                      "(none %.1f, crushed %.1f on repeat 3); level per repeat 1-6 vs no wear %+.1f %+.1f %+.1f %+.1f %+.1f %+.1f dB "
+                      "(never above +1; from the 2nd to the 6th, on average within 1 dB a pass of no wear's steps: %.2f; "
+                      "single steps wobble up to %.1f dB with the aliasing and pumping)",
+                      kName[v], a1, a2, a3, noneAlias, crushedAlias, lvl[0], lvl[1], lvl[2], lvl[3], lvl[4], lvl[5],
+                      (lvl[5] - lvl[1]) / 4.0, unsteady);
+        check(up <= 1.0 && std::fabs(lvl[5] - lvl[1]) / 4.0 <= 1.0, msg);
+    }
+    std::snprintf(msg, sizeof msg,
+                  "BBD aliasing gets more obvious A < B < C, and B, C, D clearly above crushed (+6 dB) on repeat 3: A %.1f, B %.1f, "
+                  "C %.1f, D %.1f, crushed %.1f dB",
+                  alias3[0], alias3[1], alias3[2], alias3[3], crushedAlias);
+    check(alias3[1] > alias3[0] + 6.0 && alias3[2] > alias3[1] && alias3[1] > crushedAlias + 6.0 && alias3[2] > crushedAlias + 6.0
+              && alias3[3] > crushedAlias + 6.0,
+          msg);
+
+    // D: the clock follows the echo time (and swoops with it).
+    {
+        auto clockAt = [&](float tension, double secs, const std::vector<size_t>& clk = {}) {
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            Settings x;
+            x.tension = tension;
+            apply(t, x);
+            t.setBbdVoicing(3);
+            run(t, secs, 48, clk);
+            return double(t.bbdClockHz());
+        };
+        const double noon = clockAt(0.5f, 1.5), longest = clockAt(0.0f, 3.0), shortest = clockAt(1.0f, 1.5);
+        // Clocked at 100 bpm: TENSION from 1/2 (1.2 s) to 1/16 (0.15 s): the clock during the swoop.
+        rv::Tank t;
+        t.prepare(kFs, 48);
+        Settings x;
+        x.tension = 0.07f;
+        apply(t, x);
+        t.setBbdVoicing(3);
+        const auto clk = steadyClock(100.0, 0.1, 6.0);
+        run(t, 2.0, 48, clk);
+        const double before = t.bbdClockHz();
+        t.setParam(rv::ParamId::Tension, 0.93f);
+        run(t, 0.5, 48, clk, sec(2.0));
+        const double mid = t.bbdClockHz();
+        run(t, 2.0, 48, clk, sec(2.5));
+        const double after = t.bbdClockHz();
+        std::snprintf(msg, sizeof msg,
+                      "BBD D: clock %.0f Hz at TENSION noon (0.4 s; as B), %.0f at 2 s (C or lower), %.0f at 80 ms; clocked 1/2 -> "
+                      "1/16 at 100 bpm: %.0f -> %.0f (mid-swoop) -> %.0f Hz",
+                      noon, longest, shortest, before, mid, after);
+        check(std::fabs(noon - double(rv::echo::kBbd[1].clockHz)) < 100.0 && longest <= double(rv::echo::kBbd[2].clockHz)
+                  && shortest > 7000.0 && mid > before + 100.0 && after > mid + 100.0,
+              msg);
+    }
+
+    // In the Tank, per strength: deterministic, no clicks, runaway bounded and dying,
+    // extremes, M6 (Ringing and steady tone: an aliasing loop must not leave a stuck tone).
+    for (int v = 0; v < 4; ++v) {
+        const Buf h = hits(8.0);
+        Settings x;
+        x.decay = 0.85f, x.tension = 0.6f;
+        auto go = [&](int block, float tension) {
+            rv::Tank t;
+            t.prepare(kFs, block);
+            Settings y = x;
+            y.tension = tension;
+            apply(t, y);
+            t.setBbdVoicing(v);
+            Stereo o{Buf(h.size()), Buf(h.size())};
+            for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
+                const int m = int(std::min<size_t>(size_t(block), h.size() - pos));
+                t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, m);
+            }
+            return o;
+        };
+        const Stereo a = go(48, 0.6f), b = go(48, 0.6f), c = go(333, 0.6f), lng = go(48, 0.15f);
+        double w1 = 0, w2 = 0;
+        const int clicks = clicksBoth(a, sec(0.5), &w1) + clicksBoth(lng, sec(0.5), &w2);
+        std::snprintf(msg, sizeof msg, "BBD %s in the Tank (hits, DECAY 0.85, TENSION 0.6 and 0.15): the same twice %d, block 48 = 333 %d, "
+                                       "finite %d, %d clicks (worst ratio %.1f)",
+                      kName[v], int(same(a, b)), int(same(a, c)), int(finite(a) && finite(lng)), clicks, std::max(w1, w2));
+        check(same(a, b) && same(a, c) && finite(a) && finite(lng) && clicks == 0, msg);
+
+        {
+            const Buf in = burst(16.0, 0.5);
+            Settings k;
+            k.att = 2, k.decay = 1.0f, k.tension = 0.75f, k.drive = 1.0f;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, k);
+            t.setBbdVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(12.7), sec(13.0));
+            std::snprintf(msg, sizeof msg,
+                          "BBD %s, KICKED DECAY 1 (DRIVE 1): held 8-10 s %.1f dB, peak %.2f; DECAY to noon at 10 s: 12.7-13 s %.1f dB "
+                          "(want >= 30 dB under); CLEAN DECAY 1 fades: see below",
+                          kName[v], held, double(peakOf(o)), after);
+            check(finite(o) && peakOf(o) < 1.0f && after < held - 30.0, msg);
+        }
+        {   // CLEAN DECAY 1 at a long echo (TENSION 0.15): the repeats fade.
+            const Buf in = burst(30.0, 0.5);
+            Settings k;
+            k.decay = 1.0f, k.tension = 0.15f;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, k);
+            t.setBbdVoicing(v);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48)
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            const double early = stereoDb(o, sec(2.0), sec(5.0)), late = stereoDb(o, sec(26.0), sec(29.0));
+            std::snprintf(msg, sizeof msg, "BBD %s, CLEAN DECAY 1 at 1.2 s echo: 2-5 s %.1f dB, 26-29 s %.1f dB (want >= 10 dB lower)",
+                          kName[v], early, late);
+            check(late < early - 10.0, msg);
+        }
+    }
+    {
+        Buf clk(sec(14.0), 0.0f);
+        clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
+        Buf nb(sec(14.0), 0.0f);
+        {
+            const Buf z = noise(sec(0.5), 0.43f, 77u);
+            std::copy(z.begin(), z.end(), nb.begin() + long(sec(0.5)));
+        }
+        int    flagged[4] = {0, 0, 0, 0}, steady[4] = {0, 0, 0, 0}, cells = 0;
+        double worst[4]   = {0, 0, 0, 0};
+        for (int v = 0; v < 4; ++v)
+            for (int a = 0; a < 3; ++a)
+                for (float dc : {0.85f, 1.0f})
+                    for (float tn : {0.0f, 0.5f})
+                        for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
+                            if (a == 2 && dc > 0.9f) continue;
+                            Settings x;
+                            x.att = a, x.decay = dc, x.tension = tn;
+                            rv::Tank t;
+                            t.prepare(kFs, 48);
+                            apply(t, x);
+                            t.setBbdVoicing(v);
+                            Stereo o{Buf(in->size()), Buf(in->size())};
+                            for (size_t pos = 0; pos < in->size(); pos += 48)
+                                t.process(in->data() + pos, in->data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                            const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                            if (m.ringing || m.steadyTone) ++flagged[v];
+                            if (m.steadyTone) ++steady[v];
+                            if (!std::isnan(m.ringingDb)) worst[v] = std::max(worst[v], m.ringingDb);
+                            if (v == 0) ++cells;
+                        }
+        std::snprintf(msg, sizeof msg,
+                      "BBD, M6 at SPRINGS 3 (%d cells each: click + burst, ATTITUDE x DECAY .85/1 x TENSION 0/.5): flagged (steady tone) / "
+                      "worst ringing_db: A %d (%d) / %.1f, B %d (%d) / %.1f, C %d (%d) / %.1f, D %d (%d) / %.1f",
+                      cells, flagged[0], steady[0], worst[0], flagged[1], steady[1], worst[1], flagged[2], steady[2], worst[2], flagged[3],
+                      steady[3], worst[3]);
+        check(flagged[0] + flagged[1] + flagged[2] + flagged[3] == 0, msg);
+    }
+    // Cost (desktop): SPRINGS 3 worst case per strength.
+    {
+        const Buf in = hits(6.0);
+        double ns[5];
+        for (int v = 0; v < 5; ++v) {
+            double best = 1e30;
+            for (int run2 = 0; run2 < 3; ++run2) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings x;
+                x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
+                apply(t, x);
+                if (v == 4) t.setEchoWearVoicing(0);
+                else t.setBbdVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            ns[v] = best;
+        }
+        std::snprintf(msg, sizeof msg, "BBD cost (desktop, SPRINGS 3 worst case): A %.1f, B %.1f, C %.1f, D %.1f, no wear %.1f ns/sample",
+                      ns[0], ns[1], ns[2], ns[3], ns[4]);
+        info(msg);
+    }
+}
+
 // ---- cost -----------------------------------------------------------------------------------
 void cost()
 {
@@ -1571,7 +1822,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"wear", wear}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

@@ -112,6 +112,7 @@ void TapeEcho::tick(float seconds, float wobble, bool snap)
 {
     // The wear's fixed delay (the worn tape's) is part of every pass: the tape is that much shorter.
     const float target = std::clamp(seconds * sampleRate_ - wear_.latencySamples(), minDelay_, maxD_);
+    wear_.setDelaySeconds(dTo_ / sampleRate_); // a time-tracking BBD's clock follows the tape (swoops with it)
     dFrom_ = dTo_;
     if (snap || dTo_ <= 0.0f) {
         dTo_ = dFrom_ = target;

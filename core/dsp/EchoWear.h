@@ -47,12 +47,9 @@ public:
             const float cw = std::cos(2.0f * map::kPi * std::sqrt(kRadioHpHz * kRadioLpHz) / fs_);
             radioGain_ = 1.0f / std::sqrt(radioHp1_.magnitudeSquared(cw) * radioLp1_.magnitudeSquared(cw));
         }
-        bbdAa_.setCutoff(std::min(kBbdFilterHz, 0.45f * fs_), fs_);
-        bbdRec_.setCutoff(std::min(kBbdFilterHz, 0.45f * fs_), fs_);
-        bbdStep_   = kBbdClockHz / fs_;
+        setBbdClock(kBbd[bbdV_].clockHz);
         compA_     = coeff(kBbdCompAttackMs), compR_ = coeff(kBbdCompReleaseMs);
         expA_      = coeff(kBbdExpAttackMs), expR_ = coeff(kBbdExpReleaseMs);
-        whineStep_ = kBbdWhineHz / fs_;
         whineGain_ = std::exp(kBbdWhineDb * (2.302585093f / 20.0f));
         crushStep_ = kCrushRateHz / fs_;
         crushRel_  = coeff(kCrushReleaseMs);
@@ -69,6 +66,25 @@ public:
 #endif
     }
     int voicing() const { return v_; }
+    // BBD strength (EchoVoicing.h kBbd): 0 A ... 3 D.
+    void setBbdVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        bbdV_ = v > 0 && v < echo::kNumBbdVoicings ? v : 0;
+        setBbdClock(echo::kBbd[bbdV_].clockHz);
+#endif
+    }
+    int bbdVoicing() const { return bbdV_; }
+    float bbdClockHz() const { return bbdClock_; }
+    // The echo time now (control rate): a time-tracking BBD's clock follows it.
+    void setDelaySeconds(float s)
+    {
+        if (!kBuilt || v_ != echo::kWearBbd || !echo::kBbd[bbdV_].tracksTime || s <= 0.0f) return;
+        const float hz = echo::kBbd[bbdV_].clockHz
+                       * std::exp(echo::kBbdTrackExp * std::log(echo::kBbdTrackRefSeconds / s));
+        const float c = std::clamp(hz, echo::kBbdClockMinHz, echo::kBbdClockMaxHz);
+        if (std::fabs(c - bbdClock_) > 0.002f * bbdClock_) setBbdClock(c);
+    }
     bool active() const { return kBuilt && v_ != echo::kWearNone; }
     // The fixed delay this voicing adds to the feedback (samples; the worn tape's).
     float latencySamples() const { return kBuilt && v_ == echo::kWearTape ? base_ : 0.0f; }
@@ -118,6 +134,22 @@ public:
 
 private:
     float coeff(float ms) const { return 1.0f - std::exp(-1000.0f / (ms * fs_)); }
+    void setBbdClock(float hz)
+    {
+        if (!kBuilt) return;
+        bbdClock_ = std::min(hz, 0.95f * fs_);
+        const float fc = std::min(echo::kBbd[bbdV_].filterRatio * bbdClock_, 0.45f * fs_);
+        bbdAa_.setCutoff(fc, fs_);
+        bbdRec_.setCutoff(fc, fs_);
+        bbdStep_   = bbdClock_ / fs_;
+        whineStep_ = std::min(bbdClock_, 0.45f * fs_) / fs_;
+        // Make-up at kBbdMakeupHz: the two filters and the hold's sinc droop.
+        const float f  = echo::kBbdMakeupHz;
+        const float cw = std::cos(2.0f * map::kPi * f / fs_);
+        const float x  = map::kPi * f / bbdClock_;
+        const float sinc = std::sin(x) / x;
+        bbdMakeup_ = 1.0f / std::sqrt(bbdAa_.magnitudeSquared(cw) * bbdRec_.magnitudeSquared(cw) * sinc * sinc);
+    }
     static float wrap(float p) { return p >= 1.0f ? p - 1.0f : p; }
 
     void tape(float* x, int n)
@@ -174,11 +206,14 @@ private:
                 bbdPh_ -= 1.0f;
                 bbdHeld_ = a;
             }
-            const float y = bbdRec_.process(bbdHeld_);
+            const float y = bbdMakeup_ * bbdRec_.process(bbdHeld_);
             // Expander 1:2, tracking with its own (different) times: the pumping.
             const float py = y * y;
             envE_ += (py > envE_ ? expA_ : expR_) * (py - envE_);
-            const float ge = std::min(kMax, std::sqrt(std::max(envE_, kFloor) / kRef)) * (envC_ > kFloor ? 1.0f : 0.0f);
+            // Never more than the compressor took (gc x ge <= 1): it breathes
+            // down, never up, so a repeat can't gain on the way round.
+            const float ge = std::min(std::min(kMax, std::sqrt(std::max(envE_, kFloor) / kRef)), 1.0f / gc)
+                           * (envC_ > kFloor ? 1.0f : 0.0f);
             // The clock's whine, riding on the signal's level.
             whinePh_ = wrap(whinePh_ + whineStep_);
             x[i] = ge * y + whineGain_ * std::sqrt(envE_) * ge * std::sin(2.0f * map::kPi * whinePh_);
@@ -224,7 +259,12 @@ private:
     float  radioGain_ = 1.0f;
     // BBD.
     OnePoleLowpass bbdAa_{}, bbdRec_{};
-    float bbdStep_ = 0.0f, bbdPh_ = 0.0f, bbdHeld_ = 0.0f, envC_ = 0.0f, envE_ = 0.0f;
+    float bbdStep_ = 0.0f, bbdPh_ = 0.0f, bbdHeld_ = 0.0f, envC_ = 0.0f, envE_ = 0.0f, bbdClock_ = 9700.0f, bbdMakeup_ = 1.0f;
+#ifdef RV_FIXED_VOICINGS
+    static constexpr int bbdV_ = echo::kBbdDefault;
+#else
+    int bbdV_ = echo::kBbdDefault;
+#endif
     float compA_ = 0.0f, compR_ = 0.0f, expA_ = 0.0f, expR_ = 0.0f, whineStep_ = 0.0f, whineGain_ = 0.0f, whinePh_ = 0.0f;
     // Crushed.
     float crushStep_ = 0.0f, crushPh_ = 0.0f, crushHeld_ = 0.0f, crushEnv_ = 0.0f, crushRel_ = 0.0f, crushQ_ = 64.0f;

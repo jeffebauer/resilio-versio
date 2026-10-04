@@ -216,10 +216,45 @@ constexpr float kRadioHpHz = 250.0f, kRadioLpHz = 900.0f, kRadioQ = 0.6f;
 // little more back down), a 2:1 compander whose expander tracks a little
 // differently from the compressor (pumping, breathing), and a faint clock
 // whine riding on the signal, which builds as the repeats pass again.
-constexpr float kBbdClockHz = 9700.0f, kBbdFilterHz = 4500.0f;
+// BBD strength (owner picked BBD grit on 4 Oct and asked for more audible
+// aliasing; Renderer key bbd_voicing). Why the first version (and crushed)
+// sounded subtle: the feedback reaching the bucket brigade has already been
+// through the playback head (2-pole low-pass 3.5 kHz), so it holds almost
+// nothing above half a 9.7 kHz clock to fold back, and the images it makes
+// (clock - f, 6-9.7 kHz) land above the head, which erases them on the next
+// pass. A lower clock puts half the clock inside the head's passband: the
+// content between it and 3.5 kHz folds back down to 0.5-3 kHz, and the
+// images (clock - f) fall at 1-5 kHz, under the head, where they're heard
+// and compound pass by pass. Weaker filters (cutoff a larger share of the
+// clock) let more of both through.
+//   clockHz      the bucket brigade's clock (sample-and-hold rate)
+//   filterRatio  anti-alias and reconstruction 1-pole cutoff / clock
+//   tracksTime   true: the clock follows the echo time like a real BBD
+//                (Memory Man): clockHz at kBbdTrackRefSeconds, x (ref / time)^kBbdTrackExp
+struct BbdVoicing {
+    float clockHz, filterRatio;
+    bool  tracksTime;
+};
+constexpr int kNumBbdVoicings = 4;
+constexpr BbdVoicing kBbd[kNumBbdVoicings] = {
+    {9700.0f, 0.464f, false}, // A today's BBD grit (filters 4.5 kHz): the reference
+    {4800.0f, 0.6f, false},   // B stronger: aliasing heard from the 2nd-3rd repeat
+    {3800.0f, 0.68f, false},  // C strongest: gritty, "broken" by the 3rd-4th
+    {4800.0f, 0.6f, true},    // D follows the echo time: B at 0.4 s, beyond C at 2 s, clean when short
+};
+constexpr float kBbdTrackRefSeconds = 0.4f, kBbdTrackExp = 0.35f;
+constexpr float kBbdClockMinHz = 2500.0f, kBbdClockMaxHz = 12000.0f;
+// The level each pass loses in the filters and the hold's droop is made up at
+// kBbdMakeupHz (where the heads pass the most), so a repeat keeps its level.
+constexpr float kBbdMakeupHz = 500.0f;
+#ifdef RV_BBD_DEFAULT
+constexpr int kBbdDefault = RV_BBD_DEFAULT;
+#else
+constexpr int kBbdDefault = 0; // owner to pick from renders/feat_echo_bbd
+#endif
 constexpr float kBbdCompAttackMs = 2.0f, kBbdCompReleaseMs = 40.0f;
 constexpr float kBbdExpAttackMs = 2.5f, kBbdExpReleaseMs = 36.0f;
-constexpr float kBbdWhineHz = 5200.0f, kBbdWhineDb = -55.0f;
+constexpr float kBbdWhineDb = -55.0f; // the clock's whine (at the clock), re the signal
 // 4 CRUSHED (SDE-3000 digital dub, samplers, Pole's crackle): each pass
 // re-sampled at kCrushRateHz without an anti-alias filter and re-quantised
 // to kCrushBits (relative to the signal's own level, as a gain-ranging
@@ -231,7 +266,7 @@ constexpr float kCrackleRate = 5.0f, kCrackleLevel = 0.35f; // per second; re th
 #ifdef RV_ECHO_WEAR_DEFAULT
 constexpr int kWearDefault = RV_ECHO_WEAR_DEFAULT;
 #else
-constexpr int kWearDefault = kWearNone;
+constexpr int kWearDefault = kWearBbd; // owner's pick, 4 Oct 2026 (renders/feat_echo_wear D)
 #endif
 
 // ---- Level -----------------------------------------------------------------------------------
