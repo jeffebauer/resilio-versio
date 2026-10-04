@@ -5,7 +5,10 @@
 // and asked for the same "box" on the whole output in DRIVEN and KICKED:
 //   CLEAN  untouched (bit for bit as today, MIX 0 still a clean passthrough)
 //   DRIVEN 24 kHz / 12-bit mu-law
-//   KICKED 24 kHz / 8-bit mu-law
+//   KICKED 24 kHz / 10-bit mu-law (8-bit until 5 Oct 2026: owner, "8-bit on
+//          KICKED has good character, but maybe sounds a little digital. Try
+//          10-bit instead of 8 for a little more grit than 12, but not as
+//          much as 8"; ADR 0042 amendment)
 // every SPRINGS position, dry and wet both (after MIX). dsp/OutputBits.h.
 // The owner picked it on every panel (renders/feat_output_mulaw, 4 Oct 2026):
 // the default everywhere. Renderer key output_bits_voicing 0 renders "before
@@ -19,7 +22,7 @@ struct Depth {
     float bits; // per full scale, both sides (mu-law, mu 255)
 };
 // Per ATTITUDE (CLEAN, DRIVEN, KICKED); CLEAN's is never used (the box is bypassed).
-constexpr Depth kDepth[3] = {{24.0f}, {12.0f}, {8.0f}};
+constexpr Depth kDepth[3] = {{24.0f}, {12.0f}, {10.0f}};
 
 constexpr int   kNumVoicings     = 2;
 constexpr float kFadeSeconds     = 0.020f; // an ATTITUDE flip crossfades the box settings (ADR 0003: no click)

@@ -1,7 +1,7 @@
 // The output's bit depth (ADR 0042, owner 4 Oct 2026; core/dsp/OutputBits.h,
 // core/params/OutputVoicing.h, docs/prototypes/output-mulaw/README.md).
 // Renderer key output_bits_voicing: 0 = before the box (the "today" reference), 1 = the default, DRIVEN 24 kHz / 12-bit
-// mu-law and KICKED 24 kHz / 8-bit mu-law on the whole output after MIX
+// mu-law and KICKED 24 kHz / 10-bit mu-law (8-bit until the 5 Oct 2026 amendment) on the whole output after MIX
 // (dry and wet), CLEAN untouched.
 //
 // Checks:
@@ -643,7 +643,7 @@ void artefacts()
     // output through the same bits without the half-band filters or the
     // dither (folding and granulation both): the check has to see it.
     for (int a = 1; a < 3; ++a) {
-        const float bits = a == 1 ? 12.0f : 8.0f;
+        const float bits = rv::outbits::kDepth[a].bits; // DRIVEN 12, KICKED 10
         double worstRim = 0, hzRim = 0, worstEnd = 0, hzEnd = 0, worstTone = 0, hzTone = 0, ctrl = 0, hzCtrl = 0;
         for (float dc : {0.5f, 0.85f})
             for (float mix : {0.4f, 1.0f}) {
@@ -680,7 +680,9 @@ void artefacts()
         // quantisation turns a tone into a pitched buzz unless dithered.
         double quiet = 0, hzQuiet = 0;
         {
-            const double lv = a == 1 ? -80.0 : -55.0;
+            // ~20 dB over the bottom step (12-bit -99.5 dBFS, 10-bit -87.4: -80 / -68 dBFS).
+            const double q = std::exp2(double(bits) - 1.0), bottom = 20.0 * std::log10((std::pow(256.0, 1.0 / q) - 1.0) / 255.0);
+            const double lv = std::floor(bottom + 20.0);
             const Buf tb = toneBurst(2.0, 1130.0, 0.1, 1.8, lv);
             Settings s;
             s.att = a, s.mix = 0.0f;

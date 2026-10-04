@@ -170,7 +170,7 @@ int main()
     // Kick's direct thump with the wet, and its makeup swells the tail back.
     // Read before the output's mu-law box (ADR 0042; output_bits_voicing 0 as a
     // test hook): this is the Tank's low end. The box's grain follows the whole
-    // output's level, broadband, so in KICKED (8-bit, ~33 dB under the signal)
+    // output's level, broadband, so in KICKED (10-bit since 5 Oct 2026, ~45 dB under the signal; 8-bit ~33)
     // with TONE's low cut thinning the thump, the grain of the still-ringing
     // highs fills the < 100 Hz band after 300 ms; printed as INFO.
     for (float tone : {-1.0f, 0.85f, 1.0f}) {
