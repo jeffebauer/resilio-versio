@@ -5,7 +5,7 @@
 // "box" (feat/echo-mode 2792b14, dsp/EchoBits.h) moved to the very end of
 // the Tank: the stereo output after MIX, so dry and wet both go through it.
 // CLEAN: bypassed, bit for bit. DRIVEN: 24 kHz / 12-bit mu-law. KICKED:
-// 24 kHz / 8-bit mu-law.
+// 24 kHz / 10-bit mu-law (8-bit until 5 Oct 2026, ADR 0042 amendment).
 //
 // Where: after the wet's limiter and after MIX (the dry has to be in it).
 // The limiter keeps the wet under -1 dBFS, so the wet alone never reaches
@@ -35,7 +35,7 @@
 // M6 ringing_db 7.7 / 10.3 dB vs today's 0.4 / 1.8; README.)
 //
 // ATTITUDE (ADR 0003): weights (CLEAN, DRIVEN, KICKED) glide linearly to the
-// switch over kFadeSeconds: out = wC * x + up(wD * mu12(y) + wK * mu8(y)),
+// switch over kFadeSeconds: out = wC * x + up(wD * mu12(y) + wK * mu10(y)),
 // y = down(x). CLEAN <-> DRIVEN fades the box in and out; DRIVEN <-> KICKED
 // crossfades the two depths.
 
@@ -183,7 +183,7 @@ private:
         }
     }
 
-    // wD * mu12(y) + wK * mu8(y): one compression, one dither draw, each
+    // wD * mu12(y) + wK * mu10(y): one compression, one dither draw, each
     // depth quantised and expanded only while it has weight.
     float quantise(Chan& ch, float y)
     {

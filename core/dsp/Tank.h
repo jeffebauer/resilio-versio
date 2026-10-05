@@ -13,7 +13,7 @@
 //                                                                     └ decorrelator ─ D
 //     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ limiter ─ wet
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
-//   out ─ mu-law box (DRIVEN 24 kHz / 12-bit, KICKED 24 kHz / 8-bit; CLEAN untouched; ADR 0042, dsp/OutputBits.h)
+//   out ─ mu-law box (DRIVEN 24 kHz / 12-bit, KICKED 24 kHz / 10-bit; CLEAN untouched; ADR 0042, dsp/OutputBits.h)
 //
 // Drive chain (M5, SPEC §4.9, dsp/Drive.h, numbers in params/DriveVoicing.h):
 // DriveIn (input transducer -> tape) and Tilt (TONE) are Tank-level: one
@@ -526,7 +526,7 @@ public:
     float limiterGain() const { return limitGain_; }
     // Renderer / test hook (ADR 0042, OutputVoicing.h): the output's bit
     // depth. 1 (the default) = DRIVEN 24 kHz / 12-bit mu-law, KICKED 24 kHz /
-    // 8-bit mu-law on the whole output after MIX (CLEAN untouched); 0 = before
+    // 10-bit mu-law on the whole output after MIX (CLEAN untouched); 0 = before
     // the box (the pre-ADR 0042 reference; tests read the Tank there). The
     // firmware and plugin never call it (outbits::kOutputBitsDefault; the
     // firmware compiles it out). Set it after prepare(), before rendering.
