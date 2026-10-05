@@ -100,9 +100,9 @@ All firmware/-only (no changes inside `libs/libDaisy`):
 - **The Kick removed (ADR 0043, 5 Oct 2026)**: no Kick voice, no Clatter
   (the Splash's noise-burst streams and their rattle), no Kick queue in the
   Tank; the button's throw, exit gesture and tap tempo (a second
-  `EchoClock`) added. With `main` at 6955ff7: release 127,484 →
-  **125,412 B** (−2,072), profile 128,944 → **127,144 B** (−1,800), m0test
-  82,320 B; no new `vfma`.
+  `EchoClock`) added. With `main` at f57adca (round 5, voicing 8): release
+  128,092 → **125,172 B** (−2,920; 5,900 B free), profile 130,384 →
+  **127,000 B** (−3,384; 4,072 B free), m0test 82,320 B; no new `vfma`.
 - Link-time optimisation (`-flto`) was evaluated and **not adopted**: on
   this small a set of translation units it made both release and profile a
   few hundred bytes *larger*, not smaller (LTO's own bookkeeping outweighed
