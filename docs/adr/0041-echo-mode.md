@@ -1,6 +1,6 @@
 # 0041 — SPRINGS 3 is echo mode: tape echo into the springs
 
-**Status:** Amended by ADR 0043 (5 Oct 2026): in position 3 the button taps the tempo (the clock's code; held after the taps stop; the last of the gate clock and the taps to set a tempo wins); "the button always kicks" no longer holds (the Kick was removed). Proposed, 4 Oct 2026 (branch `feat/echo-mode`; the owner's design, 4 Oct; listening pages `renders/feat_echo_mode/`; merge after the owner's OK). Supersedes ADR 0037's coupled Springs as what position 3 ships with; the coupled voicings stay as Renderer-only references. Numbers: `core/params/EchoVoicing.h`. Code: `core/dsp/Echo.h`, `core/dsp/EchoClock.h`, `Tank` ("SPRINGS 3 = echo mode"). Tests: `host/tests/test_echo_mode.cpp`.
+**Status:** Amended 6 Oct 2026: the wear is tape saturation + roll-off (owner's pick; "Amendment: Wear" below). Amended by ADR 0043 (5 Oct 2026): in position 3 the button taps the tempo (the clock's code; held after the taps stop; the last of the gate clock and the taps to set a tempo wins); "the button always kicks" no longer holds (the Kick was removed). Proposed, 4 Oct 2026 (branch `feat/echo-mode`; the owner's design, 4 Oct; listening pages `renders/feat_echo_mode/`; merge after the owner's OK). Supersedes ADR 0037's coupled Springs as what position 3 ships with; the coupled voicings stay as Renderer-only references. Numbers: `core/params/EchoVoicing.h`. Code: `core/dsp/Echo.h`, `core/dsp/EchoClock.h`, `Tank` ("SPRINGS 3 = echo mode"). Tests: `host/tests/test_echo_mode.cpp`.
 
 **Context:** what makes you reach for position 3 stayed open after ADR 0037: the owner heard coupled and plain three Springs as almost the same. The dub-lens critique (`docs/research/dub-lens-critique.md` §3.4, direction D) found that nearly every rig in the lineage put a tape echo in front of the spring (Tubby, Perry's Space Echo, Sherwood, Pole, Echospace; Sylvan Morris tuned a tape loop to each tune's tempo), and that the interaction is the sound: each repeat lands in the springs with its own splash. The prototype (`proto/echo-springs`, `c2fb5b3`) compared series, in-loop and parallel; the owner picked **B, series** (4 Oct), and set the panel:
 - In position 3, **DECAY = the echo's feedback**, **TENSION = the echo time**, **the gate = a clock** (one pulse = one beat), with TENSION then picking straight and dotted divisions. Positions 1 and 2 keep the gate's own job.
@@ -284,3 +284,41 @@ The new-peak check below reads 36.7 dB and 35.9 dB for B and C, against 11.8 dB 
 
 **Open for the owner (by ear, `renders/tune_echo_feedback/`):** whether the slow climb to the held level (≈ 10 s from a single rim) feels right or should lock in sooner; CLEAN / DRIVEN at the top with DRIVE past ~¾ or with continuous playing lean on the limiter (red LED), where KICKED's drive keeps it clear.
 
+
+## Amendment: Wear: tape saturation + roll-off (owner, 6 Oct 2026; branch `proto/echo-tape-wear`)
+
+**Context:** the owner felt the BBD grit (the default wear since 4 Oct) out of place next to the springs, the tape echo and the saturation (Tubby, Perry's Space Echo, Black Ark). Its aliasing adds new, off-key pitches that no tape machine makes. The owner said: "Given our modulation knob already provides wow and flutter, adding more doesn't feel like the right fit. However maybe a crinkle effect like the magneto, or the tape-style saturation and roll off." On `renders/echo_tape_wear/` (A BBD grit, B tape saturation + roll-off, C1 / C2 B + crinkle) **the owner picked B on every row and in every ATTITUDE**, and asked that the held top "lock in like today".
+
+**Decision** (`EchoVoicing.h` "Tape wear", `dsp/EchoWear.h` `TapeSat`): `kWearDefault = kWearTapeSat` (5). The firmware builds only it. BBD grit (3) and the crinkles (6, 7) stay Renderer voicings. Each pass, on the tape's feedback:
+- **Record EQ and saturation.** The highs are boosted going onto the tape (a 1-pole shelf, +8 dB above ~1.6 kHz), saturated (`softClip`, drive 1.25, unity when quiet) and cut back by the exact inverse on playback. A quiet repeat comes back unchanged. A loud, bright one has its highs squashed first, so it comes back thicker and duller.
+- **Roll-off and head bump.** A little more treble goes each pass (1-pole 6.5 kHz). A head bump adds +1.5 dB at 70 Hz (peaking filter, Q 1); the heads' 140 Hz high-pass still thins the lows each pass, so it is never a boom.
+- **Level.** The mids (300 Hz up) are made up to exactly 1, never above.
+- **No wow, no flutter.** WOBBLE already moves the tape.
+
+**The held top, locked.** On a clean tape, B's held repeats kept spreading in time: their quieter edges gain each pass while the saturation holds only the peaks. The held level crept ~1 dB a minute and never settled; the BBD's compander had been what held it. So only where a pass gains (`holdWeight` of the feedback > 0: DECAY ≥ 0.930 in CLEAN / DRIVEN, ≥ 0.892 in KICKED; 1 at the top), two things are blended in:
+- **The BBD's compander, without the bucket brigade.** A 2:1 compressor and a 1:2 expander follow the level at slightly different speeds (2 / 40 ms and 2.5 / 36 ms). The gain is unity on a steady level and a little less on each repeat's rise and fall. It adds no pitch.
+- **A slow level ceiling.** Above −23 dBFS RMS on the tape (300 ms), each pass gives back a little (gain 1 / (1 + 0.1 (P / P₀ − 1))). This stops dense material (a skank) creeping.
+- Below the hold zone, the feedback path is bit for bit as without them.
+
+**Checks** (`test_echo_mode` "tapewear"; DECAY 1, 120 s, every ATTITUDE, A rendered alongside):
+
+| | 1 s windows, 10–30 s | 10 s windows, 30–120 s | A (BBD), 30–120 s |
+|---|---|---|---|
+| a single rim | 2.2–2.3 dB (≤ 3, as "feedback") | 0.62–0.66 dB | 0.51–0.55 |
+| the skank (13 s) | (still playing) | 0.61–0.67 dB | 0.49 |
+| a held pad (4 s) | 1.4–1.5 dB | 1.36–1.42 dB | 2.66–2.70 |
+
+- The held level is −25 dBFS, against A's ~−21 to −24.
+- The coordinator's bar was ≤ 1 dB over 30–120 s. A itself can't meet it on a pad (a sustained wash thins slowly to held repeats for minutes), so the pad's bar is A's own drift. B beats it by half.
+- No new pitches:
+  - The strongest fold of a loud tone fed straight into the wear is −62.5 dB at 4.1 kHz (BBD: −34 dB).
+  - A loud tone's off-key energy per repeat stays at the clean tape's level (−37 vs −38 dB re the tone; BBD −27 to −34).
+  - Hot 15 kHz folds stay under −95 dBFS.
+- No added energy: the loop's peak gain per pass is −2.48 dB, vs −2.37 dB for the bare tape.
+- Deterministic, blocks 1 / 7 / 333 bit for bit, no clicks, M6 clean.
+
+**Tests adapted:** "bbd" and "bits" were built on BBD grit, so they now set it explicitly (`kWearBbd`) instead of relying on the default. That reliance was A-specific: BBD D's time-following clock only runs with BBD wear on. Nothing else changed: "feedback", "steps", "level", "stability", "hothighs" and "blocks" pass with B as the default.
+
+**Firmware:** release 125,492 B (BBD default 125,172: +320), profile 127,336 B (127,000: +336; 97.1 %, 3.7 KB left), m0test 82,320 B unchanged. Unused voicings' set-up and memory are compiled out (`wearBuilt`). Without that, B as the default cost +1.5 KB and left the profile at 98 %.
+
+**CPU:** see `docs/prototypes/echo-tape-wear/README.md`. On the desktop B costs about the same as A, slightly more at the held top where the lock runs. Only a chip run (profile build) is trustworthy: desktop estimates have run ~2× low, and echo mode peaked at 76 % of the 80 % ceiling.

@@ -1,10 +1,12 @@
-# Echo tape wear (prototype, 5 Oct 2026)
+# Echo tape wear (prototype 5 Oct 2026; B shipped 6 Oct 2026)
+
+**Outcome (owner, 6 Oct 2026):** B, tape saturation + roll-off, was picked on every row and in every ATTITUDE. It is now the default wear (`kWearDefault = kWearTapeSat`; ADR 0041 "Amendment: Wear", SPEC v1.0.38). Its held top is locked like the BBD's was ("lock in like today"); see "The held top, locked" below. C1 / C2 (crinkle) and A (BBD grit) stay Renderer voicings.
 
 Branch `proto/echo-tape-wear`. The owner's brief: echo mode's BBD grit doesn't fit next to the springs, the tape echo and the saturation, because its aliasing adds new, off-key pitches that no tape machine makes. Make the repeats wear like tape instead: "maybe a crinkle effect like the magneto, or the tape-style saturation and roll off". WOBBLE already does wow and flutter, so none of these move the pitch.
 
 Each version works inside the echo's feedback. The first repeat is the same in every version, and each later repeat has been through the wear once more, so the effect builds up.
 
-Hidden Renderer key: `echo_wear_voicing` (5, 6, 7 are new; 0-4 are unchanged; the default is still 3, BBD grit). The numbers are in `core/params/EchoVoicing.h` under "Tape wear" and the code is in `core/dsp/EchoWear.h` (`TapeSat`). The firmware still builds only the default: release 125,172 B and profile 127,000 B, byte for byte the same size as before.
+Hidden Renderer key: `echo_wear_voicing` (5, 6, 7 are new; 0-4 are unchanged; the default was 3, BBD grit, until 6 Oct and is now 5). The numbers are in `core/params/EchoVoicing.h` under "Tape wear" and the code is in `core/dsp/EchoWear.h` (`TapeSat`). While the prototype was open, the firmware built only the default (BBD): release 125,172 B, profile 127,000 B, the same sizes as before. With B as the default (and unused voicings compiled out): release 125,492 B, profile 127,336 B, m0test 82,320 B.
 
 Page: `tools/echo_tape_wear_page.sh` writes `renders/echo_tape_wear/index.html`. It has CLEAN / DRIVEN / KICKED columns and versions A / B / C1 / C2. The rows are a rim at DECAY noon, at 0.8 and at the held top; the skank at noon and at the top; a held C minor pad at noon and at the top. WOBBLE is at noon (still) so you hear only the wear, and level matching is on.
 
@@ -36,7 +38,22 @@ The crinkle is faster and rougher than the "worn tape" voicing's dropouts (1: 3-
   - The held level is about A's (+2 to −0.5 dB re the hit).
   - Why: A's compander and its grit keep the held sound broad and its level pinned. B is clean, so the held repeats narrow towards the band where the loop is strongest (~500-700 Hz) and grow slowly into the tape's saturation. A compressor in B didn't change this (tried and removed).
 - **Repeatable and clean:** deterministic, blocks 1 / 7 / 333 bit for bit, no clicks, and M6 flags no ringing or steady tone (24 cells each, same as no wear).
-- **Cost** (desktop micro-bench, the wear alone per sample): A 11.3 ns, B 8.6 ns, C1 / C2 8.1 ns. Whole Tank, SPRINGS 3 worst case: about the same as A, within the measurement noise. B and C should cost a little less than today's BBD on the chip. Only a chip run (profile build) is trustworthy, though: desktop estimates have run ~2× low, and echo mode already peaks at 76 % of an 80 % ceiling.
+- **Cost, as shipped (6 Oct, with the held-top lock):** the whole Tank in echo mode at its worst case (KICKED, DRIVE 1, TONE 1, TENSION 0), best of 5 desktop runs: DECAY 1 A 454.5 vs B 457-463 ns/sample, DECAY noon A 458 vs B 454-458. That is the same within ±2 %; the chip run decides.
+- **Cost** (5 Oct, desktop micro-bench, the wear alone per sample): A 11.3 ns, B 8.6 ns, C1 / C2 8.1 ns. Whole Tank, SPRINGS 3 worst case: about the same as A, within the measurement noise. B and C should cost a little less than today's BBD on the chip. Only a chip run (profile build) is trustworthy, though: desktop estimates have run ~2× low, and echo mode already peaks at 76 % of an 80 % ceiling.
+
+## The held top, locked (6 Oct 2026)
+
+On a clean tape, B's held repeats at DECAY's top kept spreading in time: their quieter edges gain each pass while the saturation only holds the peaks. The held level crept ~1 dB a minute and never settled. A's compander was what had held it. So B now takes the same compander there, and only there: a 2:1 compressor and a 1:2 expander following the level at slightly different speeds, plus a slow level ceiling (−23 dBFS RMS on the tape) so a held skank doesn't creep either. It is blended in only where a pass gains (DECAY ≥ 0.93 in CLEAN / DRIVEN, ≥ 0.89 in KICKED); below that, B is bit for bit as the owner heard it.
+
+Over 30–120 s at DECAY 1, in 10 s windows (every ATTITUDE, B vs A):
+
+| | B | A |
+|---|---|---|
+| rim | 0.62–0.66 dB | 0.51–0.55 dB |
+| skank | 0.61–0.67 dB | 0.49 dB |
+| pad | 1.36–1.42 dB | 2.66–2.70 dB |
+
+The rim settles within 2.3 dB over 10–30 s (A ~2.3). B's held level is about −25 dBFS, a few dB under A's.
 
 ## Listen for
 
