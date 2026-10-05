@@ -19,3 +19,16 @@
 #else
 #define RV_NO_UNSWITCH
 #endif
+
+// RV_INLINE: always inline a small per-sample helper, even where the
+// caller has grown past the compiler's inlining budget (the mu-law box's
+// half-band steps inside Tank::process: called out of line, the two
+// channels' filter chains can't overlap). RV_NOINLINE: one shared copy of a
+// bigger one called from several places (flash).
+#if defined(__GNUC__)
+#define RV_INLINE inline __attribute__((always_inline))
+#define RV_NOINLINE __attribute__((noinline))
+#else
+#define RV_INLINE inline
+#define RV_NOINLINE
+#endif

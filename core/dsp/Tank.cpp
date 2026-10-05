@@ -1237,7 +1237,10 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         }
         SpringSettings s = springSet_[i];
         s.allpassCoeff   = a;
-        const bool done  = springs_[i].setSettings(s, snap);
+        // Echo mode built: Spring C is never run or heard (process()), so
+        // it only keeps its turn (the same answers, so A and B take their
+        // settings on the same ticks), without the maths.
+        const bool done  = i == 2 && echoMode_ && !snap ? springs_[i].setSettingsUnheard(s) : springs_[i].setSettings(s, snap);
         if (i == turn) turnDone = done;
     }
     if (turnDone) springTurn_ = (springTurn_ + 1) % int(kMaxSprings);
