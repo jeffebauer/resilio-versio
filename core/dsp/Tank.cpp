@@ -795,6 +795,7 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
                      + attW_[2] * echo::feedbackRise(base, decayKnob, echo::kKickedFrom);
     fbFrom_ = snap ? fb : fbTo_;
     fbTo_   = fb;
+    echo_.setHold(echo::holdWeight(fb)); // the held top (tape wear, EchoVoicing.h)
     // The input onto the tape at the feedback's own gain: every repeat a step
     // down from the hit, the first included (EchoVoicing.h "The first repeat").
     const float gin = std::clamp(fb, echo::kFirstRepeatMin, echo::kFirstRepeatMax);

@@ -19,6 +19,173 @@
 
 namespace rv::dsp {
 
+// ---- Tape wear (voicings 5-7; numbers in params/EchoVoicing.h "Tape wear") ----------------
+// Tape saturation + roll-off, and the crinkle on top. TapeSat<false> is an
+// empty no-op, so a firmware that doesn't ship them carries no code or state.
+template <bool kOn>
+class TapeSat {
+public:
+    void prepare(float) {}
+    void reset() {}
+    void setHold(float) {}
+    template <bool kCrinkleOn>
+    void process(float*, int, int, Rng&) {}
+};
+
+template <>
+class TapeSat<true> {
+public:
+    // The 1-pole high shelf e = x + K (x - LP(x)) (pre-emphasis) and its exact
+    // inverse (de-emphasis), solved per sample from the same 1-pole:
+    //   y = (s + K (1 - c) lb) / (1 + K (1 - c)),  lb += c (y - lb)
+    // so with the saturator quiet (s = e) the pair gives back x exactly.
+    RV_SIZE_OPT void prepare(float fs) // set-up
+    {
+        using namespace echo;
+        fs_ = fs;
+        const float c = 1.0f - std::exp(-2.0f * map::kPi * kTapeSatEmphHz / fs_);
+        emphC_ = c;
+        emphK_ = std::exp(kTapeSatEmphDb * (2.302585093f / 20.0f)) - 1.0f;
+        deB_   = emphK_ * (1.0f - c);
+        deInv_ = 1.0f / (1.0f + deB_);
+        satK_ = kTapeSatDriveK, satInv_ = 1.0f / kTapeSatDriveK;
+        roll_.setCutoff(std::min(kTapeSatRollHz, 0.45f * fs_), fs_);
+        split_.setCutoff(kCrinkleSplitHz, fs_);
+        {   // The head bump: an RBJ peaking filter (its skirts back to 0 dB, unlike a shelf's tail).
+            const float A = std::exp(kTapeSatBumpDb * (2.302585093f / 40.0f));
+            const float w = 2.0f * map::kPi * kTapeSatBumpHz / fs_, cw = std::cos(w), al = std::sin(w) / (2.0f * kTapeSatBumpQ);
+            const float a0 = 1.0f + al / A;
+            bump_.b0 = (1.0f + al * A) / a0, bump_.b1 = -2.0f * cw / a0, bump_.b2 = (1.0f - al * A) / a0;
+            bump_.a1 = -2.0f * cw / a0, bump_.a2 = (1.0f - al / A) / a0;
+        }
+        // Make-up: the mids' loudest (kTapeSatMakeupFromHz up) at exactly 1.
+        float mids = 0.0f;
+        for (float f = kTapeSatMakeupFromHz; f < 0.45f * fs_; f *= 1.02f) {
+            const float cw = std::cos(2.0f * map::kPi * f / fs_);
+            mids = std::max(mids, roll_.magnitudeSquared(cw) * bump_.magnitudeSquared(cw));
+        }
+        makeup_ = 1.0f / std::sqrt(mids);
+        auto coeff = [&](float ms) { return 1.0f - std::exp(-1000.0f / (ms * fs_)); };
+        cA_ = coeff(kTapeHoldCompAttackMs), cR_ = coeff(kTapeHoldCompReleaseMs);
+        eA_ = coeff(kTapeHoldExpAttackMs), eR_ = coeff(kTapeHoldExpReleaseMs);
+        sA_ = coeff(kTapeHoldRmsMs), rmsRef_ = kTapeHoldRms * kTapeHoldRms, rmsInv_ = 1.0f / rmsRef_;
+    }
+    // The held top's weight (echo::holdWeight of the feedback, per grid step).
+    void setHold(float w) { holdW_ = w; }
+    void reset()
+    {
+        emphLp_ = deLp_ = 0.0f;
+        roll_.reset(), bump_.reset(), split_.reset();
+        patchWait_ = -1, patchLeft_ = 0, flickWait_ = 0, flickLeft_ = 0, flickLen_ = 1;
+        patchDepth_ = flickDepth_ = 0.0f;
+        hEnvC_ = hEnvE_ = hEnvS_ = 0.0f;
+    }
+    // The feedback, worn (in place). crinkle: which kCrinkle (with kCrinkleOn).
+    template <bool kCrinkleOn>
+    void process(float* x, int n, int crinkle, Rng& rngIn)
+    {
+        const echo::CrinkleVoicing& cv = echo::kCrinkle[crinkle];
+        // The state in locals for the block (the output can't alias it: kept in registers).
+        Rng   rng = rngIn;
+        float eLp = emphLp_, dLp = deLp_, sLp = split_.y;
+        int   pWait = patchWait_, pLeft = patchLeft_, fWait = flickWait_, fLeft = flickLeft_, fLen = flickLen_;
+        float pDepth = patchDepth_, fDepth = flickDepth_;
+        float envC = hEnvC_, envE = hEnvE_, envS = hEnvS_;
+        const float hold = holdW_;
+        for (int i = 0; i < n; ++i) {
+            // Record: pre-emphasis, the tape saturates (the highs first); playback: de-emphasis.
+            const float u = x[i];
+            eLp += emphC_ * (u - eLp);
+            const float e = u + emphK_ * (u - eLp);
+            const float s = softClip(satK_ * e) * satInv_;
+            float y = (s + deB_ * dLp) * deInv_;
+            dLp += emphC_ * (y - dLp);
+            // A little more treble gone each pass; the head bump; the make-up.
+            y = makeup_ * bump_.process(roll_.process(y));
+            // The held top (only where a pass gains): a 2:1 compressor and a
+            // 1:2 expander whose levels follow at slightly different speeds,
+            // as the BBD's compander: unity on a steady level, a little less
+            // on each repeat's rise and fall, so held repeats keep their
+            // shape instead of slowly spreading into one another.
+            {
+                const float p = y * y;
+                envC += (p > envC ? cA_ : cR_) * (p - envC);
+                if (hold > 0.0f) {
+                    constexpr float kRef = 0.01f, kFloor = 1.0e-7f, kMax = 8.0f;
+                    const float gc = std::min(kMax, std::sqrt(std::sqrt(kRef / std::max(envC, kFloor))));
+                    const float py = p * gc * gc;
+                    envE += (py > envE ? eA_ : eR_) * (py - envE);
+                    const float ge = std::min(std::min(kMax, std::sqrt(std::max(envE, kFloor) / kRef)), 1.0f / gc);
+                    float g = gc * ge;
+                    envS += sA_ * (p - envS);
+                    if (envS > rmsRef_) g *= 1.0f / (1.0f + echo::kTapeHoldRmsQ * (envS * rmsInv_ - 1.0f));
+                    y *= 1.0f - hold * (1.0f - g);
+                } else {
+                    envE = p; // ready for the held top (a steady level: gain 1)
+                    envS += sA_ * (p - envS);
+                }
+            }
+            if constexpr (kCrinkleOn) {
+                // Crinkled patches, and inside them, flickers of lost contact.
+                sLp += split_.c * (y - sLp);
+                if (pLeft > 0) {
+                    --pLeft;
+                    if (fLeft == 0 && --fWait <= 0) {
+                        fLen = fLeft = msLen(rng, cv.flickMinMs, cv.flickMaxMs);
+                        fDepth = pDepth * (0.4f + 0.6f * uni(rng));
+                        fWait  = wait(rng, cv.flicksPerSecond);
+                    }
+                } else {
+                    if (pWait < 0) pWait = wait(rng, cv.patchesPerSecond); // the first, after a reset
+                    if (--pWait <= 0) {
+                        pLeft  = msLen(rng, cv.patchMinMs, cv.patchMaxMs);
+                        pDepth = cv.depthMin + uni(rng) * (cv.depthMax - cv.depthMin);
+                        fWait  = 1 + int(uni(rng) * 0.002f * fs_);
+                        pWait  = wait(rng, cv.patchesPerSecond);
+                    }
+                }
+                if (fLeft > 0) {
+                    // A smooth dip (16 t^2 (1-t)^2: no corner at either end).
+                    const float t = float(fLen - fLeft) / float(fLen), w = t * (1.0f - t);
+                    const float g = fDepth * 16.0f * w * w;
+                    --fLeft;
+                    // The highs lose all of the gap, the whole level kCrinkleLevelDip of it.
+                    y = (1.0f - echo::kCrinkleLevelDip * g) * (y - g * (y - sLp));
+                }
+            }
+            x[i] = y;
+        }
+        rngIn = rng;
+        emphLp_ = eLp, deLp_ = dLp, split_.y = sLp;
+        patchWait_ = pWait, patchLeft_ = pLeft, flickWait_ = fWait, flickLeft_ = fLeft, flickLen_ = fLen;
+        patchDepth_ = pDepth, flickDepth_ = fDepth;
+        hEnvC_ = envC, hEnvE_ = envE, hEnvS_ = envS;
+    }
+
+private:
+    // Uniform in [0, 1); an exponential wait (samples) at `perSecond` on average; a length in ms.
+    static float uni(Rng& r) { return 0.5f * (r.bipolar() + 1.0f); }
+    int wait(Rng& r, float perSecond) const { return 1 + int(-std::log(std::max(uni(r), 1.0e-6f)) * fs_ / perSecond); }
+    int msLen(Rng& r, float minMs, float maxMs) const { return std::max(2, int(0.001f * fs_ * (minMs + uni(r) * (maxMs - minMs)))); }
+
+    float fs_ = 48000.0f;
+    float emphC_ = 0.0f, emphK_ = 0.0f, deB_ = 0.0f, deInv_ = 1.0f, emphLp_ = 0.0f, deLp_ = 0.0f;
+    float satK_ = 1.0f, satInv_ = 1.0f, makeup_ = 1.0f;
+    float holdW_ = 0.0f, cA_ = 0.0f, cR_ = 0.0f, eA_ = 0.0f, eR_ = 0.0f, hEnvC_ = 0.0f, hEnvE_ = 0.0f;
+    float sA_ = 0.0f, rmsRef_ = 1.0f, rmsInv_ = 1.0f, hEnvS_ = 0.0f;
+    OnePoleLowpass roll_{}, split_{};
+    Biquad         bump_{};
+    int   patchWait_ = -1, patchLeft_ = 0, flickWait_ = 0, flickLeft_ = 0, flickLen_ = 1;
+    float patchDepth_ = 0.0f, flickDepth_ = 0.0f;
+};
+
+// Is wear voicing v compiled in? (The firmware: only the default; its set-up and memory too.)
+#ifdef RV_FIXED_VOICINGS
+constexpr bool wearBuilt(int v) { return v == echo::kWearDefault; }
+#else
+constexpr bool wearBuilt(int) { return true; }
+#endif
+
 class TapeWear {
 public:
 #ifdef RV_FIXED_VOICINGS
@@ -26,7 +193,14 @@ public:
 #else
     static constexpr bool kBuilt = true;
 #endif
-    static constexpr int kLineSize = kBuilt ? 256 : 1; // the worn tape's wow line (>= 2 x its depth at 96 kHz)
+    static constexpr int kLineSize = wearBuilt(echo::kWearTape) ? 256 : 1; // the worn tape's wow line (>= 2 x its depth at 96 kHz)
+    // The tape wear round (5-7) and its crinkle (6-7): only compiled into the
+    // firmware if one of them is the default.
+#ifdef RV_FIXED_VOICINGS
+    static constexpr bool kTapeSatBuilt = echo::kWearDefault >= echo::kWearTapeSat;
+#else
+    static constexpr bool kTapeSatBuilt = true;
+#endif
 
     RV_SIZE_OPT void prepare(float sampleRate, uint32_t seed) // set-up
     {
@@ -34,30 +208,40 @@ public:
         seed_ = seed;
         if (!kBuilt) return;
         using namespace echo;
-        wowDepth_  = std::min(0.001f * kTapeWowMs * fs_, 0.4f * float(kLineSize));
-        flutDepth_ = 0.001f * kTapeFlutterMs * fs_;
-        base_      = float(int(wowDepth_ + flutDepth_ + 3.0f)); // whole samples: the input's delay matches it exactly
-        wowStep1_  = kTapeWowHz1 / fs_;
-        wowStep2_  = kTapeWowHz2 / fs_;
-        flutStep_  = kTapeFlutterHz / fs_;
-        dropP_     = kTapeDropoutsPerSecond / fs_;
-        radioHp1_.setHighpass(kRadioHpHz, kRadioQ, fs_);
-        radioLp1_.setLowpass(std::min(kRadioLpHz, 0.45f * fs_), kRadioQ, fs_);
-        {   // Peak gain 1 (at the band's centre): the band keeps its level, the rest thins away.
+        if constexpr (wearBuilt(kWearTape)) {
+            wowDepth_  = std::min(0.001f * kTapeWowMs * fs_, 0.4f * float(kLineSize));
+            flutDepth_ = 0.001f * kTapeFlutterMs * fs_;
+            base_      = float(int(wowDepth_ + flutDepth_ + 3.0f)); // whole samples: the input's delay matches it exactly
+            wowStep1_  = kTapeWowHz1 / fs_;
+            wowStep2_  = kTapeWowHz2 / fs_;
+            flutStep_  = kTapeFlutterHz / fs_;
+            dropP_     = kTapeDropoutsPerSecond / fs_;
+        }
+        if constexpr (wearBuilt(kWearRadio)) {
+            radioHp1_.setHighpass(kRadioHpHz, kRadioQ, fs_);
+            radioLp1_.setLowpass(std::min(kRadioLpHz, 0.45f * fs_), kRadioQ, fs_);
+            // Peak gain 1 (at the band's centre): the band keeps its level, the rest thins away.
             const float cw = std::cos(2.0f * map::kPi * std::sqrt(kRadioHpHz * kRadioLpHz) / fs_);
             radioGain_ = 1.0f / std::sqrt(radioHp1_.magnitudeSquared(cw) * radioLp1_.magnitudeSquared(cw));
         }
-        setBbdClock(kBbd[bbdV_].clockHz);
-        compA_     = coeff(kBbdCompAttackMs), compR_ = coeff(kBbdCompReleaseMs);
-        expA_      = coeff(kBbdExpAttackMs), expR_ = coeff(kBbdExpReleaseMs);
-        whineGain_ = std::exp(kBbdWhineDb * (2.302585093f / 20.0f));
-        crushStep_ = kCrushRateHz / fs_;
-        crushRel_  = coeff(kCrushReleaseMs);
-        crushQ_    = std::exp2(kCrushBits - 1.0f);
-        crackP_    = kCrackleRate / fs_;
+        if constexpr (wearBuilt(kWearBbd)) {
+            setBbdClock(kBbd[bbdV_].clockHz);
+            compA_     = coeff(kBbdCompAttackMs), compR_ = coeff(kBbdCompReleaseMs);
+            expA_      = coeff(kBbdExpAttackMs), expR_ = coeff(kBbdExpReleaseMs);
+            whineGain_ = std::exp(kBbdWhineDb * (2.302585093f / 20.0f));
+        }
+        if constexpr (wearBuilt(kWearCrushed)) {
+            crushStep_ = kCrushRateHz / fs_;
+            crushRel_  = coeff(kCrushReleaseMs);
+            crushQ_    = std::exp2(kCrushBits - 1.0f);
+            crackP_    = kCrackleRate / fs_;
+        }
+        sat_.prepare(fs_);
         reset();
     }
 
+    // The held top's weight (echo::holdWeight; tape wear only).
+    void setHold(float w) { sat_.setHold(w); }
     void setVoicing([[maybe_unused]] int v)
     {
 #ifndef RV_FIXED_VOICINGS
@@ -103,6 +287,7 @@ public:
         bbdAa_.reset(), bbdRec_.reset();
         bbdPh_ = 0.0f, bbdHeld_ = 0.0f, envC_ = envE_ = 0.0f, whinePh_ = 0.0f;
         crushPh_ = 0.0f, crushHeld_ = 0.0f, crushEnv_ = 0.0f;
+        sat_.reset();
     }
 
     // The input, delayed by latencySamples() (worn tape only; others: untouched).
@@ -128,6 +313,9 @@ public:
         case echo::kWearRadio: radio(x, n); break;
         case echo::kWearBbd: bbd(x, n); break;
         case echo::kWearCrushed: crushed(x, n); break;
+        case echo::kWearTapeSat: sat_.template process<false>(x, n, 0, rng_); break;
+        case echo::kWearCrinkle: sat_.template process<true>(x, n, 0, rng_); break;
+        case echo::kWearCrinkleHeavy: sat_.template process<true>(x, n, 1, rng_); break;
         default: break;
         }
     }
@@ -269,6 +457,8 @@ private:
     // Crushed.
     float crushStep_ = 0.0f, crushPh_ = 0.0f, crushHeld_ = 0.0f, crushEnv_ = 0.0f, crushRel_ = 0.0f, crushQ_ = 64.0f;
     float crackP_ = 0.0f;
+    // Tape wear (5-7): an empty no-op unless built (the firmware, unless it is the default).
+    TapeSat<kTapeSatBuilt> sat_;
 };
 
 } // namespace rv::dsp

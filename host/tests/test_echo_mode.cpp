@@ -67,6 +67,16 @@
 //             level per repeat, the echo time, no new narrow (pitched) peaks
 //             in repeats 2-6 beyond A's, tails ending in silence (no stuck
 //             buzz), deterministic, no clicks, runaway, M6.
+//   tapewear  PROTOTYPE tape wear (echo_wear_voicing 5 tape saturation +
+//             roll-off, 6 / 7 + crinkle subtle / obvious; owner 5 Oct): the
+//             wear's own response (above 300 Hz never over 0 dB, the head bump
+//             within its number), the loop's peak per-pass gain not raised (no
+//             added energy), level per repeat (repeat 1 untouched, none above
+//             +1 dB), no new pitches (a loud tone's inharmonic energy, a rim's
+//             new narrow peaks, a hot 15 kHz tone's folds), deterministic,
+//             blocks 1 / 7 / 333 bit for bit, no clicks, the held top steady in
+//             every ATTITUDE, KICKED's top dying when backed off, extremes, M6,
+//             cost (desktop, reported).
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
 
@@ -109,7 +119,7 @@ struct Settings {
     int   att = 0, springs = 2;
     bool  echo = true;
     float hostBpm = 0.0f;
-    int   wear = -1; // echo_wear_voicing; -1 = the default (BBD grit since 4 Oct)
+    int   wear = -1; // echo_wear_voicing; -1 = the default (tape saturation since 6 Oct; BBD grit 4-6 Oct)
     int   outBits = -1; // output_bits_voicing: -1 the default (ADR 0042's mu-law box on the wet), 0 without it (a test hook)
 };
 
@@ -705,6 +715,20 @@ const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 // ---- feedback -------------------------------------------------------------------------------
 Buf rimLike(double seconds, double at, float peak = 0.5f); // the bits section's rim
+// A held C minor pad (soft saws C3 Eb3 G3 C4, `hold` s from 0.5 s, slow in and out), -9 dBFS.
+Buf padLike(double hold)
+{
+    Buf x(sec(hold + 1.5), 0.0f);
+    const size_t n = sec(hold), att = sec(0.4), rel = sec(0.8);
+    for (double f : {130.81, 155.56, 196.0, 261.63})
+        for (size_t i = 0; i < n; ++i) {
+            const double t = double(i) / kFs, env = std::min({1.0, double(i) / double(att), double(n - 1 - i) / double(rel)});
+            x[sec(0.5) + i] += float(env * (2 * std::fmod(f * t, 1.0) - 1) / 4);
+        }
+    lowpass(x, 1800.0);
+    normalise(x, -9.0f);
+    return x;
+}
 
 void feedback()
 {
@@ -1483,6 +1507,7 @@ void diffuse()
 
 // ---- wear (PROTOTYPE) -------------------------------------------------------------------------
 const char* const kWearName[5] = {"none", "worn tape", "radio band", "BBD grit", "crushed"};
+constexpr int     kWearRound1  = 5; // the 4 Oct round (none ... crushed); the tape wear round (5-7) has its own section
 
 // Energy-weighted centre (ms) of repeat k's window on the tape.
 double repeatCentreMs(const RepeatStats& r, int k, double secs)
@@ -1501,9 +1526,9 @@ void wear()
     // On the tape (0.6 s, feedback 0.8): the first repeat untouched, level per
     // repeat vs none (no added energy: no repeat louder than none's + 1 dB),
     // the echo time kept (each repeat's centre within 1 ms of none's).
-    RepeatStats st[rv::echo::kNumWearVoicings];
-    for (int v = 0; v < rv::echo::kNumWearVoicings; ++v) st[v] = tapeRepeats(0, 0.8f, 0.6, v);
-    for (int v = 1; v < rv::echo::kNumWearVoicings; ++v) {
+    RepeatStats st[kWearRound1];
+    for (int v = 0; v < kWearRound1; ++v) st[v] = tapeRepeats(0, 0.8f, 0.6, v);
+    for (int v = 1; v < kWearRound1; ++v) {
         const bool first = std::memcmp(st[v].play.data(), st[0].play.data(), sec(0.1 + 2 * 0.6 - 0.05) * sizeof(float)) == 0;
         double up = -99, lvl[6], drift = 0;
         for (int k = 0; k < 6; ++k) {
@@ -1523,7 +1548,7 @@ void wear()
     }
 
     // In the Tank, per voicing.
-    for (int v = 1; v < rv::echo::kNumWearVoicings; ++v) {
+    for (int v = 1; v < kWearRound1; ++v) {
         // Deterministic and block-size independent (seeded randomness).
         const Buf h = hits(8.0);
         Settings s;
@@ -1743,6 +1768,7 @@ void bbd()
             Settings x;
             x.tension = tension;
             apply(t, x);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(3);
             run(t, secs, 48, clk);
             return double(t.bbdClockHz());
@@ -1754,6 +1780,7 @@ void bbd()
         Settings x;
         x.tension = 0.07f;
         apply(t, x);
+        t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
         t.setBbdVoicing(3);
         const auto clk = steadyClock(100.0, 0.1, 6.0);
         run(t, 2.0, 48, clk);
@@ -1784,6 +1811,7 @@ void bbd()
             Settings y = x;
             y.tension = tension;
             apply(t, y);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(h.size()), Buf(h.size())};
             for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
@@ -1807,6 +1835,7 @@ void bbd()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48) {
@@ -1830,6 +1859,7 @@ void bbd()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -1860,6 +1890,7 @@ void bbd()
                             rv::Tank t;
                             t.prepare(kFs, 48);
                             apply(t, x);
+                            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
                             t.setBbdVoicing(v);
                             Stereo o{Buf(in->size()), Buf(in->size())};
                             for (size_t pos = 0; pos < in->size(); pos += 48)
@@ -1889,8 +1920,8 @@ void bbd()
                 Settings x;
                 x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
                 apply(t, x);
-                if (v == 4) t.setEchoWearVoicing(0);
-                else t.setBbdVoicing(v);
+                t.setEchoWearVoicing(v == 4 ? 0 : rv::echo::kWearBbd); // as built (the default 4-6 Oct)
+                if (v != 4) t.setBbdVoicing(v);
                 Buf l(in.size()), r(in.size());
                 const auto t0 = std::chrono::steady_clock::now();
                 for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -2032,6 +2063,7 @@ void bits()
                 rv::Tank t;
                 t.prepare(kFs, block);
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Stereo o{Buf(h.size()), Buf(h.size())};
                 for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
@@ -2057,6 +2089,7 @@ void bits()
                 rv::Tank t;
                 t.prepare(kFs, 48);
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Stereo o{Buf(in.size()), Buf(in.size())};
                 for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -2080,6 +2113,7 @@ void bits()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
             t.setEchoBitsVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48) {
@@ -2115,6 +2149,7 @@ void bits()
                             rv::Tank t;
                             t.prepare(kFs, 48);
                             apply(t, x);
+                            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                             t.setEchoBitsVoicing(v);
                             Stereo o{Buf(in->size()), Buf(in->size())};
                             for (size_t pos = 0; pos < in->size(); pos += 48)
@@ -2144,6 +2179,7 @@ void bits()
                 Settings x;
                 x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Buf l(in.size()), r(in.size());
                 const auto t0 = std::chrono::steady_clock::now();
@@ -2156,6 +2192,454 @@ void bits()
         }
         std::snprintf(msg, sizeof msg, "Bits cost (desktop, SPRINGS 3 worst case): A %.1f, B %.1f, C %.1f, D %.1f ns/sample", ns[0], ns[1],
                       ns[2], ns[3]);
+        info(msg);
+    }
+}
+
+// ---- tapewear (PROTOTYPE, owner 5 Oct 2026) ---------------------------------------------------
+// The tape wear round (EchoVoicing.h "Tape wear"): B tape saturation +
+// roll-off (5), C1 / C2 the same + crinkle (6 / 7), against A = BBD grit (3,
+// today's default) and none. No new pitches, no added energy (the loop's
+// peak gain, which sets the held top, never raised), the held top steady,
+// deterministic, block-size free.
+const int         kTapeWearV[3]    = {rv::echo::kWearTapeSat, rv::echo::kWearCrinkle, rv::echo::kWearCrinkleHeavy};
+const char* const kTapeWearName[3] = {"B tape sat", "C1 crinkle", "C2 crinkle"};
+
+// A sine's per-pass gain on the tape (dB per pass, repeats 2 -> 5), quiet (-40 dBFS).
+double perPassDb(int wear, double hz)
+{
+    Buf s(sec(9.0), 0.0f);
+    const size_t len = sec(0.2);
+    for (size_t i = 0; i < len; ++i)
+        s[sec(0.1) + i] = float(0.01 * std::sin(2 * kPi * hz * double(i) / kFs) * std::sin(kPi * double(i) / double(len)));
+    const RepeatStats r = tapeRepeats(0, 0.8f, 0.6, wear, 0, &s);
+    return (r.db[4] - r.db[1]) / 3.0;
+}
+
+void tapeWear()
+{
+    using namespace rv::echo;
+    // The held top's lock (kTapeHold*) comes in only where a pass gains:
+    // below, the feedback path is bit for bit as without it.
+    {
+        float from[2] = {-1.0f, -1.0f};
+        bool  zeroBelow = true;
+        for (int k = 0; k <= 1000; ++k) {
+            const float d = k / 1000.0f, fc = feedbackClean(d), fk = feedbackKicked(d);
+            if (from[0] < 0 && holdWeight(fc) > 0.0f) from[0] = d;
+            if (from[1] < 0 && holdWeight(fk) > 0.0f) from[1] = d;
+            zeroBelow &= (fc * kHeadsPeakGain <= 1.0f) == (holdWeight(fc) == 0.0f);
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Tape wear held-top lock: comes in from DECAY %.3f (CLEAN / DRIVEN), %.3f (KICKED), where a pass gains; 0 below "
+                      "%d; 1 at the top (%.2f)",
+                      double(from[0]), double(from[1]), int(zeroBelow), double(holdWeight(kFeedbackTop)));
+        check(zeroBelow && from[0] > 0.9f && from[1] > 0.85f && holdWeight(kFeedbackTop) == 1.0f, msg);
+    }
+    // The wear on its own, quiet sines (-40 dBFS): its gain vs frequency.
+    {
+        const double fs[] = {30, 50, 80, 120, 200, 400, 700, 1500, 3000, 6000, 10000};
+        for (int k = 0; k < 3; ++k) {
+            char   line[400] = "";
+            double over300 = -99, peak = -99;
+            for (double hz : fs) {
+                rv::dsp::TapeWear w;
+                w.prepare(kFs, 0x5EEDu);
+                w.setVoicing(kTapeWearV[k]);
+                Buf x(sec(2.0));
+                for (size_t i = 0; i < x.size(); ++i) x[i] = float(0.01 * std::sin(2 * kPi * hz * double(i) / kFs));
+                Buf y = x;
+                w.process(y.data(), int(y.size()));
+                const double g = db(power(y, sec(1.0), sec(2.0)) / power(x, sec(1.0), sec(2.0)));
+                peak = std::max(peak, g);
+                if (hz >= 300) over300 = std::max(over300, g);
+                char one[24];
+                std::snprintf(one, sizeof one, "%s%.0f %+.2f", line[0] ? ", " : "", hz, g);
+                std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+            }
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s alone, quiet sines (Hz dB): %s; above 300 Hz never over %+.2f dB (want <= +0.05), the bump's peak "
+                          "%+.2f dB (want <= kTapeSatBumpDb %.1f + 0.2)",
+                          kTapeWearName[k], line, over300, peak, double(kTapeSatBumpDb));
+            check(over300 <= 0.05 && peak <= double(kTapeSatBumpDb) + 0.2, msg);
+        }
+    }
+    // In the loop (with the heads): per-pass gain per frequency; its peak is
+    // what holds the top, so it must not rise (no added energy).
+    {
+        const double fs[] = {50, 80, 120, 200, 400, 700, 1000, 2000, 3500, 6000};
+        double none[10], peakNone = -99;
+        for (int j = 0; j < 10; ++j) peakNone = std::max(peakNone, none[j] = perPassDb(0, fs[j]));
+        for (int k = 0; k < 3; ++k) {
+            char   line[420] = "";
+            double peak = -99;
+            for (int j = 0; j < 10; ++j) {
+                const double g = perPassDb(kTapeWearV[k], fs[j]);
+                peak = std::max(peak, g);
+                char one[32];
+                std::snprintf(one, sizeof one, "%s%.0f %+.2f", line[0] ? ", " : "", fs[j], g - none[j]);
+                std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+            }
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s in the loop (feedback 0.8, quiet): per-pass gain vs none (Hz dB/pass): %s; the loop's peak %.2f "
+                          "dB/pass vs none's %.2f (want <= +0.05: no added energy)",
+                          kTapeWearName[k], line, peak, peakNone);
+            check(peak <= peakNone + 0.05, msg);
+        }
+    }
+    // Level per repeat on the tape (broadband burst, 0.6 s, feedback 0.8), vs none
+    // and vs A (BBD grit); the first repeat untouched; the echo time kept.
+    {
+        const RepeatStats n = tapeRepeats(0, 0.8f, 0.6, 0), a = tapeRepeats(0, 0.8f, 0.6, kWearBbd);
+        for (int k = 0; k < 3; ++k) {
+            const RepeatStats r = tapeRepeats(0, 0.8f, 0.6, kTapeWearV[k]);
+            const bool first = std::memcmp(r.play.data(), n.play.data(), sec(0.1 + 2 * 0.6 - 0.05) * sizeof(float)) == 0;
+            double up = -99, lvl[6], vsA[6], drift = 0;
+            for (int j = 0; j < 6; ++j) {
+                lvl[j] = r.db[j] - n.db[j], vsA[j] = r.db[j] - a.db[j];
+                up     = std::max(up, lvl[j]);
+                drift  = std::max(drift, std::fabs(repeatCentreMs(r, j, 0.6) - repeatCentreMs(n, j, 0.6)));
+            }
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s on the tape (burst, 0.6 s, feedback 0.8): repeat 1 untouched %d; level per repeat 1-6 vs none "
+                          "%+.1f %+.1f %+.1f %+.1f %+.1f %+.1f dB (never above +1), vs A (BBD) %+.1f %+.1f %+.1f %+.1f %+.1f %+.1f; "
+                          "timing %.2f ms off none's (limit 3.5)",
+                          kTapeWearName[k], int(first), lvl[0], lvl[1], lvl[2], lvl[3], lvl[4], lvl[5], vsA[0], vsA[1], vsA[2], vsA[3],
+                          vsA[4], vsA[5], drift);
+            check(first && up <= 1.0 && drift <= 3.5, msg);
+        }
+    }
+    // No new pitches. (1) A loud 1.7 kHz tone (0.4 and 0.8 peak: the tape
+    // saturates): inharmonic energy in 0.3-5 kHz on repeats 2-4 ("bbd"'s
+    // aliasDb), vs none and A. (2) New narrow peaks in a rim's repeats 2-6
+    // ("bits"'s newPeakDb), vs none's.
+    {
+        for (double amp : {0.4, 0.8}) {
+            Buf tone(sec(9.0), 0.0f);
+            for (size_t i = 0; i < sec(0.06); ++i)
+                tone[sec(0.1) + i] = float(amp * std::sin(2 * kPi * 1700.0 * double(i) / kFs) * std::sin(kPi * double(i) / double(sec(0.06))));
+            const RepeatStats n = tapeRepeats(0, 0.8f, 0.6, 0, 0, &tone), a = tapeRepeats(0, 0.8f, 0.6, kWearBbd, 0, &tone);
+            double an[3], aa[3];
+            for (int j = 0; j < 3; ++j) an[j] = aliasDb(n, j + 1, 0.6), aa[j] = aliasDb(a, j + 1, 0.6);
+            for (int k = 0; k < 3; ++k) {
+                const RepeatStats r = tapeRepeats(0, 0.8f, 0.6, kTapeWearV[k], 0, &tone);
+                double ar[3], worse = -99;
+                for (int j = 0; j < 3; ++j) ar[j] = aliasDb(r, j + 1, 0.6), worse = std::max(worse, ar[j] - an[j]);
+                std::snprintf(msg, sizeof msg,
+                              "Tape wear %s, a %.1f peak 1.7 kHz tone: inharmonic energy repeats 2 / 3 / 4 %.1f / %.1f / %.1f dB re the "
+                              "tone (none %.1f / %.1f / %.1f, A BBD %.1f / %.1f / %.1f); worst vs none %+.1f dB (%s)",
+                              kTapeWearName[k], amp, ar[0], ar[1], ar[2], an[0], an[1], an[2], aa[0], aa[1], aa[2], worse,
+                              k == 0 ? (amp < 0.5 ? "want <= +3" : "reported: the envelope's skirt") : "reported: the crinkle's dips spread the tone's own energy, not a pitch");
+                // Gated at 0.4; at 0.8 the saturation flattens the burst's
+                // envelope, widening the tone's own skirt past the +-75 Hz the
+                // metric skips (not a pitch: "folds" below reads the folds).
+                if (k == 0 && amp < 0.5) check(worse <= 3.0, msg);
+                else info(msg);
+            }
+        }
+        const Buf rim = rimLike(9.0, 0.1);
+        double hzN = 0;
+        int    atN = 0;
+        const double pn = newPeakDb(tapeRepeats(0, 0.75f, 0.4, 0, 0, &rim), 0.4, &hzN, &atN);
+        double hzA = 0;
+        int    atA = 0;
+        const double pa = newPeakDb(tapeRepeats(0, 0.75f, 0.4, kWearBbd, 0, &rim), 0.4, &hzA, &atA);
+        for (int k = 0; k < 3; ++k) {
+            double hz = 0;
+            int    at = 0;
+            const double p = newPeakDb(tapeRepeats(0, 0.75f, 0.4, kTapeWearV[k], 0, &rim), 0.4, &hz, &at);
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s, a rim (-6 dBFS, 0.4 s, feedback 0.75): new narrow peak in repeats 2-6 %.1f dB (%.0f Hz, repeat %d); "
+                          "none %.1f (%.0f Hz), A BBD %.1f (%.0f Hz); want <= none + 3",
+                          kTapeWearName[k], p, hz, at, pn, hzN, pa, hzA);
+            check(p <= pn + 3.0, msg);
+        }
+    }
+    // Folds, worst case: a steady loud tone straight into the wear (no heads
+    // in front, so far more top than the feedback ever carries). Its odd
+    // harmonics above 24 kHz would fold back to inharmonic frequencies; the
+    // strongest of those (Goertzel at each predicted fold), re the tone.
+    {
+        // B only: C1 / C2 are B plus a gain that dips (no harmonics of its own;
+        // its dips spread a tone's energy around it, read here as "folds").
+        for (int k = 0; k < 1; ++k) {
+            char line[200] = "";
+            double worstAll = -999;
+            for (double hz : {1700.0, 4100.0}) {
+                rv::dsp::TapeWear w;
+                w.prepare(kFs, 0x5EEDu);
+                w.setVoicing(kTapeWearV[k]);
+                Buf y(sec(1.5));
+                for (size_t i = 0; i < y.size(); ++i) y[i] = float(0.5 * std::sin(2 * kPi * hz * double(i) / kFs));
+                w.process(y.data(), int(y.size()));
+                auto g = [&](double f) {
+                    const double c = 2 * std::cos(2 * kPi * f / kFs);
+                    double s1 = 0, s2 = 0;
+                    const size_t a = sec(0.5), b = sec(1.5);
+                    for (size_t i = a; i < b; ++i) {
+                        const double wv = 0.5 - 0.5 * std::cos(2 * kPi * double(i - a) / double(b - a));
+                        const double v  = wv * y[i] + c * s1 - s2;
+                        s2 = s1, s1 = v;
+                    }
+                    return db(s1 * s1 + s2 * s2 - c * s1 * s2);
+                };
+                const double tone = g(hz);
+                double worst = -999;
+                for (int h = 3; h <= 61; h += 2) {
+                    double f = std::fmod(h * hz, double(kFs));
+                    if (f > 0.5 * kFs) f = double(kFs) - f;
+                    if (h * hz < 0.5 * kFs) continue; // a real harmonic, not a fold
+                    bool nearHarm = false;
+                    for (int m = 1; m * hz < 0.5 * kFs; ++m) nearHarm |= std::fabs(f - m * hz) < 20.0;
+                    if (!nearHarm && f > 20.0) worst = std::max(worst, g(f) - tone);
+                }
+                worstAll = std::max(worstAll, worst);
+                char one[60];
+                std::snprintf(one, sizeof one, "%s%.0f Hz %.1f dB", line[0] ? ", " : "", hz, worst);
+                std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+            }
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s alone, a steady 0.5 tone straight in (no heads): strongest fold re the tone %s (want < -60: "
+                          "the feedback never carries this much top)",
+                          kTapeWearName[k], line);
+            check(worstAll < -60.0, msg);
+        }
+    }
+    // A hot 15 kHz tone ("hothighs", KICKED DRIVE 1, DECAY 0.8, 80 ms): the
+    // echo's share of its folds at 3 and 9 kHz under -90 dBFS.
+    for (int k = 0; k < 3; ++k) {
+        const size_t n = sec(3.0);
+        Buf in(n);
+        for (size_t i = 0; i < n; ++i) in[i] = float(std::sin(2 * kPi * 15000.0 * double(i) / kFs));
+        Settings s;
+        s.att = 2, s.drive = 1.0f, s.decay = 0.8f, s.tension = 1.0f, s.wear = kTapeWearV[k];
+        std::vector<float> pool(rv::Tank::requiredPoolFloats(kFs)), tapeBuf(rv::Tank::requiredTapeFloats(kFs));
+        Stereo o[2];
+        for (int j = 0; j < 2; ++j) {
+            rv::Tank t;
+            std::fill(pool.begin(), pool.end(), 0.0f);
+            t.prepare(kFs, 48, pool.data(), pool.size(), j ? tapeBuf.data() : nullptr, j ? tapeBuf.size() : 0);
+            apply(t, s);
+            o[j] = Stereo{Buf(n), Buf(n)};
+            for (size_t pos = 0; pos < n; pos += 48)
+                t.process(in.data() + pos, in.data() + pos, o[j].l.data() + pos, o[j].r.data() + pos, 48);
+        }
+        auto goertzel = [&](double hz) {
+            const double w = 2 * kPi * hz / kFs, c = 2 * std::cos(w);
+            double s1 = 0, s2 = 0;
+            for (size_t i = sec(1.0); i < sec(3.0); ++i) {
+                const double x = 0.5 * ((o[1].l[i] - o[0].l[i]) + (o[1].r[i] - o[0].r[i]));
+                const double y = x + c * s1 - s2;
+                s2 = s1, s1 = y;
+            }
+            return db(s1 * s1 + s2 * s2 - c * s1 * s2) - db(0.25 * double(sec(2.0)) * double(sec(2.0)));
+        };
+        const double a3 = goertzel(3000.0), a9 = goertzel(9000.0);
+        std::snprintf(msg, sizeof msg, "Tape wear %s, 15 kHz at 0 dBFS (KICKED DRIVE 1, DECAY 0.8, 80 ms): the echo's 3 kHz %.1f dBFS, 9 kHz %.1f dBFS (< -90)",
+                      kTapeWearName[k], a3, a9);
+        check(a3 < -90.0 && a9 < -90.0, msg);
+    }
+
+    for (int k = 0; k < 3; ++k) {
+        const int v = kTapeWearV[k];
+        // Deterministic, block-size free (1 / 7 / 333 = 48 bit for bit), no clicks.
+        {
+            const Buf h = hits(8.0);
+            Settings s;
+            s.decay = 0.85f, s.tension = 0.6f, s.wear = v;
+            const Stereo a = render(s, h, 48), b = render(s, h, 48);
+            bool blocksSame = true;
+            for (int blk : {1, 7, 333}) blocksSame &= same(a, render(s, h, blk));
+            double worst = 0;
+            const int clicks = clicksBoth(a, sec(0.5), &worst);
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s in the Tank (hits, DECAY 0.85): the same twice %d, blocks 1 / 7 / 333 = 48 %d, finite %d, %d clicks "
+                          "(worst ratio %.1f)",
+                          kTapeWearName[k], int(same(a, b)), int(blocksSame), int(finite(a)), clicks, worst);
+            check(same(a, b) && blocksSame && finite(a) && clicks == 0, msg);
+        }
+        // The held top, locked like the BBD's (owner, 6 Oct 2026: "lock in
+        // like today"; EchoVoicing.h kTapeHold*), every ATTITUDE, 120 s: a
+        // single rim, and for B (the default) also the skank (13 s of stabs)
+        // and a held pad (4 s). The rim as "feedback": persists, 1 s windows
+        // over 10-30 s within 3 dB. Every material: no slow creep, 10 s
+        // windows over 30-120 s within 1 dB, the last 10 s within 0.5 dB of
+        // the 10 s before; under the limiter (its gain never moves). The pad
+        // is still settling after 30 s even with A (BBD, the default until 6
+        // Oct: its held pad falls ~4.5 dB over 30-120 s, a sustained wash
+        // slowly thinning to held repeats), so there the bar is A's own drift
+        // (at least 1 dB); A is rendered alongside for every material.
+        auto heldRun = [&](int wear, int mat, int att, float* limOut) {
+            Settings s;
+            s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.outBits = 0, s.wear = wear;
+            Buf in = mat == 0 ? rimLike(120.0, 0.5, 0.5f) : (mat == 1 ? stabs(13.0) : padLike(4.0));
+            in.resize(sec(120.0), 0.0f);
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, s);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            float lim = 1.0f;
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+                lim = std::min(lim, t.limiterGain());
+            }
+            if (limOut) *limOut = lim;
+            return o;
+        };
+        auto drift30 = [&](const Stereo& o) {
+            double lo = 1e9, hi = -1e9;
+            for (int w = 30; w < 120; w += 10) {
+                const double x = stereoDb(o, sec(w), sec(w + 10));
+                lo = std::min(lo, x), hi = std::max(hi, x);
+            }
+            return hi - lo;
+        };
+        for (int mat = 0; mat < (k == 0 ? 3 : 1); ++mat)
+            for (int att = 0; att < 3; ++att) {
+                float lim = 1.0f;
+                const Stereo o = heldRun(v, mat, att, &lim);
+                const double aDrift = k == 0 ? drift30(heldRun(rv::echo::kWearBbd, mat, att, nullptr)) : -1.0;
+                double lo = 1e9, hi = -1e9;
+                for (int w = 10; w < 30; ++w) {
+                    const double x = stereoDb(o, sec(w), sec(w + 1));
+                    lo = std::min(lo, x), hi = std::max(hi, x);
+                }
+                const double build = hi - lo;
+                const double drift = drift30(o), last = stereoDb(o, sec(110.0), sec(120.0)) - stereoDb(o, sec(100.0), sec(110.0));
+                const double held = stereoDb(o, sec(110.0), sec(120.0)), early = stereoDb(o, sec(2.0), sec(4.0));
+                const char* const kMatName[3] = {"a single rim", "the skank", "a held pad"};
+                std::snprintf(msg, sizeof msg,
+                              "Tape wear %s, %s DECAY 1, %s (120 s): held at %.1f dBFS; %s1 s windows over 10-30 s within %.1f dB%s; 10 s "
+                              "windows over 30-120 s within %.2f dB (want <= %.2f; A %.2f), the last 10 s %+.2f dB (want within 0.5); "
+                              "peak %.3f, limiter %.3f (want 1)",
+                              kTapeWearName[k], kAttName[att], kMatName[mat], held, mat == 0 ? "" : "(reported) ", build,
+                              mat == 0 ? " (want <= 3)" : "", drift, mat == 2 ? std::max(1.0, aDrift) : 1.0, aDrift, last,
+                              double(peakOf(o)), double(lim));
+                const double bar = mat == 2 ? std::max(1.0, aDrift) : 1.0;
+                check((mat != 0 || (held > early && build <= 3.0)) && drift <= bar && std::fabs(last) <= 0.5 && lim >= 1.0f && finite(o), msg);
+            }
+        // KICKED's top bounded and dying when DECAY comes back to noon; extremes finite.
+        {
+            const Buf in = burst(16.0, 0.5);
+            Settings x;
+            x.att = 2, x.decay = 1.0f, x.tension = 0.75f, x.drive = 1.0f, x.wear = v;
+            rv::Tank t;
+            t.prepare(kFs, 48);
+            apply(t, x);
+            Stereo o{Buf(in.size()), Buf(in.size())};
+            for (size_t pos = 0; pos < in.size(); pos += 48) {
+                if (pos == sec(10.0)) t.setParam(rv::ParamId::Decay, 0.5f);
+                t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
+            }
+            const double held = stereoDb(o, sec(8.0), sec(10.0)), after = stereoDb(o, sec(12.7), sec(13.0));
+            bool ok = true;
+            float worstPk = 0.0f;
+            const Buf hh = hits(10.0);
+            for (int a2 = 0; a2 < 3; ++a2)
+                for (float tn : {0.0f, 1.0f}) {
+                    Settings e;
+                    e.att = a2, e.decay = 1.0f, e.drive = 1.0f, e.tension = tn, e.wobble = 0.0f, e.wear = v;
+                    const Stereo r = render(e, hh);
+                    worstPk = std::max(worstPk, peakOf(r));
+                    ok &= finite(r) && peakOf(r) < 1.0f;
+                }
+            std::snprintf(msg, sizeof msg,
+                          "Tape wear %s: KICKED DECAY 1 (DRIVE 1) held 8-10 s %.1f dB, peak %.2f, DECAY to noon: 12.7-13 s %.1f dB (want "
+                          ">= 30 under); extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1) finite, worst peak %.3f (< 1)",
+                          kTapeWearName[k], held, double(peakOf(o)), after, double(worstPk));
+            check(finite(o) && peakOf(o) < 1.0f && after < held - 30.0 && ok, msg);
+        }
+    }
+
+    // M6 Ringing at SPRINGS 3 (as "wear"): none, A (BBD), B, C1, C2.
+    {
+        Buf clk(sec(14.0), 0.0f);
+        clk[sec(0.5)] = clk[sec(0.5) + 1] = 0.5f;
+        Buf nb(sec(14.0), 0.0f);
+        {
+            const Buf z = noise(sec(0.5), 0.43f, 77u);
+            std::copy(z.begin(), z.end(), nb.begin() + long(sec(0.5)));
+        }
+        const int vs[5] = {0, kWearBbd, kWearTapeSat, kWearCrinkle, kWearCrinkleHeavy};
+        int    flagged[5] = {0, 0, 0, 0, 0}, cells = 0;
+        double worst[5]   = {0, 0, 0, 0, 0};
+        for (int j = 0; j < 5; ++j)
+            for (int a = 0; a < 3; ++a)
+                for (float dc : {0.85f, 1.0f})
+                    for (float tn : {0.0f, 0.5f})
+                        for (const Buf* in : {static_cast<const Buf*>(&clk), static_cast<const Buf*>(&nb)}) {
+                            Settings x;
+                            x.att = a, x.decay = dc, x.tension = tn, x.wear = vs[j];
+                            const Stereo o = render(x, *in);
+                            const auto m = rv::metrics::compute({o.l, o.r}, kFs);
+                            if (m.ringing || m.steadyTone) ++flagged[j];
+                            if (!std::isnan(m.ringingDb)) worst[j] = std::max(worst[j], m.ringingDb);
+                            if (j == 0) ++cells;
+                        }
+        std::snprintf(msg, sizeof msg,
+                      "Tape wear, M6 Ringing at SPRINGS 3 (%d cells each): flagged / worst ringing_db: none %d / %.1f, A BBD %d / %.1f, "
+                      "B %d / %.1f, C1 %d / %.1f, C2 %d / %.1f (want B, C1, C2 no more flagged than none)",
+                      cells, flagged[0], worst[0], flagged[1], worst[1], flagged[2], worst[2], flagged[3], worst[3], flagged[4], worst[4]);
+        check(flagged[2] <= flagged[0] && flagged[3] <= flagged[0] && flagged[4] <= flagged[0], msg);
+    }
+
+    // Cost (desktop). The wear alone (a micro-bench: 10 s of a hot, decaying
+    // signal through TapeWear::process, 32-sample blocks as the Tank's grid),
+    // and the whole Tank, SPRINGS 3 worst case. Desktop estimates have run
+    // ~2x low against the chip: only a chip run (profile build) is trustworthy.
+    {
+        const int vs[5] = {0, kWearBbd, kWearTapeSat, kWearCrinkle, kWearCrinkleHeavy};
+        const char* const nm[5] = {"none", "A BBD", "B tape sat", "C1 crinkle", "C2 crinkle"};
+        Buf sig(sec(10.0));
+        {
+            rv::dsp::Rng rng;
+            rng.seed(7u);
+            for (size_t i = 0; i < sig.size(); ++i)
+                sig[i] = 0.5f * std::exp(-float(i % sec(0.5)) / (0.15f * kFs))
+                       * (0.6f * float(std::sin(2 * kPi * 330.0 * double(i) / kFs)) + 0.4f * rng.bipolar());
+        }
+        double alone[5], tank[5];
+        for (int j = 0; j < 5; ++j) {
+            double best = 1e30;
+            for (int run = 0; run < 5; ++run) {
+                rv::dsp::TapeWear w;
+                w.prepare(kFs, 0x5EEDu);
+                w.setVoicing(vs[j]);
+                Buf y = sig;
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos + 32 <= y.size(); pos += 32) w.process(y.data() + pos, 32);
+                const auto t1 = std::chrono::steady_clock::now();
+                volatile float sink = y[y.size() / 2];
+                (void)sink;
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(y.size()));
+            }
+            alone[j] = best;
+        }
+        const Buf in = hits(6.0);
+        for (int j = 0; j < 5; ++j) {
+            double best = 1e30;
+            for (int run = 0; run < 3; ++run) {
+                Settings x;
+                x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f, x.wear = vs[j];
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                apply(t, x);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            tank[j] = best;
+        }
+        char line[400] = "";
+        for (int j = 0; j < 5; ++j) {
+            char one[80];
+            std::snprintf(one, sizeof one, "%s%s %.2f ns alone / %.1f ns Tank", j ? "; " : "", nm[j], alone[j], tank[j]);
+            std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+        }
+        std::snprintf(msg, sizeof msg, "Tape wear cost (desktop, per sample; SPRINGS 3 KICKED DRIVE 1 DECAY 1 TENSION 0 for the Tank): %s", line);
         info(msg);
     }
 }
@@ -2208,7 +2692,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"tapewear", tapeWear}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

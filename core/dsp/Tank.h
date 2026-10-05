@@ -493,7 +493,7 @@ public:
     }
     int echoDiffuseVoicing() const { return echo_.diffuseVoicing(); }
     // Renderer / test hook (PROTOTYPE, owner 4 Oct): the repeats break up,
-    // 0 none (default) ... 4 crushed (EchoVoicing.h "Wear"). Set it before rendering.
+    // 0 none ... 4 crushed, 5-7 tape wear (EchoVoicing.h "Wear"). Set it before rendering.
     void setEchoWearVoicing([[maybe_unused]] int v)
     {
 #ifndef RV_FIXED_VOICINGS
