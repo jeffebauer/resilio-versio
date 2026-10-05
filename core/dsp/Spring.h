@@ -120,14 +120,11 @@ struct SpringSettings {
     // there); 0 = t60Seconds, as before.
     float highT60Seconds   = 0.0f;
 #if RV_TANKV_BUILT >= 8
-    // Tank voicing 8+ (round 5): the damping is a biquad, a peaking cut of
-    // eqDb at eqHz (width eqQ) in each trip, eased toward the plain one-pole
-    // low-pass at dampingHz by eqToLp (0..1; TONE left of noon). eqHz 0 =
-    // the one-pole, as before.
+    // Tank voicing 8+ (round 5): a biquad after the damping, a peaking cut of
+    // eqDb at eqHz (width eqQ) in each trip. eqHz 0 = none, as before.
     float eqHz             = 0.0f;
     float eqDb             = 0.0f;
     float eqQ              = 0.7f;
-    float eqToLp           = 0.0f;
 #endif
 };
 
@@ -237,21 +234,19 @@ public:
     // the pickup reads alignShare x their delay earlier, so the first echo's
     // body keeps its time. Set before setDiffusion(). pre false = voicing 3's
     // place (after the pickup, on the feedback).
+    // Voicing 8+: the diffusers' coefficient alone, live (control rate; no
+    // reset: an allpass's coefficient can move under a running tail).
+    void setDiffusionCoeff([[maybe_unused]] float c)
+    {
+#if RV_TANKV_BUILT >= 3
+        fbDiffC_ = c;
+#endif
+    }
     void setDiffusionPlace([[maybe_unused]] bool pre, [[maybe_unused]] float alignShare)
     {
 #if RV_TANKV_BUILT >= 8
         fbDiffPre_   = pre;
         fbDiffAlign_ = pre ? alignShare : 0.0f;
-#endif
-    }
-    // Voicing 8+: the Loop's DC blocker (today kDcBlockHz). Redesigns on the
-    // next setSettings().
-    void setDcBlock([[maybe_unused]] float hz)
-    {
-#if RV_TANKV_BUILT >= 8
-        dc_.setCutoff(hz, sampleRate_);
-        designDampHz_ = -1.0f;        // the Loop magnitudes again
-        settings_.t60Seconds = -1.0f; // force the redesign
 #endif
     }
     // Voicing 1 (proto/wellspring-fit B's high path): the high path's
@@ -508,7 +503,7 @@ private:
     // settings it was designed from.
     dsp::Biquad dampBq_, stagedBq_;
     bool  eqOn_ = false, stagedEqOn_ = false;
-    float designEq_[4] = {-1.0f, 0.0f, 0.0f, 0.0f};
+    float designEq_[3] = {-1.0f, 0.0f, 0.0f};
 #endif
     // What the caches hold: fC (K, fC points), damping cutoff, and the fC
     // the damping delays and magnitudes were worked out with.

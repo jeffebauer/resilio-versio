@@ -754,6 +754,7 @@ private:
     bool                bass2_ = false;
     bool                dRun_  = true;   // round 5: D runs (only where it is heard; controlTick)
     float               mixDecay_ = 0.5f; // round 5: the Springs' DECAY the mix's D weight follows (controlTick)
+    float               r5AttTrim_ = 1.0f; // round 5: KICKED's wet trim, with the Morph (controlTick)
 #endif
 #if RV_TANKV_BUILT >= 3
     std::array<std::array<float*, tankv::kNumDiffusers>, kMaxSprings> diffBuf_{}; // voicing 3: Loop diffusers

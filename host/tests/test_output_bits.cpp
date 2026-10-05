@@ -662,6 +662,7 @@ void artefacts()
                 if (last > sec(1.6)) {
                     double hz = 0;
                     const double p = newPeakDb(o0, o1, last - sec(1.2), last - sec(0.2), &hz);
+                    std::printf("INFO    %s DECAY %.2f MIX %.1f: last second %.1f dB (%.0f Hz)\n", kAtt[a], double(dc), double(mix), p, hz);
                     if (p > worstEnd) worstEnd = p, hzEnd = hz;
                 }
                 for (double f0 : {1000.0, 1130.0}) {

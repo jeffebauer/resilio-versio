@@ -110,7 +110,7 @@ RV_SIZE_OPT void TapeEcho::reset()
     wow_.reset();
 }
 
-void TapeEcho::tick(float seconds, float wobble, bool snap)
+RV_SIZE_OPT void TapeEcho::tick(float seconds, float wobble, bool snap) // control rate (housekeeping)
 {
     // The wear's fixed delay (the worn tape's) is part of every pass: the tape is that much shorter.
     const float target = std::clamp(seconds * sampleRate_ - wear_.latencySamples() - bits_.latencySamples(), minDelay_, maxD_);

@@ -111,7 +111,7 @@ float diffScaleFor(int v, size_t s)
 // in the firmware's layout for voicing v (its only one), or, v < 0, a desktop
 // build's (the longest any voicing plays). Round 5's firmware layout gives
 // Spring C none: it never runs there (echo mode, Tank.h "SPRINGS switching").
-int diffBufSize(float sampleRate, size_t s, size_t k, int v)
+RV_SIZE_OPT int diffBufSize(float sampleRate, size_t s, size_t k, int v) // set-up
 {
     const auto& t = tankv::tuning();
     float ms = std::max(t.diffMs[k], t.r5DiffMs[k]);
@@ -406,9 +406,6 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
                                  tankv::hasDiffusion(tankVoicing_) ? tankv::kNumDiffusers : 0, t.diffCoeff);
 #endif
 #endif
-#if RV_TANKV_BUILT >= 8
-        springs_[s].setDcBlock(tankv::r5MixHz(Spring::kDcBlockHz, t.r5DcHz, tankv::r5Amount(tankVoicing_)));
-#endif
         springs_[s].setHighT60Ratio(tankv::hasGentle(tankVoicing_)        ? t.gentleHighT60Ratio
                                     : tankv::hasTransducers(tankVoicing_) ? t.tdHighT60Ratio // voicing 5+
                                                                           : Spring::kHighT60Ratio);
@@ -682,7 +679,7 @@ void Tank::clock(int sampleOffset)
         pendingClocks_[size_t(numPendingClocks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
 }
 
-void Tank::feedClocks()
+RV_SIZE_OPT void Tank::feedClocks() // control rate: the echo clock's queue (housekeeping)
 {
     int k = 0;
     while (k < numClockQ_ && int32_t(clockQ_[size_t(k)] - sampleClock_) <= 0) clock_.edge(clockQ_[size_t(k++)]);
@@ -788,6 +785,12 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     }
 #if RV_TANKV_BUILT >= 8
     if (tankv::hasR5(tankVoicing_)) {
+        // Round 5: the wet r5NoonTrimDb lower from noon right, easing to none
+        // at TONE fully left (where the tank eases back to 7's): its hits came
+        // back ~2 dB over 7's at noon, and TONE's loudness spread in KICKED
+        // past test_drive's 3 dB (TankVoicing.h r5NoonTrimDb).
+        r5AttTrim_ = drive::dbToGain((1.0f - tankv::toneDarkWeight(smoothed_[size_t(ParamId::Tone)], tankv::tuning().toneDarkCurve))
+                                     * tankv::tuning().r5NoonTrimDb);
         // Round 5: D's weight follows DECAY (stereoMixFor): between fades, take
         // it as DECAY moves (continuous: no fade needed), the level kept.
         const float d = stereoMixFor(mode_).decorr;
@@ -927,7 +930,20 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         // tdSplashLiftDb), easing to none by DRIVE 0.8 (process()).
         const auto& t = tankv::tuning();
         const float u = std::clamp((t.tdSplashLiftTo - smoothed_[size_t(ParamId::Drive)]) / (t.tdSplashLiftTo - t.tdSplashLiftFrom), 0.0f, 1.0f);
+#if RV_TANKV_BUILT >= 8
+        // Round 5: KICKED's splash a little more at low DRIVE (r5KickedLiftDb,
+        // easing out by DRIVE 0.8 as (1 - DRIVE / 0.8)^2), so SPLASH stays
+        // DRIVE-free (test_m7_tank, SPLASH voicing C: DRIVE 0 vs 0.8 within
+        // 3 dB) once the coil's resonance relaxes with KICKED's DRIVE.
+        float kl = 0.0f;
+        if (tankv::hasR5(tankVoicing_)) {
+            const float e = std::max(0.0f, 1.0f - smoothed_[size_t(ParamId::Drive)] / t.tdSplashLiftTo);
+            kl = t.r5KickedLiftDb * e * e;
+        }
+        splashLift_ = drive::dbToGain((1.0f - attW_[2]) * t.tdSplashLiftDb * u + attW_[2] * (t.tdSplashLiftKickedDb + kl));
+#else
         splashLift_ = drive::dbToGain((1.0f - attW_[2]) * t.tdSplashLiftDb * u + attW_[2] * t.tdSplashLiftKickedDb);
+#endif
     }
 #endif
     splash_.set(attW_, splashAmt, splashDrive_, splashInput_); // DRIVE's gain on the Clang / Bite, the INPUT gain (below, on DRIVE moves)
@@ -939,7 +955,14 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         // in 7's denser tail than the right side's (TankVoicing.h).
         const auto& t = tankv::tuning();
         const float u = std::clamp((decay - t.tdDampingDecayFrom) / (1.0f - t.tdDampingDecayFrom), 0.0f, 1.0f);
+#if RV_TANKV_BUILT >= 8
+        // (Round 5: its own, r5WobbleLeftDecayMax: its Hold has less damping
+        // and smear at the top of DECAY, so the left side's wow built up more.)
+        const float wl = tankv::hasR5(tankVoicing_) ? t.r5WobbleLeftDecayMax : t.tdWobbleLeftDecayMax;
+        wobbleScale *= 1.0f + u * u * (3.0f - 2.0f * u) * (wl - 1.0f);
+#else
         wobbleScale *= 1.0f + u * u * (3.0f - 2.0f * u) * (t.tdWobbleLeftDecayMax - 1.0f);
+#endif
     }
 #endif
 #if RV_TANKV_BUILT >= 8
@@ -1192,7 +1215,12 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                 const float k5    = tankv::r5Amount(tankVoicing_);
                 const float in0   = tankv::r5MixHz(t.tdInHz, t.r5TdInHz, k5);
                 const float out0  = tankv::r5MixHz(t.tdOutHz, t.r5TdOutHz, k5);
-                const float inQ   = tankv::r5Mix(t.tdInQ, t.r5TdInQ, k5 * (1.0f - wd));
+                // Its sharper resonance relaxes to 7's as KICKED's DRIVE
+                // saturates the coil (kickedOpen, x2: gone by DRIVE ~0.8):
+                // sharp, the opening corner swept the Clang's highs off the
+                // resonance and DRIVE 0.75 splashed 1.3 dB less than 0.5
+                // (test_m7_tank "DRIVE never reduces the splash", KICKED rim).
+                const float inQ   = tankv::r5Mix(t.tdInQ, t.r5TdInQ, k5 * (1.0f - wd) * (1.0f - std::min(1.0f, 2.0f * kickedOpen)));
                 const float outQ  = tankv::r5Mix(t.tdOutQ, t.r5TdOutQ, k5);
                 const float inHz  = in0 * std::exp(wd * std::log(t.toneDarkInHz / in0)
                                                    + 0.693147f * t.tdDriveOpenOct * kickedOpen);
@@ -1225,7 +1253,23 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                 const float lossDb = (10.0f / 2.302585093f) * std::log(tdAll_ / std::max(tdLp_, 1.0e-12f));
                 tdDarkDb_ = tdWd_ * std::min(t.toneDarkDb, t.toneDarkShare * lossDb);
             }
+#if RV_TANKV_BUILT >= 8
+            // Round 5: as KICKED's DRIVE relaxes the coil's resonance (the
+            // inQ ease above), its lost lift comes back (r5CoilRelaxDb), so
+            // DRIVE's loudness curve stays ADR 0033's (+6 dB at DRIVE 1).
+            const float relax = tankv::hasR5(tankVoicing_) ? t.r5CoilRelaxDb * std::min(1.0f, 2.0f * kickedOpen) : 0.0f;
+            trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen + relax);
+#else
+#if RV_TANKV_BUILT >= 8
+            // Round 5: as KICKED's DRIVE relaxes the coil's resonance (the
+            // inQ ease above), its lost lift comes back (r5CoilRelaxDb), so
+            // DRIVE's loudness curve stays ADR 0033's (+6 dB at DRIVE 1).
+            const float relax = tankv::hasR5(tankVoicing_) ? t.r5CoilRelaxDb * std::min(1.0f, 2.0f * kickedOpen) : 0.0f;
+            trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen + relax);
+#else
             trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen);
+#endif
+#endif
         }
 #endif
         inTrimFrom_ = snap ? trim : inTrimTo_;
@@ -1252,6 +1296,13 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         }
         compTone_  = tone;
         push_      = drive::push(voice, drive);
+#if RV_TANKV_BUILT >= 8
+        // Round 5: DRIVEN's pickups pushed a little harder with DRIVE
+        // (r5DrivenPushDb, along the push curve): round 5's tail hid
+        // DRIVEN's grit by ~1 dB (test_drive's DRIVE audibility, ADR 0022).
+        if (tankv::hasR5(tankVoicing_))
+            push_.out *= drive::dbToGain(attW_[1] * tankv::tuning().r5DrivenPushDb * drive::pushCurve(drive::colourDrive(drive)));
+#endif
         if constexpr (splash::kVoicingsBuilt) { // the Clang's ceiling credit for the pickups' push (SplashVoicing.h)
             const float share = attW_[0] * splash::kCeilPushShare[0] + attW_[1] * splash::kCeilPushShare[1]
                               + attW_[2] * splash::kCeilPushShare[2];
@@ -1568,22 +1619,26 @@ void Tank::updateSpringSettings(size_t i)
 #endif
 #if RV_TANKV_BUILT >= 8
     if (tankv::hasR5(tankVoicing_)) {
-        // Round 5: the damping a peaking cut at noon (TankVoicing.h r5Eq*,
-        // each Spring's at its own detuned frequency): left of noon it eases
-        // to 7's low-pass (today's at TONE 0), right of noon the cut eases;
-        // D (10) half the cut. s.dampingHz stays 7's (the low-pass it eases to).
+        // Round 5: a peaking cut in each trip on top of 7's damping
+        // (TankVoicing.h r5Eq*, each Spring at its own detuned frequency): it
+        // eases out left of noon (TONE fully left: 7's, today's, tank) and to
+        // r5EqDbBright right of noon; D (10) half of it.
         const auto& t  = tankv::tuning();
         const float wd = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
         const float wb = tankv::toneBrightWeight(keyTone_, t.toneBrightCurve);
         const float k5 = tankv::r5Amount(tankVoicing_);
         s.eqHz   = t.r5EqHz * sh.damping;
         // ... and none of it in the Hold or the Howl (DECAY's top): there the
-        // Loop gain is set by its loudest band, and the dip narrowed that band
+        // Loop gain is set by its loudest band, and the cut narrowed that band
         // to ~600 Hz, which then sang over minutes (M6: 7 Ringing cells at
         // TENSION 1, one Howl cell too pure).
-        s.eqDb   = k5 * tankv::r5Mix(t.r5EqDb, t.r5EqDbBright, wb) * (1.0f - std::max(s.hold, s.howl));
+        s.eqDb   = k5 * (1.0f - wd) * tankv::r5Mix(t.r5EqDb, t.r5EqDbBright, wb) * (1.0f - std::max(s.hold, s.howl));
         s.eqQ    = t.r5EqQ;
-        s.eqToLp = wd;
+        // ... and in the Hold the diffusers smear less (7's coefficient): a
+        // soft front makes each new note in the bed peak later, so the bed's
+        // lows were still rising when the next kick came (test_throw_hold's
+        // "a dip, not a hump", ADR 0040).
+        springs_[i].setDiffusionCoeff(tankv::r5Mix(t.r5DiffCoeff, t.r5HoldDiffCoeff, s.hold));
     }
 #endif
     s.tapRatio          = modes::kPickupTap[i];
@@ -1602,24 +1657,13 @@ void Tank::updateSpringSettings(size_t i)
         ;
     if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).keepTiming)
         keepTodaysTiming(i, s);
-#if RV_TANKV_BUILT >= 8
-    if (i == 1 && tankv::hasR5(tankVoicing_)) // round 5: Spring B's pickup (r5PickupBMs)
-        s.tapOffsetSeconds += tankv::r5StereoAmount(tankVoicing_) * tankv::tuning().r5PickupBMs * 0.001f;
-#endif
 #if RV_TANKV_BUILT >= 7
     if (tankv::hasShipFixes(tankVoicing_)) { // TONE re-map: the high path today's length fully left
         const auto& t = tankv::tuning();
         const float w = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
-#if RV_TANKV_BUILT >= 8
-        // Round 5: r5HighT60Ratio from DECAY r5HighFullDecay up, 7's below r5HighFromDecay (a short
-        // DECAY stays short: the high path at 3x DECAY 0 rang 0.55 s, test_spring's 0.3-0.5).
-        const float uh = std::clamp((keyDecay_ - t.r5HighFromDecay) / (t.r5HighFullDecay - t.r5HighFromDecay), 0.0f, 1.0f);
-        const float r0 = tankv::r5Mix(t.tdHighT60Ratio, t.tdHighT60Ratio + uh * uh * (3.0f - 2.0f * uh) * (t.r5HighT60Ratio - t.tdHighT60Ratio),
-                                      tankv::r5Amount(tankVoicing_));
-        const float r = r0 + w * (t.toneDarkHighT60Ratio - r0);
-#else
+        // (Round 5 keeps 7's high path length; its higher ceiling, r5HighCeilHz,
+        // lets 4 kHz ring as the Wellspring's.)
         const float r = t.tdHighT60Ratio + w * (t.toneDarkHighT60Ratio - t.tdHighT60Ratio);
-#endif
         if (r != hiT60Set_[i]) {
             springs_[i].setHighT60Ratio(r);
             hiT60Set_[i] = r;
@@ -2187,7 +2231,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // pickups 2.5 dB lower, so DRIVE grew it and its splash more.
         const bool  trimAfter = tankv::hasShipFixes(tankVoicing_);
         const float wetGain = kWetGain * (tankv::hasTransducers(tankVoicing_) && !trimAfter ? tdTrim_ : 1.0f);
+#if RV_TANKV_BUILT >= 8
+        const float outTrim = (trimAfter ? tdTrim_ : 1.0f) * r5AttTrim_; // round 5: the level trim (controlTick)
+#else
         const float outTrim = trimAfter ? tdTrim_ : 1.0f;
+#endif
         const float kickIn  = trimAfter ? kWetGain / tdTrim_ : kWetGain; // the Kick's thump comes out as before
 #else
         constexpr float wetGain = kWetGain;

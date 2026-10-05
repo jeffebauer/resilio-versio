@@ -31,10 +31,10 @@ SPACE = {
     "r5EqHz": (1100.0, 700.0, 1800.0, 1.12, "log"),
     "r5EqDb": (-0.6, -1.5, 0.0, 0.15, "lin"),
     "r5EqQ": (1.0, 0.5, 2.5, 1.25, "log"),
-    "r5DcHz": (30.0, 12.0, 40.0, 1.15, "log"),
+    # "r5DcHz" (the Loop's DC blocker) was fitted too; it stays at 40 Hz since (test_kick) and the key is gone.
     "r5TdInHz": (1850.0, 1400.0, 2600.0, 1.06, "log"),
     "r5TdInQ": (1.4, 0.7, 2.5, 1.12, "log"),
-    "r5HighT60Ratio": (1.5, 1.0, 4.5, 1.2, "log"),
+    # "r5HighT60Ratio" was fitted too (3.0); since the fix-up round the high path keeps 7's 1.5 and the key is gone.
     "r5HighCeilHz": (9000.0, 6000.0, 20000.0, 1.25, "log"),
     "r5HighLevel": (0.9, 0.5, 1.5, 1.15, "log"),
     "r5LcHpHz": (155.0, 100.0, 260.0, 1.12, "log"),

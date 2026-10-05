@@ -79,7 +79,7 @@
 #ifdef RV_TANK_DEFAULT_VOICING
 #define RV_TANKV_BUILT RV_TANK_DEFAULT_VOICING
 #else
-#define RV_TANKV_BUILT 7 // the default, kGentleWide (ADR 0038 Decision)
+#define RV_TANKV_BUILT 8 // the default, kR5 (ADR 0038 Round 5, owner pick 5 Oct 2026)
 #endif
 #else
 #define RV_TANKV_BUILT 10 // desktop: every voicing, round 5's (8-10) included
@@ -112,7 +112,7 @@ constexpr int kNumVoicings     = 11;
 #ifdef RV_TANK_DEFAULT_VOICING
 constexpr int kDefaultVoicing = RV_TANK_DEFAULT_VOICING;
 #else
-constexpr int kDefaultVoicing  = kGentleWide;
+constexpr int kDefaultVoicing  = kR5; // round 5's B (owner, 5 Oct 2026: "B" in every row; ADR 0038 Round 5)
 #endif
 
 constexpr bool hasSweep(int v) { return v >= kSweep; }
@@ -135,7 +135,7 @@ constexpr bool hasShipFixes(int v) { return v >= kGentleWide; }
 constexpr bool  hasR5(int v) { return v >= kR5; }
 constexpr float r5Amount(int v) { return v < kR5 ? 0.0f : v == kR5Half ? 0.5f : 1.0f; }
 constexpr float r5FlatAmount(int v) { return v == kR5Flat ? 1.0f : v == kR5Half ? 0.5f : 0.0f; }
-// The stereo image (r5Wide*, r5PickupBMs, r5DiffScale) goes all the way in D
+// The stereo image (r5Wide*, r5DiffScale) goes all the way in D
 // too: half of it put D(mid) back at half weight, and with it the tones'
 // left / right lean (500 Hz +3.2 dB) and out-of-phase fronts.
 constexpr float r5StereoAmount(int v) { return v >= kR5 ? 1.0f : 0.0f; }
@@ -396,35 +396,43 @@ struct Tuning {
     // apart (the Wellspring's front: 125-500 Hz centred).
     float r5DiffScale[3] = {1.0f, 1.0f, 0.89f};
     float r5DiffAlign = 0.0f;
-    // The resonance (target 2). The Loop's damping becomes a biquad: a
+    // ... and in the Hold (its zone weight) they ease to this coefficient
+    // (Tank.cpp updateSpringSettings: the Hold's ducking, ADR 0040).
+    float r5HoldDiffCoeff = 0.15f;
+    // WOBBLE's left side at DECAY 1 (7's tdWobbleLeftDecayMax 0.9, same
+    // easing): fully left read 1.63x fully right at DECAY 1 (test_m7_tank,
+    // bar 0.6..1.6; 7 1.53).
+    float r5WobbleLeftDecayMax = 0.8f; // hump: +0.49 dB at 7's 0.2, -0.46 here, 7 itself -0.54 (bar +0.5); 0 and 0.3 read +3.1 / +0.2: the one-drop bass is phase luck
+    // The resonance (target 2). A biquad in each Loop after 7's damping: a
     // peaking cut of r5EqDb per trip at r5EqHz (width r5EqQ), so the octave
     // around 1 kHz loses a little more each trip than 500 Hz and stops
     // ringing longest (the Wellspring rings longest at 500 Hz, 7 at 1 kHz).
     // Set by hand on the fit: the search alone traded it for the steady
     // colour (a shorter 1 kHz is a quieter 1 kHz; the coil gives it back).
-    // Left of noon it eases to 7's (today's) low-pass; right of noon the cut
-    // eases to r5EqDbBright (TONE fully right; -0.3 let Spring B's ~1 kHz
+    // Left of noon it eases out (7's tank, today's at TONE 0); right of noon
+    // it eases to r5EqDbBright (TONE fully right; -0.3 let Spring B's ~1 kHz
     // sing at TENSION 1, DECAY 0.75: M6 15.9 dB, limit 15). None of it in
     // the Hold or the Howl (Tank.cpp updateSpringSettings).
     float r5EqHz       = 1200.0f;
     float r5EqDb       = -0.8f;
     float r5EqQ        = 1.4f;
     float r5EqDbBright = -0.6f;
-    // The Loop's DC blocker (Spring::kDcBlockHz 40 Hz). The fit took it to
-    // 35 Hz (125 Hz rings a little longer) for little; that let the Kick's
-    // low end ring 3 dB too long (test_kick), so it stays at 40.
-    float r5DcHz = 40.0f;
+    // (The Loop's DC blocker stays at Spring::kDcBlockHz 40 Hz: the fit's
+    // 35 Hz rang 125 Hz a little longer for little and let the Kick's low
+    // end ring 3 dB too long, test_kick.)
     // The coil (5's input transducer): its resonance lower and sharper, the
     // presence peak up from 1 kHz to 1.25-1.6 kHz (the Wellspring 1.25-1.6).
     float r5TdInHz  = 1960.0f;
     float r5TdInQ   = 1.57f;
     float r5TdOutHz = 4500.0f;
     float r5TdOutQ  = 0.67f;
-    // The high path: twice 7's length (4 kHz rang 1.2 s, the Wellspring 1.8).
-    float r5HighT60Ratio = 3.0f;
-    float r5HighFromDecay = 0.3f; // ... 7's 1.5 below this DECAY, easing (smoothstep) to
-    float r5HighFullDecay = 0.6f; // ... r5HighT60Ratio from this one
-    float r5HighCeilHz   = 9000.0f;
+    // The high path: 7's length (1.5 x DECAY's T60) through a higher
+    // ceiling, so 4 and 8 kHz ring longer (J: 1.22 / 0.50 s in 7, 1.78 / 0.75
+    // here; the Wellspring 1.81 / ~1). The fit had found 3 x DECAY's T60 at
+    // 7's 9 kHz ceiling (4 kHz 1.30 s): that let the high path's ~1.2 kHz end
+    // outlast the tail (test_output_bits: a new 1.25 kHz peak in the mu-law
+    // box's last second, 6.5 dB, bar 6) and DECAY 0 ring 0.55 s.
+    float r5HighCeilHz   = 14000.0f;
     float r5HighLevel    = 0.9f;
     // The low cut in front of the Springs (F round 2's step 2 at r5Amount 0):
     // a little more bass in, a little more 150-400 Hz out.
@@ -451,19 +459,39 @@ struct Tuning {
     float r5WideSide3 = 0.55f;
     float r5BassHz   = 150.0f;
     float r5BassOrder2 = 0.0f;
-    // Spring B's pickup this much later (ms) than 7's alignment. Tried: 0.12
-    // puts the two Springs' 2-4 kHz first echoes in phase (a 2 kHz burst's
-    // front read -0.85 L/R, then +0.45; the Wellspring -0.12), but combs the
-    // mono sum of a short tail (DECAY 0: notch -6.3 dB at 1.4 kHz, test_tank's
-    // bar -6, margin -4.5; 0.06 still -5.4). Off: the clicks' 2 kHz front
-    // reads -0.12 (the Wellspring -0.02) as it is.
-    float r5PickupBMs = 0.0f;
+    // (Tried and dropped: Spring B's pickup 0.12 ms later puts the two
+    // Springs' 2-4 kHz first echoes in phase (a 2 kHz burst's front -0.85 L/R
+    // -> +0.45; the Wellspring -0.12) but combs the mono sum of a short tail:
+    // DECAY 0 notch -6.3 dB at 1.4 kHz, test_tank's bar -6, margin -4.5.)
     // Held sounds (target 4, C): WOBBLE's random wow / flutter inside the
     // Loops x r5FlatLoopWobble, the pickups' share (the transport) x
     // r5FlatTransportWobble, left of noon only (Tank.cpp). All of it on the
     // pickups: a held 1 kHz tone at WOBBLE 0.45 moves 2.2 dB instead of 7.8
     // (the Wellspring 1.2), and x 1.6 there keeps its pitch movement (WOBBLE
     // 0.25: p95 21.8 cents, 7 21.0; docs/prototypes/wellspring-fit-5/pitch5.py).
+    // The wet's level from noon right (dB; easing to none at TONE fully left,
+    // as the tank eases back to 7's; after the pickups, as 7's wet trim).
+    // Round 5 came back louder than 7 at noon (02_hits +2.1 dB, clicks +0.6,
+    // tone bursts +1.1; skank and pad level), and TONE's loudness spread in
+    // KICKED read 3.6 dB (test_drive, bar 3; 7 2.3): TONE fully left was
+    // already 7's level. One dB: hits +1.1 over 7, skank -1.2.
+    float r5NoonTrimDb = -1.0f;
+    // DRIVEN's output pickups pushed this much harder at DRIVE 1 (dB of
+    // hardness along drive::pushCurve, x the DRIVEN Morph weight): the
+    // denser, less decorrelated tail hid DRIVEN's grit ~1 dB more than 7's
+    // (test_drive DRIVE audibility, level-matched DRIVE 0 vs 0.5: 7 -19.1,
+    // 8 -20.1, bar -20; docs/prototypes/wellspring-fit-5/nullprobe.cpp).
+    float r5DrivenPushDb = 2.0f;
+    // KICKED's Clang and Clatter lifted this much more at DRIVE 0, easing out
+    // by DRIVE 0.8 ((1 - DRIVE / 0.8)^2; on top of tdSplashLiftKickedDb):
+    // round 5's coil gives the splash's highs back as KICKED's DRIVE relaxes
+    // its resonance (Tank.cpp), and SPLASH voicing C stays DRIVE-free.
+    float r5KickedLiftDb = 2.0f;
+    // The level the coil's resonance gave, given back as KICKED's DRIVE
+    // relaxes it (dB at full relax, on the Springs' input; Tank.cpp): without
+    // it KICKED grew only +3.2 dB from DRIVE 0 to 1 (ADR 0033: +6, test_drive
+    // limit 2 dB off).
+    float r5CoilRelaxDb = 1.8f;
     // The Sustain trim's glide down on held sounds x this (on top of F round
     // 2's kFSusGlideScale; Tank.cpp updateBaseSettings).
     float r5SusGlideScale = 0.6f;

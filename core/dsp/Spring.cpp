@@ -189,7 +189,6 @@ bool Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.hold == settings_.hold && s.highT60Seconds == settings_.highT60Seconds
 #if RV_TANKV_BUILT >= 8
                    && s.eqHz == settings_.eqHz && s.eqDb == settings_.eqDb && s.eqQ == settings_.eqQ
-                   && s.eqToLp == settings_.eqToLp
 #endif
         ;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return true;
@@ -262,26 +261,23 @@ float polyDelay(float c0, float c1, float c2, float cw, float sw)
     const float qr = c1 * cw + 2.0f * c2 * c2w, qi = -(c1 * sw + 2.0f * c2 * s2w);
     return (qr * pr + qi * pi) / std::max(pr * pr + pi * pi, 1.0e-20f);
 }
-float biquadDelay(const dsp::Biquad& b, float cw)
+RV_NOINLINE float biquadDelay(const dsp::Biquad& b, float cw) // one copy (prepareDamping, commitDesign), still -O3
 {
     const float sw = std::sqrt(std::fmax(0.0f, 1.0f - cw * cw));
     return polyDelay(b.b0, b.b1, b.b2, cw, sw) - polyDelay(1.0f, b.a1, b.a2, cw, sw);
 }
-// The round-5 damping biquad: an RBJ peaking cut eased toward the one-pole
-// low-pass y += c (x - y) by u (coefficients blended: the stable region of
-// (a1, a2) is convex, so every blend is stable; u 1 = that low-pass exactly).
-void designLoopEq(dsp::Biquad& b, const SpringSettings& s, float dampingC, float sampleRate)
+// The round-5 cut: an RBJ peaking filter (eqDb at eqHz, width eqQ).
+RV_NOINLINE void designLoopEq(dsp::Biquad& b, const SpringSettings& s, float sampleRate)
 {
     const float A  = std::exp(s.eqDb * (2.302585093f / 40.0f));
     const float w  = 2.0f * map::kPi * std::min(s.eqHz, 0.45f * sampleRate) / sampleRate;
     const float al = std::sin(w) / (2.0f * s.eqQ), cw = std::cos(w);
     const float a0 = 1.0f + al / A;
-    const float u  = std::clamp(s.eqToLp, 0.0f, 1.0f), v = 1.0f - u;
-    b.b0 = v * (1.0f + al * A) / a0 + u * dampingC;
-    b.b1 = v * (-2.0f * cw) / a0;
-    b.b2 = v * (1.0f - al * A) / a0;
-    b.a1 = v * (-2.0f * cw) / a0 - u * (1.0f - dampingC);
-    b.a2 = v * (1.0f - al / A) / a0;
+    b.b0 = (1.0f + al * A) / a0;
+    b.b1 = (-2.0f * cw) / a0;
+    b.b2 = (1.0f - al * A) / a0;
+    b.a1 = b.b1;
+    b.a2 = (1.0f - al / A) / a0;
 }
 } // namespace
 #endif
@@ -290,9 +286,9 @@ void Spring::prepareDamping(float dampingHz)
 {
 #if RV_TANKV_BUILT >= 8
     const SpringSettings& se = settings_;
-    const bool eqSame = se.eqHz == designEq_[0] && se.eqDb == designEq_[1] && se.eqQ == designEq_[2] && se.eqToLp == designEq_[3];
+    const bool eqSame = se.eqHz == designEq_[0] && se.eqDb == designEq_[1] && se.eqQ == designEq_[2];
     if (dampingHz == designDampHz_ && magFc_ == designFc_ && eqSame) return; // nothing moved
-    designEq_[0] = se.eqHz, designEq_[1] = se.eqDb, designEq_[2] = se.eqQ, designEq_[3] = se.eqToLp;
+    designEq_[0] = se.eqHz, designEq_[1] = se.eqDb, designEq_[2] = se.eqQ;
 #else
     if (dampingHz == designDampHz_ && magFc_ == designFc_) return; // neither moved
 #endif
@@ -302,7 +298,7 @@ void Spring::prepareDamping(float dampingHz)
     }
 #if RV_TANKV_BUILT >= 8
     stagedEqOn_ = se.eqHz > 0.0f;
-    if (kR5Only || stagedEqOn_) designLoopEq(stagedBq_, se, stagedDamping_.c, sampleRate_);
+    if (kR5Only || stagedEqOn_) designLoopEq(stagedBq_, se, sampleRate_);
 #endif
     // Loop magnitude per trip, excluding g (as loopMagnitudeAt, with the
     // staged filters), and the damping's group delay, at every point.
@@ -310,10 +306,10 @@ void Spring::prepareDamping(float dampingHz)
     for (int p = 0; p < kNumPoints; ++p) {
         const float cw = ptCos_[size_t(p)];
 #if RV_TANKV_BUILT >= 8
-        if (kR5Only || stagedEqOn_) {
-            ptDampDelay_[size_t(p)] = biquadDelay(stagedBq_, cw);
+        if (kR5Only || stagedEqOn_) { // the damping, then the cut
+            ptDampDelay_[size_t(p)] = stagedDamping_.groupDelay(cw) + biquadDelay(stagedBq_, cw);
             ptMag_[size_t(p)] = std::sqrt(dc_.magnitudeSquared(cw) * stagedLowpass_.magnitudeSquared(cw)
-                                          * stagedBq_.magnitudeSquared(cw));
+                                          * stagedDamping_.magnitudeSquared(cw) * stagedBq_.magnitudeSquared(cw));
             if (p < kNumDesignHz) maxMag = std::max(maxMag, ptMag_[size_t(p)]);
             continue;
         }
@@ -425,7 +421,7 @@ void Spring::commitDesign()
         const float fx  = hiXover_ * s.transitionHz;
         const float cw  = std::cos(2.0f * map::kPi * fx / sampleRate_);
 #if RV_TANKV_BUILT >= 8
-        const float dampDelay = (kR5Only || eqOn_) ? biquadDelay(dampBq_, cw) : damping_.groupDelay(cw);
+        const float dampDelay = damping_.groupDelay(cw) + ((kR5Only || eqOn_) ? biquadDelay(dampBq_, cw) : 0.0f);
 #else
         const float dampDelay = damping_.groupDelay(cw);
 #endif
@@ -484,7 +480,8 @@ float Spring::loopMagnitudeAt(float cw) const
 {
 #if RV_TANKV_BUILT >= 8
     if (kR5Only || eqOn_)
-        return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * dampBq_.magnitudeSquared(cw));
+        return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * damping_.magnitudeSquared(cw)
+                         * dampBq_.magnitudeSquared(cw));
 #endif
     return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * damping_.magnitudeSquared(cw));
 }
@@ -670,11 +667,12 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
 }
 
 #if RV_TANKV_BUILT >= 8
-// Voicing 8+: the damping (the round-5 biquad when on), then, if they sit
-// in front of the pickup, the three diffusers (as processLow's, in order).
+// Voicing 8+: the damping, the round-5 cut (when on), then, if they sit in
+// front of the pickup, the three diffusers (as processLow's, in order).
 inline float Spring::dampAndDiffuse(float x)
 {
-    x = (kR5Only || eqOn_) ? dampBq_.process(x) : damping_.process(x);
+    x = damping_.process(x);
+    if (kR5Only || eqOn_) x = dampBq_.process(x);
     if ((kR5Only || fbDiffPre_) && numFbDiff_ == 3) {
         FbDiffuser& f0 = fbDiff_[0];
         FbDiffuser& f1 = fbDiff_[1];
