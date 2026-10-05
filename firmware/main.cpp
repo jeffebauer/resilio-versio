@@ -337,20 +337,29 @@ bool PrepareTank()
 
 // ---- Corner table (SPEC §5, §7 M3) -----------------------------------------
 // Full grid: SPRINGS 1/2/3 x DECAY {0,1} x TENSION {0,1} x TONE {0.5,1} = 24
-// corners, all at MIX 1 (fully wet, so the meter sees Tank cost, not dry
+// corners (+ the SPRINGS switch pair below, run 18), all at MIX 1 (fully wet, so the meter sees Tank cost, not dry
 // mix), ATTITUDE KICKED and DRIVE max on every corner (see block comment
 // above). The SPEC §5 worst case was "3 springs, KICKED, loosest TENSION (0),
 // max DRIVE"; since echo mode (ADR 0041) no position runs three Springs, so
 // the candidates are SPRINGS 2 at the loosest tank and SPRINGS 3 (2 Springs
 // at the fixed tank + the tape echo, DECAY 1 = most feedback), both flagged
 // "(worst?)" in the printed name.
+// Run 18: two more corners after the grid time the SPRINGS switch itself.
+// Each starts where the corner before it ended (no other knob moves) and
+// flips SPRINGS half way through (flipTo): S3 -> S1 (the echo fades out
+// while the Springs glide back from the echo's fixed tank to the knobs'),
+// then S1 -> S3 (the echo fades in on a fresh tape). Their max / PEAK is
+// the switch. The lap then wraps from S3 to the first grid corner as
+// before (run 17's 82 % "first S1 corner after S3", comparable).
 struct Corner {
     int   springsPos; // 0/1/2 -> 1/2/3 Springs (Switch3 encoding)
     float decay, tension, tone;
+    int   flipTo; // -1, or the SPRINGS position half way through the corner
     char  name[40];
 };
 
-constexpr int kNumCorners = 3 * 2 * 2 * 2;
+constexpr int kNumGridCorners = 3 * 2 * 2 * 2;
+constexpr int kNumCorners     = kNumGridCorners + 2;
 Corner        gCorners[kNumCorners];
 
 // decay/tension only ever take 0.0/1.0 and tone only 0.5/1.0 here (see the
@@ -376,6 +385,7 @@ void BuildCornerTable()
                 for (float tone : tones) {
                     Corner& c   = gCorners[idx++];
                     c.springsPos = springsPos;
+                    c.flipTo     = -1;
                     c.decay      = decay;
                     c.tension      = tension;
                     c.tone       = tone;
@@ -397,6 +407,20 @@ void BuildCornerTable()
                 }
             }
         }
+    }
+    // The switch pair, at the last grid corner's knobs (D1 TN1 TO1).
+    for (int k = 0; k < 2; ++k) {
+        Corner& c    = gCorners[idx++];
+        c.springsPos = k == 0 ? 2 : 0;
+        c.flipTo     = k == 0 ? 0 : 2;
+        c.decay      = 1.0f;
+        c.tension    = 1.0f;
+        c.tone       = 1.0f;
+        char*       p   = c.name;
+        const char* end = c.name + sizeof(c.name);
+        AppendStr(p, end, k == 0 ? "SWITCH S3>S1" : "SWITCH S1>S3");
+        AppendStr(p, end, " D1.0 TN1.0 TO1.0");
+        *p = '\0';
     }
 }
 
@@ -492,6 +516,10 @@ void AudioCallback(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer ou
 
     gLoadMeter.OnBlockEnd();
 
+    // The switch corners flip SPRINGS half way through (Corner::flipTo).
+    if (gCorners[gCurrentCorner].flipTo >= 0 && gCornerElapsed < gCornerSamples / 2
+        && gCornerElapsed + size >= gCornerSamples / 2)
+        tank.setParam(ParamId::Springs, rv::switchToNormalised(gCorners[gCurrentCorner].flipTo));
     gCornerElapsed += size;
     if (gCornerElapsed >= gCornerSamples && !gResultReady) {
         gPendingResult.index    = gCurrentCorner;

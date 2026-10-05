@@ -184,6 +184,27 @@ public:
     // never runs a half-updated Spring. Anything else (DECAY, TONE, the
     // Jolt, the glides) redesigns in one call, as before.
     bool setSettings(const SpringSettings& s, bool snap);
+    // For a Spring that is never run (Spring C wherever echo mode is built:
+    // the Tank neither processes nor hears it): the same answers as
+    // setSettings(s, false), so it keeps its place in the Tank's redesign
+    // turns and Springs A and B take their settings on the same ticks, but
+    // none of the maths. Leaves the design stale: the next setSettings
+    // redesigns everything (M3 run 17: that work was spent on every turn,
+    // even at rest, as the never-run Spring's L never lands on its target).
+    bool setSettingsUnheard(const SpringSettings& s)
+    {
+        stale_ = true;
+        if (pending_) { // setSettings: the second half of a TENSION redesign
+            pending_ = false;
+            return true;
+        }
+        if (s.transitionHz != designFc_) { // ... the first half (as prepareTransition)
+            designFc_ = s.transitionHz;
+            pending_  = true;
+            return false;
+        }
+        return true;
+    }
     // Just the allpass coefficient, at once, without the Loop gain redesign
     // (the Tank staggers full redesigns across Springs, but the Splash Jolt
     // moves a on every tick and must reach all Springs together). The next
@@ -493,6 +514,7 @@ private:
     // the damping delays and magnitudes were worked out with.
     float designFc_ = -1.0f, designDampHz_ = -1.0f, magFc_ = -1.0f;
     bool  pending_ = false;  // prepareTransition() done, commitDesign() due on the next call
+    bool  stale_   = false;  // setSettingsUnheard() skipped the maths: redesign everything next
     float lfoHzSet_ = -1.0f; // lfoE_ worked out for this lfoHz
 };
 

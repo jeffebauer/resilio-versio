@@ -23,11 +23,12 @@
 // and its audio doesn't run (Tank.h "SPRINGS switching").
 //
 // The panel in position 3 (owner, 4 Oct):
-//   DECAY   = the echo's feedback (kFeedback*): 0 = one repeat; up to long
-//             builds just short of runaway in CLEAN and DRIVEN. In KICKED the
-//             top of the knob tips into a runaway (kKicked*), a dub
-//             self-oscillation held by the tape's saturator and the output
-//             limiter, which dies away naturally when DECAY comes back down.
+//   DECAY   = the echo's feedback (kFeedback*): 0 = one repeat; long builds
+//             towards the top; at the very top, in every ATTITUDE (owner,
+//             5 Oct), persistent repeats at a roughly constant level held by
+//             the tape's saturator (KICKED gets there a little earlier on
+//             the knob), never a runaway; they die away naturally when
+//             DECAY comes back down.
 //   TENSION = the echo time. Unclocked: free, kFreeLongSeconds (TENSION 0)
 //             to kFreeShortSeconds (TENSION 1), log. Clocked: TENSION picks
 //             one of kDivisionBeats. Turning TENSION up is tighter either
@@ -93,20 +94,35 @@ constexpr float kTimeGlideSeconds = 0.30f;
 constexpr float kMaxSlew          = 0.5f;
 
 // ---- Feedback (DECAY) ------------------------------------------------------------------------
-// CLEAN and DRIVEN: kFeedbackMax x DECAY^kFeedbackExp, kFeedbackNoon at noon
-// (the prototype's page played 0.45). 0 = one repeat. The heads lose a little
+// The base curve: kFeedbackMax x DECAY^p, kFeedbackNoon at noon (the
+// prototype's page played 0.45). 0 = one repeat. The heads lose a little
 // every pass (the high-pass and low-pass are under 1 everywhere, ~0.965 at
-// their peak, ~700 Hz), so kFeedbackMax x 0.965 = 0.92 per pass at the top:
-// a long build that still fades (about 15 passes per 10 dB at the peak).
+// their peak, ~700 Hz), so a pass gains only past ~1.04 (1 / 0.965).
 constexpr float kFeedbackMax  = 0.95f;
 constexpr float kFeedbackNoon = 0.5f;
-// KICKED: above kKickedFrom the feedback rises (smoothstep) to kKickedTop at
-// DECAY 1; a pass gains past ~1.04 (1 / the heads' peak), DECAY ~0.88: the
-// top ~10 % of the knob is a runaway. The record head's softClip holds it
-// (the tape never carries more than 1 / kTapeDrive), the output limiter
-// holds the wet; backing DECAY off lets it die away like any repeats.
+// The top: above a start (per ATTITUDE) the feedback rises (smoothstep, no
+// corner in the knob) from the base curve to kFeedbackTop at DECAY 1, the
+// same top in every ATTITUDE. There a pass gains a little (x ~1.12 at the
+// heads' peak) until the record head's softClip holds it: persistent
+// repeats at a roughly constant level, held by the tape (the tape never
+// carries more than 1 / kTapeDrive), not a runaway; backing DECAY off lets
+// them die away like any repeats.
+// Owner, 5 Oct 2026 (ADR 0041 amendment): "In KICKED, I like that the decay
+// can reach persistent feedback levels around 91 % ... bring this same level
+// of feedback to CLEAN and DRIVEN as well", and cap it "to keep it in the
+// manageable constant feedback without hitting runaway chaos". kFeedbackTop
+// is what KICKED's DECAY 0.92 gave before (its curve then rose to 1.25: from
+// DECAY ~0.87 a pass gained more and more, into chaos); the same curve with the lower top keeps the
+// knob's travel even (no dead zone at the end).
+constexpr float kFeedbackTop = 1.16f;
+// KICKED rises from kKickedFrom: a pass gains from DECAY ~0.89, repeats stop
+// fading from ~0.90 (measured).
 constexpr float kKickedFrom = 0.75f;
-constexpr float kKickedTop  = 1.25f;
+// CLEAN and DRIVEN rise later (below kCleanFrom bit for bit as before: the
+// long build that still fades, KICKED's earlier tip kept as its own): a pass
+// gains from DECAY ~0.93, repeats stop fading from ~0.94 (test_echo_mode
+// "feedback" reports where each pass gains).
+constexpr float kCleanFrom = 0.85f;
 
 // ---- Heads -----------------------------------------------------------------------------------
 constexpr float kHeadLpHz  = 3500.0f; // playback: 2-pole low-pass per pass (compounds: each repeat darker)
@@ -313,19 +329,22 @@ constexpr unsigned tapeFloats(float fs) { return unsigned(kMaxSeconds * fs) + un
 
 // DECAY -> feedback, per ATTITUDE (the Tank blends them with the Morph).
 // exp / log rather than powf: smaller in the firmware's flash.
-inline float feedbackClean(float decay)
+inline float feedbackBase(float decay)
 {
     if (decay <= 0.0f) return 0.0f;
     const float p = std::log(kFeedbackNoon / kFeedbackMax) / std::log(0.5f); // noon -> kFeedbackNoon
     return kFeedbackMax * std::exp(p * std::log(decay < 1.0f ? decay : 1.0f));
 }
-inline float feedbackKicked(float decay)
+// The base curve (c = feedbackBase(decay)) up to `from`, then the smoothstep
+// rise to kFeedbackTop. (The Tank reads the base once for both ATTITUDE curves.)
+inline float feedbackRise(float c, float decay, float from)
 {
-    const float c = feedbackClean(decay);
-    float u = (decay - kKickedFrom) * (1.0f / (1.0f - kKickedFrom));
+    float u = (decay - from) * (1.0f / (1.0f - from));
     if (u <= 0.0f) return c;
     u = u < 1.0f ? u : 1.0f;
-    return c + u * u * (3.0f - 2.0f * u) * (kKickedTop - c);
+    return c + u * u * (3.0f - 2.0f * u) * (kFeedbackTop - c);
 }
+inline float feedbackClean(float decay) { return feedbackRise(feedbackBase(decay), decay, kCleanFrom); }   // CLEAN and DRIVEN
+inline float feedbackKicked(float decay) { return feedbackRise(feedbackBase(decay), decay, kKickedFrom); } // KICKED
 
 } // namespace rv::echo

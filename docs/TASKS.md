@@ -2,67 +2,60 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 4 Oct 2026, evening (three features built and picked, waiting on your last listen + OK to merge; run 16 ready; Wellspring session 2 recorded, ingest running)
+**Last updated:** 5 Oct 2026, midday (everything picked so far is merged or merging; run 18 under the CPU ceiling; Wellspring round 5 being built)
 
 | Milestone | State |
 |---|---|
-| M3 CPU | Run 17 (everything merged): 2 Springs 68.9 / 74.6 %, echo mode 73.3 / 79.1 %, **82.4 % spike on switching echo → Springs**. Budget ≤ 75 % target, 80 % ceiling. Savings round for run 18 under way |
-| Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops). **New release ready:** `843c5fc` with all of today's features (§2) |
-| M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 (last fit) being built |
-| M2 Ableton check | Ready: the plugin is installed |
-| M9 polish | Manual, starting points and share read-me are stale; refreshed after the merge |
+| M3 CPU | Run 18: 2 Springs 66.0 / 72.0 %, echo mode 70.2 / 76.2 %, SPRINGS switch 77.3 %, worst moment 79.9 %. Under the 80 % ceiling (target 75 %; echo mode's 76 % accepted). Flash: CPU-test build ~97 %, a small trim comes before round 5 |
+| Real firmware on the Versio | `d74ddc5` (Wellspring F + knob end stops). The next release (§2) has everything below |
+| M8 sound | **Merged:** TONE after the springs, Throw + Hold, echo mode, µ-law (DRIVEN 12-bit / KICKED 10-bit), echo tuning (held top). **Merging:** run 18's CPU savings. **Being built:** Wellspring round 5, the last fit |
+| M2 Ableton check | Ready once the next plugin install is in (§1) |
+| M9 polish | Manual, starting points and share read-me are stale; refreshed after round 5 |
 
-**Plugin in Ableton:** `843c5fc` (installed 5 Oct, AU validated): everything merged: CPU savings, TONE after the springs, echo mode (SPRINGS 3, follows Ableton's tempo), Throw + Hold (THROW is a latching button next to KICK), µ-law in DRIVEN/KICKED. **Rescan needed:** hold ⌥, Rescan, then insert a fresh instance
+**Plugin in Ableton:** `62575ff` (installed 5 Oct, AU validated): everything merged so far, incl. the echo tuning (held DECAY top in echo mode, KICKED µ-law 10-bit). **Rescan:** hold ⌥, Rescan, then insert a fresh instance
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private): universal plugin, firmware, read-me. A/B candidate: [v2026.10.02-cef6a77-candidate-F](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F). Both predate this week's features; the next release (after the merge) replaces them.
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; a new release follows round 5.
 
 ## Now (in this order)
 
-### 1. Plugin install with µ-law · done 5 Oct
-- [x] `843c5fc` installed and the AU validated. Rescan in Ableton (hold ⌥, Rescan) and insert a fresh instance
+### 1. Plugin install with the echo tuning · done 5 Oct
+- [x] `62575ff` installed, AU validated. Rescan (hold ⌥, Rescan) and insert a fresh instance. (Run 18's savings don't change the sound, so no reinstall is needed for them)
 
-### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
-- [x] **Run 17 done (5 Oct):** 2 Springs 68.9 % avg / 74.6 % peak, echo mode 73.3 / 79.1, but a **82.4 % spike when switching from echo mode back to the Springs** (over the 80 % ceiling). The µ-law box costs ~8–9 points (twice its estimate). Claude is finding sound-neutral savings (the µ-law box, the switch) for run 18
-- [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (that's the 82 % moment). Any click or dropout → tell Claude
+### 2. The new release on the module + click check (≈10 min)
+- [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
 
-### 3. Merged today (5 Oct), for reference
-- [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
-- Behaviour changes to know: the gate **throws** in SPRINGS 1–2 and **clocks the echo** in 3 (it no longer kicks); the button kicks everywhere, hold it 1 s to leave throw mode. MIX fully left in DRIVEN/KICKED is no longer a clean passthrough (µ-law); CLEAN still is
-
-### 3b. Echo tuning from your Ableton notes (5 Oct) · being built
-- In echo mode (SPRINGS 3): DECAY fully right becomes the steady, persistent feedback you liked at ~91 %, in **every** ATTITUDE (CLEAN/DRIVEN reach it too); KICKED's runaway goes (the top is today's 92 %). µ-law KICKED becomes **10-bit** (DRIVEN stays 12). Short before/after page `renders/tune_echo_feedback/`, then merge and reinstall so you can judge in Ableton
-
-### 3c. Wellspring round 5, the last fit · being built (started 5 Oct)
-- From your session 2 recordings: a softer echo front (the Wellspring swells in over ~0.5 s; ours hits and drops in ~35 ms), the longest ring moved from 1 kHz to ~500 Hz with the presence peak up to ~1.4 kHz, lows centred (front included) and the mids no longer left-heavy, a wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Retunes existing stages only (the module's CPU and flash are tight). Page `renders/fit_round5/` with your Wellspring as the reference; your pick, then merge
+### 3. Wellspring round 5, the last fit · picked B (5 Oct)
+- [x] **B everywhere** (softer front, ring lower, presence up, Wellspring-like stereo), held-tone and pad rows included at WOBBLE 0.45 (where B's held notes move most: kept as you heard it). Being made the default now, with its test fix-ups and a flash trim so it fits; then merge, plugin install and the release for the module
 
 ### 4. Play it (plugin and module)
-- [ ] **KICKED, TONE fully right, hit KICK:** with µ-law the grain from the ringing highs fills the lows after a Kick (the low end falls 10 dB in 300 ms instead of 24). Gritty longer thud, or mud?
-- [ ] **Echo mode feel**, on the plugin or module: is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to a long build? Is the **KICKED runaway** in the right place (top ~13 % of DECAY)? Is the **swoop** (~0.3 s) the right speed?
-- [ ] **Throw on the module:** gate into the gate jack opens the springs' send; hold KICK 1 s to leave throw mode (all four LEDs blink white)
-- [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): the output LEDs should mostly stay out of red, and any brief red should sound clean, not driven
+- [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
+- [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
+- [ ] **KICKED, TONE fully right, hit KICK:** with 10-bit µ-law the Kick's low end clears again (falls 20–34 dB in 300 ms). Sounds right?
+- [ ] **Throw on the module:** a gate opens the springs' send in SPRINGS 1–2; hold KICK 1 s to leave throw mode (four LEDs blink white). In SPRINGS 3 the gate clocks the echo
+- [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): output LEDs mostly out of red, any brief red clean, not driven
 - [ ] Play it thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 
-### 5. The plugin in Ableton (≈20 min, after the next install)
+### 5. The plugin in Ableton (≈20 min, after §1)
 - [ ] **Panel interface:** does the layout read like your panel? Knobs comfortable? LEDs match the module? KICK and THROW work?
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0 (in CLEAN), 44.1/96 kHz. A **Bypass** control is normal
 
 ### Optional
-- [ ] Friends' feedback: worth waiting for the next release (after the merge) rather than sending candidate F, which is now several picks behind. Paste any reply to Claude
+- [ ] Friends' feedback: wait for the release after round 5 rather than sending the old candidate. Paste any reply to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
 - [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
-- [ ] **KICKED Howl on a tight tank** (TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal? (At TONE right you said the pitch lean is fine)
+- [ ] **KICKED Howl on a tight tank** (SPRINGS 1–2, TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal? (At TONE right you said the pitch lean is fine)
 
 ## Later
 - **Stereo in:** see "What is In R for?" above; options and costs in [SPEC §10](../SPEC.md)
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Merging** the three features once you've said OK (§1), then the plugin install, release and CPU-test firmware
-- **Docs after the merge:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
-- **CPU, if run 16 comes in above 75 %:** more sound-neutral savings first (the tilt loop, the springs' per-sample work); a bigger audio block (+1 ms) stays the reserve
+- **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
+- **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
+- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -71,6 +64,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Hardware checks:** pass/fail per step; for anything odd, a line of description or a short recording
 
 ## Retired (superseded, no action)
+- 5 Oct 2026: **The `843c5fc` release click check**: superseded by the next release (§2). **"Is the KICKED runaway in the right place?"**: the echo's runaway is gone (held top). **"KICKED + TONE right Kick fills with grain?"** (8-bit): answered by 10-bit. **CPU run 16/17 plans**: done. Judged listening pages deleted (feat_*)
 - 4 Oct 2026: **"What should make you reach for 3 Springs?"**: answered by echo mode. **Wellspring fit "next round" (old §4)**: superseded by round 5. **Three checks on the F sound** (SPLASH with DRIVE down, TONE sweep level on clicks, TONE fully left): the sound moves again with TONE after the springs; check by ear after the merge (§4). **TONE fully right thin enough?**: settled by the Big Knob picks and TONE after the springs. Listening pages already judged were deleted (prototypes, BBD, diffuse, wear)
 These judged builds that no longer exist, or were overtaken by newer work:
 - M1 renders (5), M4 renders (6), M5 drive + TONE pages (8), SPLASH "heavier clang" re-listen (8b), M8 round 1 pairs (8c), M7 pages (9), TENSION/DECAY pages (10), M1 A/B listen (4b): the sound has moved on (TENSION, earlier first echo, spring EQ, SPLASH rework); their open questions moved to **Design questions**
@@ -80,6 +74,10 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 5 Oct 2026: **Echo tuning merged** (your pick B everywhere): echo mode's DECAY top is steady held repeats in every ATTITUDE (KICKED's runaway gone), KICKED µ-law 10-bit
+- 5 Oct 2026: **CPU runs 17 and 18:** run 17 (everything merged) 79 % echo mode, an 82 % spike on the SPRINGS switch; run 18's sound-neutral savings bring echo mode to 76 %, the switch to 77 %, the worst moment to 79.9 %. 76 % accepted under the 80 % ceiling
+- 5 Oct 2026: **Merged:** CPU savings (run 16), TONE after the springs, echo mode, Throw + Hold (ducking 12 dB, keyed on kick/bass), µ-law on the DRIVEN/KICKED output. Plugin `843c5fc` installed
+- 5 Oct 2026: **Wellspring session 2 ingested** (10 takes): the round 5 targets in the backlog
 - 4 Oct 2026: **Listening picks:** TONE after the springs (B everywhere, Kick and Howl at TONE right fine); throws "thrown" everywhere, leave throw mode by holding KICK 1 s; hold = layer, a Howl flipped out of KICKED fades as before; echo mode (B) with even steps down from the hit, BBD grit A (stronger aliasing added pitched chirps); repeats' bit depth too subtle alone, so µ-law on the whole DRIVEN/KICKED output instead
 - 4 Oct 2026: **Wellspring session 2 recorded** (takes H, I, D2 at a lowered OUTPUT, D-L, D-R, J, K, L, M, N)
 - 4 Oct 2026: **CPU budget** now ≤ 75 % peak target, 80 % ceiling with a click check (your call; ADR 0030, SPEC v1.0.32)
