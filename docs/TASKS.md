@@ -6,7 +6,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M3 CPU | Run 17 (everything merged): 2 Springs 68.9 / 74.6 %, echo mode 73.3 / 79.1 %, **82.4 % spike on switching echo → Springs**. Budget ≤ 75 % target, 80 % ceiling. Savings round for run 18 under way |
+| M3 CPU | Run 18: 2 Springs 66.0 / 72.0 %, echo mode 70.2 / 76.2 %, switch 77.3 %, worst moment 79.9 %. Under the 80 % ceiling (target 75 %; echo mode's 76 % accepted) |
 | Real firmware on the Versio | `d74ddc5` (Wellspring F sound + knob end stops). **New release ready:** `843c5fc` with all of today's features (§2) |
 | M8 sound | **Merged:** TONE after the springs, Throw + Hold, Echo mode (SPRINGS 3). µ-law on the DRIVEN/KICKED output picked, merging next. Wellspring round 5 (last fit) being built |
 | M2 Ableton check | Ready: the plugin is installed |
@@ -23,7 +23,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
 - [x] **Run 17 done (5 Oct):** 2 Springs 68.9 % avg / 74.6 % peak, echo mode 73.3 / 79.1, but a **82.4 % spike when switching from echo mode back to the Springs** (over the 80 % ceiling). The µ-law box costs ~8–9 points (twice its estimate). Claude is finding sound-neutral savings (the µ-law box, the switch) for run 18
-- [ ] **Run 18** (rack power unplugged, USB): flash `dist/resilio_versio_m3_profile_run18.bin`, `screen` in this app's Terminal, two laps (now 26 corners: two new SWITCH corners at the end measure flipping SPRINGS 3 ↔ 1 directly), tell Claude. Same sound, bit for bit; cheaper µ-law stage and no wasted third-spring redesigns. Expected echo mode ~76–78 %, the switch ~79–81 % (run 17: 79.1 / 82.4). Then decide the next lever (faster µ-law maths or a 96-sample block)
+- [x] **Run 18 (5 Oct):** 2 Springs 66.0 / 72.0 %, echo mode 70.2 / **76.2 %**, switch 3 → 1 77.3 %, the lap wrap 79.9 %: everything under the 80 % ceiling. Your call: merge it, and 76 % for echo mode is fine (the click check decides)
 - [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (that's the 82 % moment). Any click or dropout → tell Claude
 
 ### 3. Merged today (5 Oct), for reference
