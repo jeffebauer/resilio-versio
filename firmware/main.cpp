@@ -1090,12 +1090,20 @@ int main()
         }
         // Throw mode off (ADR 0039): all four white for a moment, the one
         // exception to the meters-only LEDs (ADR 0031).
-        static uint32_t blinkUntilUs = 0;
+        // Elapsed time by unsigned subtraction, so the microsecond clock's
+        // wrap (~71.6 min) can't matter. (Was a signed compare against a
+        // deadline that started at 0: after ~36 min of uptime it read as
+        // "blinking" and held all four LEDs white for ~36 min; owner, 5 Oct.)
+        static bool     blinking     = false;
+        static uint32_t blinkStartUs = 0;
         if (gThrowExited) {
             gThrowExited = false;
-            blinkUntilUs = nowUs + uint32_t(1.0e6f * rv::throwhold::kThrowExitBlinkSeconds);
+            blinking     = true;
+            blinkStartUs = nowUs;
         }
-        const bool blink = int32_t(blinkUntilUs - nowUs) > 0;
+        if (blinking && nowUs - blinkStartUs >= uint32_t(1.0e6f * rv::throwhold::kThrowExitBlinkSeconds))
+            blinking = false;
+        const bool blink = blinking;
         for (int m = 0; m < kNumMeters; ++m) {
             const rvled::Rgb c = blink ? rvled::Rgb{1.0f, 1.0f, 1.0f} : meters[m].colour();
             if (ledDma) gLedPwm.set(int(kMeterLed[m]), c);
