@@ -9,15 +9,16 @@
 //      the gate (open within 3 ms, closed within 20 ms); reset() = power-off;
 //   3. the tail rings on after the send closes, and input after the close
 //      never reaches the wet;
-//   4. the Kick is never gated;
+//   4. (was: the Kick is never gated; the Kick went in ADR 0043. The
+//      button's own throw is test_button.)
 //   5. clicks: a hot (0 dBFS) sustained low chord thrown on and off, every
 //      ATTITUDE, MIX 1: the Renderer's click detector reads 0;
 //   6. the THROW param is the gate (Plugin, Renderer).
-//   6b. leaving throw mode (a long press of KICK, exitThrowMode()): the
-//      send reopens over the open ramp without a click, the latch clears,
-//      the next rising edge switches it on again; a short press only kicks;
-//      a long press with throw mode off changes nothing, bit for bit; the
-//      Renderer's "throw_exits" reaches the Tank.
+//   6b. leaving throw mode (exitThrowMode(); the button's double tap and
+//      hold calls the same, test_button): the send reopens over the open
+//      ramp without a click, the latch clears, the next rising edge switches
+//      it on again; an exit with throw mode off changes nothing, bit for
+//      bit; the Renderer's "throw_exits" reaches the Tank.
 // HOLD: CLEAN and DRIVEN, DECAY 0.9 -> 1.
 //   7. the zone: weight 0 below DECAY 0.9 and in KICKED (the Howl unchanged),
 //      1 at CLEAN / DRIVEN DECAY 1; T60 continuous and rising through it;
@@ -83,10 +84,10 @@ std::unique_ptr<rv::Tank> make(const Setup& s)
     return t;
 }
 
-// A gate change at a sample, or a Kick.
+// A gate change at a sample.
 struct Event {
     size_t at;
-    int    what; // 0 = gate low, 1 = gate high, 2 = Kick
+    int    what; // 0 = gate low, 1 = gate high
 };
 
 // Mono render (L), events placed at their sample within the block.
@@ -99,8 +100,7 @@ Buf render(rv::Tank& t, const Buf& in, const std::vector<Event>& ev = {})
         const int m = int(std::min<size_t>(kBlock, n - p));
         while (e < ev.size() && ev[e].at < p + size_t(m)) {
             const int off = int(ev[e].at - p);
-            if (ev[e].what == 2) t.kick(off);
-            else t.gate(ev[e].what == 1, off);
+            t.gate(ev[e].what == 1, off);
             ++e;
         }
         t.process(&in[p], &in[p], &l[p], &r[p], m);
@@ -239,19 +239,6 @@ void tailRingsOn()
     check(tailDb > -30.0 && leakDb < -80.0 && before < -30.0, msg);
 }
 
-void kickNotGated()
-{
-    Setup s;
-    s.decay = 0.75f;
-    auto t = make(s);
-    const Buf silence(sec(2.0f), 0.0f);
-    // Throw on (gate up and down), then a Kick with the gate low.
-    const Buf y = render(*t, silence, {{sec(0.1f), 1}, {sec(0.2f), 0}, {sec(0.5f), 2}});
-    const double lvl = rmsDb(y, 0.5f, 1.0f);
-    std::snprintf(msg, sizeof msg, "THROW never gates the Kick: a Kick with the gate low rings at %.1f dBFS (> -50)", lvl);
-    check(t->throwOn() && lvl > -50.0, msg);
-}
-
 void throwClicks()
 {
     // 0 dBFS sustained low chord, thrown on and off on and off the beat (not
@@ -303,8 +290,8 @@ void throwParam()
     check(same && b->throwOn(), "THROW param (Plugin, Renderer) is the gate: same output as gate() at the block's start");
 }
 
-// Gate / Kick / long press (exit) events in time order, then the render.
-// what: 0 / 1 gate, 2 Kick, 3 exitThrowMode() (at the block's start).
+// Gate and exit events in time order, then the render.
+// what: 0 / 1 gate, 3 exitThrowMode() (at the block's start).
 Buf renderEx(rv::Tank& t, const Buf& in, const std::vector<Event>& ev, bool* exitReturned = nullptr)
 {
     const size_t n = in.size();
@@ -314,8 +301,7 @@ Buf renderEx(rv::Tank& t, const Buf& in, const std::vector<Event>& ev, bool* exi
         const int m = int(std::min<size_t>(kBlock, n - p));
         while (e < ev.size() && ev[e].at < p + size_t(m)) {
             const int off = int(ev[e].at - p);
-            if (ev[e].what == 2) t.kick(off);
-            else if (ev[e].what == 3) {
+            if (ev[e].what == 3) {
                 const bool was = t.exitThrowMode();
                 if (exitReturned) *exitReturned = was;
             } else t.gate(ev[e].what == 1, off);
@@ -364,8 +350,8 @@ void leaveThrowMode()
             worstOpen = std::max(worstOpen, openIn < 0.0f ? 1.0f : openIn);
         }
     std::snprintf(msg, sizeof msg,
-                  "THROW exit (KICK held): send reopens in %.1f ms (<= 3), latch cleared, 0 dBFS chord: worst click_count "
-                  "%ld (must be 0), exitThrowMode() reports throw mode was on",
+                  "THROW exit (exitThrowMode()): send reopens in %.1f ms (<= 3), latch cleared, 0 dBFS chord: worst "
+                  "click_count %ld (must be 0), exitThrowMode() reports throw mode was on",
                   1000.0f * worstOpen, worstClicks);
     check(worstClicks == 0 && worstOpen <= 0.003f && cleared && returned, msg);
 
@@ -379,23 +365,15 @@ void leaveThrowMode()
         const bool off = !t->throwOn();
         renderEx(*t, Buf(sec(0.1f), 0.0f), {{sec(0.02f), 1}, {sec(0.04f), 0}});
         const bool relatched = t->throwOn() && t->sendGain() <= 1e-6f;
-        std::snprintf(msg, sizeof msg, "THROW exit: off after the long press, and the next rising edge switches it on again "
+        std::snprintf(msg, sizeof msg, "THROW exit: off after the exit, and the next rising edge switches it on again "
                                        "(the send then follows the gate: closed after the fall)");
         check(off && relatched, msg);
     }
 
-    // 3. A short press only kicks: throw mode stays on, the send stays closed.
-    {
-        Setup s;
-        s.decay = 0.75f;
-        auto t = make(s);
-        const Buf y = renderEx(*t, Buf(sec(1.0f), 0.0f), {{0, 1}, {sec(0.05f), 0}, {sec(0.3f), 2}});
-        const double lvl = rmsDb(y, 0.3f, 0.6f);
-        std::snprintf(msg, sizeof msg, "KICK short press: a Kick (%.1f dBFS), throw mode stays on, the send stays closed", lvl);
-        check(t->throwOn() && t->sendGain() <= 1e-6f && lvl > -50.0, msg);
-    }
+    // 3. (Was: a short press of KICK only kicks. The button's presses that
+    // don't exit are test_button's.)
 
-    // 4. A long press with throw mode off changes nothing, bit for bit
+    // 4. An exit with throw mode off changes nothing, bit for bit
     // (outside and inside the Hold, every ATTITUDE).
     {
         Buf x = chord(-12.0f, 0.1f, 1.5f, 3.0f);
@@ -412,7 +390,7 @@ void leaveThrowMode()
                 for (size_t i = 0; i < ya.size(); ++i) same &= ya[i] == yb[i];
                 none &= !ret;
             }
-        check(same && none, "KICK held with throw mode off: nothing changes, bit for bit (DECAY 0.5 and the Hold, every ATTITUDE)");
+        check(same && none, "exitThrowMode() with throw mode off: nothing changes, bit for bit (DECAY 0.5 and the Hold, every ATTITUDE)");
     }
 
     // 5. The Renderer's "throw_exits" automation reaches the Tank.
@@ -836,7 +814,6 @@ int main()
     untouched();
     latch();
     tailRingsOn();
-    kickNotGated();
     throwClicks();
     throwParam();
     leaveThrowMode();

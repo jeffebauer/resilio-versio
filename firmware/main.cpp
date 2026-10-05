@@ -685,17 +685,20 @@ int main()
 #else // RV_MODE_RELEASE
 // =============================================================================
 // The real instrument (SPEC §3, §6.4). 7 knobs (+CV) -> ParamSpec Normalised
-// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; tap -> Kick on the
-// rising edge, gate -> THROW in positions 1-2 (ADR 0039: the Springs' send open while high,
-// from its first rising edge) and the echo clock in 3 (ADR 0041), both applied at the start of the block
-// (offset 0) so they land within one block (1 ms at 48 frames, SPEC §7 M7). No USB logging
+// values in panel order; SW0 -> SPRINGS, SW1 -> ATTITUDE; gate -> THROW in
+// positions 1-2 (ADR 0039: the Springs' send open while high, from its first
+// rising edge) and the echo clock in 3 (ADR 0041); the button (ADR 0043) ->
+// a hand throw in 1-2 (open while held, from its first press; double tap and
+// hold 2 s = throw mode off) and tap tempo in 3. All applied at the start of
+// the block (offset 0) so they land within one block (1 ms at 48 frames). No USB logging
 // (ADR 0011: flash-size watch item at M3, ~35 KB left for DSP code once the
 // M0 test firmware's 94 KB baseline is accounted for).
 //
 // LEDs (SPEC §3, ADR 0031): level meters, the owner's Noise Engineering
 // habit. Left pair In L / In R, right pair Out L / Out R; brightness follows
 // level (dB scale), colour warms green -> amber, red = input near clip or
-// output limiter pulling down. No mode colours, no Kick flash.
+// output limiter pulling down. No mode colours. The one exception: all four
+// white for a moment when throw mode goes off (ADR 0039).
 
 #include "LedMeter.h"
 #include "PotEndStops.h"
@@ -786,7 +789,7 @@ constexpr size_t kMeterLed[kNumMeters] = {
 // 1 ms LED can't show anyway.
 volatile float gPeak[kNumMeters] = {};
 volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
-volatile bool  gThrowExited      = false; // KICK held: throw mode was on and is now off (LED blink)
+volatile bool  gThrowExited      = false; // double tap + hold: throw mode was on and is now off (LED blink)
 
 // ---- LED PWM by timer + DMA (30 Sep 2026 fix, "LEDs flicker rather than dim")
 // libDaisy's software PWM needs UpdateLeds() called at its sample rate
@@ -989,27 +992,23 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     const int springsPos  = SwitchPosition(DaisyVersio::SW_0, kSpringsSwitchInverted);
     const int attitudePos = SwitchPosition(DaisyVersio::SW_1, kAttitudeSwitchInverted);
 
-    // The gate (ThrowHold.h gateRole): in positions 1-2 it is THROW (ADR
-    // 0039: the Tank gets every change at the block's start and keeps the
-    // latch; unpatched it reads low, so the send stays open until the first
-    // rising edge); in position 3 it is echo mode's clock (ADR 0041). Every
-    // rising edge also feeds the clock in every position, so the tempo is
-    // known before SPRINGS reaches 3. The button always kicks.
+    // The gate and the button (ThrowHold.h gateRole): in positions 1-2 both
+    // THROW (ADR 0039, 0043: the Tank gets every change at the block's start
+    // and keeps the latch; unpatched the gate reads low, so the send stays
+    // open until the first rising edge or press); in position 3 the gate is
+    // echo mode's clock (ADR 0041) and the button taps its tempo. Every
+    // rising edge of the gate also feeds the clock in every position, so the
+    // tempo is known before SPRINGS reaches 3. The Tank times the button's
+    // exit gesture itself (double tap, hold 2 s) and counts the exits.
     static bool lastGate = false;
     const bool  gate     = hw.Gate();
     if (gate != lastGate) tank.gate(gate, 0);
     if (gate && !lastGate) tank.clock(0);
     lastGate = gate;
-    if (hw.tap.RisingEdge()) tank.kick(0);
-    // KICK held >= kThrowExitHoldSeconds: throw mode off (ADR 0039), once
-    // per press; the Kick itself already fired on the press. Holding it
-    // with throw mode off does nothing more (ADR 0013).
-    static bool exitDone = false;
-    if (!hw.tap.Pressed()) exitDone = false;
-    else if (!exitDone && hw.tap.TimeHeldMs() >= 1000.0f * rv::throwhold::kThrowExitHoldSeconds) {
-        exitDone = true;
-        if (tank.exitThrowMode()) gThrowExited = true;
-    }
+    static bool lastButton = false;
+    const bool  button     = hw.tap.Pressed();
+    if (button != lastButton) tank.button(button, 0);
+    lastButton = button;
 
     for (int p = 0; p < DaisyVersio::KNOB_LAST; ++p)
         tank.setParam(kPotParams[p], rvpot::endStops(hw.GetKnobValue(kPotKnob[p]))); // exact 0 / 1 at the stops
@@ -1026,6 +1025,11 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     }
 
     tank.process(in[0], in[1], out[0], out[1], int(size));
+    static uint32_t exitsSeen = 0;
+    if (tank.throwExits() != exitsSeen) { // throw mode went off: the LEDs blink
+        exitsSeen    = tank.throwExits();
+        gThrowExited = true;
+    }
     float outL = 0.0f, outR = 0.0f;
     for (size_t i = 0; i < size; ++i) {
         out[0][i] *= kOutputTrim;

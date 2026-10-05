@@ -23,8 +23,9 @@
 //   4. No swell, no pumping: over the pad's and the drone's hold the trim
 //      never eases back up by more than 1 dB, and on the steady drone, once
 //      settled, it stays within 1.5 dB (same WOBBLEs as 1).
-//   5. The Howl: a Kick into KICKED DECAY 1 is never trimmed; a pad into the
-//      Howl leaves it as loud as the Kick's alone, within 1 dB.
+//   5. The Howl: a hit into KICKED DECAY 1 is never trimmed; a pad into the
+//      Howl leaves it as loud as the hit's alone, within 1 dB. (A Kick
+//      started it until the Kick went, ADR 0043.)
 //   6. The Big Knob (Renderer TONE voicings 1-3, ADR 0036 Proposed): the
 //      held sounds at TONE 0.7 / 0.85 / 1 meet 1.'s limiter limits.
 // `rv_test_sustain_trim --voicings` prints the same grids for every voicing
@@ -220,7 +221,7 @@ struct Run {
 constexpr int kBlock = 16;
 constexpr double kBlockS = double(kBlock) / double(kFs);
 
-Run render(rv::Tank& t, const Set& s, const Buf& in, const std::vector<double>& kicks = {})
+Run render(rv::Tank& t, const Set& s, const Buf& in)
 {
     using rv::ParamId;
     t.reset();
@@ -239,10 +240,8 @@ Run render(rv::Tank& t, const Set& s, const Buf& in, const std::vector<double>& 
     Run r;
     r.wet.resize(in.size());
     Buf l(kBlock), rr(kBlock);
-    size_t ki = 0;
     for (size_t pos = 0; pos < in.size(); pos += kBlock) {
         const int n = int(std::min<size_t>(kBlock, in.size() - pos));
-        while (ki < kicks.size() && sec(kicks[ki]) < pos + size_t(n)) t.kick(int(sec(kicks[ki++]) - pos));
         t.process(in.data() + pos, in.data() + pos, l.data(), rr.data(), n);
         for (int i = 0; i < n; ++i) r.wet[pos + size_t(i)] = 0.5f * (l[size_t(i)] + rr[size_t(i)]);
         r.minLimGain = std::min(r.minLimGain, t.limiterGain());
@@ -545,17 +544,24 @@ void howlStaysLoud(rv::Tank& t)
 {
     Set s;
     s.att = 2, s.decay = 1.0f, s.springs = 1;
-    Buf silence(sec(24.0), 0.0f);
-    const Run kick = render(t, s, silence, {1.0});
+    // One snare-like hit at 1 s (-6 dBFS, a decaying burst of noise).
+    Buf one(sec(24.0), 0.0f);
+    unsigned seed = 12345u;
+    for (size_t i = 0; i < sec(0.12); ++i) {
+        seed = seed * 1664525u + 1013904223u;
+        const double n = double(int(seed >> 9) - (1 << 22)) / double(1 << 22);
+        one[sec(1.0) + i] = float(0.5 * n * std::exp(-double(i) / (0.025 * double(kFs))));
+    }
+    const Run hit = render(t, s, one);
     float lowest = 0.0f;
-    for (float d : kick.trimDb) lowest = std::min(lowest, d);
+    for (float d : hit.trimDb) lowest = std::min(lowest, d);
     Buf p = pad();
     p.resize(sec(24.0), 0.0f);
     const Run fed = render(t, s, p);
-    const double a = rmsDb(kick.wet, 18.0, 24.0), b = rmsDb(fed.wet, 18.0, 24.0);
+    const double a = rmsDb(hit.wet, 18.0, 24.0), b = rmsDb(fed.wet, 18.0, 24.0);
     std::snprintf(msg, sizeof msg,
-                  "Howl (KICKED DECAY 1, 2 Springs): a Kick's Howl is never trimmed (%.3f dB); fed by the pad it settles at "
-                  "%.1f dB vs %.1f from the Kick (limit +-1)",
+                  "Howl (KICKED DECAY 1, 2 Springs): a hit's Howl is never trimmed (%.3f dB); fed by the pad it settles at "
+                  "%.1f dB vs %.1f from the hit (limit +-1)",
                   double(lowest), b, a);
     check(lowest == 0.0f && std::fabs(a - b) <= 1.0, msg);
 }

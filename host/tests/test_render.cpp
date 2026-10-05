@@ -1,4 +1,4 @@
-// Renderer CLI-support test suite: automation interpolation + kick
+// Renderer CLI-support test suite: automation interpolation + event
 // scheduling, sweep grid + naming (docs/m1-contracts.md Stream B).
 // Synthetic JSON only -- doesn't touch the Tank, since Stream A's DSP is
 // still changing under M1.
@@ -29,7 +29,7 @@ void automationInterpolatesLinearly()
             {"t": 4.0, "key": "decay", "value": 1.0},
             {"t": 1.0, "key": "tension", "value": 0.5}
         ],
-        "kicks": [1.5, 3.0, 0.25]
+        "buttons": [[1.5, 1.6], [3.0, 3.2], [0.25, 0.5]]
     })";
     rv::json::Value root;
     std::string error;
@@ -38,7 +38,7 @@ void automationInterpolatesLinearly()
 
     rv::automation::Automation autom;
     ok = ok && rv::automation::parse(root, autom, error);
-    check(ok, "automation: breakpoints + kicks parse without error");
+    check(ok, "automation: breakpoints + buttons parse without error");
 
     const rv::automation::Track* decay = nullptr;
     for (const auto& t : autom.tracks) if (t.key == rv::ParamId::Decay) decay = &t;
@@ -51,27 +51,29 @@ void automationInterpolatesLinearly()
         check(std::fabs(rv::automation::valueAt(*decay, -1.0) - 0.2) < 1e-9, "automation: value clamps to the first breakpoint before it");
     }
 
-    // Kicks come back sorted, ready for sample-accurate scheduling.
-    check(autom.kicksSeconds.size() == 3, "automation: all kicks parsed");
-    check(autom.kicksSeconds[0] == 0.25 && autom.kicksSeconds[1] == 1.5 && autom.kicksSeconds[2] == 3.0,
-          "automation: kicks sorted ascending");
+    // Button presses and releases come back sorted, ready for sample-accurate scheduling.
+    const auto& b = autom.buttonEvents;
+    check(b.size() == 6, "automation: all button presses and releases parsed");
+    check(b.size() == 6 && b[0] == std::make_pair(0.25, true) && b[1] == std::make_pair(0.5, false)
+              && b[2] == std::make_pair(1.5, true) && b[5] == std::make_pair(3.2, false),
+          "automation: button events sorted ascending");
 }
 
-void kickSchedulingIsSampleAccurate()
+void eventSchedulingIsSampleAccurate()
 {
-    // Mirrors the Renderer's own scheduling: convert a kick time to a
-    // sample index, then find the micro-block offset within a <=16-sample
-    // block that contains it.
+    // Mirrors the Renderer's own scheduling: convert an event time (a gate
+    // edge, a button press) to a sample index, then find the micro-block
+    // offset within a <=16-sample block that contains it.
     const double sr = 48000.0;
-    const double kickTime = 1.500001; // 72000.048 samples -> rounds to 72000
-    const long kickSample = std::lround(kickTime * sr);
-    check(kickSample == 72000, "automation: kick time converts to the nearest sample");
+    const double eventTime = 1.500001; // 72000.048 samples -> rounds to 72000
+    const long eventSample = std::lround(eventTime * sr);
+    check(eventSample == 72000, "automation: event time converts to the nearest sample");
 
     const int microBlock = 16;
-    const long blockStart = (kickSample / microBlock) * microBlock;
-    const int offset = int(kickSample - blockStart);
-    check(offset >= 0 && offset < microBlock, "automation: kick offset lands within its <=16-sample micro-block");
-    check(blockStart + offset == kickSample, "automation: block start + offset reconstructs the exact kick sample");
+    const long blockStart = (eventSample / microBlock) * microBlock;
+    const int offset = int(eventSample - blockStart);
+    check(offset >= 0 && offset < microBlock, "automation: event offset lands within its <=16-sample micro-block");
+    check(blockStart + offset == eventSample, "automation: block start + offset reconstructs the exact event sample");
 }
 
 void sweepParsesGridAndBase()
@@ -117,7 +119,7 @@ void sweepNamingMatchesContract()
 int main()
 {
     automationInterpolatesLinearly();
-    kickSchedulingIsSampleAccurate();
+    eventSchedulingIsSampleAccurate();
     sweepParsesGridAndBase();
     sweepNamingMatchesContract();
     std::printf("%d failure(s)\n", failures);

@@ -1,8 +1,10 @@
 // Plugin host test bench (SPEC §7 M2). Loads the *built* AU/VST3 bundles the
 // way a DAW does — juce::AudioPluginFormatManager over the headless plugin
 // hosting module (no GUI needed to load and process a plugin) — and checks
-// them against the criteria in SPEC.md §7 M2 and the Kick-timing model in
-// host/tests/test_kick.cpp.
+// them against the criteria in SPEC.md §7 M2. Since the Kick went (ADR
+// 0043) MIDI notes are the gate: held = high, sample-accurate, checked
+// against Tank::gate() / clock() directly; the panel button's path
+// (ButtonLink.h, JUCE-free) is checked against Tank::button().
 //
 // Bundle paths come from CMake (RV_VST3_PATH / RV_AU_PATH, generated from
 // $<TARGET_BUNDLE_DIR:...> so they always point at the just-built artefact).
@@ -12,6 +14,7 @@
 #include "dsp/Tank.h"
 #include "params/ParamSpec.h"
 #include "Wav.h"
+#include "../ButtonLink.h"
 
 #include <juce_audio_processors_headless/juce_audio_processors_headless.h>
 
@@ -96,7 +99,7 @@ void setParam(const ParamMap& byId, rv::ParamId id, float v)
 }
 
 // ATTITUDE for the presets below (normalised; < 0 = the ParamSpec default,
-// DRIVEN). The MIX 0 null test and the Kick onset check set CLEAN: since ADR
+// DRIVEN). The MIX 0 null test sets CLEAN: since ADR
 // 0042 DRIVEN / KICKED put the whole output (dry too) through the mu-law box,
 // which isn't a passthrough and delays the output ~6 samples.
 float gAttitude = -1.0f;
@@ -149,35 +152,41 @@ double maxAbsDiffDb(const std::vector<float>& a, const std::vector<float>& b)
 // ---------------------------------------------------------------------------
 
 // Tank-direct render: mono input duplicated to L/R (matches PluginProcessor's
-// mono-in handling), optionally with a Kick injected at kickAt (else a plain
-// input impulse can be pre-baked into `in` by the caller).
+// mono-in handling), optionally with the gate high from gateOn to gateOff
+// (a rising edge is also a clock edge, as the plugin's MIDI note-on).
 struct TankRender { std::vector<float> outL, outR; };
 
 TankRender renderTank(const std::vector<float>& in, const std::vector<int>& blocks,
-                       float decay, float tension, float tone, float mix, int kickAt = -1)
+                       float decay, float tension, float tone, float mix, int gateOn = -1, int gateOff = -1,
+                       int springs = -1)
 {
     rv::Tank tank;
     tank.prepare(48000.0f, 512);
     setPresetOnTank(tank, decay, tension, tone, mix);
+    if (springs >= 0) tank.setParam(rv::ParamId::Springs, rv::switchToNormalised(springs));
     TankRender r;
     r.outL.assign(in.size(), 0.0f);
     r.outR.assign(in.size(), 0.0f);
     int pos = 0;
     for (int n : blocks) {
-        if (kickAt >= 0 && kickAt >= pos && kickAt < pos + n) tank.kick(kickAt - pos);
+        if (gateOn >= pos && gateOn < pos + n) {
+            tank.gate(true, gateOn - pos);
+            tank.clock(gateOn - pos);
+        }
+        if (gateOff >= pos && gateOff < pos + n) tank.gate(false, gateOff - pos);
         tank.process(in.data() + pos, in.data() + pos, r.outL.data() + pos, r.outR.data() + pos, n);
         pos += n;
     }
     return r;
 }
 
-// Plugin-hosted render over the same schedule. `midiNote` >= 0 triggers a
-// note-on (with junk note-off / CC noise mixed in, which must do nothing) at
-// kickAt instead of an audio impulse.
+// Plugin-hosted render over the same schedule. `midiNote` >= 0: a note-on
+// at gateOn and its note-off at gateOff (with junk note-offs of a note
+// never played and CC noise mixed in, which must do nothing).
 TankRender renderPlugin(juce::AudioPluginFormatManager& fm, const juce::String& path,
                          const std::vector<float>& in, const std::vector<int>& blocks,
                          float decay, float tension, float tone, float mix,
-                         int kickAt = -1, int midiNote = -1, int velocity = 64)
+                         int gateOn = -1, int midiNote = -1, int velocity = 64, int gateOff = -1, int springs = -1)
 {
     juce::String error;
     auto inst = loadPlugin(fm, path, 48000.0, 512, error);
@@ -185,6 +194,7 @@ TankRender renderPlugin(juce::AudioPluginFormatManager& fm, const juce::String& 
     if (!inst) { std::printf("FAIL  could not load plugin for render: %s\n", error.toStdString().c_str()); ++failures; return r; }
     inst->prepareToPlay(48000.0, 512);
     setPresetOnPlugin(mapParams(*inst), decay, tension, tone, mix);
+    if (springs >= 0) setParam(mapParams(*inst), rv::ParamId::Springs, rv::switchToNormalised(springs));
 
     r.outL.assign(in.size(), 0.0f);
     r.outR.assign(in.size(), 0.0f);
@@ -195,11 +205,11 @@ TankRender renderPlugin(juce::AudioPluginFormatManager& fm, const juce::String& 
         buffer.copyFrom(1, 0, in.data() + pos, n);
 
         juce::MidiBuffer midi;
-        if (kickAt >= 0 && kickAt >= pos && kickAt < pos + n) {
-            if (midiNote >= 0)
-                midi.addEvent(juce::MidiMessage::noteOn(1, midiNote, juce::uint8(velocity)), kickAt - pos);
-        }
-        // Noise that must do nothing (ADR 0005: note-offs / other MIDI ignored).
+        if (midiNote >= 0 && gateOn >= pos && gateOn < pos + n)
+            midi.addEvent(juce::MidiMessage::noteOn(1, midiNote, juce::uint8(velocity)), gateOn - pos);
+        if (midiNote >= 0 && gateOff >= pos && gateOff < pos + n)
+            midi.addEvent(juce::MidiMessage::noteOff(1, midiNote), gateOff - pos);
+        // Noise that must do nothing: a note-off of a note never played, a CC.
         midi.addEvent(juce::MidiMessage::noteOff(1, 37), std::min(n - 1, 0));
         midi.addEvent(juce::MidiMessage::controllerEvent(1, 7, 100), std::min(n - 1, 0));
 
@@ -371,48 +381,79 @@ int main()
         }
     }
 
-    // ---- 4. MIDI Kick: sample-accurate, velocity ignored, only note-on fires ---
+    // ---- 4. MIDI notes are the gate (ADR 0043): sample-accurate, any note, velocity ignored ---
+    // A held note = the gate high (a throw in SPRINGS 1-2; its note-on is a
+    // clock edge, SPRINGS 3), checked against Tank::gate() / clock() on the
+    // same samples, under a train of noise hits so the throw is heard.
     {
-        constexpr int kLength = 48000;
-        std::vector<float> silence(kLength, 0.0f);
-        struct Case { const char* label; int note_; int velocity; int kickAt; std::vector<int> pattern; };
+        constexpr int kLength = 96000;
+        std::vector<float> hits(kLength, 0.0f);
+        juce::Random rng(99);
+        for (int h = 0; h < kLength; h += 12000)
+            for (int i = 0; i < 2400 && h + i < kLength; ++i)
+                hits[size_t(h + i)] = 0.4f * (rng.nextFloat() * 2.0f - 1.0f) * std::exp(-float(i) / 480.0f);
+        struct Case { const char* label; int note_; int velocity; int on, off; std::vector<int> pattern; int springs; };
         const Case cases[] = {
-            {"note 21 vel 1 at sample 4000, block 64", 21, 1, 4000, {64}},
-            {"note 60 vel 64 at sample 30000, block 512", 60, 64, 30000, {512}},
-            {"note 108 vel 127 near end (tail still fits), varying blocks", 108, 127, kLength - 8000, {13, 128, 441, 1, 256}},
+            {"note 21 vel 1 held 4000-20000, block 64, SPRINGS 2", 21, 1, 4000, 20000, {64}, 1},
+            {"note 60 vel 64 held 30000-61000, block 512, SPRINGS 1", 60, 64, 30000, 61000, {512}, 0},
+            {"note 108 vel 127 held 50001-80003, varying blocks, SPRINGS 2", 108, 127, 50001, 80003, {13, 128, 441, 1, 256}, 1},
+            {"note 64 vel 90 at 24000 (a clock edge), block 64, SPRINGS 3", 64, 90, 24000, 24100, {64}, 2},
         };
         for (const auto& c : cases) {
             auto blocks = blockSchedule(c.pattern, kLength);
-            auto reference = renderTank(silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.kickAt);
-            auto pluginOut = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.kickAt, c.note_, c.velocity);
+            auto reference = renderTank(hits, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.on, c.off, c.springs);
+            auto pluginOut = renderPlugin(fm, vst3Path, hits, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.on, c.note_, c.velocity, c.off,
+                                          c.springs);
+            auto noNotes = renderPlugin(fm, vst3Path, hits, blocks, 0.5f, 0.5f, 0.5f, 1.0f, -1, -1, 64, -1, c.springs);
             const double dbL = maxAbsDiffDb(reference.outL, pluginOut.outL);
             const double dbR = maxAbsDiffDb(reference.outR, pluginOut.outR);
+            const bool   heard = c.springs == 2 || maxAbsDiffDb(noNotes.outL, pluginOut.outL) > -60.0;
             char what[256];
-            std::snprintf(what, sizeof(what), "MIDI Kick == Tank::kick() Kick, %s (max diff L %.1f dBFS, R %.1f dBFS)",
-                          c.label, dbL, dbR);
-            check(dbL <= -120.0 && dbR <= -120.0, what);
-
-            // M7: the Kick is a thump + burst after the drive, not an input
-            // impulse. Its onset (first sample differing from the same render
-            // without it) is at N + a fixed offset, the same for every block
-            // schedule (0: the DriveOut oversampler's first tap responds at once).
-            // Read in CLEAN: in DRIVEN / KICKED the output's mu-law box (ADR
-            // 0042) adds its own ~6 samples and its steps; the parity check above
-            // already covers the default ATTITUDE.
-            gAttitude = 0.0f;
-            pluginOut = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f, c.kickAt, c.note_, c.velocity);
-            auto quiet = renderPlugin(fm, vst3Path, silence, blocks, 0.5f, 0.5f, 0.5f, 1.0f);
-            gAttitude = -1.0f;
-            long onset = -1;
-            for (size_t i = 0; i < quiet.outL.size() && onset < 0; ++i)
-                if (std::memcmp(&pluginOut.outL[i], &quiet.outL[i], sizeof(float)) != 0
-                    || std::memcmp(&pluginOut.outR[i], &quiet.outR[i], sizeof(float)) != 0) // bit-exact
-                    onset = long(i);
-            constexpr long kKickOnsetOffset = 0;
-            std::snprintf(what, sizeof(what), "MIDI Kick onset (CLEAN) at N + %ld samples (fixed offset %ld), %s", onset - c.kickAt,
-                          kKickOnsetOffset, c.label);
-            check(onset - c.kickAt == kKickOnsetOffset, what);
+            std::snprintf(what, sizeof(what), "MIDI note == Tank::gate() + clock(), %s (max diff L %.1f dBFS, R %.1f dBFS)%s",
+                          c.label, dbL, dbR, heard ? "" : " -- but the note changed nothing");
+            check(dbL <= -120.0 && dbR <= -120.0 && heard, what);
         }
+    }
+
+    // ---- 4b. The panel button's path (ButtonLink.h) == Tank::button() ---------
+    // Presses and releases land at the start of the next block; a whole click
+    // between two blocks is a press at the block's start and a release at its
+    // last sample. Then the button's own behaviour (the exit gesture) works
+    // through it: tap, tap and hold 2 s = throw mode off.
+    {
+        constexpr int kBlockN = 512, kBlocks = 600; // 6.4 s
+        std::vector<float> in(size_t(kBlockN), 0.0f);
+        for (size_t i = 0; i < in.size(); ++i) in[i] = 0.2f * std::sin(0.05f * float(i));
+        // Panel actions before block b: +1 press, -1 release, 2 = a whole click.
+        struct Act { int block, what; };
+        const Act acts[] = {{10, 1}, {40, -1}, {100, 2}, {200, 1}, {230, -1}, {250, 1}, {500, -1}};
+        rv::Tank viaLink, direct;
+        viaLink.prepare(48000.0f, kBlockN);
+        direct.prepare(48000.0f, kBlockN);
+        rv::plugin::ButtonLink link;
+        std::vector<float> l1(in.size()), r1(in.size()), l2(in.size()), r2(in.size());
+        bool same = true;
+        for (int b = 0; b < kBlocks; ++b) {
+            for (const auto& a : acts) {
+                if (a.block != b) continue;
+                if (a.what == 1 || a.what == 2) link.press();
+                if (a.what == -1 || a.what == 2) link.release();
+                if (a.what == 1) direct.button(true, 0);
+                if (a.what == -1) direct.button(false, 0);
+                if (a.what == 2) {
+                    direct.button(true, 0);
+                    direct.button(false, kBlockN - 1);
+                }
+            }
+            link.feed(viaLink, kBlockN);
+            viaLink.process(in.data(), in.data(), l1.data(), r1.data(), kBlockN);
+            direct.process(in.data(), in.data(), l2.data(), r2.data(), kBlockN);
+            same &= l1 == l2 && r1 == r2;
+        }
+        // Blocks 200-230 are a tap (0.32 s), 250 the second press held 5.3 s: throw mode off.
+        check(same && viaLink.throwExits() == 1 && !viaLink.throwOn(),
+              "panel button (ButtonLink) == Tank::button() at block starts, a whole click inside a block included; "
+              "tap, tap and hold 2 s through it switches throw mode off");
     }
 
     // ---- 6. State: getStateInformation -> new instance setStateInformation ----
