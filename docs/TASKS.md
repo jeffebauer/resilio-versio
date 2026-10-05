@@ -12,14 +12,14 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M2 Ableton check | Ready once the next plugin install is in (§1) |
 | M9 polish | Manual, starting points and share read-me are stale; refreshed after round 5 |
 
-**Plugin in Ableton:** `843c5fc` (installed 5 Oct): everything except the echo tuning (held DECAY top, KICKED 10-bit). The next install (§1) brings it in.
+**Plugin in Ableton:** `62575ff` (installed 5 Oct, AU validated): everything merged so far, incl. the echo tuning (held DECAY top in echo mode, KICKED µ-law 10-bit). **Rescan:** hold ⌥, Rescan, then insert a fresh instance
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; a new release follows round 5.
 
 ## Now (in this order)
 
-### 1. Plugin install with the echo tuning (≈2 min of yours)
-- [ ] **Close Ableton and tell Claude** once it says run 18 is merged: it installs `main` (the held echo top, KICKED 10-bit, run 18's savings) and validates the AU. Then rescan (hold ⌥, Rescan) and insert a fresh instance
+### 1. Plugin install with the echo tuning · done 5 Oct
+- [x] `62575ff` installed, AU validated. Rescan (hold ⌥, Rescan) and insert a fresh instance. (Run 18's savings don't change the sound, so no reinstall is needed for them)
 
 ### 2. The new release on the module + click check (≈10 min)
 - [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
