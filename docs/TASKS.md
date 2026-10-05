@@ -30,11 +30,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
 - Behaviour changes to know: the gate **throws** in SPRINGS 1–2 and **clocks the echo** in 3 (it no longer kicks); the button kicks everywhere, hold it 1 s to leave throw mode. MIX fully left in DRIVEN/KICKED is no longer a clean passthrough (µ-law); CLEAN still is
 
-### 3b. Echo tuning from your Ableton notes (5 Oct) · built, see 3b′
-- In echo mode (SPRINGS 3): DECAY fully right becomes the steady, persistent feedback you liked at ~91 %, in **every** ATTITUDE (CLEAN/DRIVEN reach it too); KICKED's runaway goes (the top is today's 92 %). µ-law KICKED becomes **10-bit** (DRIVEN stays 12). Short before/after page `renders/tune_echo_feedback/`, then merge and reinstall so you can judge in Ableton
-
-### 3b′. Echo tuning ready to hear (5 Oct)
-- [ ] [`renders/tune_echo_feedback/`](../renders/tune_echo_feedback/index.html): A today, B new. Echo mode's DECAY top = steady held repeats in every ATTITUDE (KICKED's top = its old 92 %, no runaway; CLEAN/DRIVEN unchanged up to 0.85, same top). KICKED µ-law 10-bit. Judge: the held level takes ~10 s to settle from one hit (fine, or lock in sooner?); CLEAN/DRIVEN at the top lean on the output limiter with DRIVE past ¾ (red LED flickers). OK to merge?
+### 3b′. Echo tuning · picked B everywhere, merged (5 Oct, `c7dbf75`)
+- [x] Echo mode's DECAY top = steady held repeats in every ATTITUDE; KICKED µ-law 10-bit. In the plugin after the next install
 
 ### 3c. Wellspring round 5, the last fit · being built (started 5 Oct)
 - From your session 2 recordings: a softer echo front (the Wellspring swells in over ~0.5 s; ours hits and drops in ~35 ms), the longest ring moved from 1 kHz to ~500 Hz with the presence peak up to ~1.4 kHz, lows centred (front included) and the mids no longer left-heavy, a wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Retunes existing stages only (the module's CPU and flash are tight). Page `renders/fit_round5/` with your Wellspring as the reference; your pick, then merge
