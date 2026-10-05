@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, midday (everything picked so far is merged or merging; run 18 under the CPU ceiling; Wellspring round 5 being built)
+**Last updated:** 5 Oct 2026, end of session 7 (merged: TONE after the springs, Throw + Hold, echo mode + tuning, µ-law, run 18, LED fix. In flight: Wellspring round 5 (B), µ-law to the wet before TONE, Kick removal + button throw/tap; then the click check and the friends' release)
 
 | Milestone | State |
 |---|---|
@@ -27,6 +27,13 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3. Wellspring round 5, the last fit · picked B (5 Oct)
 - [x] **B everywhere** (softer front, ring lower, presence up, Wellspring-like stereo), held-tone and pad rows included at WOBBLE 0.45 (where B's held notes move most: kept as you heard it). Being made the default now, with its test fix-ups and a flash trim so it fits; then merge, plugin install and the release for the module
 
+### 3d. From your module play (5 Oct)
+- [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
+- [x] **µ-law on the wet only, before TONE: picked B everywhere and merged** (5 Oct, `9245811`): the dry is clean in every ATTITUDE, TONE thins the grit. In the plugin after the next install
+
+### 3e. Kick removed; the button throws and taps tempo (5 Oct) · being built
+- Your call: **no Kick** (module and plugin; frees ~3–4 KB of flash). **The button:** held = a manual throw in SPRINGS 1–2 (the first press switches throw mode on, so it works with nothing patched); taps = tempo in echo mode. **Leave throw mode:** double-tap, then hold 2 s (single taps and holds of any length stay throws). The gate stays on/off: throw in 1–2, clock in 3 (the jack is digital, so no CV-level throw). Merges after round 5 and the µ-law move; the friends' release notes get updated to match
+
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
@@ -40,7 +47,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0 (in CLEAN), 44.1/96 kHz. A **Bypass** control is normal
 
 ### Optional
-- [ ] Friends' feedback: wait for the release after round 5 rather than sending the old candidate. Paste any reply to Claude
+- [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md)). Paste any reply from your friend to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
@@ -53,9 +60,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
-- **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
-- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
+- **Three builds in flight** (next session picks them up): Wellspring round 5 with your pick B (+ its test fix-ups and a flash trim), µ-law moved to the wet before TONE (+ a short page), the Kick removal with the button as throw/tap. Merged one at a time, then a plugin install, a release and CPU run 19 for the module (§2)
+- **Friends' release notes** updated for the Kick removal, the button and the µ-law placement; then, after you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude

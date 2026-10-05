@@ -84,13 +84,11 @@ Stereo render(rv::Tank& t, const Buf& in, int block)
     return o;
 }
 
-// outBits: output_bits_voicing (-1 = the default, ADR 0042's mu-law box; 0 = before the box, a test hook).
-Stereo renderWith(const Settings& s, const Buf& in, int outBits = -1)
+Stereo renderWith(const Settings& s, const Buf& in)
 {
     rv::Tank t;
     t.prepare(kFs, 48);
     apply(t, s);
-    if (outBits >= 0) t.setOutputBitsVoicing(outBits);
     return render(t, in, 48);
 }
 
@@ -706,16 +704,12 @@ void knobSweep(rv::ParamId id, const char* name, const Settings& start, float to
 // ---- 6. Stability grid with SPRINGS ------------------------------------------------
 void stabilityGrid()
 {
-    // The Tank's stability is read before the output's mu-law box (ADR 0042;
-    // output_bits_voicing 0 as a test hook): the box's 24 kHz filters and steps
-    // can lift a peak a little past 1.0, which is the converter, not the Tank.
-    // The shipped output (box in, default ATTITUDE DRIVEN) is checked too:
-    // finite, and its last second no louder than the first second after the
-    // input (<=: its tail can be exact silence by then); its peak is reported,
-    // and the Versio's after the firmware's kOutputTrim (x 0.874).
+    // The default ATTITUDE (DRIVEN) has the wet's mu-law box (ADR 0042), before
+    // the limiter: its fading tails reach exact silence, so "ends lower" also
+    // counts a last second of exact 0 (0 < 0 would read as a failure).
     const size_t sec = size_t(kFs);
     int bad = 0, cells = 0;
-    float worstPeak = 0, shippedPeak = 0;
+    float worstPeak = 0;
     for (int m = 0; m < 3; ++m)
         for (float d : {0.0f, 0.5f, 0.9f}) // above 0.9: the Hold (ADR 0040; test_throw_hold)
             for (float b : {0.0f, 0.5f, 1.0f})
@@ -729,13 +723,7 @@ void stabilityGrid()
                             in = noise(6 * sec, 1.0f, 99u);
                             std::fill(in.begin() + long(sec), in.end(), 0.0f);
                         }
-                        const Stereo o = renderWith(Settings{d, b, tn, 1.0f, m}, in, 0);
-                        const Stereo sh = renderWith(Settings{d, b, tn, 1.0f, m}, in);
-                        shippedPeak = std::max({shippedPeak, peakAbs(sh.l), peakAbs(sh.r)});
-                        const size_t st = input == 0 ? sec / 2 : sec + sec / 2;
-                        const bool shippedOk = allFinite(sh.l) && allFinite(sh.r)
-                                            && power(sh.l, 5 * sec, 6 * sec) <= power(sh.l, st, st + sec)
-                                            && power(sh.r, 5 * sec, 6 * sec) <= power(sh.r, st, st + sec);
+                        const Stereo o = renderWith(Settings{d, b, tn, 1.0f, m}, in);
                         const float pk = std::max(peakAbs(o.l), peakAbs(o.r));
                         worstPeak = std::max(worstPeak, pk);
                         const size_t start = input == 0 ? sec / 2 : sec + sec / 2;
@@ -748,21 +736,24 @@ void stabilityGrid()
                                 prev = e;
                             }
                         }
-                        const bool lower = power(o.l, 5 * sec, 6 * sec) < power(o.l, start, start + sec)
-                                        && power(o.r, 5 * sec, 6 * sec) < power(o.r, start, start + sec);
-                        const bool good = allFinite(o.l) && allFinite(o.r) && pk < 1.0f && falls && lower && shippedOk;
+                        auto endsLower = [&](const Buf& ch) {
+                            const double e = power(ch, 5 * sec, 6 * sec);
+                            return e < power(ch, start, start + sec) || e == 0.0;
+                        };
+                        const bool lower = endsLower(o.l) && endsLower(o.r);
+                        const bool good = allFinite(o.l) && allFinite(o.r) && pk < 1.0f && falls && lower;
                         ++cells;
                         if (!good) {
                             ++bad;
                             std::printf("      grid fail: %s decay %.1f tension %.1f tone %.1f %s peak %.3f falls %d "
-                                        "lower %d shipped %d\n",
-                                        kModeName[m], d, b, tn, input ? "noise" : "impulse", pk, falls, lower, shippedOk);
+                                        "lower %d\n",
+                                        kModeName[m], d, b, tn, input ? "noise" : "impulse", pk, falls, lower);
                         }
                     }
     std::snprintf(msg, sizeof msg,
-                  "Stability SPRINGS x DECAY x TENSION x TONE (%d cells, impulse + 1 s full-scale noise): finite, peak before the "
-                  "output box < 1 (worst %.3f), decaying (%d bad); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
-                  cells, worstPeak, bad, shippedPeak, shippedPeak * 0.874f);
+                  "Stability SPRINGS x DECAY x TENSION x TONE (%d cells, impulse + 1 s full-scale noise): finite, peak < 1 "
+                  "(worst %.3f), decaying (%d bad)",
+                  cells, worstPeak, bad);
     check(bad == 0, msg);
 }
 
