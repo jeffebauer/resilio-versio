@@ -209,8 +209,11 @@ constexpr float kFirstRepeatMax = kFeedbackMax;
 // first repeat is the input itself, the second has been through it once, the
 // sixth five times. None adds energy (small-signal gain <= 1). Renderer key
 // echo_wear_voicing; the firmware builds only kWearDefault (0 = none).
-constexpr int kNumWearVoicings = 5;
+constexpr int kNumWearVoicings = 8;
 constexpr int kWearNone = 0, kWearTape = 1, kWearRadio = 2, kWearBbd = 3, kWearCrushed = 4;
+// Tape wear round (PROTOTYPE, owner 5 Oct 2026; see "Tape wear" below):
+// 5 tape saturation + roll-off, 6 the same + crinkle (subtle), 7 + crinkle (obvious).
+constexpr int kWearTapeSat = 5, kWearCrinkle = 6, kWearCrinkleHeavy = 7;
 // 1 WORN TAPE (Space Echo, Black Ark): each pass adds its own wow and
 // flutter (a short modulated delay: two slow sines + a flutter, out of step
 // with the echo, so it accumulates like a worn transport), random oxide
@@ -279,6 +282,55 @@ constexpr float kBbdWhineDb = -55.0f; // the clock's whine (at the clock), re th
 constexpr float kCrushRateHz = 11300.0f, kCrushBits = 7.0f;
 constexpr float kCrushReleaseMs = 120.0f;
 constexpr float kCrackleRate = 5.0f, kCrackleLevel = 0.35f; // per second; re the signal's level
+// ---- Tape wear (PROTOTYPE, owner 5 Oct 2026) ----
+// "Given our modulation knob already provides wow and flutter, adding more
+// doesn't feel like the right fit. However maybe a crinkle effect like the
+// magneto, or the tape-style saturation and roll off." The BBD's aliasing
+// adds new, inharmonic pitches no tape machine makes; these wear like tape
+// instead. No wow or flutter (WOBBLE already moves the tape), no new pitches
+// (nothing folds back: the feedback has already been through the heads'
+// low-passes, and the saturator is gentle), no added energy.
+// 5 TAPE SATURATION + ROLL-OFF (Space Echo, Black Ark): the tape's own
+// record EQ. The highs are boosted on the way onto the tape (pre-emphasis,
+// a 1-pole shelf, +kTapeSatEmphDb above ~kTapeSatEmphHz), saturated (softClip,
+// unity when quiet), and cut back by the exact inverse on playback
+// (de-emphasis). A quiet repeat comes back unchanged; a loud, bright one has
+// had its highs squashed first (high-frequency compression): thicker and
+// duller. Then a little more treble lost every pass (1-pole, kTapeSatRollHz) and the
+// playback head's bump (a gentle lift around 50-100 Hz, kTapeSatBumpDb at
+// its peak; the heads' 140 Hz high-pass still thins the lows each pass, so it
+// slows that loss, never a boom). Level: gain 1 at the mids' loudest (above
+// kTapeSatMakeupFromHz), never over it there, as the heads' peak sets the held
+// top.
+constexpr float kTapeSatEmphHz   = 1600.0f; // pre-emphasis corner (a Space Echo's slow speed is ~1.5-2 kHz)
+constexpr float kTapeSatEmphDb   = 8.0f;   // the shelf's boost of the highs going onto the tape (cut back after)
+constexpr float kTapeSatDriveK   = 1.25f;    // softClip(k e) / k on the emphasised signal: unity when quiet
+constexpr float kTapeSatRollHz   = 6500.0f; // 1-pole low-pass per pass: a little more treble lost every pass
+constexpr float kTapeSatBumpHz   = 70.0f, kTapeSatBumpQ = 1.0f; // the head bump (a peaking filter: back to 0 dB by ~300 Hz)
+constexpr float kTapeSatBumpDb   = 1.5f;    // the bump's lift at its peak, re the mids
+constexpr float kTapeSatMakeupFromHz = 300.0f; // gain <= 1 from here up, = 1 at its loudest
+// 6, 7 CRINKLE: 5 plus wrinkled tape briefly losing contact with the head.
+// Crinkled patches (kCrinklePatch*: a few per second, tens of ms long, the
+// gaps between them random) and inside each, fast irregular flickers
+// (kCrinkleFlick*: ~1-4 ms each, at random) where the level AND the highs
+// dip together (spacing loss: the highs lose far more than the lows; the
+// split at kCrinkleSplitHz): a papery, broken-up texture. Pitch untouched.
+// Faster and rougher than the worn tape's dropouts (3-40 ms, 2 per second).
+// Each pass gets its own, so older repeats (more passes, more tape) crinkle
+// more. Seeded: renders repeat exactly.
+struct CrinkleVoicing {
+    float patchesPerSecond;           // crinkled patches (on average)
+    float patchMinMs, patchMaxMs;     // each patch's length
+    float flicksPerSecond;            // flickers inside a patch (on average)
+    float flickMinMs, flickMaxMs;     // each flicker's length
+    float depthMin, depthMax;         // a patch's depth, 0..1 (1 = the highs gone, the level kCrinkleLevelDip down)
+};
+constexpr CrinkleVoicing kCrinkle[2] = {
+    {2.5f, 20.0f, 80.0f, 150.0f, 0.5f, 2.5f, 0.3f, 0.7f},   // 6 C1 subtle: ~1/8 of the tape crinkled, a short papery flutter now and then
+    {3.5f, 30.0f, 150.0f, 220.0f, 0.7f, 4.0f, 0.5f, 0.95f}, // 7 C2 obvious: ~1/3 of the tape crinkled, older repeats clearly broken up
+};
+constexpr float kCrinkleSplitHz  = 1200.0f; // below: the lows (lose kCrinkleLevelDip at depth 1); above: the highs (lose all of it)
+constexpr float kCrinkleLevelDip = 0.5f;    // the whole level's dip at depth 1 (-6 dB)
 #ifdef RV_ECHO_WEAR_DEFAULT
 constexpr int kWearDefault = RV_ECHO_WEAR_DEFAULT;
 #else

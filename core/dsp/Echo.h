@@ -61,7 +61,7 @@ public:
     int  diffuseVoicing() const { return diffuse_; }
     void diffuse(float* x, int n);
 
-    // Wear (EchoVoicing.h "Wear", dsp/EchoWear.h): 0 none ... 4 crushed.
+    // Wear (EchoVoicing.h "Wear", dsp/EchoWear.h): 0 none ... 4 crushed, 5-7 tape wear.
     void setWearVoicing(int v) { wear_.setVoicing(v); }
     void setBbdVoicing(int v) { wear_.setBbdVoicing(v); }
     int  bbdVoicing() const { return wear_.bbdVoicing(); }

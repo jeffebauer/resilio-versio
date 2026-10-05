@@ -19,6 +19,130 @@
 
 namespace rv::dsp {
 
+// ---- Tape wear (voicings 5-7; numbers in params/EchoVoicing.h "Tape wear") ----------------
+// Tape saturation + roll-off, and the crinkle on top. TapeSat<false> is an
+// empty no-op, so a firmware that doesn't ship them carries no code or state.
+template <bool kOn>
+class TapeSat {
+public:
+    void prepare(float) {}
+    void reset() {}
+    template <bool kCrinkleOn>
+    void process(float*, int, int, Rng&) {}
+};
+
+template <>
+class TapeSat<true> {
+public:
+    // The 1-pole high shelf e = x + K (x - LP(x)) (pre-emphasis) and its exact
+    // inverse (de-emphasis), solved per sample from the same 1-pole:
+    //   y = (s + K (1 - c) lb) / (1 + K (1 - c)),  lb += c (y - lb)
+    // so with the saturator quiet (s = e) the pair gives back x exactly.
+    RV_SIZE_OPT void prepare(float fs) // set-up
+    {
+        using namespace echo;
+        fs_ = fs;
+        const float c = 1.0f - std::exp(-2.0f * map::kPi * kTapeSatEmphHz / fs_);
+        emphC_ = c;
+        emphK_ = std::exp(kTapeSatEmphDb * (2.302585093f / 20.0f)) - 1.0f;
+        deB_   = emphK_ * (1.0f - c);
+        deInv_ = 1.0f / (1.0f + deB_);
+        satK_ = kTapeSatDriveK, satInv_ = 1.0f / kTapeSatDriveK;
+        roll_.setCutoff(std::min(kTapeSatRollHz, 0.45f * fs_), fs_);
+        split_.setCutoff(kCrinkleSplitHz, fs_);
+        {   // The head bump: an RBJ peaking filter (its skirts back to 0 dB, unlike a shelf's tail).
+            const float A = std::exp(kTapeSatBumpDb * (2.302585093f / 40.0f));
+            const float w = 2.0f * map::kPi * kTapeSatBumpHz / fs_, cw = std::cos(w), al = std::sin(w) / (2.0f * kTapeSatBumpQ);
+            const float a0 = 1.0f + al / A;
+            bump_.b0 = (1.0f + al * A) / a0, bump_.b1 = -2.0f * cw / a0, bump_.b2 = (1.0f - al * A) / a0;
+            bump_.a1 = -2.0f * cw / a0, bump_.a2 = (1.0f - al / A) / a0;
+        }
+        // Make-up: the mids' loudest (kTapeSatMakeupFromHz up) at exactly 1.
+        float mids = 0.0f;
+        for (float f = kTapeSatMakeupFromHz; f < 0.45f * fs_; f *= 1.02f) {
+            const float cw = std::cos(2.0f * map::kPi * f / fs_);
+            mids = std::max(mids, roll_.magnitudeSquared(cw) * bump_.magnitudeSquared(cw));
+        }
+        makeup_ = 1.0f / std::sqrt(mids);
+    }
+    void reset()
+    {
+        emphLp_ = deLp_ = 0.0f;
+        roll_.reset(), bump_.reset(), split_.reset();
+        patchWait_ = -1, patchLeft_ = 0, flickWait_ = 0, flickLeft_ = 0, flickLen_ = 1;
+        patchDepth_ = flickDepth_ = 0.0f;
+    }
+    // The feedback, worn (in place). crinkle: which kCrinkle (with kCrinkleOn).
+    template <bool kCrinkleOn>
+    void process(float* x, int n, int crinkle, Rng& rngIn)
+    {
+        const echo::CrinkleVoicing& cv = echo::kCrinkle[crinkle];
+        // The state in locals for the block (the output can't alias it: kept in registers).
+        Rng   rng = rngIn;
+        float eLp = emphLp_, dLp = deLp_, sLp = split_.y;
+        int   pWait = patchWait_, pLeft = patchLeft_, fWait = flickWait_, fLeft = flickLeft_, fLen = flickLen_;
+        float pDepth = patchDepth_, fDepth = flickDepth_;
+        for (int i = 0; i < n; ++i) {
+            // Record: pre-emphasis, the tape saturates (the highs first); playback: de-emphasis.
+            const float u = x[i];
+            eLp += emphC_ * (u - eLp);
+            const float e = u + emphK_ * (u - eLp);
+            const float s = softClip(satK_ * e) * satInv_;
+            float y = (s + deB_ * dLp) * deInv_;
+            dLp += emphC_ * (y - dLp);
+            // A little more treble gone each pass; the head bump; the make-up.
+            y = makeup_ * bump_.process(roll_.process(y));
+            if constexpr (kCrinkleOn) {
+                // Crinkled patches, and inside them, flickers of lost contact.
+                sLp += split_.c * (y - sLp);
+                if (pLeft > 0) {
+                    --pLeft;
+                    if (fLeft == 0 && --fWait <= 0) {
+                        fLen = fLeft = msLen(rng, cv.flickMinMs, cv.flickMaxMs);
+                        fDepth = pDepth * (0.4f + 0.6f * uni(rng));
+                        fWait  = wait(rng, cv.flicksPerSecond);
+                    }
+                } else {
+                    if (pWait < 0) pWait = wait(rng, cv.patchesPerSecond); // the first, after a reset
+                    if (--pWait <= 0) {
+                        pLeft  = msLen(rng, cv.patchMinMs, cv.patchMaxMs);
+                        pDepth = cv.depthMin + uni(rng) * (cv.depthMax - cv.depthMin);
+                        fWait  = 1 + int(uni(rng) * 0.002f * fs_);
+                        pWait  = wait(rng, cv.patchesPerSecond);
+                    }
+                }
+                if (fLeft > 0) {
+                    // A smooth dip (16 t^2 (1-t)^2: no corner at either end).
+                    const float t = float(fLen - fLeft) / float(fLen), w = t * (1.0f - t);
+                    const float g = fDepth * 16.0f * w * w;
+                    --fLeft;
+                    // The highs lose all of the gap, the whole level kCrinkleLevelDip of it.
+                    y = (1.0f - echo::kCrinkleLevelDip * g) * (y - g * (y - sLp));
+                }
+            }
+            x[i] = y;
+        }
+        rngIn = rng;
+        emphLp_ = eLp, deLp_ = dLp, split_.y = sLp;
+        patchWait_ = pWait, patchLeft_ = pLeft, flickWait_ = fWait, flickLeft_ = fLeft, flickLen_ = fLen;
+        patchDepth_ = pDepth, flickDepth_ = fDepth;
+    }
+
+private:
+    // Uniform in [0, 1); an exponential wait (samples) at `perSecond` on average; a length in ms.
+    static float uni(Rng& r) { return 0.5f * (r.bipolar() + 1.0f); }
+    int wait(Rng& r, float perSecond) const { return 1 + int(-std::log(std::max(uni(r), 1.0e-6f)) * fs_ / perSecond); }
+    int msLen(Rng& r, float minMs, float maxMs) const { return std::max(2, int(0.001f * fs_ * (minMs + uni(r) * (maxMs - minMs)))); }
+
+    float fs_ = 48000.0f;
+    float emphC_ = 0.0f, emphK_ = 0.0f, deB_ = 0.0f, deInv_ = 1.0f, emphLp_ = 0.0f, deLp_ = 0.0f;
+    float satK_ = 1.0f, satInv_ = 1.0f, makeup_ = 1.0f;
+    OnePoleLowpass roll_{}, split_{};
+    Biquad         bump_{};
+    int   patchWait_ = -1, patchLeft_ = 0, flickWait_ = 0, flickLeft_ = 0, flickLen_ = 1;
+    float patchDepth_ = 0.0f, flickDepth_ = 0.0f;
+};
+
 class TapeWear {
 public:
 #ifdef RV_FIXED_VOICINGS
@@ -27,6 +151,13 @@ public:
     static constexpr bool kBuilt = true;
 #endif
     static constexpr int kLineSize = kBuilt ? 256 : 1; // the worn tape's wow line (>= 2 x its depth at 96 kHz)
+    // The tape wear round (5-7) and its crinkle (6-7): only compiled into the
+    // firmware if one of them is the default.
+#ifdef RV_FIXED_VOICINGS
+    static constexpr bool kTapeSatBuilt = echo::kWearDefault >= echo::kWearTapeSat;
+#else
+    static constexpr bool kTapeSatBuilt = true;
+#endif
 
     RV_SIZE_OPT void prepare(float sampleRate, uint32_t seed) // set-up
     {
@@ -55,6 +186,7 @@ public:
         crushRel_  = coeff(kCrushReleaseMs);
         crushQ_    = std::exp2(kCrushBits - 1.0f);
         crackP_    = kCrackleRate / fs_;
+        sat_.prepare(fs_);
         reset();
     }
 
@@ -103,6 +235,7 @@ public:
         bbdAa_.reset(), bbdRec_.reset();
         bbdPh_ = 0.0f, bbdHeld_ = 0.0f, envC_ = envE_ = 0.0f, whinePh_ = 0.0f;
         crushPh_ = 0.0f, crushHeld_ = 0.0f, crushEnv_ = 0.0f;
+        sat_.reset();
     }
 
     // The input, delayed by latencySamples() (worn tape only; others: untouched).
@@ -128,6 +261,9 @@ public:
         case echo::kWearRadio: radio(x, n); break;
         case echo::kWearBbd: bbd(x, n); break;
         case echo::kWearCrushed: crushed(x, n); break;
+        case echo::kWearTapeSat: sat_.template process<false>(x, n, 0, rng_); break;
+        case echo::kWearCrinkle: sat_.template process<true>(x, n, 0, rng_); break;
+        case echo::kWearCrinkleHeavy: sat_.template process<true>(x, n, 1, rng_); break;
         default: break;
         }
     }
@@ -269,6 +405,8 @@ private:
     // Crushed.
     float crushStep_ = 0.0f, crushPh_ = 0.0f, crushHeld_ = 0.0f, crushEnv_ = 0.0f, crushRel_ = 0.0f, crushQ_ = 64.0f;
     float crackP_ = 0.0f;
+    // Tape wear (5-7): an empty no-op unless built (the firmware, unless it is the default).
+    TapeSat<kTapeSatBuilt> sat_;
 };
 
 } // namespace rv::dsp
