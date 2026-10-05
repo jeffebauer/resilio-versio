@@ -59,8 +59,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Friends' release notes** need the Kick removal, the button and the µ-law placement (below)
-- **Friends' release notes** updated for the Kick removal, the button and the µ-law placement; then, after you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
+- **Friends' release notes** updated (5 Oct: no Kick, the THROW button and tap tempo, µ-law on the wet before TONE, round 5). After you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude

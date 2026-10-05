@@ -1,6 +1,6 @@
 # 0043 — Kick removed; the button throws and taps tempo
 
-**Status:** Proposed, 5 Oct 2026 (the owner's decisions of 5 Oct; branch `feat/button-throw-tap`; merge after the owner's OK). Supersedes **ADR 0005** (Kick fixed strength), **ADR 0013** (hold-for-rattle deferred) and **ADR 0016** (Kick = thud + crash). Amends **ADR 0039** (the throw: the button throws too; a new exit gesture) and **ADR 0041** (echo mode: the button taps the tempo). SPEC v1.0.37. Numbers: `core/params/ThrowHold.h` (the gesture), `core/params/EchoVoicing.h` (the clock). Code: `Tank::button()`, `dsp/EchoClock.h`, `plugin/ButtonLink.h`. Tests: `host/tests/test_button.cpp`.
+**Status:** Accepted, 5 Oct 2026 (the owner's decisions of 5 Oct; branch `feat/button-throw-tap`, merged in `0267d0e`). Supersedes **ADR 0005** (Kick fixed strength), **ADR 0013** (hold-for-rattle deferred) and **ADR 0016** (Kick = thud + crash). Amends **ADR 0039** (the throw: the button throws too; a new exit gesture) and **ADR 0041** (echo mode: the button taps the tempo). SPEC v1.0.37. Numbers: `core/params/ThrowHold.h` (the gesture), `core/params/EchoVoicing.h` (the clock). Code: `Tank::button()`, `dsp/EchoClock.h`, `plugin/ButtonLink.h`. Tests: `host/tests/test_button.cpp`.
 
 **Context:**
 - Since ADR 0039 the gate is the throw, and the button was the Kick: a simulated knock on the tank (a low thump, a noise burst and a forced maximal splash with its Clatter crash). The throw has become the move the owner plays; the Kick was one more thing on a small panel.
