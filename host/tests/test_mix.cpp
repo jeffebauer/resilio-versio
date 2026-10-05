@@ -37,12 +37,6 @@ struct Stereo {
     Buf l, r;
 };
 
-// ATTITUDE for render() (-1 = the ParamSpec default, DRIVEN). The null and
-// dry-path checks run in CLEAN: since ADR 0042 DRIVEN / KICKED put the whole
-// output (dry too) through the mu-law box, so MIX 0 is a clean passthrough
-// only in CLEAN (by the owner's choice); DRIVEN / KICKED get their own checks.
-int gAtt = -1;
-
 // mixAt(n) gives MIX for the block starting at sample n (called per block).
 template <class MixFn>
 // splash < 0 leaves the ParamSpec default (SPLASH 0.3).
@@ -51,7 +45,6 @@ Stereo render(const Stereo& in, int block, MixFn mixAt, float splash = -1.0f)
     rv::Tank t;
     t.prepare(kFs, block);
     t.setParam(rv::ParamId::Mix, mixAt(size_t(0)));
-    if (gAtt >= 0) t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(gAtt));
     if (splash >= 0.0f) t.setParam(rv::ParamId::Splash, splash);
     const size_t n = in.l.size();
     Stereo o{Buf(n), Buf(n)};
@@ -155,8 +148,7 @@ int main()
     Stereo anti{noise(n, 0.3f, 3u), Buf(n)};
     for (size_t i = 0; i < n; ++i) anti.r[i] = -anti.l[i];
 
-    // ---- CCW: dry only, bit-identical null (CLEAN; ADR 0042) -------------------------------
-    gAtt = 0;
+    // ---- CCW: dry only, bit-identical null --------------------------------------------
     {
         bool nullOk = true;
         for (int b : {1, 48, 512}) {
@@ -201,30 +193,6 @@ int main()
                       worst, db(noonDry), db(noonWet));
         check(worst < 0.002 && std::fabs(db(noonDry) + 3.01) < 0.02 && std::fabs(db(noonWet) + 3.01) < 0.05, msg);
     }
-
-    // ---- DRIVEN / KICKED (ADR 0042): MIX 0 is the dry through the mu-law box --------------
-    // Not a passthrough any more, but the dry at its level (in band: noise
-    // below ~1 kHz, so the box's 24 kHz rate takes nothing off), and MIX 1
-    // still has no dry leakage (a silent tank through the box is exact 0).
-    for (int a = 1; a < 3; ++a) {
-        gAtt = a;
-        Buf lo = noise(n, 0.3f, 4u);
-        rv::dsp::OnePoleLowpass f1, f2;
-        f1.setCutoff(1000.0f, kFs);
-        f2.setCutoff(1000.0f, kFs);
-        for (auto& v : lo) v = f2.process(f1.process(v));
-        const Stereo in{lo, lo};
-        const Stereo o = renderAt(in, 0.0f);
-        const double g = db(rms(o.l, size_t(0.5f * kFs)) / rms(in.l, size_t(0.5f * kFs)));
-        const Stereo w = renderAt(anti, 1.0f);
-        const double leak = db(std::max(rms(w.l), rms(w.r)) / rms(anti.l));
-        std::snprintf(msg, sizeof msg,
-                      "%s MIX 0: the dry through the box at %+.3f dB (in-band noise; limit +-0.1), not bit-identical (%d); MIX 1 dry leakage "
-                      "%.0f dB (limit -80)",
-                      a == 1 ? "DRIVEN" : "KICKED", g, int(o.l != in.l), leak);
-        check(std::fabs(g) < 0.1 && o.l != in.l && leak < -80.0, msg);
-    }
-    gAtt = -1;
 
     // ---- Sweep loudness within ±1.5 dB -------------------------------------------------------
     {

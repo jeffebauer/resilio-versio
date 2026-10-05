@@ -2,16 +2,20 @@
 // The output's bit depth (ADR 0042, owner 4 Oct 2026; numbers in
 // params/OutputVoicing.h, method and measurements in
 // docs/prototypes/output-mulaw/README.md). The echo branch's 8-bit mu-law
-// "box" (feat/echo-mode 2792b14, dsp/EchoBits.h) moved to the very end of
-// the Tank: the stereo output after MIX, so dry and wet both go through it.
+// "box" (feat/echo-mode 2792b14, dsp/EchoBits.h) on the Tank's stereo wet.
 // CLEAN: bypassed, bit for bit. DRIVEN: 24 kHz / 12-bit mu-law. KICKED:
 // 24 kHz / 10-bit mu-law (8-bit until 5 Oct 2026, ADR 0042 amendment).
 //
-// Where: after the wet's limiter and after MIX (the dry has to be in it).
-// The limiter keeps the wet under -1 dBFS, so the wet alone never reaches
-// the box's full scale; dry + wet at mid MIX can, and is then clipped at
-// full scale (Tank units, the Plugin's 0 dBFS) like a real converter. The
-// firmware's kOutputTrim (-1.17 dB and the polarity flip) comes after.
+// Where (ADR 0042 amendment, owner 5 Oct 2026: "only affects the wet signal,
+// pre-tone so I can filter out the higher aliasing artefacts if desired"):
+// the wet only, after the pickups and the output shelf, before TONE's return
+// filter (the Big Knob, ADR 0036 amendment), then the limiter, the Hold's
+// ducking and MIX. The dry is untouched, so MIX fully left is a clean
+// passthrough in every ATTITUDE (until 5 Oct the box sat after MIX, on both).
+// Full scale: kFullScale (+8 dB over the Plugin's 0 dBFS), because the wet
+// before the limiter runs hotter than 0 dBFS (KICKED up to +7 dB); a clip
+// at the box's 24 kHz would fold its harmonics back into the band. The
+// limiter after it catches the peaks, and what the box's filters add.
 //
 // The rate: 48 -> 24 -> 48 kHz through the Drive oversamplers' polyphase IIR
 // half-band (dsp/Oversampler.h Halfband: flat to 10.6 kHz, >= 85 dB down
@@ -75,7 +79,7 @@ public:
         for (int d = 1; d < 3; ++d) {
             float* const t = expand_ + kTabOffset[d];
             const float  q = q_[d];
-            for (int k = 0; k < kTabSize[d]; ++k) t[k] = (std::exp(float(k) * (kLnMu1 / q)) - 1.0f) * (1.0f / kMu);
+            for (int k = 0; k < kTabSize[d]; ++k) t[k] = (std::exp(float(k) * (kLnMu1 / q)) - 1.0f) * (outbits::kFullScale / kMu);
         }
         reset();
     }
@@ -343,7 +347,7 @@ private:
     // depth quantised and expanded only while it has weight.
     RV_NOINLINE float quantise(Chan& ch, float y)
     {
-        float a = std::fabs(y);
+        float a = std::fabs(y) * (1.0f / outbits::kFullScale); // against the box's full scale (OutputVoicing.h)
         a = a > 1.0f ? 1.0f : a;
         const float cpr = std::log(1.0f + kMu * a) * (1.0f / kLnMu1); // compressed, 0..1 (log, exp: already in the firmware; log1p, expm1 cost 4.8 KB of flash)
         ch.env = selGt(cpr, ch.env, cpr, ch.env + envRel_ * (cpr - ch.env)); // attack at once, release on envRel_ (VSEL on the chip: the signal's coin flips are no branches)

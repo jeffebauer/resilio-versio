@@ -1,25 +1,26 @@
 // The output's bit depth (ADR 0042, owner 4 Oct 2026; core/dsp/OutputBits.h,
 // core/params/OutputVoicing.h, docs/prototypes/output-mulaw/README.md).
-// Renderer key output_bits_voicing: 0 = before the box (the "today" reference), 1 = the default, DRIVEN 24 kHz / 12-bit
-// mu-law and KICKED 24 kHz / 10-bit mu-law (8-bit until the 5 Oct 2026 amendment) on the whole output after MIX
-// (dry and wet), CLEAN untouched.
+// Renderer key output_bits_voicing: 0 = without the box (the reference), 1 = the default, DRIVEN 24 kHz / 12-bit
+// mu-law and KICKED 24 kHz / 10-bit mu-law (8-bit until the 5 Oct 2026 amendment) on the wet only, before TONE's
+// return filter (ADR 0042 amendment, 5 Oct 2026; until then after MIX, on dry and wet), CLEAN untouched.
 //
 // Checks:
 //  - the default is voicing 1, and an untouched Tank renders bit for bit as it;
-//  - voicing 1 in CLEAN renders bit for bit as today (every SPRINGS, MIX 0 /
-//    0.4 / 1), and CLEAN MIX 0 is still the input exactly;
-//  - level: K-weighted loudness within +-0.5 dB of today per ATTITUDE
-//    (hits, skank, pad; every SPRINGS; MIX 0 / 0.4 / 1);
+//  - voicing 1 in CLEAN renders bit for bit as without the box (every SPRINGS,
+//    MIX 0 / 0.4 / 1); MIX 0 is the input exactly in every ATTITUDE;
+//  - level: K-weighted loudness within +-0.5 dB of without the box per
+//    ATTITUDE (hits, skank, pad; every SPRINGS; MIX 0.4 / 1);
 //  - no new pitches: no narrow peak in the tail that today doesn't have (a
 //    rim, a 1 kHz and an 1130 Hz tone burst), with a positive control (the
 //    same quantiser without the half-band filters) to show the check sees
 //    folding; M6 (Ringing, steady tone) on long tails and the SPRINGS 3 grid;
-//  - silence in -> exact silence out; the dry alone falls to exact 0 within
-//    a few ms; a tail ends in exact 0;
-//  - ATTITUDE flips mid-tail and on a dry tone: no clicks;
+//  - silence in -> exact silence out; the box alone falls to exact 0 within
+//    a few ms of its input stopping; a tail ends in exact 0;
+//  - ATTITUDE flips mid-tail and on a held tone: no clicks;
+//  - the limiter (after the box) and the LEDs' red;
 //  - deterministic, block-size free;
-//  - INFO: latency (samples / ms), noise floor per mode (a 1 kHz tone at
-//    -6 ... -80 dBFS, dry only), desktop cost.
+//  - INFO: latency (samples / ms), noise floor per mode (the box alone on a
+//    1 kHz tone at -6 ... -80 dBFS), desktop cost.
 
 #include "../../firmware/LedMeter.h"
 
@@ -380,6 +381,22 @@ Stereo naiveBox(const Stereo& o, float bits)
     return r;
 }
 
+// The box alone (dsp::OutputBits, as the Tank runs it: voicing 1, settled on
+// one ATTITUDE), on a mono signal into both channels, 48-sample blocks.
+Stereo boxAlone(const Buf& in, int att)
+{
+    rv::dsp::OutputBits b;
+    b.prepare(kFs, 0xB175u);
+    b.setVoicing(1);
+    b.setTarget(att, true);
+    Stereo o{in, in};
+    for (size_t pos = 0; pos < in.size(); pos += 48) {
+        const int n = int(std::min<size_t>(48, in.size() - pos));
+        b.process(o.l.data() + pos, o.r.data() + pos, n);
+    }
+    return o;
+}
+
 // ---- checks ------------------------------------------------------------------------------------
 void identity()
 {
@@ -412,37 +429,18 @@ void cleanUntouched()
             }
     std::snprintf(msg, sizeof msg, "voicing 1, CLEAN = today bit for bit (hits + skank, every SPRINGS, MIX 0 / 0.4 / 1): %d of %d", ok, cells);
     check(ok == cells, msg);
-    // CLEAN MIX 0 is still the input exactly (stereo, different L and R).
+    // MIX 0 is the input exactly in every ATTITUDE (stereo, different L and R):
+    // the box is on the wet only (ADR 0042 amendment).
     const Buf l = noise(sec(2.0), 0.5f, 7u), r = noise(sec(2.0), 0.5f, 8u);
-    Settings s;
-    s.mix = 0.0f;
-    const Stereo o = render(s, l, r, 1);
-    std::snprintf(msg, sizeof msg, "voicing 1, CLEAN MIX 0 = the input, bit for bit: %d", int(o.l == l && o.r == r));
-    check(o.l == l && o.r == r, msg);
-}
-
-// Today's output through the box's two half-band filters alone (no bits):
-// the reference for what the bits themselves do to the level.
-Stereo filtersOnly(const Stereo& o)
-{
-    Stereo r = o;
-    for (Buf* ch : {&r.l, &r.r}) {
-        rv::dsp::Halfband dn, up;
-        float held = 0.0f, pend = 0.0f;
-        for (size_t i = 0; i < ch->size(); ++i) {
-            const float x = (*ch)[i];
-            if (i % 2 == 0) {
-                held     = x;
-                (*ch)[i] = pend;
-            } else {
-                float f, sc;
-                up.up(dn.down(held, x), f, sc);
-                (*ch)[i] = f;
-                pend     = sc;
-            }
-        }
+    int nulls = 0;
+    for (int a = 0; a < 3; ++a) {
+        Settings s;
+        s.mix = 0.0f, s.att = a;
+        const Stereo o = render(s, l, r, 1);
+        nulls += o.l == l && o.r == r ? 1 : 0;
     }
-    return r;
+    std::snprintf(msg, sizeof msg, "voicing 1, MIX 0 = the input, bit for bit, in CLEAN / DRIVEN / KICKED: %d of 3", nulls);
+    check(nulls == 3, msg);
 }
 
 bool readStimulus(const char* name, Buf& out)
@@ -463,9 +461,9 @@ bool readStimulus(const char* name, Buf& out)
 void level()
 {
     // The page's material (02_hits, 04_skank, 10_pad_cminor; first 8 s), every
-    // SPRINGS, MIX 0 / 0.4 / 1: K-weighted loudness vs today (the whole box:
-    // the 24 kHz rate and the bits), and the bits alone (vs today through the
-    // same filters).
+    // SPRINGS, MIX 0.4 / 1: K-weighted loudness vs without the box. (MIX 0 is
+    // the input, bit for bit: cleanUntouched.) The wet has little above 11 kHz
+    // (the pickups, the shelf), so the 24 kHz rate takes almost nothing off.
     const char* const kMat[3] = {"02_hits.wav", "04_skank.wav", "10_pad_cminor.wav"};
     Buf mats[3];
     for (int m = 0; m < 3; ++m) {
@@ -476,66 +474,36 @@ void level()
         mats[m].resize(std::min(mats[m].size(), sec(8.0)));
     }
     for (int a = 1; a < 3; ++a) {
-        // Worst vs today per material x MIX (over SPRINGS), and the bits alone.
-        double worst[3][3] = {}, worstBits = 0, sum = 0, worstChecked = 0;
+        double worst[3][2] = {}, sum = 0, worstAll = 0;
         int    n = 0;
-        char   whereBits[120] = "";
-        const float kMix[3] = {0.0f, 0.4f, 1.0f};
+        const float kMix[2] = {0.4f, 1.0f};
         for (int m = 0; m < 3; ++m)
             for (int sp = 0; sp < 3; ++sp)
-                for (int x = 0; x < 3; ++x) {
+                for (int x = 0; x < 2; ++x) {
                     Settings s;
                     s.att = a, s.springs = sp, s.mix = kMix[x];
-                    const Stereo o0 = render(s, mats[m], 0);
-                    const double l1 = kLoudnessDb(render(s, mats[m], 1));
-                    const double d = l1 - kLoudnessDb(o0), dBits = l1 - kLoudnessDb(filtersOnly(o0));
+                    const double d = kLoudnessDb(render(s, mats[m], 1)) - kLoudnessDb(render(s, mats[m], 0));
                     sum += d, ++n;
                     if (std::fabs(d) > std::fabs(worst[m][x])) worst[m][x] = d;
-                    // Checked vs today everywhere but the dry drums alone (MIX
-                    // 0 on 02_hits): their 11-24 kHz is the 24 kHz rate's loss.
-                    if (!(m == 0 && x == 0) && std::fabs(d) > std::fabs(worstChecked)) worstChecked = d;
-                    if (std::fabs(dBits) > std::fabs(worstBits)) {
-                        worstBits = dBits;
-                        std::snprintf(whereBits, sizeof whereBits, "%s, %d Spring%s, MIX %.1f", kMat[m], sp + 1, sp ? "s" : "", double(kMix[x]));
-                    }
+                    if (std::fabs(d) > std::fabs(worstAll)) worstAll = d;
                 }
         std::snprintf(msg, sizeof msg,
-                      "level, %s (K-weighted, worst over SPRINGS, vs today at MIX 0 / 0.4 / 1): hits %+.2f / %+.2f / %+.2f, skank %+.2f / %+.2f / "
-                      "%+.2f, pad %+.2f / %+.2f / %+.2f dB (mean %+.2f over %d cells). Limit +-0.5 except dry hits (the top octave the 24 kHz "
-                      "rate takes off, by design): worst %+.2f. The bits alone (vs today through the same filters): worst %+.2f dB (%s), limit +-0.5",
-                      kAtt[a], worst[0][0], worst[0][1], worst[0][2], worst[1][0], worst[1][1], worst[1][2], worst[2][0], worst[2][1], worst[2][2],
-                      sum / n, n, worstChecked, worstBits, whereBits);
-        check(std::fabs(worstChecked) <= 0.5 && std::fabs(worstBits) <= 0.5, msg);
-    }
-    // The 24 kHz rate takes the top octave (11-24 kHz) off: on bright
-    // material (white-noise snares, a hi-hat's worth of air) that is heard,
-    // and K-weighting (which lifts the highs) reads it as quieter. The bits
-    // alone still don't change the level.
-    {
-        const Buf b = hits(7.0, true);
-        std::printf("INFO  level on bright synthetic hits (white noise to 24 kHz), K-weighted, vs today / the bits alone:");
-        for (int a = 1; a < 3; ++a)
-            for (float mix : {0.0f, 1.0f}) {
-                Settings s;
-                s.att = a, s.mix = mix;
-                const Stereo o0 = render(s, b, 0);
-                const double l1 = kLoudnessDb(render(s, b, 1));
-                std::printf(" %s MIX %.0f %+.2f / %+.2f dB;", kAtt[a], double(mix), l1 - kLoudnessDb(o0), l1 - kLoudnessDb(filtersOnly(o0)));
-            }
-        std::printf("\n");
+                      "level, %s (K-weighted, worst over SPRINGS, vs without the box at MIX 0.4 / 1): hits %+.2f / %+.2f, skank %+.2f / %+.2f, "
+                      "pad %+.2f / %+.2f dB (mean %+.2f over %d cells; limit +-0.5)",
+                      kAtt[a], worst[0][0], worst[0][1], worst[1][0], worst[1][1], worst[2][0], worst[2][1], sum / n, n);
+        check(std::fabs(worstAll) <= 0.5, msg);
     }
 }
 
 void latency()
 {
-    // The box's delay per frequency (dry only, DRIVEN: 12 bits, so the phase
-    // reads clean): fit a sinusoid to input and output, delay = phase / w.
-    std::printf("INFO  latency of the box (DRIVEN / KICKED only; CLEAN is never delayed), dry tone at -6 dBFS:");
+    // The box's delay per frequency (the box alone, DRIVEN: 12 bits, so the
+    // phase reads clean): fit a sinusoid to input and output, delay = phase / w.
+    // On the wet only; the dry is never delayed.
+    std::printf("INFO  latency of the box on the wet (DRIVEN / KICKED only; CLEAN and the dry never delayed), tone at -6 dBFS:");
     for (double hz : {100.0, 1000.0, 5000.0, 10000.0}) {
         const Buf in = toneBurst(1.0, hz, 0.0, 1.0);
-        Settings s;
-        s.att = 1, s.mix = 0.0f;
-        const Stereo o = render(s, in, 1);
+        const Stereo o = boxAlone(in, 1);
         double ci = 0, si = 0, co = 0, so = 0;
         for (size_t i = sec(0.2); i < sec(0.9); ++i) {
             const double w = 2 * kPi * hz * double(i) / kFs;
@@ -552,15 +520,14 @@ void latency()
 
 void noiseFloor()
 {
-    // A 1 kHz tone, dry only (MIX 0): what's left after fitting the tone is
-    // the box's grain (quantisation + dither), in dBFS, and its SNR.
+    // The box alone on a 1 kHz tone: what's left after fitting the tone is the
+    // box's grain (quantisation + dither), in dBFS, and its SNR. Full scale is
+    // kFullScale (+8 dB): the wet before the limiter runs hotter than 0 dBFS.
     for (int a = 1; a < 3; ++a) {
-        std::printf("INFO  noise floor, %s, dry 1 kHz tone (residual dBFS / SNR dB):", kAtt[a]);
+        std::printf("INFO  noise floor, %s, the box alone, 1 kHz tone (residual dBFS / SNR dB):", kAtt[a]);
         for (double lv : {-6.0, -20.0, -40.0, -60.0, -80.0}) {
             const Buf in = toneBurst(1.2, 1000.0, 0.0, 1.2, lv);
-            Settings s;
-            s.att = a, s.mix = 0.0f;
-            const Stereo o = render(s, in, 1);
+            const Stereo o = boxAlone(in, a);
             const size_t f = sec(0.2), t = sec(1.0);
             double c = 0, sn = 0;
             for (size_t i = f; i < t; ++i) {
@@ -598,19 +565,17 @@ void silence()
         std::snprintf(msg, sizeof msg, "silence in, exact silence out (no idle hiss): %d of %d cells", ok, cells);
         check(ok == cells, msg);
     }
-    // The dry alone (MIX 0): noise for 1 s, then nothing: exact 0 within a few ms.
+    // The box alone: noise for 1 s, then nothing: exact 0 within a few ms.
     for (int a = 1; a < 3; ++a) {
         Buf in(sec(2.0), 0.0f);
         const Buf nz = noise(sec(1.0), 0.3f, 3u);
         std::copy(nz.begin(), nz.end(), in.begin());
-        Settings s;
-        s.att = a, s.mix = 0.0f;
-        const Stereo o = render(s, in, 1);
+        const Stereo o = boxAlone(in, a);
         size_t last = 0;
         for (size_t i = 0; i < o.l.size(); ++i)
             if (o.l[i] != 0.0f || o.r[i] != 0.0f) last = i;
         const double ms = (double(last) - double(sec(1.0))) / kFs * 1000.0;
-        std::snprintf(msg, sizeof msg, "%s, dry only: the output is exactly 0 from %.1f ms after the input stops (limit 15)", kAtt[a], ms);
+        std::snprintf(msg, sizeof msg, "%s, the box alone: its output is exactly 0 from %.1f ms after its input stops (limit 15)", kAtt[a], ms);
         check(ms <= 15.0, msg);
     }
     // A rim's tail (MIX 1, DECAY noon and 0.85): ends in exact silence, and when.
@@ -676,27 +641,32 @@ void artefacts()
                     }
                 }
             }
-        // A quiet dry tone (MIX 0) a few steps above the bottom: where
-        // quantisation turns a tone into a pitched buzz unless dithered.
+        // A quiet tone a few steps above the bottom, through the box alone:
+        // where quantisation turns a tone into a pitched buzz unless dithered.
         double quiet = 0, hzQuiet = 0;
         {
-            // ~20 dB over the bottom step (12-bit -99.5 dBFS, 10-bit -87.4: -80 / -68 dBFS).
-            const double q = std::exp2(double(bits) - 1.0), bottom = 20.0 * std::log10((std::pow(256.0, 1.0 / q) - 1.0) / 255.0);
+            // ~20 dB over the bottom step (against kFullScale: 12-bit ~-91.5 dBFS, 10-bit ~-79.4).
+            const double q = std::exp2(double(bits) - 1.0),
+                         bottom = 20.0 * std::log10(double(rv::outbits::kFullScale) * (std::pow(256.0, 1.0 / q) - 1.0) / 255.0);
             const double lv = std::floor(bottom + 20.0);
             const Buf tb = toneBurst(2.0, 1130.0, 0.1, 1.8, lv);
-            Settings s;
-            s.att = a, s.mix = 0.0f;
-            const Stereo t0 = render(s, tb, 0), t1 = render(s, tb, 1);
+            const Stereo t0{tb, tb}, t1 = boxAlone(tb, a);
             double hz = 0;
             quiet = newPeakDb(t0, t1, sec(0.3), sec(1.8), &hzQuiet, 1130.0);
-            const double pc = newPeakDb(t0, naiveBox(t0, bits), sec(0.3), sec(1.8), &hz, 1130.0);
+            Stereo scaled = t0; // the control against the same full scale
+            for (Buf* ch : {&scaled.l, &scaled.r})
+                for (float& v : *ch) v *= 1.0f / rv::outbits::kFullScale;
+            Stereo nb = naiveBox(scaled, bits);
+            for (Buf* ch : {&nb.l, &nb.r})
+                for (float& v : *ch) v *= rv::outbits::kFullScale;
+            const double pc = newPeakDb(t0, nb, sec(0.3), sec(1.8), &hz, 1130.0);
             if (pc > ctrl) ctrl = pc, hzCtrl = hz;
             worstTone = std::max(worstTone, quiet);
         }
         std::snprintf(msg, sizeof msg,
                       "%s, no new pitches vs today (DECAY noon / 0.85, MIX 0.4 / 1; limit 6 dB): rim tail %.1f dB (%.0f Hz); tone bursts 1 kHz / "
                       "1130 Hz, inharmonic %.1f dB (%.0f Hz). Control, the same bits without filters or dither: %.1f dB (%.0f Hz), must exceed 6. "
-                      "Quiet dry tone (a few steps): %.1f dB (%.0f Hz). The last second before the tail's silence: %.1f dB (%.0f Hz)",
+                      "Quiet tone through the box alone (a few steps): %.1f dB (%.0f Hz). The last second before the tail's silence: %.1f dB (%.0f Hz)",
                       kAtt[a], worstRim, hzRim, worstTone, hzTone, ctrl, hzCtrl, quiet, hzQuiet, worstEnd, hzEnd);
         check(worstRim <= 6.0 && worstTone <= 6.0 && worstEnd <= 6.0 && ctrl > 6.0, msg);
     }
@@ -748,7 +718,7 @@ void artefacts()
 void flips()
 {
     // ATTITUDE flips every 0.6 s through every transition, mid-tail (skank +
-    // pad, MIX 0.4) and on a dry tone (1 kHz, MIX 0, where the box is most exposed).
+    // pad, MIX 0.4) and on a held tone fully wet (1 kHz, MIX 1).
     const std::vector<std::pair<size_t, int>> seq = {{sec(1.2), 1}, {sec(1.8), 2}, {sec(2.4), 1}, {sec(3.0), 0}, {sec(3.6), 2},
                                                      {sec(4.2), 0}, {sec(4.8), 1}, {sec(5.4), 2}, {sec(6.0), 0}};
     Buf mat = stabs(7.0);
@@ -759,13 +729,13 @@ void flips()
     const Buf tone = toneBurst(7.0, 1000.0, 0.2, 6.6, -12.0);
     for (int which = 0; which < 2; ++which) {
         Settings s;
-        s.mix = which == 0 ? 0.4f : 0.0f;
+        s.mix = which == 0 ? 0.4f : 1.0f;
         const Buf& in = which == 0 ? mat : tone;
         double w0 = 0, w1 = 0;
         const int c0 = clicksBoth(render(s, in, 0, 48, seq), sec(1.0), &w0);
         const int c1 = clicksBoth(render(s, in, 1, 48, seq), sec(1.0), &w1);
         std::snprintf(msg, sizeof msg, "ATTITUDE flips every 0.6 s (%s): clicks today %d (worst ratio %.1f), mu-law %d (worst ratio %.1f)",
-                      which == 0 ? "skank + pad mid-tail, MIX 0.4" : "dry 1 kHz tone, MIX 0", c0, w0, c1, w1);
+                      which == 0 ? "skank + pad mid-tail, MIX 0.4" : "held 1 kHz tone, MIX 1", c0, w0, c1, w1);
         check(c1 == 0 && c1 <= c0, msg);
     }
     // The fade takes ~20 ms: halfway through a CLEAN -> KICKED flip the weights are about half.
@@ -786,13 +756,13 @@ void flips()
 }
 
 // The release firmware's output LEDs (ADR 0031) with the box in. Red comes
-// only from the limiter (Tank::limiterGain()), which sits before the box: it
-// must read exactly as without the box. The level meters read the box's
-// output (the per-block peak of what leaves the Tank), so they show what the
-// box does (INFO: on bright material the 24 kHz rate lowers a transient's
-// peak). test_led_meter's "limiter pulls" case (a held chord at -3 dBFS into
-// 3 Springs, DECAY 0.62, the Sustain trim off, fully wet; and at MIX 0.5) in
-// DRIVEN and KICKED, per 48-sample block as the firmware does.
+// only from the limiter (Tank::limiterGain()), which since the 5 Oct
+// amendment sits after the box: it reads the wet as heard, grain included,
+// so its gain can differ by a hair; red must light where it did without the
+// box (within 1 % of blocks), and DRIVEN must light it. test_led_meter's
+// "limiter pulls" case (a held chord at -3 dBFS into 3 Springs, DECAY 0.62,
+// the Sustain trim off, fully wet; and at MIX 0.5) in DRIVEN and KICKED, per
+// 48-sample block as the firmware does.
 void leds()
 {
     Buf in(sec(4.0), 0.0f);
@@ -824,18 +794,19 @@ void leds()
             }
         }
         int red[2] = {0, 0};
-        double worstPos = 0.0;
+        double worstPos = 0.0, worstGainDb = 0.0;
         for (size_t b = 0; b < gain[0].size(); ++b) {
             for (int v = 0; v < 2; ++v) red[v] += rvled::limiterReducing(gain[v][b]) ? 1 : 0;
+            worstGainDb = std::max(worstGainDb, std::fabs(20.0 * std::log10(double(gain[1][b]) / double(gain[0][b]))));
             const float p0 = std::max(peak[0][b], b ? peak[0][b - 1] : 0.0f), p1 = std::max(peak[1][b], b ? peak[1][b - 1] : 0.0f);
             if (p0 >= 0.063f) worstPos = std::max(worstPos, double(std::fabs(rvled::levelToPosition(p1) - rvled::levelToPosition(p0))));
         }
         std::snprintf(msg, sizeof msg,
-                      "LEDs, %s held chord into the limiter (MIX %.1f): limiter gain per block identical with and without the box %d; red in %d / %d blocks "
-                      "(without / with: the same; DRIVEN must light it, KICKED stays under the limiter here). INFO the output level meter, worst block (above -24 dBFS) %.3f of its "
-                      "scale from before the box",
-                      kAtt[a], double(mix), int(gain[0] == gain[1]), red[0], red[1], worstPos);
-        check(gain[0] == gain[1] && red[0] == red[1] && (a == 2 || red[0] > 0), msg);
+                      "LEDs, %s held chord into the limiter (MIX %.1f): limiter gain per block within %.2f dB of without the box; red in %d / %d "
+                      "blocks (without / with: within 1 %% of %zu; DRIVEN must light it, KICKED stays under the limiter here). INFO the output level "
+                      "meter, worst block (above -24 dBFS) %.3f of its scale from without the box",
+                      kAtt[a], double(mix), worstGainDb, red[0], red[1], gain[0].size(), worstPos);
+        check(std::abs(red[0] - red[1]) <= int(gain[0].size() / 100) && (a == 2 || red[0] > 0), msg);
     }
 }
 
