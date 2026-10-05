@@ -7,10 +7,10 @@ A new spring sound
 - Then a final fit from a second recording session: a softer hit up front, the main ring sitting lower and warmer, and Wellspring-like stereo (lows centred, the width growing as the tail goes on). The springs' level also sits more evenly across TONE and DRIVE.
 
 SPRINGS position 3 is now ECHO MODE: a tape echo feeding the springs
-- Every dub rig paired a spring with tape echo (King Tubby's homemade delay, Lee Perry's Space Echo, Adrian Sherwood, Pole). Each repeat now lands in the springs as its own splash, a little darker every pass, with a faint BBD-style grit.
+- Every dub rig paired a spring with tape echo (King Tubby's homemade delay, Lee Perry's Space Echo, Adrian Sherwood, Pole). Each repeat now lands in the springs as its own splash, worn like old tape: loud, bright repeats come back thicker and duller, each pass a little darker and rounder, with no digital fizz.
 - DECAY sets the echo's feedback. At the very top it holds a steady, saturated loop instead of running away.
 - TENSION sets the echo time; moving it bends the repeats' pitch like a Space Echo's rate knob.
-- Patch a clock into the gate, or tap the button (see below), and TENSION steps through 1/2 down to 1/16, dotted values included. The plugin follows the DAW's tempo.
+- Patch a clock into the gate, or tap the button (see below), and TENSION steps through 1/2 down to 1/16, dotted values included. The plugin follows the DAW's tempo, and its TENSION readout shows the note value.
 
 TONE: King Tubby's "Big Knob"
 - The right half of TONE is modelled on the stepped high-pass on Tubby's MCI desk (an Altec 9069B): a steep 18 dB/oct low cut up to 800 Hz, with the filter's nasal bump on sharp hits.

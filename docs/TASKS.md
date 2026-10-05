@@ -2,17 +2,17 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, evening. Everything is merged (`0267d0e`: Wellspring round 5, µ-law on the wet before TONE, Kick removed, the button throws / taps tempo) and in Ableton. Next for you: hear it in the plugin, then the module builds (§2–3)
+**Last updated:** 6 Oct 2026. Merged and in Ableton (`9ba726f`): tape wear B in echo mode (held top locked) and TENSION's note-value readout, on top of 5 Oct's round 5, wet µ-law and the THROW button. Next for you: hear the echo in the plugin, then the new module builds (§2–3)
 
 | Milestone | State |
 |---|---|
-| M2 plugin | Built, installed `c7bf3e7`. Your Ableton check is open (§5) |
-| M3 CPU | Run 18: echo mode 76 % peak, the SPRINGS switch 77 %, worst moment 79.9 % (target 75 %, ceiling 80 %; echo mode's 76 % accepted). **Run 19** (everything merged) ready to flash (§2). Flash: release 95 %, CPU-test build 96 % |
+| M2 plugin | Built, installed `9ba726f`. Your Ableton check is open (§5) |
+| M3 CPU | Run 18: echo mode 76 % peak, the SPRINGS switch 77 %, worst moment 79.9 % (target 75 %, ceiling 80 %; echo mode's 76 % accepted). **Run 20** (with tape wear B) ready to flash (§2); run 19 is superseded. Flash: release 95.7 %, CPU-test build 97.2 % |
 | Real firmware on the Versio | `0267d0e` (flashed 5 Oct evening): everything merged. Click check under way, no clicks so far (§3) |
-| M8 sound | All merged. **Being built:** tape wear for echo mode's repeats (Waiting on Claude) |
+| M8 sound | All merged, incl. tape wear B for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
-**Plugin in Ableton:** `c7bf3e7` (installed 5 Oct 19:38, AU validated), code = `0267d0e`. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
+**Plugin in Ableton:** `9ba726f` (installed 6 Oct 10:16, AU validated): tape wear B in echo mode, TENSION shows note values in echo mode, plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
 
@@ -23,12 +23,16 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Round 5's side changes** you haven't heard: the wet 1 dB lower from TONE noon right; DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top
 - [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
 
-### 2. CPU run 19 on the module (≈10 min)
-- [ ] Flash `dist/resilio_versio_m3_profile_run19.bin` and read the numbers as before (everything merged: round 5, the wet µ-law, the button). Paste them to Claude
+### 2. CPU run 20 on the module (≈10 min)
+- [ ] Flash `dist/resilio_versio_m3_profile_run20.bin` and read the numbers as before (everything merged, incl. tape wear B; it replaces run 19). Echo mode at DECAY's very top matters most: B's held top adds a little work there. Paste them to Claude
 
 ### 3. The new release on the module + click check (≈10 min)
-- [x] Flashed `dist/resilio_versio_release_0267d0e.bin` (5 Oct: "sounding fantastic")
-- [ ] **Click check** (under way, no clicks so far): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
+- [x] `0267d0e` flashed 5 Oct ("sounding fantastic"); no clicks so far on it
+- [ ] Flash `dist/resilio_versio_release_9ba726f.bin` (adds tape wear B). **Click check:** KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
+
+### 3b. Hear tape wear B in the plugin (≈10 min)
+- [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
+- [ ] TENSION in echo mode shows the note value (1/2 … 1/16, dotted) on the panel and in Ableton's device view (it may need a knob touch to refresh after flipping SPRINGS)
 
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
@@ -54,7 +58,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Echo mode: tape wear B becomes the default** (your pick, B on every row, 6 Oct): the held top made to lock in like today (your call), then merged and installed in Ableton when every test passes, plus a new release and CPU-test build for the module (B needs a CPU run on the chip)
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -74,6 +77,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Merged and installed `9ba726f`:** tape wear B as echo mode's wear (held top locked; ADR 0041 amendment, SPEC v1.0.38) and TENSION's note-value readout in the plugin. Release `9ba726f` + CPU run 20 built
 - 6 Oct 2026: **Tape wear listened:** B (tape saturation + roll-off) on every row and ATTITUDE; no crinkle. Held top: lock in like today
 - 5 Oct 2026: **Plugin `c7bf3e7` installed** (AU validated; all tests pass, 24 of 24): round 5, the wet µ-law, no Kick, the button throws / taps
 - 5 Oct 2026: **Merged:** Wellspring round 5 (your pick B, `44224b1`); µ-law on the wet only, before TONE (your pick B, `9245811`); the Kick removed and the button as throw / tap tempo (your call, `0267d0e`). Friends' release notes updated to match
