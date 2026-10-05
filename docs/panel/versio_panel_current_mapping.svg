@@ -62,7 +62,7 @@
   <text class="sid" x="11.745" y="67.125">SW2 ATTITUDE</text>
   <text class="small" x="11.745" y="69.125">CLN·DRV·KCK</text>
   <circle class="tog" cx="26.185" cy="69.33" r="2.667"/>
-  <text class="sid" x="29.652" y="69.03">BTN KICK</text>
+  <text class="sid" x="29.652" y="69.03">BTN THROW/TAP</text>
   <text class="small" x="29.652" y="71.03">(also gate in)</text>
   <circle class="jack" cx="5.23" cy="83.3" r="4.3"/>
   <circle class="jackhole" cx="5.23" cy="83.3" r="2.2"/>

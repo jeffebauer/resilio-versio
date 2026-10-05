@@ -21,7 +21,8 @@ The goal is the splashy, drippy ring-out of a spring tank on a single snare or r
 | **P7 DRIVE** | Transducer and tape colour, level-compensated: changes colour, not volume (becoming the INPUT: how hard the signal hits the tank, a little louder when pushed) |
 | **SPRINGS** switch | 1 (sparse, drippy) / 2 (classic) / 3 (dense, lush) |
 | **ATTITUDE** switch | CLEAN / DRIVEN (tape dub) / KICKED (hard drive, chaos, may Howl) |
-| Button / Gate in | **Kick**: hit the tank |
+| Button | **Throw** by hand in SPRINGS 1–2 (held = the springs hear the input; tap, tap and hold 2 s = back to always-on); **tap tempo** for the echo in SPRINGS 3 (ADR 0043; was the Kick) |
+| Gate in | **Throw** in SPRINGS 1–2 (high = the springs hear the input), the echo's **clock** in SPRINGS 3 |
 
 All seven knobs are CV-controllable (0–5 V). P1–P7 are the pots in reading order on the stock Versio panel (ADR 0028). The four LEDs meter In L, In R, Out L, Out R: green → amber with level, red when the input nears clipping or the output limiter works (ADR 0031). Full panel map: [SPEC.md §3](SPEC.md); player's guide: [docs/manual.md](docs/manual.md).
 

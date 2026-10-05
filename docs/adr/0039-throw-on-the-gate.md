@@ -1,6 +1,6 @@
 # 0039 — The gate throws: it opens the Springs' send
 
-**Status:** Proposed, 4 Oct 2026 (branch `feat/throw-hold`; owner's call in the dub-lens critique, `docs/research/dub-lens-critique.md` §8: "gate = throw, button = Kick"). Listening page: `renders/feat_throw_hold/index.html` (`docs/prototypes/throw-hold/make_page.sh`). Supersedes SPEC §3 "Gate in = KICK" (ADR 0005's gate half); the button stays KICK.
+**Status:** Amended by ADR 0043 (5 Oct 2026): the button throws too (open while held, the first press switches throw mode on), and leaving throw mode is a double tap with the second press held 2 s (the "hold KICK 1 s" below is gone); the Kick that "is never gated" no longer exists; MIDI notes in the Plugin are the gate. Proposed, 4 Oct 2026 (branch `feat/throw-hold`; owner's call in the dub-lens critique, `docs/research/dub-lens-critique.md` §8: "gate = throw, button = Kick"). Listening page: `renders/feat_throw_hold/index.html` (`docs/prototypes/throw-hold/make_page.sh`). Supersedes SPEC §3 "Gate in = KICK" (ADR 0005's gate half); the button stays KICK.
 
 **Context:**
 - The throw is dub's main move with a spring: open the reverb send for one snare, one stab or one bar, close it, and let the tail ring on while everything else stays dry. On the Versio the only way to do that today is MIX, which also cuts the tail that is already ringing.

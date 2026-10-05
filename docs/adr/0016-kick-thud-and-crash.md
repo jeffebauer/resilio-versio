@@ -1,6 +1,6 @@
 # 0016 — Kick = tight thud + big crash
 
-**Status:** Accepted, 27 Sep 2026
+**Status:** Superseded by ADR 0043 (5 Oct 2026: the Kick, its thud and its Clatter crash were removed). Accepted, 27 Sep 2026
 
 **Decision:** Kick is a short, punchy low thud followed by a big splashy crash ringing through the Springs. The low end stays tight: the thump must not linger in the tail or mud up a bassline. Tuned against the owner's recorded tank knocks (recipe take F).
 

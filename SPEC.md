@@ -6,6 +6,7 @@
 **Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0042). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.37 — ADR 0043 (owner, 5 Oct 2026): **the Kick is removed** everywhere (module and plugin): no thump, no crash, no Clatter, no MIDI Kicks; the Splash's Clang, Bite and Jolt stay. **The button throws** in SPRINGS 1–2: held = the Springs' send open (as the gate high), the first press switches throw mode on, so with nothing patched the button alone is a hand throw (press open, release closed, the tail rings on); in throw mode the send is open while the gate is high OR the button is held. **Leaving throw mode: tap, then press again within 0.35 s and hold 2 s** (SPRINGS 1–2; the old "hold KICK 1 s" is gone); no single press of any length exits. **In SPRINGS 3 the button taps the echo's tempo** (one interval = one beat, the gate clock's reading and range; held after the taps stop, a lone tap = free time; of the tapped tempo and a gate clock the last to set a tempo wins). The gate jack is unchanged (THROW in 1–2, clock in 3). Plugin: the panel's KICK button is the THROW button (same behaviour; the host's tempo wins over taps), its latching THROW switch is labelled GATE (param `throw_gate`, unchanged), MIDI notes are the gate (held = high, note-on = a clock edge). §2.1, §3 Button + Gate and LEDs, §4.5, §4.6 (removed), §4.8, §6.1–6.3, §7 M2 / M7 (Kick criteria retired). (v1.0.35–36 are reserved by Wellspring round 5 and the µ-law placement, merging first.)
 - v1.0.34 — ADR 0041 and ADR 0042 amendments (owner, 5 Oct 2026, playing the Plugin): in SPRINGS 3 echo mode DECAY's top is the same in every ATTITUDE, persistent repeats at a roughly constant level held by the tape's saturation (feedback 1.16 at DECAY 1: what KICKED's DECAY 0.92 gave), never a runaway. KICKED's curve keeps its shape with the lower top (it used to rise to 1.25 and run away from DECAY ~0.87); CLEAN and DRIVEN rise to it from DECAY 0.85 (bit for bit as before below). Repeats stop fading from DECAY ~0.90 (KICKED) / ~0.94 (CLEAN, DRIVEN). KICKED's µ-law box is 24 kHz / 10-bit (was 8-bit: grain ~45 dB under the signal instead of ~33; DRIVEN's 12-bit ~57). §3 DECAY row, echo mode, ATTITUDE row, §4.8.
 - v1.0.33 — ADR 0042 (owner, 4 Oct 2026, B on every panel of `renders/feat_output_mulaw`): in DRIVEN and KICKED the whole output, dry and wet, goes through a µ-law box after MIX: DRIVEN 24 kHz / 12-bit µ-law, KICKED 24 kHz / 8-bit µ-law, every SPRINGS position; CLEAN untouched. MIX fully left is a clean passthrough only in CLEAN. The box adds ~0.12 ms in DRIVEN/KICKED (an ATTITUDE flip crossfades it over 20 ms), ends fading tails in exact silence, and takes off the top octave above ~11 kHz. §3 MIX and ATTITUDE rows, §4.8, §7 M7.
 - v1.0.32 — ADR 0030 amendment (owner, 4 Oct 2026): CPU target raised to **≤ 75 % peak** worst case, with an **80 % ceiling** for a release that passes its click check (run 15 measured 87.6 % peak and passed). §5. (v1.0.29–31 are reserved by the TONE-after, Throw/Hold and echo-mode branches, merging next.)
@@ -72,7 +73,7 @@ HAL: `daisy::DaisyVersio` in libDaisy. DSP helpers: DaisySP.
 
 1. **Chirp / "boing"** — dispersive low-frequency chirps repeating at the tank round-trip time. **High frequencies arrive after lows** (each echo sweeps up), as in every measured real tank. *(Corrected 29 Sep 2026, ADR 0024: v1.0 said the opposite, written from memory.)*
 2. **Splash** — dense, bright, noisy wash on hard transients. Real-world cause: springs driven hard, clattering against each other and the housing.
-3. **Drip / kick** — the dub move: physically hitting the tank → huge low thump + chaotic crash.
+3. **Drip / kick** — the dub move: physically hitting the tank → huge low thump + chaotic crash. *(v1.0.37, ADR 0043: the simulated Kick was removed, for a simpler panel and the flash it took. Resilio Versio no longer makes this sound on its own: the "kick" now comes from what you feed it (a hard hit splashes and jolts the springs, SPLASH and KICKED make it chaotic), and the button became the throw, dub's other main move with a spring.)*
 4. **Dark, dampened tail** — dub spring is rarely bright in the tail; HF rolls off fast.
 5. **Warm, driven colour** — tape/transducer saturation, not clean digital.
 
@@ -84,7 +85,7 @@ What players value in classic dub springs:
 - Descriptors: **"drippy," "liquid," "splashy."** Short tanks prized when drippy.
 - Spring ≠ room reverb. It has its own colour; users want that colour, not realism.
 - **Transient interaction is the magic** — sudden stabs bring out character in tails. Percussive hits + springs = core use.
-- **Banging the tank for "thunder"** at musical moments is the most-cited dub technique ("instant King Tubbyism") → validates KICK as a core control.
+- **Banging the tank for "thunder"** at musical moments is the most-cited dub technique ("instant King Tubbyism") → validated KICK as a core control (removed in v1.0.37, ADR 0043: the throw took the button; a hard hit fed in still splashes).
 
 Intellijel Springray / Springray² (real-tank Eurorack module) — community feedback used as design contrast:
 - Often needs driving very hot (Drive ≥ 3 o'clock) before the spring is audible.
@@ -102,7 +103,7 @@ Owner's own hardware (Wellspring, Teaching Machines: desktop stereo BBD delay + 
 2. **Characterful drive, not a fight.** Drive adds colour and splash with automatic level compensation; never needed just to make the reverb audible.
 3. **TONE is a hero control.** Powerful tilt, not a subtle damping filter.
 4. **No ringing single tones.** Tail stays spring-textured at all settings, without spending TONE to fix it.
-5. **Transients are the instrument.** Hits should visibly change behaviour (splash, jolt, kick).
+5. **Transients are the instrument.** Hits should visibly change behaviour (splash, jolt).
 6. **Everything CV-able** (hardware gives this for free on all 7 knobs).
 
 ---
@@ -147,8 +148,11 @@ CV/knob smoothing: snappy (~5 ms) for MIX, DRIVE, SPLASH, TONE; gliding (~50–1
 
 ### Button + Gate
 
-- **Button = KICK.** Injects "tank kick" impulse (§4.6). Momentary. Fixed strength, scaled by ATTITUDE (ADR 0005). Tight thud + big crash (ADR 0016). Held 1 s it also leaves throw mode (ADR 0039, amending ADR 0013): the send opens again (2 ms glide) and all four LEDs blink white once (150 ms), only if throw mode was on; otherwise holding does nothing extra.
-- **Gate in = THROW** in SPRINGS 1–2 (ADR 0039; was KICK until v1.0.30). While high, the Springs' send is open; low, closed (opens over 2 ms, closes over 15 ms). MIX and the tail already ringing are untouched, so a throw rings on. Unpatched the gate reads low, so the throw only switches on at the gate's first rising edge after power-up; until then the send is open, as before. Holding KICK 1 s switches throw mode off again (the send open; the next rising edge switches it back on). The Kick is never gated. The gate's role can depend on SPRINGS (position 3 is planned as the echo's clock). In SPRINGS 3 the gate is the echo's clock instead (one pulse = one beat, ADR 0041; the throw rests open there); its rising edges set the tempo in every position, so it is already known when SPRINGS reaches 3.
+- **Button = THROW in SPRINGS 1–2, tap tempo in SPRINGS 3** (ADR 0043; was KICK until v1.0.37). Momentary, debounced.
+  - **SPRINGS 1–2: a hand throw.** While held, the Springs' send is open, exactly like the gate held high (opens over 2 ms, closes over 15 ms). The first press switches throw mode on (like the gate's first rising edge), so with nothing patched the button alone is a throw: press = send open, release = closed, the tail rings on. In throw mode the send is open while the gate is high **or** the button is held.
+  - **Leaving throw mode: tap, then press again within 0.35 s and keep holding 2 s** (SPRINGS 1–2 only). The first tap must be short (released within 0.35 s) and stand alone (no release in the 0.35 s before it), so no single press of any length and no run of fast or slow taps ending in a long hold exits. Throw mode off: the send glides open (2 ms) and stays open; all four LEDs blink white once (150 ms), only if throw mode was on. The next rising edge or press switches it back on.
+  - **SPRINGS 3: tap tempo** for the echo. One tap interval = one beat (a quarter note); TENSION picks the same seven divisions as with a gate clock; read like the gate's clock (median of the last three intervals, 30–300 bpm, ±2 % ignored). The tapped tempo holds after you stop tapping; a lone tap (no second within ~2 s) lets it go, back to free time. With a gate clock running too, whichever last set a tempo wins (new taps over a steady clock; a clock that changes tempo over the taps; the taps again if the clock is lost). A press in SPRINGS 3 never throws.
+- **Gate in = THROW** in SPRINGS 1–2 (ADR 0039; was KICK until v1.0.30). Digital on/off (no level, no jack detection). While high, the Springs' send is open; low, closed (opens over 2 ms, closes over 15 ms). MIX and the tail already ringing are untouched, so a throw rings on. Unpatched the gate reads low, so the throw only switches on at the gate's first rising edge (or the button's first press) after power-up; until then the send is open, as before. The button's double tap and hold switches throw mode off again (the send open; the next rising edge switches it back on). In SPRINGS 3 the gate is the echo's clock instead (one pulse = one beat, ADR 0041; the throw rests open there); its rising edges set the tempo in every position, so it is already known when SPRINGS reaches 3.
 
 ### LEDs
 
@@ -157,7 +161,7 @@ Level meters, like NE's own Versio firmware (ADR 0031). Panel LEDs left to right
 - Colour warms green → amber as the level gets hot (from −18 dBFS, fully amber at −6 dBFS). Level alone never makes red.
 - **Red** is a warning, held 0.5 s: input LEDs when the input peaks at −1 dBFS or above (the ADC's full scale, i.e. the jack's clip point); output LEDs while the output safety limiter pulls the wet down by 0.5 dB or more (e.g. a loud Howl).
 - Fast rise, ~0.3 s fall.
-- No mode colours (the switches show their own position) and no Kick flash (owner choices, M9).
+- No mode colours (the switches show their own position) and no button flash (owner choices, M9). The one exception: all four white for 150 ms when throw mode goes off (ADR 0039, 0043).
 - Boot pattern: unique colour sequence confirming firmware loaded (NE convention), then metering.
 
 ---
@@ -223,7 +227,7 @@ SPLASH comes from the hit itself (ADR 0032): nothing is added on a hit.
 2. **Clang** (every ATTITUDE): the springs' input gets its own highs (above 2 kHz) fed harder, ×(1 + 5e) at the owner's "clear" strength.
 3. **Bite** (DRIVEN, KICKED): a short hit (its energy mostly above 2 kHz: drums, not chords) is pushed into DriveIn ×(1 + 4e) and half the push (in dB) taken back after: grit on the hit, a harder hit into the springs. Above DRIVE noon the Clang and the Bite grow with DRIVE (exactly as picked at 0.8), so DRIVE never reduces the splash.
 4. **Coefficient jolt:** momentary modulation of `a` and L ∝ hit (decays ~50–200 ms) → chirp smear / pitch lurch.
-5. **Loop saturation:** per §4.9. The Clatter (bandpassed knocks into every Spring's Loop and high path) is the Kick's crash only (§4.6, ADR 0016).
+5. **Loop saturation:** per §4.9. (The Clatter, bandpassed knocks into every Spring's Loop and high path, was the Kick's crash only; removed with the Kick in v1.0.37, ADR 0043.)
 
 | Mode | Loop sat | Clang | Bite | Jolt |
 |---|---|---|---|---|
@@ -231,13 +235,9 @@ SPLASH comes from the hit itself (ADR 0032): nothing is added on a hit.
 | DRIVEN | gentle tape | yes | short hits | small |
 | KICKED | hard, asymmetric | yes | short hits | large + energy-dependent rattle |
 
-### 4.6 KICK (button + gate)
+### 4.6 KICK (removed, v1.0.37)
 
-Inject into tank input (post-drive):
-- Low thump: decaying sine ~40–80 Hz, ~20–40 ms
-- Broadband noise burst ~10 ms
-- Forces maximal SPLASH jolt and the Clatter crash (the Kick is the only thing that still fires the Clatter, ADR 0032)
-Level scales with ATTITUDE. Debounce button. (The gate was a second KICK until ADR 0039 made it the throw; the Plugin's MIDI notes still fire Kicks.)
+Removed by ADR 0043 (owner, 5 Oct 2026), superseding ADR 0005, 0013 and 0016. It injected a low thump (decaying sine ~40–80 Hz, ~20–40 ms) and a ~10 ms noise burst after the drive, plus a forced maximal Jolt and the Clatter crash. The button is now the throw and tap tempo (§3 Button + Gate); the throw itself is the Tank's send (ADR 0039).
 
 ### 4.7 WOBBLE
 
@@ -250,7 +250,7 @@ Modulation of each Spring's Loop delay L, plus one shared Transport generator on
 
 ### 4.8 Output stage
 
-- Wet: the pickups' treble loss before DriveOut (§4.2, ADR 0038), the wet trim after it, gentle high-shelf cut, then the **Big Knob** (TONE right of noon, ADR 0036 and its amendment: 18 dB/oct low cut 20 Hz → 800 Hz, the coil bump blended in on sharp hits, stereo; its own slow makeup from the wet's power above ~90 Hz in / out, ¾ back, ≤ 12 dB, held in silence; a pass-through, skipped, at noon and left), then the limiter. The Kick's direct thump joins before the pickups, so it is thinned with the wet.
+- Wet: the pickups' treble loss before DriveOut (§4.2, ADR 0038), the wet trim after it, gentle high-shelf cut, then the **Big Knob** (TONE right of noon, ADR 0036 and its amendment: 18 dB/oct low cut 20 Hz → 800 Hz, the coil bump blended in on sharp hits, stereo; its own slow makeup from the wet's power above ~90 Hz in / out, ¾ back, ≤ 12 dB, held in silence; a pass-through, skipped, at noon and left), then the limiter.
 - MIX: equal-power.
 - µ-law box (ADR 0042), on the stereo output after MIX, dry and wet, every SPRINGS position: CLEAN none (bit for bit), DRIVEN 24 kHz / 12-bit µ-law, KICKED 24 kHz / 10-bit µ-law (8-bit until v1.0.34). 48 → 24 → 48 kHz through polyphase IIR half-bands (flat to 10.6 kHz, ≥ 85 dB down from 13.4 kHz: nothing folds back); µ-law (µ 255) against full scale, TPDF dither down to the last step, under half a step exactly 0 (silence in, silence out; tails end in grain, then silence). ~6 samples (0.12 ms) of delay in DRIVEN/KICKED only; ATTITUDE flips crossfade the box over 20 ms. After the limiter (the limiter and the red LEDs read the wet before it), before the firmware's output trim.
 - Denormal protection (FTZ; tiny noise if needed).
@@ -343,13 +343,13 @@ Same DSP code, three wrappers. Hosts differ only in where audio + parameters com
 
 - One table defines every parameter: id, display name, normalised range 0–1, mapping curve to internal units, default, smoothing time.
 - **Every host passes normalised 0–1 values** (same as Versio knob + CV reading). Mapping curves live only here → a setting in the plugin sounds identical on the module.
-- Switches = 3-state enums; THROW (ADR 0039) = an on/off `Toggle` standing in for the gate (not on the panel). KICK = trigger event.
+- Switches = 3-state enums; THROW (ADR 0039) = an on/off `Toggle` standing in for the gate (not on the panel). The button = press / release events (`Tank::button`, ADR 0043), not a parameter.
 - Presets/test settings stored as JSON of normalised values → portable across all hosts.
 
 ### 6.2 Host A — offline renderer (`host/render`)
 
 - CLI: input WAV + JSON params → output WAV.
-- **Automation:** parameter breakpoints over time (e.g. SPLASH ramp, KICK events at timestamps).
+- **Automation:** parameter breakpoints over time (e.g. SPLASH ramp), gate `[rise, fall]` pairs, button `[press, release]` pairs, echo clock edges, all sample-accurate.
 - **Sweep mode:** grid over params (e.g. DECAY × ATTITUDE × SPRINGS) → batch of WAVs + manifest (JSON/CSV) naming each file's settings. For overnight runs.
 - **Metrics per render:** peak, RMS, estimated T60, resonance peak ratio (§4.10), NaN/Inf count, clip count.
 - Deterministic: all randomness seeded → same input + params = bit-identical output.
@@ -358,8 +358,8 @@ Same DSP code, three wrappers. Hosts differ only in where audio + parameters com
 ### 6.3 Host B — JUCE plugin (`plugin/`)
 
 - Formats: **Audio Unit + VST3** (Mac, Ableton).
-- Parameters generated from ParamSpec table: 7 knobs as float params, 2 switches as 3-choice params, THROW as an on/off param (the gate, ADR 0039), KICK as button param.
-- **KICK also triggered by MIDI note** (any note, velocity ignored — ADR 0005) → sequence kicks from Ableton clips. Throws are THROW automation.
+- Parameters generated from ParamSpec table: 7 knobs as float params, 2 switches as 3-choice params, THROW as an on/off param (the gate, ADR 0039; labelled GATE on the panel). The panel's momentary THROW button is the module's button (ADR 0043: held = throw in SPRINGS 1–2, double tap + hold 2 s = throw mode off, taps = tempo in SPRINGS 3 unless the DAW gives a tempo, which wins); it is not a parameter.
+- **MIDI notes are the gate** (ADR 0043; they fired Kicks until v1.0.37): any note, velocity ignored, held = gate high, sample-accurate; a note-on is also a clock edge. Sequence throws from Ableton clips, or automate THROW.
 - Test bench only in v1: generic parameter UI, no custom graphics (ADR 0004).
 - Sample rate: core must be sample-rate-aware. Reference/validation rate = 48 kHz (matches Daisy). Tuning decisions checked at 48 kHz.
 - Used for: live sound design, automation, A/B against other spring plugins/hardware.
@@ -384,7 +384,6 @@ resilio-versio/
       Spring.h/.cpp
       SpringTank.h/.cpp
       Splash.h/.cpp
-      Kick.h
       Wobble.h
       Drive.h/.cpp          # transducer, tape, loop sat, output pickup (§4.9)
       AntiRes.h/.cpp        # resonance detector + dynamic notches (§4.10)
@@ -434,7 +433,7 @@ Shared definitions:
 
 ### M2 — JUCE Plugin shell
 - [A] AU + VST3 load in Ableton. All ParamSpec params visible and automatable. Names/ranges generated from ParamSpec, no hand-written list.
-- [A] Kick from any MIDI note on a routed MIDI track, velocity ignored, **sample-accurate** (offline test: note at sample N → Kick onset at N, with reported latency).
+- [A] ~~Kick from any MIDI note on a routed MIDI track, velocity ignored, **sample-accurate**~~ (passed; retired with the Kick, ADR 0043). Since v1.0.37: a MIDI note is the gate, sample-accurate (plugin_host_test: plugin == `Tank::gate()` on the same samples).
 - [A] Plugin latency reported to the host. The dry path stays aligned with other tracks in Ableton (null test vs a duplicate track at MIX 0, in CLEAN since ADR 0042).
 - [A] Plugin render == Renderer output for the same stimulus/params at 48 kHz (bit-identical, or within float tolerance −120 dBFS).
 - [A] Works at 44.1/48/96 kHz without crashing or detuning (T60 and chirp timing within 5% across rates).
@@ -474,8 +473,8 @@ Shared definitions:
 - [L] SPLASH max, KICKED, hard snare → big bright crash + pitch lurch that settles into the tail within ~1 s. Ghost notes (−18 dBFS hit in the stimulus) barely trigger it. The −6 dBFS hit clearly does.
 - [A] Hit detector monotonic: hit value rises with input level. The −18 dB hit gives < 25% of the −6 dB hit's Clatter energy.
 - [L] SPLASH 0 in DRIVEN still gives a faint natural splash on hard hits (not zero).
-- [L] Kick = tight thud + big crash (ADR 0016). [A] Energy < 100 Hz down ≥ 20 dB within 300 ms.
-- [H] Gate Kicks: every gate at up to 12/s (16ths at 180 bpm) gives exactly one Kick, onset within 1 ms of the gate edge. No double triggers.
+- ~~[L] Kick = tight thud + big crash (ADR 0016). [A] Energy < 100 Hz down ≥ 20 dB within 300 ms.~~ Retired: the Kick was removed (ADR 0043).
+- ~~[H] Gate Kicks: every gate at up to 12/s gives exactly one Kick.~~ Retired (the gate throws since ADR 0039; the Kick was removed, ADR 0043).
 - [L] WOBBLE: noon still, a touch left of noon (the default) keeps held chords in tune, every step away from noon is heard, both end stops clearly out of tune; left random (never same-same), right a steady sine (ADR 0034, was ADR 0008's one-way zones).
 - [A] WOBBLE pitch deviation (cents, on `08_held_tones`) sits in the range measured from the Magneto's WOW & FLUTTER series (takes MW0–MW4): Drift ≈ the 9 o'clock–noon takes, Warble ≈ the 3 o'clock–fully CW takes.
 - [A] MIX: CCW = dry only (null vs input in CLEAN; ADR 0042), CW = wet only (no dry leakage > −80 dB), noon = equal-power blend. Sweep loudness within ±1.5 dB.
@@ -489,7 +488,7 @@ All four must hold:
 - [L] Wellspring A/B: same family as the spring Reference set, with less Ringing and more splash.
 - [A] IR library (ADR 0021): DECAY, TENSION and TONE ranges cover the spread of real-tank T60, chirp spacing/dispersion (ridge method) and brightness.
 - [L] Magneto A/B (ADR 0020): holds up next to the Magneto's spring on the same stimulus; the owner would reach for Resilio Versio for dub.
-- [H/L] Live session on the module (patching, throws, Kicks): nothing surprises in a bad way.
+- [H/L] Live session on the module (patching, throws by gate and by hand, tap tempo): nothing surprises in a bad way.
 - Final ranges/curves written back into ParamSpec, and SPEC starting guesses replaced with the tuned values.
 
 ### M9 — Polish
@@ -535,7 +534,7 @@ Research 27 Sep 2026 (sources in §11). Status per item.
 | Narrow sweet spot (Springray complaint) | Perceptual curves; sweep renders reviewed for dead zones/cliffs |
 | Zipper noise | Smoothing on all params; slew-limit L |
 | Sounds "digital reverb" | Chirp correctness first (M1); tune vs references |
-| Clatter = added noise | Feed clatter through tank HF path |
+| Clatter = added noise | Fed through the tank's paths while it existed; removed with the Kick (ADR 0043) |
 | Plugin ≠ hardware sound | Shared ParamSpec; validate at 48 kHz; compare renders vs hardware recordings |
 | Aliasing from saturation | Oversampling; test with high-freq sine sweeps |
 

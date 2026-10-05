@@ -40,9 +40,9 @@ WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Eve
 **Move next:** ride TONE and TENSION to steer the pitch and colour of the Howl; WOBBLE further left for more seasickness. Pull DECAY below ~4 o'clock to let it fall back into a normal tail (it fades in a second or two). Watch the output LEDs: red here means the limiter is holding it.
 
 ## Kicked tank drop — `kicked_tank_drop.json`
-**Sounds like:** the whole tank dropped or kicked: a tight thud, then a big metallic crash that boings out for ~3.5 s. One loose Spring keeps it sparse and splashy.
-**Play into it:** press the button (or patch a gate) on the drop, the one before the bass comes back in. Works with no input at all.
-**Move next:** a gate sequence for rhythmic kicks; DECAY past 4 o'clock and the crash can build into Howl; ATTITUDE to DRIVEN or CLEAN for a softer knock.
+**Sounds like:** a hard hit lands like the whole tank was kicked: a big metallic crash that boings out for ~3.5 s. One loose Spring keeps it sparse and splashy. (It was voiced around the Kick, removed in ADR 0043: it now needs a hit fed in.)
+**Play into it:** throw the snare or rim on the drop, the one before the bass comes back in: hold the button (or a gate) for that one hit.
+**Move next:** a gate sequence for rhythmic throws; DECAY past 4 o'clock and the crash can build into Howl; ATTITUDE to DRIVEN or CLEAN for a softer knock.
 
 ## Mix-bus spring — `mix_bus_spring.json`
 **Sounds like:** a light, short, dense spring you feel more than hear, gluing a whole mix together.
