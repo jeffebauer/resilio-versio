@@ -27,6 +27,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3. Wellspring round 5, the last fit · picked B (5 Oct)
 - [x] **B everywhere** (softer front, ring lower, presence up, Wellspring-like stereo), held-tone and pad rows included at WOBBLE 0.45 (where B's held notes move most: kept as you heard it). Being made the default now, with its test fix-ups and a flash trim so it fits; then merge, plugin install and the release for the module
 
+### 3d. From your module play (5 Oct)
+- [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
+- [ ] **µ-law moves to the wet only, before TONE** (being built): the dry stays clean in every ATTITUDE again (MIX fully left = clean), and TONE right of noon can thin the grit's highs. Applies to DRIVEN too. Short page `renders/mulaw_wet/` coming
+
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
