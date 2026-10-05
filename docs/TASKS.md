@@ -23,14 +23,18 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 2. CPU run 17 + the new release on the module (≈15 min, USB first)
 - [x] **Run 17 done (5 Oct):** 2 Springs 68.9 % avg / 74.6 % peak, echo mode 73.3 / 79.1, but a **82.4 % spike when switching from echo mode back to the Springs** (over the 80 % ceiling). The µ-law box costs ~8–9 points (twice its estimate). Claude is finding sound-neutral savings (the µ-law box, the switch) for run 18
+- [ ] **Run 18** (rack power unplugged, USB): flash `dist/resilio_versio_m3_profile_run18.bin`, `screen` in this app's Terminal, two laps (now 26 corners: two new SWITCH corners at the end measure flipping SPRINGS 3 ↔ 1 directly), tell Claude. Same sound, bit for bit; cheaper µ-law stage and no wasted third-spring redesigns. Expected echo mode ~76–78 %, the switch ~79–81 % (run 17: 79.1 / 82.4). Then decide the next lever (faster µ-law maths or a 96-sample block)
 - [ ] **Then the release** `dist/resilio_versio_release_843c5fc.bin` and the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (that's the 82 % moment). Any click or dropout → tell Claude
 
 ### 3. Merged today (5 Oct), for reference
 - [x] CPU savings, TONE after the springs, echo mode, Throw + Hold, µ-law (DRIVEN 12-bit / KICKED 8-bit). `main` passes all 25 test suites; release 94 % of flash, CPU-test 95 % (5.4 KB left: the next features need a trim first)
 - Behaviour changes to know: the gate **throws** in SPRINGS 1–2 and **clocks the echo** in 3 (it no longer kicks); the button kicks everywhere, hold it 1 s to leave throw mode. MIX fully left in DRIVEN/KICKED is no longer a clean passthrough (µ-law); CLEAN still is
 
-### 3b. Echo tuning from your Ableton notes (5 Oct) · being built
+### 3b. Echo tuning from your Ableton notes (5 Oct) · built, see 3b′
 - In echo mode (SPRINGS 3): DECAY fully right becomes the steady, persistent feedback you liked at ~91 %, in **every** ATTITUDE (CLEAN/DRIVEN reach it too); KICKED's runaway goes (the top is today's 92 %). µ-law KICKED becomes **10-bit** (DRIVEN stays 12). Short before/after page `renders/tune_echo_feedback/`, then merge and reinstall so you can judge in Ableton
+
+### 3b′. Echo tuning ready to hear (5 Oct)
+- [ ] [`renders/tune_echo_feedback/`](../renders/tune_echo_feedback/index.html): A today, B new. Echo mode's DECAY top = steady held repeats in every ATTITUDE (KICKED's top = its old 92 %, no runaway; CLEAN/DRIVEN unchanged up to 0.85, same top). KICKED µ-law 10-bit. Judge: the held level takes ~10 s to settle from one hit (fine, or lock in sooner?); CLEAN/DRIVEN at the top lean on the output limiter with DRIVE past ¾ (red LED flickers). OK to merge?
 
 ### 3c. Wellspring round 5, the last fit · being built (started 5 Oct)
 - From your session 2 recordings: a softer echo front (the Wellspring swells in over ~0.5 s; ours hits and drops in ~35 ms), the longest ring moved from 1 kHz to ~500 Hz with the presence peak up to ~1.4 kHz, lows centred (front included) and the mids no longer left-heavy, a wider 1 and 4 kHz tail, and held sounds that settle flat like the real tank (less work for the sustain trim). Retunes existing stages only (the module's CPU and flash are tight). Page `renders/fit_round5/` with your Wellspring as the reference; your pick, then merge
