@@ -28,7 +28,7 @@ public:
 #endif
     static constexpr int kLineSize = kBuilt ? 256 : 1; // the worn tape's wow line (>= 2 x its depth at 96 kHz)
 
-    void prepare(float sampleRate, uint32_t seed)
+    RV_SIZE_OPT void prepare(float sampleRate, uint32_t seed) // set-up
     {
         fs_   = sampleRate;
         seed_ = seed;
@@ -89,7 +89,7 @@ public:
     // The fixed delay this voicing adds to the feedback (samples; the worn tape's).
     float latencySamples() const { return kBuilt && v_ == echo::kWearTape ? base_ : 0.0f; }
 
-    void reset()
+    RV_SIZE_OPT void reset()
     {
         if (!kBuilt) return;
         std::fill(line_, line_ + kLineSize, 0.0f);

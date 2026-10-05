@@ -413,6 +413,15 @@ void applyTankTuneEnv()
         {"toneDarkHighT60Ratio", &t.toneDarkHighT60Ratio}, {"toneDarkInHz", &t.toneDarkInHz}, {"toneDarkDb", &t.toneDarkDb}, {"toneDarkShare", &t.toneDarkShare}, {"toneDarkLpHz", &t.toneDarkLpHz},
         {"toneDarkCurve", &t.toneDarkCurve}, {"toneBrightOutHz", &t.toneBrightOutHz}, {"toneBrightDb", &t.toneBrightDb},
         {"toneBrightCurve", &t.toneBrightCurve}, {"tdDriveOpenOct", &t.tdDriveOpenOct}, {"tdDriveOpenDb", &t.tdDriveOpenDb}, {"tdSplashLiftDb", &t.tdSplashLiftDb}, {"tdSplashLiftFrom", &t.tdSplashLiftFrom}, {"tdSplashLiftTo", &t.tdSplashLiftTo}, {"tdSplashLiftKickedDb", &t.tdSplashLiftKickedDb},
+        // Round 5 (docs/prototypes/wellspring-fit-5/)
+        {"r5Diff0", &t.r5DiffMs[0]}, {"r5Diff1", &t.r5DiffMs[1]}, {"r5Diff2", &t.r5DiffMs[2]}, {"r5DiffCoeff", &t.r5DiffCoeff},
+        {"r5DiffAlign", &t.r5DiffAlign}, {"r5DiffScaleB", &t.r5DiffScale[1]}, {"r5EqHz", &t.r5EqHz}, {"r5EqDb", &t.r5EqDb}, {"r5EqQ", &t.r5EqQ},
+        {"r5EqDbBright", &t.r5EqDbBright}, {"r5TdInHz", &t.r5TdInHz}, {"r5TdInQ", &t.r5TdInQ},
+        {"r5TdOutHz", &t.r5TdOutHz}, {"r5TdOutQ", &t.r5TdOutQ},
+        {"r5HighCeilHz", &t.r5HighCeilHz}, {"r5HighLevel", &t.r5HighLevel}, {"r5LcHpHz", &t.r5LcHpHz},
+        {"r5LcShelfDb", &t.r5LcShelfDb}, {"r5WideW", &t.r5WideW}, {"r5WideSide", &t.r5WideSide},
+        {"r5WideSide3", &t.r5WideSide3}, {"r5BassHz", &t.r5BassHz}, {"r5BassOrder2", &t.r5BassOrder2},
+        {"r5WideW3", &t.r5WideW3}, {"r5FlatLoopWobble", &t.r5FlatLoopWobble}, {"r5FlatTransportWobble", &t.r5FlatTransportWobble},
     };
     std::string all = env;
     size_t pos = 0;

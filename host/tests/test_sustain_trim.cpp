@@ -457,18 +457,25 @@ void heldSoundsAcrossWobble()
     // trim and this check had nothing to show (0.00 dB). The organ (the same
     // chord with harmonics, which the tank hears) in the same cell shows the
     // trim's teeth: well past the bar without it, under it with it.
+    // Since round 5's tank (voicing 8, ADR 0038), which builds up less on
+    // held sounds, the organ at -6 dBFS no longer reaches the limiter there
+    // either (1.5 dB without the trim): the check gets the same organ 4 dB
+    // hotter (-2 dBFS peak), where the trim still has to work. (Voicing 7:
+    // 4.35 dB without, 1.11 with, at -6 dBFS.)
+    Buf hot = stims[2].x;
+    for (float& v : hot) v *= 1.5848932f; // +4 dB
     rv::Tank t;
     t.prepare(kFs, kBlock);
     t.setSustainVoicing(rv::drive::kSusVoicingOff);
     Set s;
     s.springs = 2, s.tone = 0.0f, s.tension = 1.0f;
-    const float off = -20.0f * std::log10(render(t, s, stims[2].x).minLimGain);
+    const float off = -20.0f * std::log10(render(t, s, hot).minLimGain);
     rv::Tank tOn;
     tOn.prepare(kFs, kBlock);
-    const float on = -20.0f * std::log10(render(tOn, s, stims[2].x).minLimGain);
+    const float on = -20.0f * std::log10(render(tOn, s, hot).minLimGain);
     std::snprintf(msg, sizeof msg,
-                  "... and it is the Sustain trim: the organ at SPRINGS 3 TONE 0 TENSION 1 without it pulls %.2f dB (> %.1f), "
-                  "with it %.2f",
+                  "... and it is the Sustain trim: the organ (-2 dBFS peak) at SPRINGS 3 TONE 0 TENSION 1 without it pulls "
+                  "%.2f dB (> %.1f), with it %.2f",
                   double(off), double(kMomentMaxDb), double(on));
     check(off > kMomentMaxDb && on <= kMomentMaxDb, msg);
 }

@@ -64,7 +64,7 @@ public:
     static constexpr bool kBuilt = true;
 #endif
 
-    void prepare(float sampleRate, uint32_t seed)
+    RV_SIZE_OPT void prepare(float sampleRate, uint32_t seed) // set-up
     {
         seed_ = seed;
         if (!kBuilt) return;
@@ -111,7 +111,7 @@ public:
     }
     const float* weights() const { return w_; }
 
-    void reset()
+    RV_SIZE_OPT void reset()
     {
         if (!kBuilt) return;
         for (int c = 0; c < 2; ++c) {
