@@ -8,7 +8,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 |---|---|
 | M2 plugin | Built, installed `c7bf3e7`. Your Ableton check is open (§5) |
 | M3 CPU | Run 18: echo mode 76 % peak, the SPRINGS switch 77 %, worst moment 79.9 % (target 75 %, ceiling 80 %; echo mode's 76 % accepted). **Run 19** (everything merged) ready to flash (§2). Flash: release 95 %, CPU-test build 96 % |
-| Real firmware on the Versio | An older release. `dist/resilio_versio_release_0267d0e.bin` has everything (§3) |
+| Real firmware on the Versio | `0267d0e` (flashed 5 Oct evening): everything merged. Click check under way, no clicks so far (§3) |
 | M8 sound | All merged. **Being built:** tape wear for echo mode's repeats (Waiting on Claude) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
@@ -27,7 +27,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Flash `dist/resilio_versio_m3_profile_run19.bin` and read the numbers as before (everything merged: round 5, the wet µ-law, the button). Paste them to Claude
 
 ### 3. The new release on the module + click check (≈10 min)
-- [ ] Flash `dist/resilio_versio_release_0267d0e.bin`. **Click check:** KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
+- [x] Flashed `dist/resilio_versio_release_0267d0e.bin` (5 Oct: "sounding fantastic")
+- [ ] **Click check** (under way, no clicks so far): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
