@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, midday (everything picked so far is merged or merging; run 18 under the CPU ceiling; Wellspring round 5 being built)
+**Last updated:** 5 Oct 2026, end of session 7 (merged: TONE after the springs, Throw + Hold, echo mode + tuning, µ-law, run 18, LED fix. In flight: Wellspring round 5 (B), µ-law to the wet before TONE, Kick removal + button throw/tap; then the click check and the friends' release)
 
 | Milestone | State |
 |---|---|
@@ -60,9 +60,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
-- **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
-- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then, once you've tested the build on the module and in the plugin, the friends' release with `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish` (the what's-new summary you shared becomes the GitHub release notes; Claude checks it still matches the build first)
+- **Three builds in flight** (next session picks them up): Wellspring round 5 with your pick B (+ its test fix-ups and a flash trim), µ-law moved to the wet before TONE (+ a short page), the Kick removal with the button as throw/tap. Merged one at a time, then a plugin install, a release and CPU run 19 for the module (§2)
+- **Friends' release notes** updated for the Kick removal, the button and the µ-law placement; then, after you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
