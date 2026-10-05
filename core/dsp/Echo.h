@@ -63,6 +63,8 @@ public:
 
     // Wear (EchoVoicing.h "Wear", dsp/EchoWear.h): 0 none ... 4 crushed, 5-7 tape wear.
     void setWearVoicing(int v) { wear_.setVoicing(v); }
+    // The held top (echo::holdWeight of the feedback; tape wear: the wash between held repeats fades).
+    void setHold(float w) { wear_.setHold(w); }
     void setBbdVoicing(int v) { wear_.setBbdVoicing(v); }
     int  bbdVoicing() const { return wear_.bbdVoicing(); }
     float bbdClockHz() const { return wear_.bbdClockHz(); }

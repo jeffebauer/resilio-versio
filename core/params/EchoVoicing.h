@@ -331,10 +331,38 @@ constexpr CrinkleVoicing kCrinkle[2] = {
 };
 constexpr float kCrinkleSplitHz  = 1200.0f; // below: the lows (lose kCrinkleLevelDip at depth 1); above: the highs (lose all of it)
 constexpr float kCrinkleLevelDip = 0.5f;    // the whole level's dip at depth 1 (-6 dB)
+// The held top with tape wear (owner, 6 Oct 2026: "lock in like today"). At
+// the top of DECAY a pass gains a little (the heads' peak x kFeedbackTop ~
+// 1.12) and the tape's saturation holds the repeats' peaks; but each held
+// repeat's quieter edges gain too, so on a clean tape the repeats slowly
+// spread in time until they run into one another (the held level crept ~1 dB
+// a minute and never settled). The BBD held them because of its compander,
+// so tape wear takes the same compander there, and only there: a 2:1
+// compressor and a 1:2 expander following the level at slightly different
+// speeds (unity on a steady level; a little less on each repeat's rise and
+// fall), blended in by holdWeight: 0 where a pass can't gain (below it, bit
+// for bit as before), 1 at kFeedbackTop. No sample-and-hold, no filters: it
+// adds no pitch, it only shapes each repeat's level.
+constexpr float kTapeHoldCompAttackMs = 2.0f, kTapeHoldCompReleaseMs = 40.0f; // the BBD's (kBbdComp*)
+constexpr float kTapeHoldExpAttackMs  = 2.5f, kTapeHoldExpReleaseMs  = 36.0f; // the BBD's (kBbdExp*)
+// And dense material (a skank, chords) still crept up slowly (~1.3 dB over
+// 30-120 s): above kTapeHoldRms (the feedback's RMS over ~kTapeHoldRmsMs),
+// each pass gives back a little (gain 1 / (1 + q (P / P0 - 1)), q =
+// kTapeHoldRmsQ), so the held top sits at about that level whatever is held.
+constexpr float kTapeHoldRms   = 0.07f;  // -23 dBFS on the tape
+constexpr float kTapeHoldRmsMs = 300.0f; // slow: no pumping on single repeats
+constexpr float kTapeHoldRmsQ  = 0.1f;
+constexpr float kHeadsPeakGain         = 0.965f; // the heads' gain at their peak (~700 Hz; "Feedback" above)
+// 0 where a pass can't gain (feedback x the heads' peak <= 1), 1 at kFeedbackTop.
+inline float holdWeight(float fb)
+{
+    const float w = (fb * kHeadsPeakGain - 1.0f) * (1.0f / (kFeedbackTop * kHeadsPeakGain - 1.0f));
+    return w <= 0.0f ? 0.0f : (w < 1.0f ? w : 1.0f);
+}
 #ifdef RV_ECHO_WEAR_DEFAULT
 constexpr int kWearDefault = RV_ECHO_WEAR_DEFAULT;
 #else
-constexpr int kWearDefault = kWearBbd; // owner's pick, 4 Oct 2026 (renders/feat_echo_wear D)
+constexpr int kWearDefault = kWearTapeSat; // owner's pick, 6 Oct 2026 (renders/echo_tape_wear B, every row and ATTITUDE); was kWearBbd (4 Oct)
 
 // ---- Bits: the repeats' bit depth (PROTOTYPE, owner 4 Oct 2026) ------------------------------
 // The owner kept BBD A (B-D's lower clocks left pitched images in the band:

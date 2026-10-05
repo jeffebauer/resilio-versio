@@ -119,7 +119,7 @@ struct Settings {
     int   att = 0, springs = 2;
     bool  echo = true;
     float hostBpm = 0.0f;
-    int   wear = -1; // echo_wear_voicing; -1 = the default (BBD grit since 4 Oct)
+    int   wear = -1; // echo_wear_voicing; -1 = the default (tape saturation since 6 Oct; BBD grit 4-6 Oct)
     int   outBits = -1; // output_bits_voicing: -1 the default (ADR 0042's mu-law box on the wet), 0 without it (a test hook)
 };
 
@@ -715,6 +715,20 @@ const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 
 // ---- feedback -------------------------------------------------------------------------------
 Buf rimLike(double seconds, double at, float peak = 0.5f); // the bits section's rim
+// A held C minor pad (soft saws C3 Eb3 G3 C4, `hold` s from 0.5 s, slow in and out), -9 dBFS.
+Buf padLike(double hold)
+{
+    Buf x(sec(hold + 1.5), 0.0f);
+    const size_t n = sec(hold), att = sec(0.4), rel = sec(0.8);
+    for (double f : {130.81, 155.56, 196.0, 261.63})
+        for (size_t i = 0; i < n; ++i) {
+            const double t = double(i) / kFs, env = std::min({1.0, double(i) / double(att), double(n - 1 - i) / double(rel)});
+            x[sec(0.5) + i] += float(env * (2 * std::fmod(f * t, 1.0) - 1) / 4);
+        }
+    lowpass(x, 1800.0);
+    normalise(x, -9.0f);
+    return x;
+}
 
 void feedback()
 {
@@ -1754,6 +1768,7 @@ void bbd()
             Settings x;
             x.tension = tension;
             apply(t, x);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(3);
             run(t, secs, 48, clk);
             return double(t.bbdClockHz());
@@ -1765,6 +1780,7 @@ void bbd()
         Settings x;
         x.tension = 0.07f;
         apply(t, x);
+        t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
         t.setBbdVoicing(3);
         const auto clk = steadyClock(100.0, 0.1, 6.0);
         run(t, 2.0, 48, clk);
@@ -1795,6 +1811,7 @@ void bbd()
             Settings y = x;
             y.tension = tension;
             apply(t, y);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(h.size()), Buf(h.size())};
             for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
@@ -1818,6 +1835,7 @@ void bbd()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48) {
@@ -1841,6 +1859,7 @@ void bbd()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
             t.setBbdVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -1871,6 +1890,7 @@ void bbd()
                             rv::Tank t;
                             t.prepare(kFs, 48);
                             apply(t, x);
+                            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (the default 4-6 Oct)
                             t.setBbdVoicing(v);
                             Stereo o{Buf(in->size()), Buf(in->size())};
                             for (size_t pos = 0; pos < in->size(); pos += 48)
@@ -1900,8 +1920,8 @@ void bbd()
                 Settings x;
                 x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
                 apply(t, x);
-                if (v == 4) t.setEchoWearVoicing(0);
-                else t.setBbdVoicing(v);
+                t.setEchoWearVoicing(v == 4 ? 0 : rv::echo::kWearBbd); // as built (the default 4-6 Oct)
+                if (v != 4) t.setBbdVoicing(v);
                 Buf l(in.size()), r(in.size());
                 const auto t0 = std::chrono::steady_clock::now();
                 for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -2043,6 +2063,7 @@ void bits()
                 rv::Tank t;
                 t.prepare(kFs, block);
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Stereo o{Buf(h.size()), Buf(h.size())};
                 for (size_t pos = 0; pos < h.size(); pos += size_t(block)) {
@@ -2068,6 +2089,7 @@ void bits()
                 rv::Tank t;
                 t.prepare(kFs, 48);
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Stereo o{Buf(in.size()), Buf(in.size())};
                 for (size_t pos = 0; pos < in.size(); pos += 48)
@@ -2091,6 +2113,7 @@ void bits()
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, k);
+            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
             t.setEchoBitsVoicing(v);
             Stereo o{Buf(in.size()), Buf(in.size())};
             for (size_t pos = 0; pos < in.size(); pos += 48) {
@@ -2126,6 +2149,7 @@ void bits()
                             rv::Tank t;
                             t.prepare(kFs, 48);
                             apply(t, x);
+                            t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                             t.setEchoBitsVoicing(v);
                             Stereo o{Buf(in->size()), Buf(in->size())};
                             for (size_t pos = 0; pos < in->size(); pos += 48)
@@ -2155,6 +2179,7 @@ void bits()
                 Settings x;
                 x.att = 2, x.drive = 1.0f, x.decay = 1.0f, x.tone = 1.0f, x.tension = 0.0f;
                 apply(t, x);
+                t.setEchoWearVoicing(rv::echo::kWearBbd); // as built (on BBD A, the default 4-6 Oct)
                 t.setEchoBitsVoicing(v);
                 Buf l(in.size()), r(in.size());
                 const auto t0 = std::chrono::steady_clock::now();
@@ -2194,6 +2219,23 @@ double perPassDb(int wear, double hz)
 void tapeWear()
 {
     using namespace rv::echo;
+    // The held top's lock (kTapeHold*) comes in only where a pass gains:
+    // below, the feedback path is bit for bit as without it.
+    {
+        float from[2] = {-1.0f, -1.0f};
+        bool  zeroBelow = true;
+        for (int k = 0; k <= 1000; ++k) {
+            const float d = k / 1000.0f, fc = feedbackClean(d), fk = feedbackKicked(d);
+            if (from[0] < 0 && holdWeight(fc) > 0.0f) from[0] = d;
+            if (from[1] < 0 && holdWeight(fk) > 0.0f) from[1] = d;
+            zeroBelow &= (fc * kHeadsPeakGain <= 1.0f) == (holdWeight(fc) == 0.0f);
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Tape wear held-top lock: comes in from DECAY %.3f (CLEAN / DRIVEN), %.3f (KICKED), where a pass gains; 0 below "
+                      "%d; 1 at the top (%.2f)",
+                      double(from[0]), double(from[1]), int(zeroBelow), double(holdWeight(kFeedbackTop)));
+        check(zeroBelow && from[0] > 0.9f && from[1] > 0.85f && holdWeight(kFeedbackTop) == 1.0f, msg);
+    }
     // The wear on its own, quiet sines (-40 dBFS): its gain vs frequency.
     {
         const double fs[] = {30, 50, 80, 120, 200, 400, 700, 1500, 3000, 6000, 10000};
@@ -2416,18 +2458,22 @@ void tapeWear()
                           kTapeWearName[k], int(same(a, b)), int(blocksSame), int(finite(a)), clicks, worst);
             check(same(a, b) && blocksSame && finite(a) && clicks == 0, msg);
         }
-        // The held top, every ATTITUDE: a single rim at DECAY 1, 60 s. As
-        // "feedback", but these hold like the bare tape (no compander as the
-        // BBD's, whose grit keeps the held sound broad): they build for ~30 s
-        // and then creep up slowly (~+1 dB a minute; a 150 s probe: +1.3 dB
-        // over 40-150 s, BBD flat), so steadiness is read over 30-60 s (1 s
-        // windows within 3.5 dB, the last 5 s under +1 dB on the 5 s before,
-        // as "feedback"), and the 10-30 s build is reported (BBD 2.3-2.5 dB,
-        // none ~5-6 dB there).
-        for (int att = 0; att < 3; ++att) {
+        // The held top, locked like the BBD's (owner, 6 Oct 2026: "lock in
+        // like today"; EchoVoicing.h kTapeHold*), every ATTITUDE, 120 s: a
+        // single rim, and for B (the default) also the skank (13 s of stabs)
+        // and a held pad (4 s). The rim as "feedback": persists, 1 s windows
+        // over 10-30 s within 3 dB. Every material: no slow creep, 10 s
+        // windows over 30-120 s within 1 dB, the last 10 s within 0.5 dB of
+        // the 10 s before; under the limiter (its gain never moves). The pad
+        // is still settling after 30 s even with A (BBD, the default until 6
+        // Oct: its held pad falls ~4.5 dB over 30-120 s, a sustained wash
+        // slowly thinning to held repeats), so there the bar is A's own drift
+        // (at least 1 dB); A is rendered alongside for every material.
+        auto heldRun = [&](int wear, int mat, int att, float* limOut) {
             Settings s;
-            s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.outBits = 0, s.wear = v;
-            const Buf in = rimLike(60.0, 0.5, 0.5f);
+            s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.outBits = 0, s.wear = wear;
+            Buf in = mat == 0 ? rimLike(120.0, 0.5, 0.5f) : (mat == 1 ? stabs(13.0) : padLike(4.0));
+            in.resize(sec(120.0), 0.0f);
             rv::Tank t;
             t.prepare(kFs, 48);
             apply(t, s);
@@ -2437,24 +2483,41 @@ void tapeWear()
                 t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
                 lim = std::min(lim, t.limiterGain());
             }
-            const double hit = stereoDb(o, sec(0.5), sec(0.85)), early = stereoDb(o, sec(2.0), sec(4.0));
-            auto spread = [&](int from, int to) {
+            if (limOut) *limOut = lim;
+            return o;
+        };
+        auto drift30 = [&](const Stereo& o) {
+            double lo = 1e9, hi = -1e9;
+            for (int w = 30; w < 120; w += 10) {
+                const double x = stereoDb(o, sec(w), sec(w + 10));
+                lo = std::min(lo, x), hi = std::max(hi, x);
+            }
+            return hi - lo;
+        };
+        for (int mat = 0; mat < (k == 0 ? 3 : 1); ++mat)
+            for (int att = 0; att < 3; ++att) {
+                float lim = 1.0f;
+                const Stereo o = heldRun(v, mat, att, &lim);
+                const double aDrift = k == 0 ? drift30(heldRun(rv::echo::kWearBbd, mat, att, nullptr)) : -1.0;
                 double lo = 1e9, hi = -1e9;
-                for (int w = from; w < to; ++w) {
+                for (int w = 10; w < 30; ++w) {
                     const double x = stereoDb(o, sec(w), sec(w + 1));
                     lo = std::min(lo, x), hi = std::max(hi, x);
                 }
-                return hi - lo;
-            };
-            const double build = spread(10, 30), held = spread(30, 60);
-            const double a = stereoDb(o, sec(50.0), sec(55.0)), b = stereoDb(o, sec(55.0), sec(60.0));
-            std::snprintf(msg, sizeof msg,
-                          "Tape wear %s, %s DECAY 1, a single rim (60 s): held at %.1f dB re the hit (2-4 s %+.1f); 1 s windows over "
-                          "30-60 s within %.1f dB (want <= 3.5; the 10-30 s build %.1f), 55-60 s vs 50-55 s %+.2f dB (want < +1), "
-                          "peak %.3f, limiter %.3f (want 1)",
-                          kTapeWearName[k], kAttName[att], b - hit, early - hit, held, build, b - a, double(peakOf(o)), double(lim));
-            check(b > early && held <= 3.5 && b - a < 1.0 && lim >= 1.0f && finite(o), msg);
-        }
+                const double build = hi - lo;
+                const double drift = drift30(o), last = stereoDb(o, sec(110.0), sec(120.0)) - stereoDb(o, sec(100.0), sec(110.0));
+                const double held = stereoDb(o, sec(110.0), sec(120.0)), early = stereoDb(o, sec(2.0), sec(4.0));
+                const char* const kMatName[3] = {"a single rim", "the skank", "a held pad"};
+                std::snprintf(msg, sizeof msg,
+                              "Tape wear %s, %s DECAY 1, %s (120 s): held at %.1f dBFS; %s1 s windows over 10-30 s within %.1f dB%s; 10 s "
+                              "windows over 30-120 s within %.2f dB (want <= %.2f; A %.2f), the last 10 s %+.2f dB (want within 0.5); "
+                              "peak %.3f, limiter %.3f (want 1)",
+                              kTapeWearName[k], kAttName[att], kMatName[mat], held, mat == 0 ? "" : "(reported) ", build,
+                              mat == 0 ? " (want <= 3)" : "", drift, mat == 2 ? std::max(1.0, aDrift) : 1.0, aDrift, last,
+                              double(peakOf(o)), double(lim));
+                const double bar = mat == 2 ? std::max(1.0, aDrift) : 1.0;
+                check((mat != 0 || (held > early && build <= 3.0)) && drift <= bar && std::fabs(last) <= 0.5 && lim >= 1.0f && finite(o), msg);
+            }
         // KICKED's top bounded and dying when DECAY comes back to noon; extremes finite.
         {
             const Buf in = burst(16.0, 0.5);
