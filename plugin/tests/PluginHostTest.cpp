@@ -15,6 +15,7 @@
 #include "params/ParamSpec.h"
 #include "Wav.h"
 #include "../ButtonLink.h"
+#include "../EchoText.h"
 
 #include <juce_audio_processors_headless/juce_audio_processors_headless.h>
 
@@ -444,6 +445,61 @@ int main()
         check(same && viaLink.throwExits() == 1 && !viaLink.throwOn(),
               "panel button (ButtonLink) == Tank::button() at block starts, a whole click inside a block included; "
               "tap, tap and hold 2 s through it switches throw mode off");
+    }
+
+    // ---- 4c. TENSION's text: the note value in clocked echo mode (EchoText.h) ----
+    {
+        struct FixedTempo final : juce::AudioPlayHead {
+            juce::Optional<PositionInfo> getPosition() const override
+            {
+                PositionInfo p;
+                p.setBpm(120.0);
+                return p;
+            }
+        } tempo;
+        juce::String error;
+        auto inst = loadPlugin(fm, vst3Path, 48000.0, 512, error);
+        if (!inst) {
+            check(false, "VST3 loads for TENSION text: " + error.toStdString());
+        } else {
+            const auto byId = mapParams(*inst);
+            auto* tension   = byId[size_t(rv::ParamId::Tension)];
+            juce::AudioBuffer<float> buffer(2, 512);
+            juce::MidiBuffer midi;
+            auto settle = [&] { // the Tank picks a zone in its control ticks
+                for (int b = 0; b < 100; ++b) { buffer.clear(); inst->processBlock(buffer, midi); } // ~1 s
+            };
+            inst->prepareToPlay(48000.0, 512);
+            // SPRINGS 1, clocked: a plain number, as before.
+            inst->setPlayHead(&tempo);
+            setParam(byId, rv::ParamId::Springs, rv::switchToNormalised(0));
+            setParam(byId, rv::ParamId::Tension, 0.5f);
+            settle();
+            check(tension->getText(0.5f, 64) == juce::String(0.5f, 7), "TENSION text in SPRINGS 1: a number (" + tension->getText(0.5f, 64).toStdString() + ")");
+            // SPRINGS 3 at the host's tempo: every zone's middle names its note value.
+            setParam(byId, rv::ParamId::Springs, rv::switchToNormalised(2));
+            bool allOk = true;
+            std::string seen;
+            for (int z = 0; z < rv::echo::kNumDivisions; ++z) {
+                const float v = (float(z) + 0.5f) / float(rv::echo::kNumDivisions);
+                setParam(byId, rv::ParamId::Tension, v);
+                settle();
+                const auto text = tension->getText(v, 64);
+                seen += text.toStdString() + (z + 1 < rv::echo::kNumDivisions ? ", " : "");
+                if (text != juce::String(rv::plugin::kDivisionNames[z])) allOk = false;
+            }
+            check(allOk, "TENSION text in echo mode names each zone's note value (" + seen + ")");
+            // Mid-drag, before the Tank has moved: the zone it will settle on,
+            // borders sticky as in Tank::echoTick (now playing 1/16, zone 6).
+            const float h = rv::echo::kDivisionHysteresis / float(rv::echo::kNumDivisions);
+            check(tension->getText(0.01f, 64) == "1/2" && tension->getText(6.0f / 7.0f - 0.5f * h, 64) == "1/16"
+                      && tension->getText(6.0f / 7.0f - 1.5f * h, 64) == "1/16 dotted",
+                  "TENSION text mid-drag names the zone the echo will settle on (sticky borders)");
+            // Unclocked (no tempo): a number again (free time).
+            inst->setPlayHead(nullptr);
+            settle();
+            check(tension->getText(0.5f, 64) == juce::String(0.5f, 7), "TENSION text unclocked: a number");
+        }
     }
 
     // ---- 6. State: getStateInformation -> new instance setStateInformation ----

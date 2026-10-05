@@ -11,7 +11,9 @@
 
 namespace {
 
-juce::AudioProcessorValueTreeState::ParameterLayout makeLayout()
+// echo: TENSION's text in clocked echo mode is its note value (EchoText.h),
+// so the host's parameter display reads like the panel.
+juce::AudioProcessorValueTreeState::ParameterLayout makeLayout(const rv::plugin::EchoReadout& echo)
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     for (const auto& p : rv::kParams) {
@@ -24,8 +26,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout makeLayout()
             // THROW (ADR 0039): the gate, automatable. Raw value 0 / 1.
             layout.add(std::make_unique<juce::AudioParameterBool>(id, p.name, p.defaultValue >= 0.5f));
         } else {
+            auto attributes = juce::AudioParameterFloatAttributes{};
+            if (p.id == rv::ParamId::Tension)
+                attributes = attributes.withStringFromValueFunction([&echo](float v, int maxLength) {
+                    // Otherwise JUCE's default text for a 0-1 range (7 decimals), unchanged.
+                    const char* note = echo.name(v);
+                    const juce::String text = note != nullptr ? juce::String(note) : juce::String(v, 7);
+                    return maxLength > 0 ? text.substring(0, maxLength) : text;
+                });
             layout.add(std::make_unique<juce::AudioParameterFloat>(
-                id, p.name, juce::NormalisableRange<float>(0.0f, 1.0f), p.defaultValue));
+                id, p.name, juce::NormalisableRange<float>(0.0f, 1.0f), p.defaultValue, attributes));
         }
     }
     return layout;
@@ -37,7 +47,7 @@ public:
         : AudioProcessor(BusesProperties()
                              .withInput("Input", juce::AudioChannelSet::stereo(), true)
                              .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-          state_(*this, nullptr, "params", makeLayout())
+          state_(*this, nullptr, "params", makeLayout(panel_.echo))
     {
         for (const auto& p : rv::kParams)
             raw_[static_cast<size_t>(p.id)] = state_.getRawParameterValue(p.key);
@@ -123,6 +133,9 @@ public:
         panel_.notePeak(Link::kOutL, peakOf(buffer.getReadPointer(0), n));
         panel_.notePeak(Link::kOutR, peakOf(buffer.getReadPointer(1), n));
         panel_.noteLimiterGain(tank_.limiterGain());
+        // TENSION's readout (EchoText.h): SPRINGS 3 and the zone playing.
+        const float springs = raw_[static_cast<size_t>(rv::ParamId::Springs)]->load();
+        panel_.echo.note(juce::roundToInt(springs) == 2, tank_.echoDivision());
         if (tank_.throwExits() != exitsSeen_) { // the button's exit gesture: the panel's LEDs blink
             exitsSeen_ = tank_.throwExits();
             panel_.noteThrowExited();
@@ -164,10 +177,10 @@ private:
         return p;
     }
 
+    rv::plugin::PanelLink panel_; // the button, the LED meters and TENSION's readout, shared with the editor (before state_: its layout reads panel_.echo)
     juce::AudioProcessorValueTreeState state_;
     std::array<std::atomic<float>*, static_cast<size_t>(rv::ParamId::Count)> raw_{};
     rv::Tank tank_;
-    rv::plugin::PanelLink panel_; // the button and the LED meters, shared with the editor
     uint32_t exitsSeen_ = 0; // Tank::throwExits() last seen (audio thread)
     std::array<bool, 128> held_{}; // MIDI notes down (the gate is high while any is)
     int numHeld_ = 0;

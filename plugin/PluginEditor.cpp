@@ -110,11 +110,14 @@ juce::Colour ledColour(const rvled::Rgb& drive)
     return juce::Colour::fromFloatRGBA(channel(drive.r), channel(drive.g), channel(drive.b), 1.0f);
 }
 
-// Knob value text, shown while dragging or hovering: percent of travel, and
-// WOBBLE as its side and amount (ADR 0034; noon is still, ±3 % dead zone).
-juce::String knobText(ParamId id, double value)
+// Knob value text, shown while dragging or hovering: percent of travel,
+// WOBBLE as its side and amount (ADR 0034; noon is still, ±3 % dead zone),
+// and TENSION in clocked echo mode as its note value (EchoText.h).
+juce::String knobText(ParamId id, double value, const EchoReadout& echo)
 {
     const float v = float(value);
+    if (id == ParamId::Tension)
+        if (const char* note = echo.name(v)) return note;
     if (id == ParamId::Wobble) {
         if (wobble::randomAmount(v) > 0.0f) return "Drift " + juce::String(juce::roundToInt(100.0f * wobble::randomAmount(v))) + " %";
         if (wobble::lfoAmount(v) > 0.0f) return "Warble " + juce::String(juce::roundToInt(100.0f * wobble::lfoAmount(v))) + " %";
@@ -202,7 +205,7 @@ public:
             addAndMakeVisible(s);
             // The attachment also sets double-click -> the ParamSpec default.
             knobAttach_[i] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(state, spec(id).key, s);
-            s.textFromValueFunction = [id](double v) { return knobText(id, v); };
+            s.textFromValueFunction = [id, &link](double v) { return knobText(id, v, link.echo); };
         }
 
         for (size_t t = 0; t < toggles_.size(); ++t) {
