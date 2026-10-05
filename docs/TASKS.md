@@ -30,6 +30,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Flashed `dist/resilio_versio_release_0267d0e.bin` (5 Oct: "sounding fantastic")
 - [ ] **Click check** (under way, no clicks so far): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
+### 3b. Listen: tape wear for echo mode (≈20 min)
+- [ ] Page: `.claude/worktrees/agent-aa946b414d9c6702c/renders/echo_tape_wear/index.html` (echo mode; columns CLEAN / DRIVEN / KICKED, switch **A** today's BBD grit, **B** tape saturation + roll-off, **C1** B + subtle crinkle, **C2** B + obvious crinkle). WOBBLE still, levels matched. Listen for: is the BBD's faint off-key shimmer gone in B? Does a loud build melt into warmth rather than fizz? Is B's 70 Hz lift warm or boomy on the pad? Is C1 audible at all; is C2 papery or too much? **At the held top (DECAY max)** B and C keep creeping up slowly (~1 dB a minute, never running away) where A settles in ~20 s: alive, or unsteady? Pick per ATTITUDE if they differ. Any pick needs a CPU run on the module (desktop says B/C cost about the same as A)
+
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
@@ -54,7 +57,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Echo mode: tape wear instead of BBD grit** (your ask, 5 Oct): a listening page with A today's BBD grit, B tape saturation + roll-off (highs saturate first, darker each pass, no new pitches), C B + crinkle (fast flickers in level and highs) at two strengths. No extra wow/flutter (WOBBLE already does that). Being built; any pick needs a CPU run on the module before it ships
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
