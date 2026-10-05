@@ -119,6 +119,13 @@ struct SpringSettings {
     // The high path's T60 base when > 0 (the Hold keeps the plain DECAY's
     // there); 0 = t60Seconds, as before.
     float highT60Seconds   = 0.0f;
+#if RV_TANKV_BUILT >= 8
+    // Tank voicing 8+ (round 5): a biquad after the damping, a peaking cut of
+    // eqDb at eqHz (width eqQ) in each trip. eqHz 0 = none, as before.
+    float eqHz             = 0.0f;
+    float eqDb             = 0.0f;
+    float eqQ              = 0.7f;
+#endif
 };
 
 class Spring {
@@ -146,6 +153,14 @@ public:
     static constexpr float kStageRampSeconds   = 0.008f; // time to fade one stage in or out
     static constexpr float kTapSlewPerSample   = 0.02f;  // pickup offset glide: <= 2 % pitch bend, ~1 ms in 50 ms
     static constexpr float kDenormalNoise      = 1.0e-10f; // -200 dB seeded noise keeps state off denormals
+    // A firmware built with a round-5 tank voicing (8+) as its default only
+    // ever plays the damping biquad and the diffusers in front of the pickup
+    // (SpringSettings::eq*, setDiffusionPlace): the other paths compile out.
+#if RV_TANKV_BUILT >= 8 && defined(RV_FIXED_VOICINGS)
+    static constexpr bool kR5Only = true;
+#else
+    static constexpr bool kR5Only = false;
+#endif
 
     // Pool floats needed at this sample rate (worst-case settings), with
     // rings for maxStages Chirp sections (kMaxStages unless the Tank's
@@ -214,6 +229,26 @@ public:
     // pickup keeps its place along the full round trip. n = 0: none (today).
     // Set before the first process() (it resets the Spring's state).
     void setDiffusion(float* const* bufs, const int* sizes, const float* delays, int n, float c);
+    // Voicing 8+ (round 5): the same diffusers in front of the pickup (after
+    // the damping, before the delay line), so the first echo is smeared too;
+    // the pickup reads alignShare x their delay earlier, so the first echo's
+    // body keeps its time. Set before setDiffusion(). pre false = voicing 3's
+    // place (after the pickup, on the feedback).
+    // Voicing 8+: the diffusers' coefficient alone, live (control rate; no
+    // reset: an allpass's coefficient can move under a running tail).
+    void setDiffusionCoeff([[maybe_unused]] float c)
+    {
+#if RV_TANKV_BUILT >= 3
+        fbDiffC_ = c;
+#endif
+    }
+    void setDiffusionPlace([[maybe_unused]] bool pre, [[maybe_unused]] float alignShare)
+    {
+#if RV_TANKV_BUILT >= 8
+        fbDiffPre_   = pre;
+        fbDiffAlign_ = pre ? alignShare : 0.0f;
+#endif
+    }
     // Voicing 1 (proto/wellspring-fit B's high path): the high path's
     // high-pass at xoverRatio x fC (today kHighPassRatio), and, if align, its
     // pickup placed so its first echo reaches the crossover frequency
@@ -232,13 +267,7 @@ public:
     }
     // Voicing 5: the high path's ceiling low-pass (today kHighCeilingHz).
     // Redesigns on the next setSettings().
-    void setHighCeiling([[maybe_unused]] float hz)
-    {
-#if RV_TANKV_BUILT >= 5
-        highCeiling_.setCutoff(hz < 0.45f * sampleRate_ ? hz : 0.45f * sampleRate_, sampleRate_);
-        settings_.t60Seconds = -1.0f; // force the redesign (the high path's alignment)
-#endif
-    }
+    void setHighCeiling(float hz); // Spring.cpp (one copy: round 5 calls it on TONE moves)
     // Voicings 4, 5: the high path's T60 as a share of DECAY's (today
     // kHighT60Ratio). Redesigns on the next setSettings().
     void setHighT60Ratio([[maybe_unused]] float r)
@@ -320,6 +349,9 @@ private:
     void  advanceGlides();
     float processLow(float in, float lMod, float tapMod);
     void  loopWrite(float x); // the Loop after its input sum (coupledFinish): Chirp chain, filters, into the delay line
+#if RV_TANKV_BUILT >= 8
+    float dampAndDiffuse(float x); // voicing 8+: the damping shelf, then the diffusers if in front of the pickup
+#endif
     float processHigh(float in, float lhMod);
     // The redesign in its three parts (M3 run 12). The Loop gain design
     // evaluates the Loop at kNumPoints frequencies; everything there that
@@ -428,7 +460,18 @@ private:
     float fbDiffC_ = 0.5f, fbDiffDelay_ = 0.0f; // total delay, samples
     float diffDelay() const { return fbDiffDelay_; }
     float withDiff(float x) const { return x + fbDiffDelay_; } // x + their delay
+#if RV_TANKV_BUILT >= 8
+    bool  fbDiffPre_ = false;   // setDiffusionPlace: in front of the pickup (round 5)
+    float fbDiffAlign_ = 0.0f;  // ... and the pickup that much of their delay earlier
+    float pickShift() const { return fbDiffAlign_ * fbDiffDelay_; }
+    float preDiffDelay() const { return (kR5Only || fbDiffPre_) ? fbDiffDelay_ : 0.0f; }
 #else
+    static constexpr float pickShift() { return 0.0f; }
+    static constexpr float preDiffDelay() { return 0.0f; }
+#endif
+#else
+    static constexpr float pickShift() { return 0.0f; }
+    static constexpr float preDiffDelay() { return 0.0f; }
     static constexpr float diffDelay() { return 0.0f; } // the firmware without voicing 3
     static constexpr float withDiff(float x) { return x; }
 #endif
@@ -449,6 +492,13 @@ private:
     int   stagedN_ = 5;
     dsp::Biquad         stagedLowpass_, stagedHighpass_;
     dsp::OnePoleLowpass stagedDamping_;
+#if RV_TANKV_BUILT >= 8
+    // The damping biquad (SpringSettings::eq*): playing, staged, on; the
+    // settings it was designed from.
+    dsp::Biquad dampBq_, stagedBq_;
+    bool  eqOn_ = false, stagedEqOn_ = false;
+    float designEq_[3] = {-1.0f, 0.0f, 0.0f};
+#endif
     // What the caches hold: fC (K, fC points), damping cutoff, and the fC
     // the damping delays and magnitudes were worked out with.
     float designFc_ = -1.0f, designDampHz_ = -1.0f, magFc_ = -1.0f;

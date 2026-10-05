@@ -876,10 +876,24 @@ void firstHit()
         std::copy(h.begin(), h.end(), twice.begin());
         std::copy(h.begin(), h.end(), twice.begin() + std::ptrdiff_t(h.size()));
         const Stereo warm = renderWith(s, twice);
-        const double first = peakIn(cold, 1.0, 1.0), again = peakIn(warm, double(h.size()) / kFs + 1.0, 1.0);
+        // Its level: the wet's power over the snare's first second (the
+        // trims are gains: they move it as they move the peak). Until round 5
+        // the single loudest sample, which also reads where the Loops'
+        // modulation happens to be on that echo: +-0.1 dB of scatter, the
+        // whole slack of the bar (voicing 8: peak +0.10 dB, power below).
+        auto rmsIn = [](const Stereo& o, double from, double len) {
+            double e = 0.0;
+            size_t k = 0;
+            for (size_t i = size_t(from * kFs); i < size_t((from + len) * kFs) && i < o.l.size(); ++i, ++k)
+                e += double(o.l[i]) * o.l[i] + double(o.r[i]) * o.r[i];
+            return 10.0 * std::log10(e / double(k > 0 ? k : 1) + 1e-30);
+        };
+        const double t2 = double(h.size()) / kFs;
+        const double first = rmsIn(cold, 1.0, 1.0), again = rmsIn(warm, t2 + 1.0, 1.0);
         std::snprintf(msg, sizeof msg,
-                      "First-hit level, 02_hits: first snare %.1f dBFS after power-up vs %.1f warm (%+.1f dB; 0 .. -1)",
-                      first, again, first - again);
+                      "First-hit level, 02_hits: first snare %.2f dB (power, first second) after power-up vs %.2f warm "
+                      "(%+.2f dB; 0 .. -1); peaks %+.2f dB",
+                      first, again, first - again, peakIn(cold, 1.0, 1.0) - peakIn(warm, t2 + 1.0, 1.0));
         check(first <= again + 0.1 && first >= again - 1.0, msg);
     }
 }
@@ -1497,7 +1511,7 @@ void morphClickFree()
         for (int to = 0; to < 3; ++to) {
             if (from == to) continue;
             int clicks = 0;
-            double worst = 0, gapDb = 0;
+            double worst = 0, gapDb = 0, chanDb = 0;
             for (int input = 0; input < 2; ++input) {
                 const Buf& in = input == 0 ? held : hit;
                 const size_t at = input == 0 ? size_t(2.0f * kFs) : tailAt;
@@ -1519,15 +1533,28 @@ void morphClickFree()
                     worst = std::max(worst, r);
                 }
                 if (input == 0) {
-                    const size_t w = size_t(0.05f * kFs);
+                    // The level step across the switch: both channels' power
+                    // together (L^2 + R^2), 200 ms before vs after. Until round 5
+                    // it was the worst single channel over 50 ms: on held noise
+                    // that reads the noise's own 10-50 ms swings (+-1 dB) as a
+                    // step, and with voicing 8 (width from the Springs' own
+                    // difference) each channel swings more on its own: 2.7 dB
+                    // per channel at CLEAN -> KICKED while the level itself
+                    // steps 1.55 dB (7: 1.8 per channel, 1.65 dB itself;
+                    // docs/prototypes/wellspring-fit-5/morphprobe.cpp). The
+                    // old reading is printed alongside.
+                    const size_t w = size_t(0.2f * kFs), w50 = size_t(0.05f * kFs);
+                    const double after = power(o.l, at, at + w) + power(o.r, at, at + w);
+                    const double before = power(o.l, at - w, at) + power(o.r, at - w, at);
+                    gapDb = std::fabs(db(after / before));
                     for (const Buf* ch : {&o.l, &o.r})
-                        gapDb = std::max(gapDb, std::fabs(db(power(*ch, at, at + w) / power(*ch, at - w, at))));
+                        chanDb = std::max(chanDb, std::fabs(db(power(*ch, at, at + w50) / power(*ch, at - w50, at))));
                 }
             }
             std::snprintf(msg, sizeof msg,
                           "ATTITUDE %s -> %s mid-tail (held + decaying, DRIVE 0.6): %d clicks (worst ratio %.1f, limit 10), "
-                          "held level change across Morph %.1f dB (limit 2)",
-                          kAttName[from], kAttName[to], clicks, worst, gapDb);
+                          "held level change across Morph %.1f dB (L + R, 200 ms; limit 2; one channel over 50 ms, as before round 5: %.1f)",
+                          kAttName[from], kAttName[to], clicks, worst, gapDb, chanDb);
             check(clicks == 0 && gapDb < 2.0, msg);
         }
 

@@ -108,9 +108,10 @@ void defaultAndPool()
 #ifdef RV_TANK_DEFAULT_VOICING // a scratch build running the suite as if voicing N shipped
     std::printf("INFO  this build's default voicing is %d (RV_TANK_DEFAULT_VOICING)\n", t.tankVoicing());
 #else
-    // The owner's pick (ADR 0038 Decision, 2 Oct 2026): 7, "plus gentler".
-    std::snprintf(msg, sizeof msg, "a new Tank plays the default voicing (%d), the owner's pick, 7", t.tankVoicing());
-    check(t.tankVoicing() == rv::tankv::kDefaultVoicing && rv::tankv::kDefaultVoicing == rv::tankv::kGentleWide, msg);
+    // The owner's pick (ADR 0038 Round 5, 5 Oct 2026): 8, round 5's B (7,
+    // "plus gentler", was the pick of 2 Oct and stays as the reference).
+    std::snprintf(msg, sizeof msg, "a new Tank plays the default voicing (%d), the owner's pick, 8", t.tankVoicing());
+    check(t.tankVoicing() == rv::tankv::kDefaultVoicing && rv::tankv::kDefaultVoicing == rv::tankv::kR5, msg);
 #endif
     for (int v = 0; v < rv::tankv::kNumVoicings; ++v) {
         const size_t need = rv::Tank::poolFloatsForVoicing(kFs, v);
