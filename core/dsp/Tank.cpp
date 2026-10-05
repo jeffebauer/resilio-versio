@@ -2046,8 +2046,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         constexpr float wetGain = kWetGain;
         constexpr float outTrim = 1.0f;
 #endif
+        float wetL[kControlInterval], wetR[kControlInterval]; // the wet up to the mu-law box (ADR 0042 amendment)
         for (int i = 0; i < n; ++i) {
-            const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
             // DRIVE's heard share (ADR 0033): the tail comes back louder by
             // G^kInputHeard. Here, on the Springs' output, rather than into
             // them: the LoopSat, the AntiRes fade and the Howl see the same
@@ -2118,8 +2118,16 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);
-            wl = ll + kShelfGain * (wl - ll);
-            wr = lr + kShelfGain * (wr - lr);
+            wetL[i] = ll + kShelfGain * (wl - ll);
+            wetR[i] = lr + kShelfGain * (wr - lr);
+        }
+        // The mu-law box (ADR 0042, amended 5 Oct 2026: the wet only, before
+        // TONE's return filter, so turning TONE right thins its grit; then the
+        // limiter). In CLEAN (and voicing 0) it leaves the wet untouched.
+        outBits_.process(wetL, wetR, n);
+        for (int i = 0; i < n; ++i) {
+            const float dryL = inL[pos + i], dryR = inR[pos + i]; // read before write: in may alias out
+            float       wl = wetL[i], wr = wetR[i];
             if (tilt_.place() != drive::kTonePlacePre && trIdle_) {
                 // Noon and left of it: an exact pass-through; only the
                 // makeup's into-follower runs (out = in).
@@ -2185,9 +2193,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outL[pos + i] = m.dry * dryL + m.wet * wl;
             outR[pos + i] = m.dry * dryR + m.wet * wr;
         }
-        // The output's mu-law box (ADR 0042, OutputVoicing.h): dry and wet
-        // both, after MIX. In CLEAN (and voicing 0) it leaves them untouched.
-        outBits_.process(outL + pos, outR + pos, n);
         prof::mark(prof::kOutput);
         if (echoRun) echo_.record(echoRec, n); // the record head: after this step's playback (Echo.h)
         pos += n;

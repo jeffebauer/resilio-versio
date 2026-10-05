@@ -110,7 +110,7 @@ struct Settings {
     bool  echo = true;
     float hostBpm = 0.0f;
     int   wear = -1; // echo_wear_voicing; -1 = the default (BBD grit since 4 Oct)
-    int   outBits = -1; // output_bits_voicing: -1 the default (ADR 0042's mu-law box), 0 before the box (a test hook)
+    int   outBits = -1; // output_bits_voicing: -1 the default (ADR 0042's mu-law box on the wet), 0 without it (a test hook)
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -785,8 +785,8 @@ void feedback()
     // and 30 s. The repeats persist (no fade), settle to a steady level held
     // by the tape (1 s windows over 10-30 s within 3 dB: +-1.5), don't keep
     // growing (25-30 s within 1 dB of 20-25 s) and stay under the limiter
-    // (its gain never moves). Read before the output box (its grain is not
-    // the echo); the shipped output checked finite.
+    // (its gain never moves). Read without the wet's mu-law box (ADR 0042: its
+    // grain is not the echo); the shipped output checked finite.
     for (int att = 0; att < 3; ++att) {
         Settings s;
         s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.outBits = 0;
@@ -817,7 +817,7 @@ void feedback()
         check(b > early && hi - lo <= 3.0 && b - a < 1.0 && lim >= 1.0f && finite(o) && finite(sh), msg);
     }
     // DECAY 1 with continuous input (skank stabs, 30 s; DRIVE 0 and 1):
-    // bounded (peak under the limiter's threshold, before the box) and not
+    // bounded (peak under the limiter's threshold, without the wet's mu-law box) and not
     // growing (the last 5 s within 1 dB of the 5 s before). The limiter's
     // deepest gain is reported.
     {
@@ -845,7 +845,7 @@ void feedback()
                               kAttName[att], double(dr), double(pk), 20.0 * std::log10(double(lim)), grow);
                 std::strncat(line, one, sizeof line - std::strlen(line) - 1);
             }
-        std::snprintf(msg, sizeof msg, "Feedback DECAY 1, skank for 30 s (bounded <= %.2f before the box, growth < 1 dB): %s",
+        std::snprintf(msg, sizeof msg, "Feedback DECAY 1, skank for 30 s (bounded <= %.2f without the wet's mu-law box, growth < 1 dB): %s",
                       double(rv::Tank::kLimitThreshold), line);
         check(ok, msg);
     }
@@ -856,7 +856,7 @@ void feedback()
     for (int att = 0; att < 3; ++att) {
         Settings s;
         s.att = att, s.decay = 1.0f, s.tension = 0.5f, s.drive = 1.0f;
-        s.outBits = 0; // the echo itself, before the output box (its 12 / 10-bit steps at the limiter's level read as edges)
+        s.outBits = 0; // the echo itself, without the wet's mu-law box (its 12 / 10-bit steps read as edges)
         const size_t n  = sec(20.0);
         const Buf    rim = rimLike(20.0, 0.5, 0.5f);
         // For the clicks, a smooth note (a Hann-shaped 0.3 s chord, -6 dBFS):
@@ -1135,16 +1135,13 @@ void switching()
 }
 
 // ---- stability ------------------------------------------------------------------------------
-// Peaks are read before the output's mu-law box (ADR 0042; output_bits_voicing
-// 0 as a test hook): the box's 24 kHz filters and steps can lift a limited
-// peak a little past 1.0, which is the converter, not the echo running away.
-// The shipped output (box in) is checked finite (and, in the grid, fading)
-// and its peak reported, with the Versio's after kOutputTrim (x 0.874).
+// The shipped output: the wet's mu-law box (ADR 0042) sits before the
+// limiter since its 5 Oct amendment, so the peaks are limited again.
 void stability()
 {
     const Buf h = hits(14.0);
     bool ok = true;
-    float worst = 0.0f, shipped = 0.0f;
+    float worst = 0.0f;
     int cases = 0;
     for (int a = 0; a < 3; ++a)
         for (float tn : {0.0f, 1.0f})
@@ -1152,18 +1149,14 @@ void stability()
                 for (int clocked = 0; clocked < 2; ++clocked) {
                     Settings s;
                     s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = wob, s.tone = tn;
-                    const Stereo sh = render(s, h, 48, clocked ? steadyClock(140.0, 0.0, 14.0) : std::vector<size_t>{});
-                    s.outBits = 0;
                     const Stereo o = render(s, h, 48, clocked ? steadyClock(140.0, 0.0, 14.0) : std::vector<size_t>{});
                     const float pk = peakOf(o);
                     worst = std::max(worst, pk);
-                    shipped = std::max(shipped, peakOf(sh));
-                    ok &= finite(o) && pk < 1.0f && finite(sh);
+                    ok &= finite(o) && pk < 1.0f;
                     ++cases;
                 }
     std::snprintf(msg, sizeof msg, "Stability: %d extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION/TONE 0 1, WOBBLE 0 1, "
-                                   "clocked or not): finite, worst peak before the output box %.3f (< 1); shipped output peak %.3f "
-                                   "(Versio after kOutputTrim %.3f)", cases, double(worst), double(shipped), double(shipped * 0.874f));
+                                   "clocked or not): finite, worst peak %.3f (< 1)", cases, double(worst));
     check(ok, msg);
 
     // The grid (as test_tank / test_drive): impulse + 1 s full-scale noise,
@@ -1177,7 +1170,7 @@ void stability()
         const Buf nz = noise(sec(1.0), 1.0f, 99u);
         std::copy(nz.begin(), nz.end(), in.begin() + long(sec(0.5)));
         int cells = 0, bad = 0;
-        float pkWorst = 0.0f, shWorst = 0.0f;
+        float pkWorst = 0.0f;
         double fadeWorst = 1e9;
         char badAt[160] = "none";
         for (int a = 0; a < 3; ++a)
@@ -1186,15 +1179,11 @@ void stability()
                     for (float tn : {0.0f, 0.5f, 1.0f}) {
                         Settings st;
                         st.att = a, st.drive = dr, st.decay = dc, st.tension = tn;
-                        const Stereo sh = render(st, in, 48);
-                        st.outBits = 0;
                         const Stereo o = render(st, in, 48);
                         const float pk = peakOf(o);
-                        shWorst = std::max(shWorst, peakOf(sh));
                         const bool runaway = dc > (a == 2 ? 0.87f : 0.93f); // the top: persistent by design
                         const double fall = stereoDb(o, sec(3.0), sec(5.0)) - stereoDb(o, sec(33.0), sec(35.0));
-                        const double shFall = stereoDb(sh, sec(3.0), sec(5.0)) - stereoDb(sh, sec(33.0), sec(35.0));
-                        const bool good = finite(o) && pk < 1.0f && (runaway || fall >= 10.0) && finite(sh) && (runaway || shFall >= 10.0);
+                        const bool good = finite(o) && pk < 1.0f && (runaway || fall >= 10.0);
                         pkWorst = std::max(pkWorst, pk);
                         if (!runaway) fadeWorst = std::min(fadeWorst, fall);
                         if (!good && bad++ == 0)
@@ -1204,10 +1193,9 @@ void stability()
                     }
         std::snprintf(msg, sizeof msg,
                       "Stability grid ATTITUDE x DRIVE x DECAY {0,.5,.89,1} x TENSION {0,.5,1} (%d cells, impulse + 1 s full-scale "
-                      "noise, 36 s): finite, peak before the output box < 1 (worst %.3f), repeats fade >= 10 dB over 30 s outside "
-                      "the top's persistent zone (least %.1f dB; with the box too); %d bad (first: %s); shipped output peak %.3f (Versio after "
-                      "kOutputTrim %.3f)",
-                      cells, double(pkWorst), fadeWorst, bad, badAt, double(shWorst), double(shWorst * 0.874f));
+                      "noise, 36 s): finite, peak < 1 (worst %.3f), repeats fade >= 10 dB over 30 s outside "
+                      "the top's persistent zone (least %.1f dB); %d bad (first: %s)",
+                      cells, double(pkWorst), fadeWorst, bad, badAt);
         check(bad == 0, msg);
     }
 }
@@ -1436,24 +1424,20 @@ void diffuse()
         std::snprintf(msg, sizeof msg, "Diffuse, KICKED DECAY 1 (the held top) then DECAY noon at 10 s (want peak < 1, >= 30 dB down by 13.5 s): %s", line);
         check(ok, msg);
     }
-    // Extremes per voicing. Peaks read before the output's mu-law box, as
-    // "stability" (ADR 0042: the box's filters and steps can lift a limited
-    // peak past 1.0, the converter, not the echo); the shipped output is
-    // checked finite and its peak reported. (Since CLEAN and DRIVEN hold at
-    // the top of DECAY, ADR 0041 amendment, their wet sits at the limiter
-    // here, as KICKED's did.)
+    // Extremes per voicing (the shipped output: since ADR 0042's 5 Oct
+    // amendment the wet's mu-law box is before the limiter). (Since CLEAN and
+    // DRIVEN hold at the top of DECAY, ADR 0041 amendment, their wet sits at
+    // the limiter here, as KICKED's did.)
     {
         const Buf h = hits(10.0);
         bool ok = true;
-        float worstPk = 0.0f, shipped = 0.0f;
+        float worstPk = 0.0f;
         for (int v = 1; v < 4; ++v)
             for (int a = 0; a < 3; ++a)
-                for (float tn : {0.0f, 1.0f})
-                    for (int box = 0; box < 2; ++box) {
+                for (float tn : {0.0f, 1.0f}) {
                         Settings s;
                         s.wear = 0; // the diffuse round was built without wear
                         s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tn, s.wobble = 0.0f;
-                        s.outBits = box ? -1 : 0;
                         rv::Tank t;
                         t.prepare(kFs, 48);
                         apply(t, s);
@@ -1461,13 +1445,11 @@ void diffuse()
                         Stereo o{Buf(h.size()), Buf(h.size())};
                         for (size_t pos = 0; pos < h.size(); pos += 48)
                             t.process(h.data() + pos, h.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
-                        (box ? shipped : worstPk) = std::max(box ? shipped : worstPk, peakOf(o));
-                        ok &= finite(o) && (box || peakOf(o) < 1.0f);
+                        worstPk = std::max(worstPk, peakOf(o));
+                        ok &= finite(o) && peakOf(o) < 1.0f;
                     }
         std::snprintf(msg, sizeof msg,
-                      "Diffuse 1-3 extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak before the output box %.3f "
-                      "(< 1); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
-                      double(worstPk), double(shipped), double(shipped * 0.874f));
+                      "Diffuse 1-3 extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f (< 1)", double(worstPk));
         check(ok, msg);
     }
     // Cost (desktop): position 3, KICKED, DRIVE 1, DECAY 1, TENSION 0, per voicing.
@@ -1590,17 +1572,14 @@ void wear()
         }
         // Extremes.
         {
-            // Peaks before the output's mu-law box, as "stability" and the
-            // diffuse extremes (ADR 0042); shipped output finite, peak reported.
+            // The shipped output, as "stability" and the diffuse extremes.
             bool ok = true;
-            float worstPk = 0.0f, shipped = 0.0f;
+            float worstPk = 0.0f;
             const Buf hh = hits(10.0);
             for (int a2 = 0; a2 < 3; ++a2)
-                for (float tn : {0.0f, 1.0f})
-                    for (int box = 0; box < 2; ++box) {
+                for (float tn : {0.0f, 1.0f}) {
                         Settings x;
                         x.att = a2, x.decay = 1.0f, x.drive = 1.0f, x.tension = tn, x.wobble = 0.0f;
-                        x.outBits = box ? -1 : 0;
                         rv::Tank t;
                         t.prepare(kFs, 48);
                         apply(t, x);
@@ -1608,13 +1587,11 @@ void wear()
                         Stereo o{Buf(hh.size()), Buf(hh.size())};
                         for (size_t pos = 0; pos < hh.size(); pos += 48)
                             t.process(hh.data() + pos, hh.data() + pos, o.l.data() + pos, o.r.data() + pos, 48);
-                        (box ? shipped : worstPk) = std::max(box ? shipped : worstPk, peakOf(o));
-                        ok &= finite(o) && (box || peakOf(o) < 1.0f);
+                        worstPk = std::max(worstPk, peakOf(o));
+                        ok &= finite(o) && peakOf(o) < 1.0f;
                     }
-            std::snprintf(msg, sizeof msg,
-                          "Wear %s extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak before the output box %.3f "
-                          "(< 1); shipped output peak %.3f",
-                          kWearName[v], double(worstPk), double(shipped));
+            std::snprintf(msg, sizeof msg, "Wear %s extremes (DECAY 1, DRIVE 1, every ATTITUDE, TENSION 0/1): finite, worst peak %.3f (< 1)",
+                          kWearName[v], double(worstPk));
             check(ok, msg);
         }
     }

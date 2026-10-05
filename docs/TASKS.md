@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, midday (everything picked so far is merged or merging; run 18 under the CPU ceiling; Wellspring round 5 being built)
+**Last updated:** 5 Oct 2026, end of session 7 (merged: TONE after the springs, Throw + Hold, echo mode + tuning, µ-law, run 18, LED fix. In flight: Wellspring round 5 (B), µ-law to the wet before TONE, Kick removal + button throw/tap; then the click check and the friends' release)
 
 | Milestone | State |
 |---|---|
@@ -29,7 +29,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3d. From your module play (5 Oct)
 - [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
-- [ ] **µ-law moves to the wet only, before TONE** (being built): the dry stays clean in every ATTITUDE again (MIX fully left = clean), and TONE right of noon can thin the grit's highs. Applies to DRIVEN too. Short page `renders/mulaw_wet/` coming
+- [x] **µ-law on the wet only, before TONE: picked B everywhere and merged** (5 Oct, `9245811`): the dry is clean in every ATTITUDE, TONE thins the grit. In the plugin after the next install
 
 ### 3e. Kick removed; the button throws and taps tempo (5 Oct) · being built
 - Your call: **no Kick** (module and plugin; frees ~3–4 KB of flash). **The button:** held = a manual throw in SPRINGS 1–2 (the first press switches throw mode on, so it works with nothing patched); taps = tempo in echo mode. **Leave throw mode:** double-tap, then hold 2 s (single taps and holds of any length stay throws). The gate stays on/off: throw in 1–2, clock in 3 (the jack is digital, so no CV-level throw). Merges after round 5 and the µ-law move; the friends' release notes get updated to match
@@ -60,9 +60,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
-- **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
-- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then, once you've tested the build on the module and in the plugin, the friends' release with `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish` (the what's-new summary you shared becomes the GitHub release notes; Claude checks it still matches the build first)
+- **Three builds in flight** (next session picks them up): Wellspring round 5 with your pick B (+ its test fix-ups and a flash trim), µ-law moved to the wet before TONE (+ a short page), the Kick removal with the button as throw/tap. Merged one at a time, then a plugin install, a release and CPU run 19 for the module (§2)
+- **Friends' release notes** updated for the Kick removal, the button and the µ-law placement; then, after you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
