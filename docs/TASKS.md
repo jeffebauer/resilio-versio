@@ -2,57 +2,50 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, late (all merged: round 5 B, µ-law wet before TONE, Kick removed + button throw/tap, `0267d0e`). Next: plugin install, then on the module `dist/resilio_versio_m3_profile_run19.bin` (CPU run 19) and `dist/resilio_versio_release_0267d0e.bin` + click check
+**Last updated:** 5 Oct 2026, evening. Everything is merged (`0267d0e`: Wellspring round 5, µ-law on the wet before TONE, Kick removed, the button throws / taps tempo) and in Ableton. Next for you: hear it in the plugin, then the module builds (§2–3)
 
 | Milestone | State |
 |---|---|
-| M3 CPU | Run 18: 2 Springs 66.0 / 72.0 %, echo mode 70.2 / 76.2 %, SPRINGS switch 77.3 %, worst moment 79.9 %. Under the 80 % ceiling (target 75 %; echo mode's 76 % accepted). Flash: CPU-test build ~97 %, a small trim comes before round 5 |
-| Real firmware on the Versio | `d74ddc5` (Wellspring F + knob end stops). The next release (§2) has everything below |
-| M8 sound | **Merged:** TONE after the springs, Throw + Hold, echo mode, µ-law (DRIVEN 12-bit / KICKED 10-bit), echo tuning (held top). **Merging:** run 18's CPU savings. **Being built:** Wellspring round 5, the last fit |
-| M2 Ableton check | Ready once the next plugin install is in (§1) |
-| M9 polish | Manual, starting points and share read-me are stale; refreshed after round 5 |
+| M2 plugin | Built, installed `c7bf3e7`. Your Ableton check is open (§5) |
+| M3 CPU | Run 18: echo mode 76 % peak, the SPRINGS switch 77 %, worst moment 79.9 % (target 75 %, ceiling 80 %; echo mode's 76 % accepted). **Run 19** (everything merged) ready to flash (§2). Flash: release 95 %, CPU-test build 96 % |
+| Real firmware on the Versio | `0267d0e` (flashed 5 Oct evening): everything merged. Click check under way, no clicks so far (§3) |
+| M8 sound | All merged. **Being built:** tape wear for echo mode's repeats (Waiting on Claude) |
+| M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
-**Plugin in Ableton:** `62575ff` (installed 5 Oct, AU validated): everything merged so far, incl. the echo tuning (held DECAY top in echo mode, KICKED µ-law 10-bit). **Rescan:** hold ⌥, Rescan, then insert a fresh instance
+**Plugin in Ableton:** `c7bf3e7` (installed 5 Oct 19:38, AU validated), code = `0267d0e`. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; a new release follows round 5.
+**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
 
 ## Now (in this order)
 
-### 1. Plugin install with the echo tuning · done 5 Oct
-- [x] `62575ff` installed, AU validated. Rescan (hold ⌥, Rescan) and insert a fresh instance. (Run 18's savings don't change the sound, so no reinstall is needed for them)
+### 1. Hear the new build in the plugin (≈15 min)
+- [ ] **What's new since your last install:** the Kick is gone; the button **throws** in SPRINGS 1–2 (hold = send open; the first press switches throw mode on, so it works with nothing patched; leave throw mode: double-tap, then hold 2 s, four LEDs blink white) and **taps tempo** in SPRINGS 3 (Ableton's tempo wins in the plugin, so taps only count on the module). Held **MIDI notes act as the gate**. µ-law grit is on the wet only, before TONE: the dry is clean in every ATTITUDE, TONE left tames the grit
+- [ ] **Round 5's side changes** you haven't heard: the wet 1 dB lower from TONE noon right; DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top
+- [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
 
-### 2. The new release on the module + click check (≈10 min)
-- [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
+### 2. CPU run 19 on the module (≈10 min)
+- [ ] Flash `dist/resilio_versio_m3_profile_run19.bin` and read the numbers as before (everything merged: round 5, the wet µ-law, the button). Paste them to Claude
 
-### 3. Wellspring round 5, the last fit · merged (5 Oct, `44224b1`)
-- [x] B (voicing 8) is the default. To pass the tests the build also changed a few things you haven't heard yet (check on the next plugin install / release): the wet 1 dB lower from TONE noon right (evens KICKED's loudness across TONE); DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top; the high end adjusted at TONE's ends (stops one ringing case)
-
-### 3d. From your module play (5 Oct)
-- [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
-- [x] **µ-law on the wet only, before TONE: picked B everywhere and merged** (5 Oct, `9245811`): the dry is clean in every ATTITUDE, TONE thins the grit. In the plugin after the next install
-
-### 3e. Kick removed; the button throws and taps tempo (5 Oct) · built, merges after round 5
-- Two calls the build made: a tapped tempo **holds** after you stop tapping (a single lone tap returns to free time after ~2 s); in the plugin, **held MIDI notes act as the gate** (throws in 1–2, clock in 3), and Ableton's tempo beats taps. Say if you'd rather taps expire like the gate clock
-- Your call: **no Kick** (module and plugin; frees ~3–4 KB of flash). **The button:** held = a manual throw in SPRINGS 1–2 (the first press switches throw mode on, so it works with nothing patched); taps = tempo in echo mode. **Leave throw mode:** double-tap, then hold 2 s (single taps and holds of any length stay throws). The gate stays on/off: throw in 1–2, clock in 3 (the jack is digital, so no CV-level throw). Merges after round 5 and the µ-law move; the friends' release notes get updated to match
+### 3. The new release on the module + click check (≈10 min)
+- [x] Flashed `dist/resilio_versio_release_0267d0e.bin` (5 Oct: "sounding fantastic")
+- [ ] **Click check** (under way, no clicks so far): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
-- [ ] **KICKED, TONE fully right, hit KICK:** with 10-bit µ-law the Kick's low end clears again (falls 20–34 dB in 300 ms). Sounds right?
-- [ ] **Throw on the module:** a gate opens the springs' send in SPRINGS 1–2; hold KICK 1 s to leave throw mode (four LEDs blink white). In SPRINGS 3 the gate clocks the echo
+- [ ] **KICKED's grit now it's wet-only:** still enough, or try 8-bit on the wet? (8-bit sounded "a little digital" when it was on the dry too)
 - [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): output LEDs mostly out of red, any brief red clean, not driven
 - [ ] Play it thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
 
-### 5. The plugin in Ableton (≈20 min, after §1)
-- [ ] **Panel interface:** does the layout read like your panel? Knobs comfortable? LEDs match the module? KICK and THROW work?
-- [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0 (in CLEAN), 44.1/96 kHz. A **Bypass** control is normal
+### 5. The plugin in Ableton (≈20 min)
+- [ ] **Panel interface:** does the layout read like your panel? Knobs comfortable? LEDs match the module? The button throws (SPRINGS 1–2) and taps (SPRINGS 3)?
+- [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md). Loads (AU + VST3), automatable, held MIDI notes throw, null test at MIX 0 (in CLEAN), 44.1/96 kHz. Skip step 3 (MIDI Kicks: retired). A **Bypass** control is normal
 
 ### Optional
-- [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md)). Paste any reply from your friend to Claude
+- [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude refreshes the manual and starting points and publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md), up to date). Paste any reply from your friend to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
-- [ ] **Kick with SPLASH at 0:** full crash anyway, or should SPLASH scale the Kick's crash too?
 - [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
 - [ ] **KICKED Howl on a tight tank** (SPRINGS 1–2, TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal? (At TONE right you said the pitch lean is fine)
 
@@ -61,8 +54,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Three builds in flight** (next session picks them up): Wellspring round 5 with your pick B (+ its test fix-ups and a flash trim), µ-law moved to the wet before TONE (+ a short page), the Kick removal with the button as throw/tap. Merged one at a time, then a plugin install, a release and CPU run 19 for the module (§2)
-- **Friends' release notes** updated for the Kick removal, the button and the µ-law placement; then, after you've tested module + plugin, the docs refresh and `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish`
+- **Echo mode: tape wear B becomes the default** (your pick, B on every row, 6 Oct): the held top made to lock in like today (your call), then merged and installed in Ableton when every test passes, plus a new release and CPU-test build for the module (B needs a CPU run on the chip)
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -71,6 +63,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **Hardware checks:** pass/fail per step; for anything odd, a line of description or a short recording
 
 ## Retired (superseded, no action)
+- 5 Oct 2026 (evening): **"Throw on the module: hold KICK 1 s to leave"** and **"KICKED, TONE right, hit KICK"**: the Kick is gone; the button's throw replaces both (§1, §3). **"Kick with SPLASH at 0"** (design question): no Kick. **The `fa54cb6` release**: superseded by `0267d0e` (§3)
 - 5 Oct 2026: **The `843c5fc` release click check**: superseded by the next release (§2). **"Is the KICKED runaway in the right place?"**: the echo's runaway is gone (held top). **"KICKED + TONE right Kick fills with grain?"** (8-bit): answered by 10-bit. **CPU run 16/17 plans**: done. Judged listening pages deleted (feat_*)
 - 4 Oct 2026: **"What should make you reach for 3 Springs?"**: answered by echo mode. **Wellspring fit "next round" (old §4)**: superseded by round 5. **Three checks on the F sound** (SPLASH with DRIVE down, TONE sweep level on clicks, TONE fully left): the sound moves again with TONE after the springs; check by ear after the merge (§4). **TONE fully right thin enough?**: settled by the Big Knob picks and TONE after the springs. Listening pages already judged were deleted (prototypes, BBD, diffuse, wear)
 These judged builds that no longer exist, or were overtaken by newer work:
@@ -81,6 +74,10 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Tape wear listened:** B (tape saturation + roll-off) on every row and ATTITUDE; no crinkle. Held top: lock in like today
+- 5 Oct 2026: **Plugin `c7bf3e7` installed** (AU validated; all tests pass, 24 of 24): round 5, the wet µ-law, no Kick, the button throws / taps
+- 5 Oct 2026: **Merged:** Wellspring round 5 (your pick B, `44224b1`); µ-law on the wet only, before TONE (your pick B, `9245811`); the Kick removed and the button as throw / tap tempo (your call, `0267d0e`). Friends' release notes updated to match
+- 5 Oct 2026: **All LEDs going white** after ~36 min: a timer bug, fixed in `fa54cb6`
 - 5 Oct 2026: **Echo tuning merged** (your pick B everywhere): echo mode's DECAY top is steady held repeats in every ATTITUDE (KICKED's runaway gone), KICKED µ-law 10-bit
 - 5 Oct 2026: **CPU runs 17 and 18:** run 17 (everything merged) 79 % echo mode, an 82 % spike on the SPRINGS switch; run 18's sound-neutral savings bring echo mode to 76 %, the switch to 77 %, the worst moment to 79.9 %. 76 % accepted under the 80 % ceiling
 - 5 Oct 2026: **Merged:** CPU savings (run 16), TONE after the springs, echo mode, Throw + Hold (ducking 12 dB, keyed on kick/bass), µ-law on the DRIVEN/KICKED output. Plugin `843c5fc` installed

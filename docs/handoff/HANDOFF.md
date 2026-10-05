@@ -3,7 +3,7 @@
 **Written:** 5 Oct 2026, end of session 7 (3–5 Oct). Start the next session with `/resilio-start`. **Three agents were still running when this was written** (see "In flight"): check their worktrees first.
 
 
-**UPDATE (end of session 7): all three in-flight items are MERGED.** Round 5 `44224b1` (ctest 100 % of 25), µ-law wet pre-TONE `9245811`, Kick removal `0267d0e` (branch-side ctest 100 % of 24 + 83/83 bit-identical). Firmware at `0267d0e`: release 125,172 B (95 %), profile 127,000 B (96 %). **Not yet done:** full ctest on main at `0267d0e` (run it first), plugin install (owner closes Ableton), then `dist/resilio_versio_release_0267d0e.bin` + `dist/resilio_versio_m3_profile_run19.bin` (both built) for run 19 and the click check; update `releases/whats-new-since-1-oct.md` (Kick gone, button throw/tap, µ-law wet only, round 5).
+**UPDATE (end of session 7): all three in-flight items are MERGED.** Round 5 `44224b1` (ctest 100 % of 25), µ-law wet pre-TONE `9245811`, Kick removal `0267d0e` (branch-side ctest 100 % of 24 + 83/83 bit-identical). Firmware at `0267d0e`: release 125,172 B (95 %), profile 127,000 B (96 %). **Session 8 (5 Oct):** full ctest on main at `c7bf3e7` = **100 % of 24** (25 → 24: the Kick suite went with the Kick); plugin `c7bf3e7` installed + AU validated. **Not yet done:** `dist/resilio_versio_release_0267d0e.bin` + `dist/resilio_versio_m3_profile_run19.bin` (both built) for run 19 and the click check; update `releases/whats-new-since-1-oct.md` (Kick gone, button throw/tap, µ-law wet only, round 5).
 
 ## State
 
