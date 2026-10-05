@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 5 Oct 2026, end of session 7 (merged: TONE after the springs, Throw + Hold, echo mode + tuning, µ-law, run 18, LED fix. In flight: Wellspring round 5 (B), µ-law to the wet before TONE, Kick removal + button throw/tap; then the click check and the friends' release)
+**Last updated:** 5 Oct 2026, late (all merged: round 5 B, µ-law wet before TONE, Kick removed + button throw/tap, `0267d0e`). Next: plugin install, then on the module `dist/resilio_versio_m3_profile_run19.bin` (CPU run 19) and `dist/resilio_versio_release_0267d0e.bin` + click check
 
 | Milestone | State |
 |---|---|
