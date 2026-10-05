@@ -24,8 +24,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 2. The new release on the module + click check (≈10 min)
 - [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
 
-### 3. Wellspring round 5, the last fit · ready to hear
-- [ ] [`renders/fit_round5/`](../renders/fit_round5/index.html), your Wellspring under "Compare with" (pick the matching take per row). **A** today; **B** softer front, ring lower (1 kHz no longer outlasts 500 Hz), presence up to 1.25–1.6 kHz, Wellspring-like stereo (centred lows, no left lean); **C** B + held sounds settle (WOBBLE's wow/flutter moved to the pickups: pads sit still, same drift); **D** halfway to C with B's stereo. Note: B alone makes held notes swell more with WOBBLE up (read it as the step to C). Not met: the Wellspring's 1 kHz swell-in, a 2 kHz out-of-phase front, the 4 kHz width. After your pick: a fix-up round (5–8 test suites to re-tune) and a small flash trim, then merge
+### 3. Wellspring round 5, the last fit · picked B (5 Oct)
+- [x] **B everywhere** (softer front, ring lower, presence up, Wellspring-like stereo), held-tone and pad rows included at WOBBLE 0.45 (where B's held notes move most: kept as you heard it). Being made the default now, with its test fix-ups and a flash trim so it fits; then merge, plugin install and the release for the module
 
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
