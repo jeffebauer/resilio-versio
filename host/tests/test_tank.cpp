@@ -771,7 +771,9 @@ Buf deterministicRender(rv::Tank& tank, const Buf& in, int block)
         size_t k = std::min(size_t(block), n - pos);
         for (size_t c : {change1, change2})
             if (pos < c && pos + k > c) k = c - pos;
-        if (pos <= 40000 && pos + k > 40000) tank.kick(int(40000 - pos));
+        // The button: a tap in SPRINGS 3 (40000), a hand throw in SPRINGS 2 (62000-70000).
+        for (auto [at, down] : {std::pair<size_t, bool>{40000, true}, {41000, false}, {62000, true}, {70000, false}})
+            if (pos <= at && pos + k > at) tank.button(down, int(at - pos));
         tank.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, int(k));
         pos += k;
     }
@@ -791,7 +793,7 @@ void determinism()
     const Buf first = deterministicRender(tank, in, 48);
     tank.reset();
     const Buf second = deterministicRender(tank, in, 48);
-    check(first == second, "Determinism: SPRINGS 1 -> 3 -> 2 + Kick, same input twice (reset() between) is bit-identical");
+    check(first == second, "Determinism: SPRINGS 1 -> 3 -> 2 + button presses, same input twice (reset() between) is bit-identical");
 
     bool same = true;
     for (int block : {1, 7, 48, 512}) {
@@ -799,45 +801,10 @@ void determinism()
         t.prepare(kFs, 512);
         same &= deterministicRender(t, in, block) == first;
     }
-    check(same, "Determinism: SPRINGS changes + Kick, block sizes 1, 7, 48, 512 are bit-identical");
+    check(same, "Determinism: SPRINGS changes + button presses, block sizes 1, 7, 48, 512 are bit-identical");
 }
 
-// ---- 8. Kick reaches every Spring -------------------------------------------------
-// Since M7 the Kick is a thump + burst injected after the drive (not an input
-// impulse): it must be heard on L and R in every SPRINGS mode, with its onset
-// (first sample differing from the same render without the Kick) at N + the
-// fixed wet latency (test_kick has the block-size sweep).
-void kickReachesAllSprings()
-{
-    for (int m = 0; m < 3; ++m) {
-        const size_t n = size_t(kFs);
-        Buf silence(n, 0.0f);
-        rv::Tank a, b;
-        a.prepare(kFs, 64);
-        b.prepare(kFs, 64);
-        apply(a, Settings{0.6f, 0.5f, 0.5f, 1.0f, m});
-        apply(b, Settings{0.6f, 0.5f, 0.5f, 1.0f, m});
-        Stereo ok{Buf(n), Buf(n)};
-        for (size_t pos = 0; pos < n; pos += 64) {
-            if (pos <= 1000 && pos + 64 > 1000) a.kick(int(1000 - pos));
-            a.process(silence.data() + pos, silence.data() + pos, ok.l.data() + pos, ok.r.data() + pos, 64);
-        }
-        const Stereo ref = render(b, silence, 64);
-        size_t onset = n;
-        for (size_t i = 0; i < n && onset == n; ++i)
-            if (ok.l[i] != ref.l[i] || ok.r[i] != ref.r[i]) onset = i;
-        Buf dl(n), dr(n);
-        for (size_t i = 0; i < n; ++i) {
-            dl[i] = ok.l[i] - ref.l[i];
-            dr[i] = ok.r[i] - ref.r[i];
-        }
-        const double pl = power(dl, 0, n), pr = power(dr, 0, n);
-        const bool both = pl > 1e-8 && pr > 1e-8;
-        std::snprintf(msg, sizeof msg, "Kick, %s: heard on L and R (%.1f / %.1f dB), onset at N + %d samples (<= 48)",
-                      kModeName[m], 10.0 * std::log10(pl + 1e-30), 10.0 * std::log10(pr + 1e-30), int(onset) - 1000);
-        check(both && onset >= 1000 && onset <= 1048, msg);
-    }
-}
+// ---- 8. (Was: the Kick reaches every Spring. The Kick went in ADR 0043.) ----------
 
 // ---- 9. CPU and memory report ------------------------------------------------------
 void performance()
@@ -880,7 +847,6 @@ int main()
     switchingClickFree();
     knobSweep(rv::ParamId::Decay, "DECAY", Settings{0.0f, 0.5f, 0.5f, 1.0f, 0}, 0.9f);
     knobSweep(rv::ParamId::Tension, "TENSION", Settings{0.5f, 0.0f, 0.5f, 1.0f, 0});
-    kickReachesAllSprings();
     determinism();
     stabilityGrid();
     performance();

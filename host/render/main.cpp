@@ -78,9 +78,9 @@ std::string isoTimestamp()
 }
 
 // Renders `in` through `tank`, applying automation at <=16-sample
-// granularity (sample-accurate kicks): breakpoints re-interpolated at
-// every micro-block boundary, kicks fired at their exact sample offset
-// within the micro-block they land in.
+// granularity: breakpoints re-interpolated at every micro-block boundary;
+// gate, button and clock events at their exact sample offset within the
+// micro-block they land in.
 Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv::automation::Automation* autom)
 {
     const std::vector<float>& srcL = in.channels[0];
@@ -94,20 +94,19 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
     out.channels.assign(2, std::vector<float>(frames));
     float* dstR = out.channels[1].data();
 
-    std::vector<size_t> kickSamples;
-    if (autom) {
-        for (double t : autom->kicksSeconds) kickSamples.push_back(size_t(std::lround(t * double(sr))));
-    }
-    size_t nextKick = 0;
     std::vector<std::pair<size_t, bool>> gateSamples; // THROW (ADR 0039): sample-accurate gate changes
     if (autom)
         for (const auto& [t, high] : autom->gateEvents) gateSamples.emplace_back(size_t(std::lround(t * double(sr))), high);
     size_t nextGate = 0;
-    std::vector<size_t> exitSamples; // a long press of KICK: throw mode off (ADR 0039)
+    std::vector<std::pair<size_t, bool>> buttonSamples; // the button (ADR 0043): sample-accurate presses and releases
+    if (autom)
+        for (const auto& [t, down] : autom->buttonEvents) buttonSamples.emplace_back(size_t(std::lround(t * double(sr))), down);
+    size_t nextButton = 0;
+    std::vector<size_t> exitSamples; // throw mode off (ADR 0039)
     if (autom)
         for (double t : autom->throwExitsSeconds) exitSamples.push_back(size_t(std::lround(t * double(sr))));
     size_t nextExit = 0;
-    // Echo mode's clock (ADR 0041): gate rising edges, sample-accurate like the kicks.
+    // Echo mode's clock (ADR 0041): gate rising edges, sample-accurate.
     std::vector<size_t> clockSamples;
     if (autom) {
         std::vector<double> secs = autom->clocksSeconds;
@@ -129,14 +128,15 @@ Audio renderWithAutomation(rv::Tank& tank, const Audio& in, int block, const rv:
             for (const auto& track : autom->tracks)
                 tank.setParam(track.key, float(rv::automation::valueAt(track, t)));
         }
-        while (nextKick < kickSamples.size() && kickSamples[nextKick] < pos + size_t(n)) {
-            if (kickSamples[nextKick] >= pos) tank.kick(int(kickSamples[nextKick] - pos));
-            ++nextKick;
-        }
         while (nextGate < gateSamples.size() && gateSamples[nextGate].first < pos + size_t(n)) {
             const size_t at = std::max(gateSamples[nextGate].first, pos);
             tank.gate(gateSamples[nextGate].second, int(at - pos));
             ++nextGate;
+        }
+        while (nextButton < buttonSamples.size() && buttonSamples[nextButton].first < pos + size_t(n)) {
+            const size_t at = std::max(buttonSamples[nextButton].first, pos);
+            tank.button(buttonSamples[nextButton].second, int(at - pos));
+            ++nextButton;
         }
         while (nextExit < exitSamples.size() && exitSamples[nextExit] < pos + size_t(n)) {
             tank.exitThrowMode();

@@ -59,8 +59,8 @@ constexpr Toggle kToggles[] = {
 };
 
 constexpr Part kButton{26.185f, 69.330f};
-// THROW (ADR 0039): the gate jack's stand-in, not on the printed panel. Right
-// of the KICK button, below DRIVE.
+// GATE (the throw_gate param, ADR 0039): the gate jack's stand-in, not on
+// the printed panel. Right of the button, below DRIVE.
 constexpr Part kThrow{37.5f, 69.330f};
 
 // LED1..LED4, left to right: In L, In R, Out L, Out R (PanelLink::Meter order).
@@ -71,7 +71,7 @@ constexpr float kKnobSizeMm    = 12.5f; // slider bounds; the cap on the module 
 constexpr float kLedRadiusMm   = 1.8f;  // the hole is 3 mm
 constexpr float kSegmentWMm    = 6.8f;  // one toggle position (three side by side)
 constexpr float kSegmentHMm    = 4.5f;
-constexpr float kSegmentLeftMm = 1.5f;  // the three end left of the KICK button
+constexpr float kSegmentLeftMm = 1.5f;  // the three end left of the button
 constexpr float kButtonMm      = 7.0f;
 constexpr float kLabelHMm      = 2.6f;
 
@@ -228,16 +228,26 @@ public:
             toggleAttach_[t]->sendInitialUpdate();
         }
 
-        // One Kick per press, fired on mouse down like the hardware button.
-        // The audio thread picks it up at the start of its next block.
-        kick_.setButtonText("KICK");
-        kick_.setTriggeredOnMouseDown(true);
-        kick_.onClick = [this] { link_.requestKick(); };
-        addAndMakeVisible(kick_);
+        // The button (ADR 0043), as on the module: held = a hand throw in
+        // SPRINGS 1-2 (the first press switches throw mode on; double tap
+        // and hold 2 s switches it off), taps = the echo's tempo in SPRINGS
+        // 3 (unless the host gives a tempo: the host wins). Every press and
+        // release goes to the audio thread, which hands it to the Tank at
+        // the start of its next block; the Tank does the rest.
+        button_.setButtonText("THROW");
+        button_.onStateChange = [this] {
+            const bool down = button_.isDown();
+            if (down == buttonDown_) return;
+            buttonDown_ = down;
+            if (down) link_.button.press();
+            else link_.button.release();
+        };
+        addAndMakeVisible(button_);
 
-        // THROW: the gate (on = high, the send open; ADR 0039). A latching
-        // button on the automatable throw_gate param.
-        throw_.setButtonText("THROW");
+        // GATE: the gate jack (on = high: the send open in SPRINGS 1-2, ADR
+        // 0039). A latching button on the automatable throw_gate param
+        // (named THROW in the host's parameter list).
+        throw_.setButtonText("GATE");
         throw_.setClickingTogglesState(true);
         addAndMakeVisible(throw_);
         throwAttach_ = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(state, spec(ParamId::Throw).key, throw_);
@@ -279,7 +289,7 @@ public:
                 toggles_[t][pos].setBounds(centred(c, kSegmentWMm, kSegmentHMm));
             }
 
-        kick_.setBounds(centred(kButton, kButtonMm, kButtonMm));
+        button_.setBounds(centred(kButton, kButtonMm, kButtonMm));
         throw_.setBounds(centred(kThrow, 9.0f, kSegmentHMm));
 
         constexpr float sizeW = 7.0f;
@@ -352,18 +362,8 @@ private:
 
         // Red: input near full scale; output while the Tank's safety limiter
         // pulls the wet down (stereo-linked: both output LEDs together).
-        // KICK held (ADR 0039): after kThrowExitHoldSeconds, throw mode off
-        // once per press; the LEDs blink white if it was on (as the module).
-        if (kick_.isDown()) {
-            if (kickDownMs_ < 0.0) kickDownMs_ = now;
-            if (!exitSent_ && now - kickDownMs_ >= 1000.0 * double(rv::throwhold::kThrowExitHoldSeconds)) {
-                link_.requestThrowExit();
-                exitSent_ = true;
-            }
-        } else {
-            kickDownMs_ = -1.0;
-            exitSent_   = false;
-        }
+        // Throw mode off (the button's double tap and hold, ADR 0043): the
+        // LEDs blink white, as on the module.
         if (link_.takeThrowExited()) blinkUntilMs_ = now + 1000.0 * double(rv::throwhold::kThrowExitBlinkSeconds);
 
         const bool limiting = rvled::limiterReducing(link_.takeLimiterGain());
@@ -384,9 +384,9 @@ private:
     std::array<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>, std::size(kKnobs)> knobAttach_;
     std::array<std::array<juce::TextButton, 3>, std::size(kToggles)> toggles_;
     std::array<std::unique_ptr<juce::ParameterAttachment>, std::size(kToggles)> toggleAttach_;
-    juce::TextButton                kick_;
-    double                          kickDownMs_ = -1.0, blinkUntilMs_ = 0.0; // KICK held -> throw mode off
-    bool                            exitSent_   = false;
+    juce::TextButton                button_;
+    bool                            buttonDown_   = false;
+    double                          blinkUntilMs_ = 0.0; // throw mode off: the LEDs white until then
     juce::TextButton                throw_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> throwAttach_;
     std::array<juce::TextButton, 3> sizes_;

@@ -549,9 +549,9 @@ void driveAudibility()
         Settings s;
         s.att = att;
         s.drive = drive;
-        // SPLASH 0, as the sweet-spot test below: the Clatter follows the
-        // driven level, and since SPLASH round 2 its knocks land differently
-        // at each DRIVE, which a null test counts as DRIVE's sound.
+        // SPLASH 0, as the sweet-spot test below: the splash follows the
+        // driven level (when this was written, the Clatter's knocks landed
+        // differently at each DRIVE), which a null test counts as DRIVE's sound.
         s.splash = 0.0f;
         apply(t, s);
         Stereo o{Buf(n), Buf(n)};
@@ -614,7 +614,7 @@ void driveAudibility()
 // sum; a step is audible if the null between neighbours is >= -40 dB or
 // the RMS moves >= 0.5 dB. Dead patch = 3 or more silent steps in a row.
 // SPLASH 0 here, so only DRIVE's own sound counts (at SPLASH 0.3 the
-// Clatter moving with the driven level makes every step "audible").
+// splash moving with the driven level made every step "audible").
 // M7 build: CLEAN dead 0-0.4 and 0.5-1, DRIVEN 0-0.3 (clean-ish below
 // ~9 o'clock is ADR 0014's intent: 2 silent steps are allowed).
 void driveSweetSpot()

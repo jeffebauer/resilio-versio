@@ -35,7 +35,7 @@
 //             way (a tighter tank today, shorter repeats here).
 //   gate    = a clock (one pulse = one beat, a quarter note; dsp/EchoClock.h).
 //             Positions 1-2 keep the gate's own job there.
-//   button  = the Kick, into the tank, as in every position.
+//   button  = tap tempo (one tap interval = one beat, ADR 0043; Tank::button).
 //   WOBBLE  = moves the tape too (its own Transport-role generator, ADR 0034:
 //             Drift left of noon = wow and flutter, Warble right = a sine,
 //             still at noon), so each repeat wavers a little more than the one

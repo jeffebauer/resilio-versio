@@ -63,7 +63,7 @@ All firmware/-only (no changes inside `libs/libDaisy`):
   every variant.
 - **`main.cpp`'s DSP/control-rate split**: `firmware/Makefile` compiles
   `main.cpp` at `-Os` while `core/dsp/*.cpp` (Tank, Spring, Drive, Splash,
-  Kick, Wobble) stay at `-O3` in every variant, so release and profile always
+  Wobble, Echo) stay at `-O3` in every variant, so release and profile always
   measure the identical, maximally-optimised per-sample DSP code — profile's
   CPU numbers stay valid for release. Only the knob/switch/LED/serial
   "glue" code shrinks.
@@ -78,7 +78,7 @@ All firmware/-only (no changes inside `libs/libDaisy`):
 - **`RV_SIZE_OPT` (`core/dsp/SizeOpt.h`)**: set-up and per-tick
   housekeeping in the Core is built for size (-Os) in the firmware only:
   every `prepare` / `reset`, the pool layout, the tank voicing's set-up, the
-  per-tick parts of Splash, Wobble and Kick (`Splash::set` / `controlTick` /
+  per-tick parts of Splash and Wobble (`Splash::set` / `controlTick` /
   `fire`, `Wobble::setAmount` / `tick`, the Morph blends), the Tank's
   `controlTick`. Every per-sample path and the knob-move coefficient redesign
   (`Tank::updateBaseSettings` / `updateSpringSettings`,
@@ -97,6 +97,12 @@ All firmware/-only (no changes inside `libs/libDaisy`):
 - The firmware Tank links no `malloc` / `free` (it gets its pool from
   `main.cpp`), `exp(log)` instead of `pow` in the Core (`powf` is ~1.1 KB),
   and profile's report divides in float, not 64-bit integers (~0.85 KB).
+- **The Kick removed (ADR 0043, 5 Oct 2026)**: no Kick voice, no Clatter
+  (the Splash's noise-burst streams and their rattle), no Kick queue in the
+  Tank; the button's throw, exit gesture and tap tempo (a second
+  `EchoClock`) added. With `main` at f57adca (round 5, voicing 8): release
+  128,092 → **125,172 B** (−2,920; 5,900 B free), profile 130,384 →
+  **127,000 B** (−3,384; 4,072 B free), m0test 82,320 B; no new `vfma`.
 - Link-time optimisation (`-flto`) was evaluated and **not adopted**: on
   this small a set of translation units it made both release and profile a
   few hundred bytes *larger*, not smaller (LTO's own bookkeeping outweighed
@@ -204,7 +210,7 @@ block (1 ms at 48 frames), `main.cpp`'s release section reads:
   (ADR 0028; `kPotKnob` is the pot → libDaisy index table, `kPotParams` the
   pot → function table).
 - **SW0 → SPRINGS, SW1 → ATTITUDE** (CLEAN / DRIVEN / KICKED).
-- **Button → Kick**, on the rising edge, at the start of the block. **Held 1 s** (`TimeHeldMs()`, ThrowHold.h `kThrowExitHoldSeconds`): throw mode off, once per press (`Tank::exitThrowMode()`); if it was on, all four LEDs show white for 150 ms in the main loop (ADR 0039). **Gate → THROW** in positions 1-2 (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes). Every rising edge also goes to `Tank::clock()` (echo mode's clock, ADR 0041); in position 3 that is the gate's only job (the Tank keeps the role, ThrowHold.h `gateRole`).
+- **Button** (ADR 0043; was the Kick): every change of the debounced button goes to `Tank::button()` at the start of the block. The Tank does the rest: in positions 1-2 a hand throw (the send open while held; the first press switches throw mode on), and the exit gesture (tap, press again within 0.35 s, hold 2 s: throw mode off, ThrowHold.h `kExitGapSeconds` / `kExitTapMaxSeconds` / `kThrowExitHoldSeconds`), timed on its control grid; in position 3 tap tempo for the echo. When `Tank::throwExits()` moves, all four LEDs show white for 150 ms in the main loop (ADR 0039; elapsed time by unsigned subtraction, fa54cb6). **Gate → THROW** in positions 1-2 (ADR 0039): every change goes to `Tank::gate()` at the start of the block; the send is open while the gate is high, from its first rising edge (unpatched it reads low, so nothing changes). Every rising edge also goes to `Tank::clock()` (echo mode's clock, ADR 0041); in position 3 that is the gate's only job (the Tank keeps the role, ThrowHold.h `gateRole`).
 - **Output trim**: undoes the Versio's polarity flip and +1.2 dB (M0), so
   MIX 0 sounds like a patch cable.
 - **LEDs**: level meters (ADR 0031, `LedMeter.h`).
@@ -213,8 +219,8 @@ DRIVE, SPLASH and full ATTITUDE behaviour are all in Core now (M5–M7), so
 each knob does on the module what it does in the Plugin (same Core, same
 ParamSpec). Tuning continues in M8 (`docs/m8-tuning-backlog.md`; SPLASH is
 being reworked). Not in the release build: USB serial (flash budget, see
-"How to build") and MIDI (the Plugin's
-MIDI-note Kick has no Versio equivalent; since ADR 0039 the gate is the throw, and the button the only Kick).
+"How to build") and MIDI (in the Plugin MIDI notes are the gate; on the
+module the gate jack is).
 
 ## M3 results
 

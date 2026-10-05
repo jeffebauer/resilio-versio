@@ -3,14 +3,13 @@
 //
 // Signal flow (M7):
 //
-//   in L,R ─ mono sum ─┬─ × G (INPUT) ─ Splash ─ Clang c, Bite b; Jolt ─► each Spring's L, a; Kick's Clatter
-//                      └─ × (1+b) ─ DriveIn ─ ÷ √(1+b) ─ Tilt ─ + c·highs ─ + ─ x ─── low in  ─┐
-//                                                                   ▲  └ (x + Clatter) × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
-//   kick() ─ KickVoice ─ loop feed (HP 160 Hz⁴) ────────────────────┘                        │  Wobble[i] ─► Spring i's L
-//                      ├ direct thump ────────────────────────────────┐                        │
-//                      └ forced Splash (Hit 1, SPLASH 1)              │                        ▼
-//                  × G^kInputHeard ─ SPRINGS mid/side mix ─ mid ┴ + ─┬─────────────┐   (per mode, 20 ms fade)
-//                                                                     └ decorrelator ─ D
+//   in L,R ─ mono sum ─ × send (THROW) ─┬─ × G (INPUT) ─ Splash ─ Clang c, Bite b; Jolt ─► each Spring's L, a
+//                                       └─ × (1+b) ─ DriveIn ─ ÷ √(1+b) ─ Tilt ─ + c·highs ─ x ─── low in  ─┐
+//                                                                                 └ x × HF gain ─ high in ─┤  Spring A, B, C (each has a LoopSat in its Loop)
+//                                                                                                           │  Wobble[i] ─► Spring i's L
+//                                                                                                           ▼
+//                  × G^kInputHeard ─ SPRINGS mid/side mix ─ mid ─┬─────────────┐   (per mode, 20 ms fade)
+//                                                                └ decorrelator ─ D
 //     L = mid + side + w·D,  R = mid - side - w·D ─ DriveOut (L, R) ─ high-shelf cut ─ mu-law box ─ TONE return ─ limiter ─ wet
 //       (mu-law box: DRIVEN 24 kHz / 12-bit, KICKED 24 kHz / 10-bit, CLEAN untouched; ADR 0042, dsp/OutputBits.h)
 //   out = dry · sqrt(1 - MIX) + wet · sqrt(MIX)   (equal power, dry stays stereo)
@@ -65,7 +64,7 @@
 // ATTITUDE flip crossfades it against the undelayed CLEAN wet over 20 ms. Inside each Loop the LoopSat's
 // oversampler delay is counted in the round trip (Spring.h).
 //
-// SPLASH / KICK / WOBBLE (M7, SPEC §4.5-4.7, docs/m7-integration.md; all
+// SPLASH / WOBBLE (M7, SPEC §4.5, §4.7, docs/m7-integration.md; all
 // numbers in params/SplashVoicing.h):
 // - Splash (one per Tank) listens to the mono input after the INPUT gain G,
 //   before any saturation and before Tilt (so neither DRIVE's colour nor
@@ -73,18 +72,12 @@
 //   ADR 0032, 0033). A hit's splash is its own sound (ADR 0032): the Clang
 //   feeds the hit's highs harder into the springs (every ATTITUDE), the Bite
 //   pushes a short, cracking hit harder into DriveIn (DRIVEN, KICKED). No
-//   noise is added on a hit; the Clatter is the Kick's crash only, into
-//   every Spring's Loop and high path. Hit is level-adaptive (judged against
+//   noise is added on a hit. Hit is level-adaptive (judged against
 //   a slow program level, SplashVoicing.h). Its Jolt moves each Spring's L
 //   per sample (Spring B the other way) and adds to each Spring's allpass a
 //   on the control grid (clamped |a| <= 0.85).
-// - Kick (ADR 0005, 0013, 0016): kick(offset) starts a KickVoice on its exact
-//   sample. The high-passed thump + burst is added after DriveIn and Tilt
-//   (post-drive: a knock on the tank bypasses the transducer and the EQ),
-//   the full thump goes straight to the wet mid (the pickup hears the tank
-//   body move), and the Kick forces a maximal Splash on the same sample.
-//   The Kick is heard from sample N itself (the DriveOut oversampler's first
-//   tap answers at once), for any block size (test_kick, plugin_host_test).
+// - The Kick (a simulated knock on the tank, with its Clatter crash) was
+//   removed in ADR 0043: the button throws and taps tempo instead.
 // - WOBBLE: one generator per Spring, a Loop delay offset in samples added
 //   on top of the Micro-mod floor; bipolar, exactly 0 at noon (ADR 0034,
 //   WobbleVoicing.h); Springs B and C follow A at low amounts. Plus
@@ -94,7 +87,7 @@
 // counted from reset(), which lines up with the Tank's (static_assert).
 // ATTITUDE's Morph weights feed their tables too, so a flip Morphs them.
 //
-// Every Spring hears the same mono input, including the Kick, like the
+// Every Spring hears the same mono input, like the
 // springs in one physical tank all hang off the same driver. Each Spring is
 // detuned (own L, fC, a) and placed in the stereo field by the SPRINGS mode;
 // all the numbers live in core/params/SpringModes.h.
@@ -133,7 +126,8 @@
 // stages and level) at a fixed tank (echo::kSpringsTension, kSpringsT60Seconds):
 // DECAY is the echo's feedback (ATTITUDE-dependent: KICKED may run away at
 // the top), TENSION its time (free, or a division of the clock), the gate
-// its clock (clock(); the Plugin: setHostTempo()). Switching in and out
+// its clock (clock(); the Plugin: setHostTempo()) and the button its tap
+// tempo (button(), ADR 0043). Switching in and out
 // glides over springs3::kGlideSeconds: the echo fades in on a fresh tape (or
 // out, its repeats ringing on in the springs) while the Springs glide between
 // the knobs' tank and the fixed one; positions 1 and 2 are bit for bit as
@@ -194,7 +188,6 @@
 #include "dsp/Echo.h"
 #include "dsp/EchoClock.h"
 #include "dsp/Filters.h"
-#include "dsp/Kick.h"
 #include "dsp/OutputBits.h"
 #include "dsp/Splash.h"
 #include "dsp/Spring.h"
@@ -239,7 +232,7 @@ public:
     // tone (-45 to -53 dB) and still releases 30 ms after the loud part ends.
     static constexpr float kLimitHoldS      = 0.030f;
     static constexpr float kLimitHoldRefresh = 0.944f; // -0.5 dB
-    static constexpr int   kMaxPendingKicks = 16;
+    static constexpr int   kMaxPendingClocks = 16;
     static constexpr float kSpringsFadeSeconds = 0.020f; // SPRINGS crossfade (ADR 0003)
 
     Tank() = default;
@@ -272,17 +265,35 @@ public:
 
     float param(ParamId id) const { return values_[static_cast<size_t>(id)]; }
 
-    // Kick at a sample offset within the next process() block (clamped to it).
-    // Up to kMaxPendingKicks per block; extras are dropped.
-    void kick(int sampleOffset);
     // Echo mode's clock (ADR 0041): a rising edge of the gate at a sample
     // offset within the next process() block (clamped to it). One pulse = one
     // beat. Feed every edge in every position (the tempo is then known before
-    // SPRINGS reaches 3); only echo mode uses it. Up to kMaxPendingKicks per block.
+    // SPRINGS reaches 3); only echo mode uses it. Up to kMaxPendingClocks per block.
     void clock(int sampleOffset);
     // The Plugin's clock (ADR 0004 parity): the host's tempo in bpm (one beat
-    // = its quarter note), 0 = none (gate clock or free time). Overrides clock().
+    // = its quarter note), 0 = none (gate clock, tap tempo or free time).
+    // Overrides clock() and the taps.
     void setHostTempo(float bpm) { hostBpm_ = bpm > 0.0f ? bpm : 0.0f; }
+
+    // The button (ADR 0043, params/ThrowHold.h): its state from a sample
+    // offset within the next process() block (clamped to it; give changes in
+    // time order). Hosts pass every change (the firmware once per block on a
+    // change, the Plugin's panel button, the Renderer's "buttons" events).
+    // Positions 1-2: a hand throw. The first press switches throw mode on
+    // (as the gate's first rising edge); thrown, the send is open while the
+    // gate is high OR the button is held. Tap, tap and hold the second press
+    // kThrowExitHoldSeconds: throw mode off (as exitThrowMode(); throwExits()
+    // counts it for the LEDs). Position 3 (echo mode): each press is a tap of
+    // the echo's tempo (one tap interval = one beat; the gate clock's code,
+    // EchoClock); of the gate clock and the taps, the last to set a tempo wins.
+    // Up to kMaxPendingGates per block; extras are dropped.
+    void button(bool down, int sampleOffset);
+    // Times throw mode was switched off (the button's gesture or
+    // exitThrowMode()) since prepare()/reset(): the firmware blinks its LEDs
+    // when this moves.
+    uint32_t throwExits() const { return throwExits_; }
+    // The tapped tempo is the echo's clock now (tests).
+    bool tapClockInUse() const { return tapClock_.locked() && (tapWins_ || !clock_.locked()); }
 
     // THROW (ADR 0039, params/ThrowHold.h): the gate's level from a sample
     // offset within the next process() block (clamped to it; give them in
@@ -294,12 +305,12 @@ public:
     // only while the gate is high (opens over 2 ms, closes over 15 ms).
     // Up to kMaxPendingGates per block; extras are dropped.
     void gate(bool high, int sampleOffset);
-    // Throw mode off (ADR 0039: a long press of KICK, ThrowHold.h
-    // kThrowExitHoldSeconds; the Plugin's KICK held as long): at the next
+    // Throw mode off (ADR 0039; the button's gesture does the same from
+    // inside, ADR 0043; the Renderer's "throw_exits" call it): at the next
     // block's start the send glides back to open over the open ramp and the
-    // latch clears, so the next rising edge switches the throw on again.
-    // Returns true if throw mode was on (the firmware's LED confirmation);
-    // false, and nothing changes, if it was off.
+    // latch clears, so the next rising edge or press switches the throw on
+    // again. Returns true if throw mode was on; false, and nothing changes,
+    // if it was off.
     bool exitThrowMode();
     // The throw has latched on (the first rising edge has come).
     bool throwOn() const { return throwOn_; }
@@ -351,14 +362,14 @@ public:
     const std::array<float, 3>& attitudeWeights() const { return attW_; }
     size_t memoryBytes() const { return sizeof(Tank) + poolFloats_ * sizeof(float); }
     // Test hook (not a panel control): false = the Splash still runs, but its
-    // Clang, Bite, Clatter and Jolt are not applied, so a test can
-    // measure the Splash's share of the output by difference. Default true.
+    // Clang, Bite and Jolt are not applied, so a test can measure the
+    // Splash's share of the output by difference. Default true.
     void setSplashEnabled(bool on) { splashOn_ = joltOn_ = on; }
-    // Finer: the Splash's sound (Clang, Bite and the Kick's Clatter), and the
-    // Jolt (L and a), separately.
-    void setSplashParts(bool clatter, bool jolt)
+    // Finer: the Splash's sound (Clang and Bite), and the Jolt (L and a),
+    // separately.
+    void setSplashParts(bool sound, bool jolt)
     {
-        splashOn_ = clatter;
+        splashOn_ = sound;
         joltOn_   = jolt;
     }
     // Renderer / test hook (not a panel control, ADR 0034 round 2): which
@@ -399,7 +410,6 @@ public:
     int splashVoicing() const { return splash_.voicing(); }
     // M7 components, read-only (tests, meters).
     const dsp::Splash&    splash() const { return splash_; }
-    const dsp::KickVoice& kickVoice() const { return kick_; }
     const dsp::Wobble&    wobble(int i) const { return wobble_[static_cast<size_t>(i)]; }
     const dsp::Wobble&    transport() const { return transport_; }
     // M8 excitation trim now in effect (linear, DriveVoicing.h), for tests.
@@ -568,11 +578,13 @@ private:
     // (keepTiming), and the coupled Loops (couplingAngle / couplingKind).
     void keepTodaysTiming(size_t i, SpringSettings& s) const;
     static CoupleMatrix coupleMatrix(float angle, int kind);
-    void processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
+    void processCoupled(const float* mono, const float* jolt, const float* tapSamples, float* wobA,
                         float (*wet)[kControlInterval], int tick, int n);
     void releaseOwnedPool();
     void echoTick(float decayKnob, float tensionKnob, bool fresh, bool snap); // echo mode's control tick (after the Morph)
-    void feedClocks(); // queued gate edges up to now -> the clock (before each control tick)
+    void feedClocks(); // queued gate edges and taps up to now -> the clocks (before each control tick)
+    void buttonExitTick(); // the exit gesture's hold, on the control grid (ADR 0043)
+    void startThrowExit(); // the send glides back open, then the latch clears
 
     float sampleRate_   = 48000.0f;
     int   maxBlockSize_ = 48;
@@ -628,8 +640,6 @@ private:
     float limitEnv_ = 0.0f, limitGain_ = 1.0f, limitAttack_ = 1.0f, limitRelease_ = 0.0f;
     int   limitHold_ = 0, limitHoldSamples_ = 0;
 
-    std::array<int, kMaxPendingKicks> pendingKicks_{};
-    int numPendingKicks_ = 0;
     // THROW (ADR 0039): pending gate changes, the gate's level as the Tank
     // has it, the latch, and the send's ramp (position 0..1, smoothstep'd).
     static constexpr int kMaxPendingGates = 16;
@@ -643,6 +653,17 @@ private:
     bool  thrReleasing_ = false, releaseThrow_ = false; // exitThrowMode(): gliding back / asked
     float thrPos_ = 1.0f, thrOpenStep_ = 0.0f, thrCloseStep_ = 0.0f, thrRelPos_ = 0.0f;
     void  latchThrow(float holdSend);
+    // The button (ADR 0043): pending changes and its state; the exit gesture
+    // (ThrowHold.h): the last press and release (absolute samples), whether
+    // the last press threw (positions 1-2), was a short tap and stood alone,
+    // the armed exit and when it fires; and the exits so far.
+    std::array<GateEvent, kMaxPendingGates> pendingButtons_{};
+    int      numPendingButtons_ = 0;
+    bool     buttonDown_ = false, btnPressThrew_ = false, btnHaveRelease_ = false;
+    bool     btnTapShort_ = false, btnTapAlone_ = false, exitArmed_ = false;
+    uint32_t btnPressAt_ = 0, btnReleaseAt_ = 0, exitAt_ = 0, throwExits_ = 0;
+    uint32_t exitGap_ = 0, exitTapMax_ = 0, exitHold_ = 0; // ThrowHold.h, in samples
+    void     buttonEvent(bool down, uint32_t at, bool throwRole, float holdSend);
     float sendNow_ = 1.0f; // last sample's send gain (tests)
     // HOLD (ADR 0040): zone weight, bed weight (freeze / duck / layer), the
     // Hold's send gain over the tick, the ducking follower and its gain over
@@ -672,7 +693,7 @@ private:
     int holdVoicing_ = throwhold::kDefaultVoicing; // setHoldVoicing
 #endif
 
-    // M7: Splash (Hit, Clatter, Jolt), the Kick voice and one Wobble per Spring.
+    // M7: Splash (Hit, Clang, Bite, Jolt) and one Wobble per Spring.
     dsp::Splash                        splash_;
     dsp::OnePoleLowpass                clangLp_{}; // the Clang's split at splash::kClangHz (ADR 0032)
     float splashDrive_ = 1.0f;                        // DRIVE's gain on the Clang / Bite (splash::splashDriveGain)
@@ -680,10 +701,9 @@ private:
     float clangCeilPush_ = 1.0f; // its credit for the pickups' push (splash::kCeilPushShare)
     float splashInput_ = 1.0f;                        // the INPUT gain G, for the Splash (SPLASH stronger voicings)
     float dcNoon_ = 0.4f, dcRef_ = 0.75f;             // driveCurve at noon and at splash::kSplashRefDrive
-    dsp::KickVoice                     kick_;
     std::array<dsp::Wobble, kMaxSprings> wobble_{};
     dsp::Wobble                        transport_; // WOBBLE on the first echoes: every pickup, shared
-    bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts): Clang + Bite + Clatter, Jolt
+    bool  splashOn_ = true, joltOn_ = true; // test hooks (setSplashParts): Clang + Bite, Jolt
     float levelAcc_ = 0.0f, levelMs_ = 0.0f, levelCoeff_ = 0.0f; // wet mid power -> Splash tank level, LoopSat fade
     float satFloorMs_ = 0.0f, satInvSpanMs_ = 0.0f; // LoopSat quiet-tail fade (AntiRes.h), mean-square units
     // M8 excitation trim (DriveVoicing.h "Excitation trim"): band-weighted and
@@ -791,17 +811,12 @@ private:
     float toneTrim_ = 1.0f;           // TONE re-map's level right of noon, on the Springs' input
     dsp::OnePoleLowpass tdDarkLp_{};  // ... left of noon: the input's highs (toneDarkLpHz) ...
     float tdAccAll_ = 0.0f, tdAccLp_ = 0.0f, tdAll_ = 0.0f, tdLp_ = 0.0f, tdDarkDb_ = 0.0f, tdWd_ = 0.0f; // ... and its makeup
-    float splashLift_ = 1.0f;         // the Clang and Clatter at low DRIVE (tdSplashLiftDb)
+    float splashLift_ = 1.0f;         // the Clang at low DRIVE (tdSplashLiftDb)
     std::array<float, kMaxSprings> hiT60Set_{{-1.0f, -1.0f, -1.0f}}; // high path T60 ratio sent to each Spring
 #if RV_TANKV_BUILT >= 8
     std::array<float, kMaxSprings> hiCeilSet_{{-1.0f, -1.0f, -1.0f}}; // round 5: high path ceiling sent to each Spring (by TONE)
 #endif
 #endif
-
-    // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).
-    static constexpr size_t kClatterSideMax = 160; // samples: 1.3 ms up to 96 kHz (125)
-    std::array<float, kClatterSideMax> clatBuf_{};
-    int clatPos_ = 0, clatDelay_ = 62;
 
     // ---- Control-rate caches (M3 run 12; after the per-sample state) ----
     drive::Voice         voice_{};                        // blendVoice(attW_), on Morph moves only
@@ -859,10 +874,14 @@ private:
 #endif
     dsp::TapeEcho  echo_;
     dsp::EchoClock clock_;
-    std::array<int, kMaxPendingKicks> pendingClocks_{};
+    dsp::EchoClock tapClock_; // the button's taps (ADR 0043)
+    bool     tapWins_ = false; // both clocks locked: the taps set the tempo last
+    std::array<int, kMaxPendingClocks> pendingClocks_{};
     int      numPendingClocks_ = 0;
-    std::array<uint32_t, kMaxPendingKicks> clockQ_{}; // edges (absolute samples, sorted) not yet at a control tick
+    std::array<uint32_t, kMaxPendingClocks> clockQ_{}; // edges (absolute samples, sorted) not yet at a control tick
     int      numClockQ_ = 0;
+    std::array<uint32_t, kMaxPendingClocks> tapQ_{}; // taps (absolute samples, in order) not yet at a control tick
+    int      numTapQ_ = 0;
     uint32_t sampleClock_ = 0; // samples since reset (the clock's time line)
     float    hostBpm_ = 0.0f;
     float    echoW_ = 0.0f, echoWFrom_ = 0.0f; // the echo's glide in, at this tick and the last

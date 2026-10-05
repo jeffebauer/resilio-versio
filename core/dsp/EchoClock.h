@@ -12,6 +12,12 @@
 // kClockLostBeats beats with no pulse (at most kClockLostSeconds): the Tank
 // then glides back to free time.
 //
+// Tap tempo (ADR 0043: the button in SPRINGS 3) is a second EchoClock fed by
+// the taps, the same code with one difference (update(now, true)): a tapped
+// tempo holds after the taps stop, since you stop tapping once it's right.
+// The way back to free time is one lone tap: a tap with no second one within
+// the slowest interval (kClockMinBpm's, ~2 s) lets the tempo go.
+//
 // Sample positions are a running uint32 count (wraps after ~24 h at 48 kHz;
 // differences stay right across the wrap).
 
@@ -64,14 +70,22 @@ public:
             m = a > b ? (b > c ? b : (a > c ? c : a)) : (a > c ? a : (b > c ? c : b)); // median
         }
         const float dev = m > beat_ ? m - beat_ : beat_ - m;
-        if (!locked_ || dev > echo::kClockJitter * beat_) beat_ = m;
+        if (!locked_ || dev > echo::kClockJitter * beat_) {
+            beat_ = m;
+            ++tempoSets_;
+        }
         locked_ = true;
     }
 
-    // Lost? Call with the current absolute sample (control rate).
-    void update(uint32_t now)
+    // Lost? Call with the current absolute sample (control rate). holdTempo
+    // (tap tempo): a locked tempo stays until a lone edge times out.
+    void update(uint32_t now, bool holdTempo = false)
     {
         if (!haveLast_) return;
+        if (holdTempo && locked_) {
+            if (n_ == 0 && float(int32_t(now - last_)) > maxIv_) reset(); // a lone tap: back to free time
+            return;
+        }
         const float since = float(int32_t(now - last_)); // an edge later in this block: negative, not lost
         float lost = locked_ ? echo::kClockLostBeats * beat_ : maxIv_;
         lost = lost < lostMax_ ? lost : lostMax_;
@@ -80,11 +94,14 @@ public:
 
     bool  locked() const { return locked_; }
     float beatSamples() const { return locked_ ? beat_ : 0.0f; } // 0 = no clock
+    // Counts every time the tempo was set or changed (the Tank's "most
+    // recent clock wins" between the gate and the taps).
+    uint32_t tempoSets() const { return tempoSets_; }
 
 private:
     float    iv_[3] = {0.0f, 0.0f, 0.0f};
     float    beat_ = 0.0f, minIv_ = 0.0f, maxIv_ = 0.0f, lostMax_ = 0.0f;
-    uint32_t last_ = 0;
+    uint32_t last_ = 0, tempoSets_ = 0;
     int      n_ = 0;
     bool     haveLast_ = false, locked_ = false;
 };

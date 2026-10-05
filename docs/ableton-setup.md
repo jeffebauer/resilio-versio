@@ -24,7 +24,7 @@ Resilio reacts to input level (DRIVE, SPLASH), and Eurorack signals are hot: a 1
 | Item | Setting | Why |
 |---|---|---|
 | Stimulus clips | **Warp off**, **Loop off**, clip gain **0 dB**, start at **bar 1** | Warping resamples and smears clicks, the sweep and pitch. Each file already has 1 s of silence up front |
-| Tempo | Any. `04_skank` is written at **75 bpm** (set that only if you want its chords on the grid). `kicks_16ths.mid` is written at **120 bpm** | With warp off, audio ignores tempo |
+| Tempo | Any. `04_skank` is written at **75 bpm** (set that only if you want its chords on the grid) | With warp off, audio ignores tempo |
 | Stimulus track | Volume **0 dB**, pan centre, **no devices**. **Audio To** → your interface output (e.g. Ext. Out 1, mono) | Levels are baked into the files |
 | Master | **No limiter** or other processing | |
 | Recording track | Stereo in (e.g. Ext. In 1/2), monitoring **off** | |

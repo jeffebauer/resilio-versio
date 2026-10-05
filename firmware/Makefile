@@ -71,7 +71,7 @@ include $(SYSTEM_FILES_DIR)/Makefile
 
 # Size-optimise only our non-DSP, control-rate code (main.cpp: knob/switch/LED
 # handling, boot pattern, serial logging in profile). DSP objects
-# (core/dsp/*.cpp: Tank, Spring, Drive, Splash, Kick, Wobble) keep the global
+# (core/dsp/*.cpp: Tank, Spring, Drive, Splash, Wobble, Echo) keep the global
 # -O3 above so release and profile always measure the identical,
 # maximally-optimised per-sample code path (CPU numbers from profile stay
 # valid for release). Saves flash without touching per-sample DSP speed.

@@ -1,8 +1,0 @@
-{
-  "name": "m7_kick",
-  "note": "Automation file (rv_render --auto), not a sweep: sweeps cannot fire Kicks. Use with test_audio/stimulus/05_silence_for_kicks.wav and --set attitude=CLEAN|DRIVEN|KICKED. Single Kicks at 1, 6, 11 s; a pair 250 ms apart at 16 s; a 12/s gate train 20-22 s (24 Kicks); a last single at 27 s.",
-  "kicks": [1.0, 6.0, 11.0, 16.0, 16.25,
-            20.0, 20.0833, 20.1667, 20.25, 20.3333, 20.4167, 20.5, 20.5833, 20.6667, 20.75, 20.8333, 20.9167,
-            21.0, 21.0833, 21.1667, 21.25, 21.3333, 21.4167, 21.5, 21.5833, 21.6667, 21.75, 21.8333, 21.9167,
-            27.0]
-}

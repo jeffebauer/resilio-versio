@@ -1,12 +1,13 @@
 // M7 criteria through the whole Tank (SPEC §7 M7, docs/m7-integration.md):
 // SPLASH on 02_hits, WOBBLE on 08_held_tones, the ATTITUDE Morph of the M7
-// tables, and determinism with everything M7 turned up. The Kick criteria
-// are in test_kick, MIX in test_mix, the components alone in test_splash,
-// test_kick_voice and test_wobble.
+// tables, and determinism with everything M7 turned up. MIX is in
+// test_mix, the components alone in test_splash and test_wobble. (The
+// Kick's criteria were test_kick and test_kick_voice until the Kick went,
+// ADR 0043.)
 //
 // "Splash share": the Tank has test hooks (setSplashParts) that keep the
-// Splash listening but drop its sound (the Clang, the Bite and the Kick's
-// Clatter) and/or its Jolt. The Splash's contribution is then the
+// Splash listening but drop its sound (the Clang and the Bite) and/or its
+// Jolt. The Splash's contribution is then the
 // difference of renders that are otherwise identical (same seeds, same
 // everything):
 //   splash energy  = energy of (on − off) in the 6 s after a hit (Clang/Bite + Jolt)
@@ -58,7 +59,7 @@ const char* const kAttName[3] = {"CLEAN", "DRIVEN", "KICKED"};
 struct Settings {
     float decay = 0.5f, drive = 0.5f, splash = 0.3f, wobble = 0.5f, tone = 0.5f, tension = 0.5f; // WOBBLE noon = still
     int   att = 1, springs = 1;
-    bool  clatterOn = true, joltOn = true; // Tank::setSplashParts (clatterOn: the Splash's sound, Clang + Bite + Clatter)
+    bool  soundOn = true, joltOn = true; // Tank::setSplashParts (soundOn: the Splash's sound, Clang + Bite)
     bool  sustainOn = true;                // Tank::setSustainTrimEnabled
     int   voicing = 0;                     // Tank::setSplashVoicing (SplashVoicing.h "SPLASH stronger")
 };
@@ -66,7 +67,6 @@ struct Settings {
 struct Out {
     Buf l, r;
     Buf jolt; // Splash Jolt envelope after each block
-    Buf clat; // Splash Clatter burst envelope after each block
     Buf env;  // Splash hit envelope e (ADR 0032) after each block
     float limitMinGain = 1.0f; // the output limiter's deepest pull (linear gain)
 };
@@ -84,16 +84,15 @@ Out render(const Settings& s, const Buf& in, int block = 48)
     t.setParam(rv::ParamId::Tension, s.tension);
     t.setParam(rv::ParamId::Attitude, rv::switchToNormalised(s.att));
     t.setParam(rv::ParamId::Springs, rv::switchToNormalised(s.springs));
-    t.setSplashParts(s.clatterOn, s.joltOn);
+    t.setSplashParts(s.soundOn, s.joltOn);
     t.setSustainTrimEnabled(s.sustainOn);
     t.setSplashVoicing(s.voicing);
-    Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
+    Out o{Buf(in.size()), Buf(in.size()), Buf(in.size()), Buf(in.size())};
     for (size_t pos = 0; pos < in.size(); pos += size_t(block)) {
         const int n = int(std::min(size_t(block), in.size() - pos));
         t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, n);
         for (int i = 0; i < n; ++i) {
             o.jolt[pos + size_t(i)] = t.splash().joltEnvelope();
-            o.clat[pos + size_t(i)] = s.clatterOn ? t.splash().clatterEnvelope() : 0.0f;
             o.env[pos + size_t(i)]  = t.splash().hitEnvelope();
         }
         o.limitMinGain = std::min(o.limitMinGain, t.limiterGain());
@@ -160,7 +159,7 @@ HitStats hitStats(const Buf& x, int att, float splash)
     const Out on = render(s, x);
     s.joltOn = false;
     const Out snd = render(s, x);
-    s.clatterOn = false;
+    s.soundOn = false;
     const Out off = render(s, x);
     const Buf mOn = mono(on), mOff = mono(off), mSnd = mono(snd);
     Buf d(mOn.size()), dc(mOn.size());
@@ -266,7 +265,7 @@ void splashOnHits()
                   && h.joltAt1s < 0.02f * h.joltPeak,
               msg);
     }
-    // SPLASH 0: no Clang, no Bite, no Clatter in any ATTITUDE (no click on
+    // SPLASH 0: no Clang, no Bite in any ATTITUDE (no click on
     // hard hits, M8 round 2). DRIVEN / KICKED keep the small Jolt floor (a
     // pitch lurch, no transient); CLEAN has nothing at all (hi-fi unless asked).
     std::snprintf(msg, sizeof msg,
@@ -718,9 +717,10 @@ void wobbleOnHeldTones()
     check(even, "fully left roughly as wild as fully right (0.6..1.6x at every DECAY)");
 }
 
-// ---- 3. ATTITUDE Morph blends the Splash and Kick tables ---------------------------------
-// A DRIVEN -> KICKED flip: the Splash voicing (the Kick's crash, clatterMax)
-// must glide over the Morph (drive::kMorphSeconds), never step.
+// ---- 3. ATTITUDE Morph blends the Splash table ---------------------------------------------
+// A DRIVEN -> KICKED flip: the Splash voicing (the Jolt at SPLASH 1, joltMax;
+// it was the Kick's crash, clatterMax, until ADR 0043) must glide over the
+// Morph (drive::kMorphSeconds), never step.
 void morph()
 {
     rv::Tank t;
@@ -728,23 +728,23 @@ void morph()
     t.setParam(rv::ParamId::Attitude, 0.5f);
     Buf in(32, 0.0f), l(32), r(32);
     for (int i = 0; i < 50; ++i) t.process(in.data(), in.data(), l.data(), r.data(), 32);
-    const float from = t.splash().voice().clatterMax;
+    const float from = t.splash().voice().joltMax;
     t.setParam(rv::ParamId::Attitude, 1.0f);
     float prev = from, maxStep = 0.0f;
     int steps = 0;
     for (int i = 0; i < 200; ++i) {
         t.process(in.data(), in.data(), l.data(), r.data(), 32);
-        const float v = t.splash().voice().clatterMax;
+        const float v = t.splash().voice().joltMax;
         maxStep = std::max(maxStep, std::fabs(v - prev));
         steps += v != prev;
         prev = v;
     }
     const float total = std::fabs(prev - from);
     std::snprintf(msg, sizeof msg,
-                  "ATTITUDE DRIVEN -> KICKED: Splash voicing glides (Clatter max %.2f -> %.2f over %d ticks, largest step %.1f %% "
+                  "ATTITUDE DRIVEN -> KICKED: Splash voicing glides (Jolt max %.2f -> %.2f over %d ticks, largest step %.1f %% "
                   "of the change)",
                   from, prev, steps, 100.0 * maxStep / std::max(1e-9f, total));
-    check(steps >= 10 && maxStep <= 0.1f * total && std::fabs(prev - rv::splash::kVoice[2].clatterMax) < 1e-6f, msg);
+    check(steps >= 10 && maxStep <= 0.1f * total && std::fabs(prev - rv::splash::kVoice[2].joltMax) < 1e-6f, msg);
 }
 
 // ---- 4. Determinism with everything M7 up ------------------------------------------------
@@ -763,10 +763,12 @@ void determinism()
         t.setParam(rv::ParamId::Wobble, wob);
         t.setParam(rv::ParamId::Springs, 1.0f);
         Out o{Buf(x.size()), Buf(x.size()), {}, {}};
-        const long kickAt = long(3.3f * kFs);
+        // The button (ADR 0043): taps of the echo's tempo here (SPRINGS 3).
+        const long pressAt[4] = {long(3.3f * kFs), long(3.4f * kFs), long(3.8f * kFs), long(3.9f * kFs)};
         for (size_t pos = 0; pos < x.size(); pos += size_t(block)) {
             const int n = int(std::min(size_t(block), x.size() - pos));
-            if (kickAt >= long(pos) && kickAt < long(pos) + n) t.kick(int(kickAt - long(pos)));
+            for (int k = 0; k < 4; ++k)
+                if (pressAt[k] >= long(pos) && pressAt[k] < long(pos) + n) t.button(k % 2 == 0, int(pressAt[k] - long(pos)));
             t.process(x.data() + pos, x.data() + pos, o.l.data() + pos, o.r.data() + pos, n);
         }
         return o;
@@ -780,7 +782,7 @@ void determinism()
     const Out again = run(48);
     same &= again.l == ref.l && again.r == ref.r;
     std::snprintf(msg, sizeof msg,
-                  "KICKED, SPLASH 1, WOBBLE %.0f (fully %s), 3 Springs, hits + Kick: bit-identical for blocks 1, 7, 48, 333, 1024 "
+                  "KICKED, SPLASH 1, WOBBLE %.0f (fully %s), SPRINGS 3, hits + button taps: bit-identical for blocks 1, 7, 48, 333, 1024 "
                   "and on a re-run",
                   double(wob), wob < 0.5f ? "left" : "right");
     check(same, msg);
@@ -789,10 +791,10 @@ void determinism()
 
 // ---- 5. CPU (INFO) ---------------------------------------------------------------------------
 // SPEC §5 worst case (3 Springs, KICKED, TONE/DRIVE max, TENSION loosest) with every M7
-// part busy: a hard noise hit and a Kick 12 times a second each (Clatter,
-// Jolt, rattle and Kick voices never idle), SPLASH 1, WOBBLE at the costlier
-// end stop; against the same with SPLASH 0 / WOBBLE noon, no hits, no Kicks
-// (steady noise). Daisy
+// part busy: a hard noise hit 12 times a second (the Jolt and its rattle
+// never idle), SPLASH 1, WOBBLE at the costlier end stop; against the same
+// with SPLASH 0 / WOBBLE noon, no hits (steady noise). (Until ADR 0043 a
+// Kick fired with every hit too.) Daisy
 // estimate as test_tank: 15-25x this desktop per sample, at 480 MHz.
 void performance()
 {
@@ -820,8 +822,6 @@ void performance()
         Buf l(n), r(n);
         const auto t0 = std::chrono::steady_clock::now();
         for (size_t pos = 0; pos < n; pos += 48) {
-            const size_t toGate = (4000 - (pos + 2000) % 4000) % 4000; // gates at 2000 + 4000 k
-            if (m7 && toGate < 48) t.kick(int(toGate));
             t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
         }
         const auto t1 = std::chrono::steady_clock::now();
@@ -836,7 +836,7 @@ void performance()
     std::printf("INFO  WOBBLE sides, M7 busy: fully left (wow + flutter) %.1f ns/sample, fully right (LFO) %.1f ns/sample\n",
                 busyL, busyR);
     const double busy = std::max(busyL, busyR);
-    std::printf("INFO  CPU worst case, 3 Springs KICKED TONE/DRIVE 1 TENSION 0: M7 busy (SPLASH 1, WOBBLE end stop, hits + Kicks "
+    std::printf("INFO  CPU worst case, 3 Springs KICKED TONE/DRIVE 1 TENSION 0: M7 busy (SPLASH 1, WOBBLE end stop, hits "
                 "12/s) %.1f ns/sample, est. Daisy %.0f-%.0f cycles/sample (%.0f-%.0f%% of 10k); M7 quiet (SPLASH 0, "
                 "WOBBLE noon, steady noise) %.1f ns/sample (%.0f-%.0f%%); M7 share %.0f-%.0f cycles/sample\n",
                 busy, busy * 15 * 0.48, busy * 25 * 0.48, busy * 15 * 0.48 / 100, busy * 25 * 0.48 / 100, base,

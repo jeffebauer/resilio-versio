@@ -1,8 +1,8 @@
 # Resilio Versio — manual
 
-*Draft for M9. Resilio Versio is a dub spring reverb for the Noise Engineering Versio: a simulated spring tank you can drive, splash, kick and push into feedback.*
+*Draft for M9. Resilio Versio is a dub spring reverb for the Noise Engineering Versio: a simulated spring tank you can drive, splash, throw into and push into feedback.*
 
-**Words used here.** The **Tank** is the whole reverb, with 1–3 **Springs** inside. The **tail** is the sound ringing on after you stop. The **chirp** (or "boing") is the springy up-sweep on each echo. A **Kick** is a simulated knock on the tank. **Howl** is the tank feeding back on itself.
+**Words used here.** The **Tank** is the whole reverb, with 1–3 **Springs** inside. The **tail** is the sound ringing on after you stop. The **chirp** (or "boing") is the springy up-sweep on each echo. A **throw** opens the springs to the input for a moment (one snare, one stab) and lets the tail ring on. **Howl** is the tank feeding back on itself.
 
 ## Panel map
 
@@ -15,7 +15,7 @@ Resilio runs behind the stock Versio panel: the printed labels don't match yet, 
    P4 SPLASH                               P5 TENSION
                     P6 WOBBLE
    SW  SPRINGS  (top toggle)               P7 DRIVE
-   SW  ATTITUDE (bottom toggle)   (button = KICK)
+   SW  ATTITUDE (bottom toggle)   (button = THROW / tap)
 
    [ 12 jacks: 7 CV ins, gate in, In L/R, Out L/R ]
 ```
@@ -37,8 +37,9 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 | **P7 DRIVE** | The tank's INPUT: how hard your signal hits it. Up to +24 dB of gain before anything else, so a quiet mixer send (peaks around −18 to −24 dBFS) drives the tank like a hot one once DRIVE is up. SPLASH doesn't depend on it: hits splash the same at any DRIVE. Colour and grit build as before (clean-ish to ~9 o'clock, driven from ~3 o'clock) and the tail gets a few dB louder (about +6 dB from 7 to 5 o'clock), never shorter. On hot material at full MIX the output limiter starts catching peaks from about 1 o'clock. |
 | **SPRINGS** (top toggle) | Left: 1 Spring, sparse and the most splashy. Centre: 2 Springs, the classic tank. Right: 3 Springs, dense and smooth. Switching crossfades, so it's safe mid-tail. |
 | **ATTITUDE** (bottom toggle) | Left: **CLEAN**, a polite, linear tank. Centre: **DRIVEN**, tape saturation, the core dub colour. Right: **KICKED**, hard drive inside the tank, full chaos, Howl allowed. Flipping it changes the tail already ringing. |
-| **Button = KICK** | Knocks the tank: a short low thud, then a big crash ringing through the Springs. Same strength every time; ATTITUDE sets how hard. **Hold it 1 s** to leave throw mode (below): the LEDs blink white once. |
-| **Gate in = THROW** (SPRINGS 1–2; in 3 the gate is the echo's clock) | Dub's throw: while the gate is high (above ~2 V) the springs hear the input; while it is low they don't, and what is already ringing rings on. Nothing happens until the gate first goes high, so with nothing patched the reverb works as usual. To go back to always-on, hold KICK for 1 s; the next gate switches throw mode on again. |
+| **Button = THROW** (SPRINGS 1–2) | A throw by hand: while you hold the button the springs hear the input; let go and they don't, and what is already ringing rings on. The first press switches **throw mode** on (until then the reverb works as usual), so from then on the springs only hear what you hold the button for. Tap it quickly or slowly, hold it for a bar: every press is a throw. With the gate patched too, the springs hear the input while either is on. **To go back to always-on: tap, then press again straight away and keep holding for 2 s.** The LEDs blink white once, and from then the reverb works as usual until the next press or gate. |
+| **Button = TAP** (SPRINGS 3, echo mode) | Tap the echo's tempo: each tap is a beat (a quarter note); TENSION then picks the division, as with a clock in the gate. Three or four taps settle it; it stays when you stop tapping. A single tap on its own, then nothing for ~2 s, lets it go (back to TENSION's free time). If a clock is also in the gate, whichever you changed last wins. |
+| **Gate in = THROW** (SPRINGS 1–2; in 3 the gate is the echo's clock) | Dub's throw, from a sequencer: while the gate is high (above ~2 V) the springs hear the input; while it is low they don't, and what is already ringing rings on. Nothing happens until the gate first goes high, so with nothing patched the reverb works as usual. To go back to always-on, tap, tap and hold the button 2 s; the next gate switches throw mode on again. |
 | **CV ins** | 0–5 V, added to the pot's position (set the pot low to give CV room). MIX, TONE, SPLASH and DRIVE follow CV quickly; DECAY, TENSION and WOBBLE glide, so they don't zipper. |
 | **In L / In R** | Stereo in. Patch In L only for mono: it feeds both sides. Inputs clip at about 16 V peak-to-peak. |
 | **Out L / Out R** | Stereo out. A mono input still comes out wide. |
@@ -46,7 +47,7 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 ### LEDs
 
 - **Left two: input level** (In L, In R). **Right two: output level** (Out L, Out R).
-- Green → amber → red. **Input red:** you're near clipping at the jack, so turn the source down. **Output red:** the safety limiter is catching peaks (normal in a big Howl or Kick; if it's red all the time, lower DRIVE or DECAY). Held sounds (pads, drones, organ) rarely get there: the tank notices a sound being held and gently turns down what goes into the springs, so the wet stays clear of the limiter. Hits and stabs are never touched, and the tail after you stop still rings its full length.
+- Green → amber → red. **Input red:** you're near clipping at the jack, so turn the source down. **Output red:** the safety limiter is catching peaks (normal in a big Howl; if it's red all the time, lower DRIVE or DECAY). Held sounds (pads, drones, organ) rarely get there: the tank notices a sound being held and gently turns down what goes into the springs, so the wet stays clear of the limiter. Hits and stabs are never touched, and the tail after you stop still rings its full length.
 - **At power-up** a short colour sweep across the four LEDs says the firmware has loaded.
 
 ## Quick start
@@ -55,7 +56,7 @@ Clock positions are approximate: fully left (7 o'clock) is 0, noon is 0.5, fully
 2. Set everything to noon, SPRINGS centre, ATTITUDE centre (DRIVEN).
 3. **MIX** to ~2 o'clock so you clearly hear the tank; bring it back down once you've found the sound.
 4. **DECAY**: noon is a ~2 s tail. Turn it up for long dub throws.
-5. **Hit the tank**: press the button. Then try TENSION left for a big boing, SPLASH up for a harder clang, TONE right to thin it out like Tubby's Big Knob, ATTITUDE right (KICKED) and DECAY past 4 o'clock for Howl.
+5. **Throw**: hold the button while the snare plays, let go, and hear the tail ring on. (The first press switches throw mode on; tap, tap and hold 2 s to go back.) Then try TENSION left for a big boing, SPLASH up for a harder clang, TONE right to thin it out like Tubby's Big Knob, ATTITUDE right (KICKED) and DECAY past 4 o'clock for Howl.
 
 ## Installing (Noise Engineering Firmware Swap)
 

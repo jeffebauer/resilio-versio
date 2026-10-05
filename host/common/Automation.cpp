@@ -41,10 +41,9 @@ bool parse(const json::Value& root, Automation& out, std::string& error)
         for (auto& tr : out.tracks)
             std::sort(tr.points.begin(), tr.points.end(), [](auto& a, auto& b) { return a.first < b.first; });
     }
-    if (const json::Value* kicks = root.find("kicks")) {
-        if (!kicks->isArray()) { error = "kicks must be an array"; return false; }
-        for (const auto& item : kicks->items()) out.kicksSeconds.push_back(item.numberValue());
-        std::sort(out.kicksSeconds.begin(), out.kicksSeconds.end());
+    if (root.find("kicks")) {
+        error = "kicks: the Kick was removed (ADR 0043); the button is \"buttons\": [[press, release], ...]";
+        return false;
     }
     if (const json::Value* exits = root.find("throw_exits")) {
         if (!exits->isArray()) { error = "throw_exits must be an array of times (seconds)"; return false; }
@@ -61,6 +60,17 @@ bool parse(const json::Value& root, Automation& out, std::string& error)
             out.gateEvents.emplace_back(off, false);
         }
         std::stable_sort(out.gateEvents.begin(), out.gateEvents.end(), [](auto& a, auto& b) { return a.first < b.first; });
+    }
+    if (const json::Value* buttons = root.find("buttons")) {
+        if (!buttons->isArray()) { error = "buttons must be an array of [press, release] pairs"; return false; }
+        for (const auto& item : buttons->items()) {
+            if (!item.isArray() || item.items().size() != 2) { error = "each button press must be [press, release] (seconds)"; return false; }
+            const double on = item.items()[0].numberValue(), off = item.items()[1].numberValue();
+            if (!(off > on)) { error = "a button's release must come after its press"; return false; }
+            out.buttonEvents.emplace_back(on, true);
+            out.buttonEvents.emplace_back(off, false);
+        }
+        std::stable_sort(out.buttonEvents.begin(), out.buttonEvents.end(), [](auto& a, auto& b) { return a.first < b.first; });
     }
     if (const json::Value* clocks = root.find("clocks")) {
         if (!clocks->isArray()) { error = "clocks must be an array"; return false; }

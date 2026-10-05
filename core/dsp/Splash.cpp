@@ -62,41 +62,6 @@ RV_SIZE_OPT void HitEnvelope::reset()
     invRef2_ = 1.0f / (loudRef_ * loudRef_);
 }
 
-// ---- Clatter -----------------------------------------------------------------------
-
-RV_SIZE_OPT void Clatter::prepare(float sampleRate, uint32_t seed)
-{
-    sampleRate_ = sampleRate;
-    seed_       = seed;
-    for (auto& f : hp_) f.setHighpass(splash::kClatterHpHz, 0.707f, sampleRate);
-    for (auto& f : lp_) f.setLowpass(splash::kClatterLpHz, 0.707f, sampleRate);
-    clickGain_ = std::sqrt(float(kCell) / 3.0f);
-    reset();
-}
-
-RV_SIZE_OPT void Clatter::reset()
-{
-    for (auto& f : hp_) f.reset();
-    for (auto& f : lp_) f.reset();
-    // Stream 0 keeps the Clatter's own seed; the others are scrambled from it.
-    for (size_t s = 0; s < rng_.size(); ++s) {
-        rng_[s].seed(s == 0 ? seed_ : mixSeed(seed_ + uint32_t(s)));
-        if (kCell > 1) newCell(s);
-    }
-    env_ = decay_ = 0.0f;
-    idle_ = true;
-}
-
-void Clatter::impact(float amplitude, float decayMs)
-{
-    // The louder burst wins, with its own decay (a weak rattle impact
-    // during a big burst does not shorten it).
-    if (amplitude <= env_) return;
-    env_   = amplitude;
-    decay_ = decayPerStep(decayMs, sampleRate_);
-    idle_  = false;
-}
-
 // ---- Jolt ----------------------------------------------------------------------------
 
 RV_SIZE_OPT void Jolt::prepare(float sampleRate, uint32_t seed)
@@ -150,7 +115,6 @@ RV_SIZE_OPT void Splash::prepare(float sampleRate, uint32_t seed)
     hpLp_.setCutoff(splash::kDetectorHpHz, sampleRate);
     detector_.prepare(sampleRate);
     envelope_.prepare(sampleRate);
-    clatter_.prepare(sampleRate, mixSeed(seed_ + 1u));
     jolt_.prepare(sampleRate, mixSeed(seed_ + 2u));
     const float every = float(splash::kControlInterval);
     minStroke_     = int(splash::kMinStrokeMs * 0.001f * sampleRate);
@@ -168,19 +132,17 @@ RV_SIZE_OPT void Splash::reset()
     hpLp_.reset();
     detector_.reset();
     envelope_.reset();
-    clatter_.reset();
     jolt_.reset();
     rng_.seed(seed_);
     k_ = 0;
     hit_ = strokePeak_ = valley_ = 0.0f;
-    pending_ = pendingPrimary_ = forced_ = false;
+    pending_ = false;
     armed_   = true;
-    countdown_ = secondaries_ = 0;
+    countdown_ = 0;
     strength_  = 0.0f;
     impacts_   = 0;
     strokes_   = 0;
     sinceStroke_ = 1 << 30;
-    numStrikes_ = 0;
 }
 
 void Splash::setVoicing(int v)
@@ -223,45 +185,15 @@ RV_SIZE_OPT void Splash::set(const std::array<float, 3>& attitudeWeights, float 
     jolt_.set(voice_.joltDecayMs, voice_.joltLoopFrac, voice_.joltAllpass, voice_.rattleDepth);
 }
 
-void Splash::strike(float strength, int sampleOffset)
-{
-    if (numStrikes_ >= kMaxStrikes) return;
-    strikeAt_[size_t(numStrikes_)]       = sampleOffset < 0 ? 0 : sampleOffset;
-    strikeStrength_[size_t(numStrikes_)] = strength;
-    ++numStrikes_;
-}
-
 RV_SIZE_OPT void Splash::fire()
 {
-    const float s = strength_;
-    // The Clatter is the Kick's crash only (ADR 0032): a hit's splash is its
-    // own sound (Clang, Bite, applied by the Tank). Both fire the Jolt.
-    const float clat = forced_ ? voice_.clatterMax : 0.0f;
-    const float jolt = forced_ ? voice_.joltMax : splash::joltAmount(voice_, splash_);
-    const float decayMs = voice_.clatterDecayMinMs + (voice_.clatterDecayMaxMs - voice_.clatterDecayMinMs) * s;
-    if (clat > 0.0f) clatter_.impact(splash::kClatterGain * s * clat * splash::kKickClatterLevel, decayMs);
-    jolt_.impact(s * jolt);
+    // A hit's splash is its own sound (Clang, Bite, applied by the Tank,
+    // ADR 0032); the impact fires the Jolt.
+    jolt_.impact(strength_ * splash::joltAmount(voice_, splash_));
     ++impacts_;
-
-    if (pendingPrimary_) {
-        ++strokes_;
-        sinceStroke_ = 0;
-        secondaries_ = int(voice_.rattleImpacts * s + 0.5f);
-    }
-    pendingPrimary_ = false;
-    if (secondaries_ > 0 && clat > 0.0f) {
-        // Next rattle impact: weaker, after a seeded interval.
-        --secondaries_;
-        strength_ = s * splash::kRattleStrengthRatio;
-        const float u = 0.5f * (rng_.bipolar() + 1.0f);
-        const float ms = splash::kRattleIntervalMinMs + (splash::kRattleIntervalMaxMs - splash::kRattleIntervalMinMs) * u;
-        countdown_ = int(ms * 0.001f * sampleRate_);
-        pending_   = true;
-    } else {
-        secondaries_ = 0;
-        pending_     = false;
-        forced_      = false;
-    }
+    ++strokes_;
+    sinceStroke_ = 0;
+    pending_     = false;
 }
 
 RV_SIZE_OPT void Splash::controlTick()
@@ -273,15 +205,11 @@ RV_SIZE_OPT void Splash::controlTick()
     if (armed_ && h > splash::kOnsetHit + splash::kRetriggerRatio * valley_) {
         armed_      = false;
         strokePeak_ = h;
-        if (!(pending_ && pendingPrimary_)) {
-            // New stroke: a primary impact after a seeded timing jitter
-            // (replaces any rattle still queued from the previous one).
+        if (!pending_) {
+            // New stroke: an impact after a seeded timing jitter.
             const float u  = 0.5f * (rng_.bipolar() + 1.0f);
             const float ms = splash::kJitterMinMs + (splash::kJitterMaxMs - splash::kJitterMinMs) * u;
             pending_        = true;
-            pendingPrimary_ = true;
-            forced_         = false;
-            secondaries_    = 0;
             countdown_      = int(ms * 0.001f * sampleRate_);
             jitter_         = countdown_;
             riseTicks_      = 0;
@@ -298,7 +226,7 @@ RV_SIZE_OPT void Splash::controlTick()
     // The jitter runs from the peak (M8): while the stroke is still growing
     // (for at most splash::kMaxRiseMs) the countdown restarts, so a short
     // jitter can no longer fire a weak Jolt on a hit's first millisecond.
-    if (pending_ && pendingPrimary_ && !forced_) {
+    if (pending_) {
         const bool rising = h > strength_;
         if (rising) strength_ = h;
         if (rising && ++riseTicks_ <= maxRiseTicks_) countdown_ = jitter_ + splash::kControlInterval; // re-checked next tick
@@ -306,23 +234,9 @@ RV_SIZE_OPT void Splash::controlTick()
     jolt_.tick(tankLevel_);
 }
 
-void Splash::process(const float* in, float* clangOut, float* biteOut, float* clatterOut, float* clatterB, float* clatterC,
-                     float* joltLoopOut, int n, float* clangTodayOut)
+void Splash::process(const float* in, float* clangOut, float* biteOut, float* joltLoopOut, int n, float* clangTodayOut)
 {
-    const int streams = clatterB && clatterC ? Clatter::kStreams : 1;
     for (int i = 0; i < n; ++i) {
-        // Kick strikes land on their exact sample, no jitter, at full force.
-        for (int s = 0; s < numStrikes_; ++s) {
-            const int at = strikeAt_[size_t(s)] < n ? strikeAt_[size_t(s)] : n - 1;
-            if (at == i) {
-                const float st = strikeStrength_[size_t(s)];
-                if (!(pending_ && forced_ && countdown_ == 0 && strength_ >= st)) {
-                    pending_ = pendingPrimary_ = forced_ = true;
-                    countdown_ = 0;
-                    strength_  = st;
-                }
-            }
-        }
         if (pending_ && countdown_-- <= 0) fire();
 
         if (sinceStroke_ < (1 << 30)) ++sinceStroke_;
@@ -333,13 +247,6 @@ void Splash::process(const float* in, float* clangOut, float* biteOut, float* cl
         if (clangTodayOut) clangTodayOut[i] = today;
         if (clangOut) clangOut[i] = clang;
         if (biteOut) biteOut[i] = bite;
-        float cy[Clatter::kStreams];
-        clatter_.process(cy, streams);
-        clatterOut[i] = cy[0];
-        if (streams > 1) {
-            clatterB[i] = cy[1];
-            clatterC[i] = cy[2];
-        }
         const float jl = jolt_.process(k_);
         if (joltLoopOut) joltLoopOut[i] = jl;
         if (++k_ == splash::kControlInterval) {
@@ -347,7 +254,6 @@ void Splash::process(const float* in, float* clangOut, float* biteOut, float* cl
             controlTick();
         }
     }
-    numStrikes_ = 0;
 }
 
 } // namespace rv::dsp

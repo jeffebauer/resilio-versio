@@ -6,7 +6,7 @@ Geometry comes from tools/make_panel_svg.py (NE's official template).
 Functions and the pot -> libDaisy knob order mirror the release firmware
 (firmware/main.cpp kPotParams / kPotKnob, ADR 0028). The pot order was
 measured at the M0 LED check (29 Sep 2026); SW_0 = top toggle = SPRINGS,
-SW_1 = ATTITUDE; button + gate = Kick.
+SW_1 = ATTITUDE; button = throw / tap tempo, gate = throw / clock (ADR 0043).
 
 Usage: python3 tools/make_panel_mapping_svg.py [out.svg]
 Default output: docs/panel/versio_panel_current_mapping.svg. Stdlib only.
@@ -80,7 +80,7 @@ def build():
             a(f'  <text class="small" x="{f(cx + d / 2 + 0.8)}" y="{f(cy + 1.7)}">{pos}</text>')
         elif kind == "button":
             a(f'  <circle class="tog" cx="{f(cx)}" cy="{f(cy)}" r="{f(d / 2)}"/>')
-            a(f'  <text class="sid" x="{f(cx + d / 2 + 0.8)}" y="{f(cy - 0.3)}">BTN KICK</text>')
+            a(f'  <text class="sid" x="{f(cx + d / 2 + 0.8)}" y="{f(cy - 0.3)}">BTN THROW/TAP</text>')
             a(f'  <text class="small" x="{f(cx + d / 2 + 0.8)}" y="{f(cy + 1.7)}">(also gate in)</text>')
         elif kind == "led":
             a(f'  <circle class="led" cx="{f(cx)}" cy="{f(cy)}" r="{f(d / 2)}"/>')

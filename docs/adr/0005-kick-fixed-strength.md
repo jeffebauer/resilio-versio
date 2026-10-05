@@ -1,6 +1,6 @@
 # 0005 — Kick has fixed strength
 
-**Status:** Accepted, 27 Sep 2026
+**Status:** Superseded by ADR 0043 (5 Oct 2026: the Kick was removed). Accepted, 27 Sep 2026
 
 **Decision:** Kick strength does not follow trigger velocity. Scaled only by ATTITUDE. Plugin ignores MIDI velocity.
 

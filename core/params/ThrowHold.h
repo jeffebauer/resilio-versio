@@ -1,21 +1,23 @@
 #pragma once
-// Throw and Hold (ADR 0039, 0040; CONTEXT.md "Throw", "Hold"): the numbers.
+// Throw and Hold (ADR 0039, 0040, 0043; CONTEXT.md "Throw", "Hold"): the numbers.
 //
 // ---- Throw (ADR 0039) ---------------------------------------------------------
 // The throw is dub's main move: open the spring's send for one hit or one
-// bar, close it, let the tail ring on. With the gate patched, the Springs'
-// input (the send) is open only while the gate is high. MIX and the wet are
-// never touched, so the tail always rings on after the send closes.
+// bar, close it, let the tail ring on. Two things throw (ADR 0043): the gate
+// and the button. In throw mode the Springs' input (the send) is open only
+// while the gate is high OR the button is held. MIX and the wet are never
+// touched, so the tail always rings on after the send closes.
 //
-// Unpatched the Versio's gate reads low (there is no jack detection), so the
-// throw switches itself on at the gate's FIRST rising edge after power-up
-// and stays on until power-off (Tank::reset()). Until then the send is open
-// and the Tank is bit for bit what it was before the throw existed.
+// Unpatched the Versio's gate reads low (there is no jack detection), so
+// throw mode switches itself on at the FIRST rising edge of the gate, or the
+// first press of the button, and stays on until power-off (Tank::reset()) or
+// the exit gesture below. Until then the send is open and the Tank is bit
+// for bit what it was before the throw existed. So with nothing patched the
+// button alone is a hand throw: press = send open, release = closed.
 //
 // The send's gain is a ramp in front of everything that listens to the
 // input: the Splash (a thrown snare splashes; a snare outside the throw
-// doesn't), DriveIn, TONE's tilt and the Springs. The Kick (button, MIDI)
-// is a knock on the tank, not the send: it is never gated.
+// doesn't), DriveIn, TONE's tilt and the Springs.
 //
 // Ramp times. The springs smear the send's edges a lot: test_throw_hold's
 // click check (a 0 dBFS sustained low chord thrown on and off 8 times,
@@ -30,9 +32,9 @@
 // The ramp's shape is a smoothstep of a linear position (zero slope at both
 // ends), so neither end has a corner.
 //
-// The gate's role depends on SPRINGS: position 3 will make it the echo's
-// clock (another build, docs/research/dub-lens-critique.md §8 "Echo mode
-// design"). Until that lands every position throws.
+// The gate's and the button's role depend on SPRINGS (gateRole below): in
+// positions 1-2 they throw; in position 3 (echo mode, ADR 0041) the gate is
+// the echo's clock and the button taps its tempo (ADR 0043).
 
 #include "params/DriveVoicing.h"
 
@@ -44,25 +46,44 @@ namespace rv::throwhold {
 constexpr float kThrowOpenSeconds  = 0.002f;
 constexpr float kThrowCloseSeconds = 0.015f;
 
-// Leaving throw mode (ADR 0039, owner 4 Oct 2026): unplugging the gate
-// leaves it low, so the send would stay closed until power-off. Holding KICK
-// this long switches throw mode off: the send glides open (the open ramp)
-// and the latch clears; the next rising edge switches it on again. The Kick
-// still fires on the press, as always. 1 s: long enough that no played Kick
-// trips it, short enough to feel like a deliberate hold.
-constexpr float kThrowExitHoldSeconds = 1.0f;
+// Leaving throw mode (ADR 0039; gesture ADR 0043, owner 5 Oct 2026):
+// unplugging the gate leaves it low, so the send would stay closed until
+// power-off. In positions 1-2 a double tap whose second press is held
+// switches throw mode off: tap, tap, and keep the second press down for
+// kThrowExitHoldSeconds. The send glides open (the open ramp) and the latch
+// clears; the next rising edge or press switches it on again. Both taps
+// throw like any press until then (the second press holds the send open
+// while it counts, and after the exit the send simply stays open).
+//
+// No single press of any length may exit (the button is played: quick taps,
+// slow taps, long held throws), so the gesture asks for all of:
+// - the first tap is short: released within kExitTapMaxSeconds;
+// - the second press comes within kExitGapSeconds of that release;
+// - the first tap stands alone: no release in the kExitGapSeconds before
+//   it, so a run of fast taps ending in a long throw is not a double tap;
+// - the second press is held kThrowExitHoldSeconds.
+// 0.35 s for the gap and the tap: a relaxed deliberate double tap (OS
+// double-click defaults are 0.4-0.5 s; a quick one is 0.1-0.2 s) fits with
+// room, while slow tapping (quarter notes at 85 bpm or slower, held half
+// the beat, leave gaps of 0.35 s or more) never pairs up, and a run of
+// faster taps fails the "stands alone" rule. 2 s: the owner's number, far
+// longer than any played tap and still quick to do on purpose.
+constexpr float kThrowExitHoldSeconds = 2.0f;
+constexpr float kExitGapSeconds       = 0.35f;
+constexpr float kExitTapMaxSeconds    = 0.35f;
 // The confirmation (only if throw mode was on): all four LEDs white this
 // long, then the meters again (ADR 0039: the one exception to ADR 0031's
 // meters-only LEDs).
 constexpr float kThrowExitBlinkSeconds = 0.15f;
 
 enum class GateRole : unsigned char {
-    Throw, // positions 1 and 2
-    Clock  // position 3 in echo mode (ADR 0041): the echo's clock (Tank::clock)
+    Throw, // positions 1 and 2: the gate and the button throw
+    Clock  // position 3 in echo mode (ADR 0041): the gate is the echo's clock (Tank::clock), the button taps it (ADR 0043)
 };
 // SPRINGS position (0, 1, 2) and echo mode (on: position 3 is the tape
-// echo) -> what the gate does there. As the clock the throw rests open (the
-// send glides open, and follows the gate again back in positions 1-2).
+// echo) -> what the gate and the button do there. As the clock the throw
+// rests open (the send glides open, and follows the gate and the button
+// again back in positions 1-2).
 constexpr GateRole gateRole(int springsPosition, bool echoMode)
 {
     return springsPosition == 2 && echoMode ? GateRole::Clock : GateRole::Throw;

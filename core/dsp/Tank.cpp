@@ -26,7 +26,6 @@ constexpr std::array<uint32_t, Tank::kMaxSprings> kSeeds{{0x9E3779B9u, 0x7F4A7C1
 // M7 seeds (distinct from the Spring noise seeds; the components scramble
 // them with dsp::mixSeed).
 constexpr uint32_t kSplashSeed = 0x51A5E001u;
-constexpr uint32_t kKickSeed   = 0x4B1C0002u;
 constexpr std::array<uint32_t, Tank::kMaxSprings> kWobbleSeeds{{0x0B0B1E01u, 0x0B0B1E02u, 0x0B0B1E03u}};
 constexpr uint32_t kTransportSeed = 0x0B0B1E04u;
 constexpr uint32_t kEchoSeed      = 0x0B0B1E05u; // the tape's WOBBLE (echo mode)
@@ -36,7 +35,6 @@ constexpr uint32_t kEchoSeed      = 0x0B0B1E05u; // the tape's WOBBLE (echo mode
 // at 0, so the join at the knee has no corner in slope or curvature (a
 // curvature step is a tick on held tones too), and it holds exactly at the
 // threshold from 3x the room above the knee.
-constexpr float kClatterWetGain = Tank::kWetGain * splash::kClatterWet;
 
 inline float softLimit(float x)
 {
@@ -230,7 +228,6 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     hitRelease_ = std::exp(-float(kControlInterval) / (drive::kHitBumpReleaseS * sampleRate));
     for (auto& d : driveOut_) d.prepare(sampleRate);
     splash_.prepare(sampleRate, kSplashSeed);
-    kick_.prepare(sampleRate, kKickSeed);
     clangLp_.setCutoff(splash::strong(splash_.voicing()).clangHz, sampleRate);
     clangAtt_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastAttackMs * sampleRate));
     clangRel_ = 1.0f - std::exp(-1000.0f / (splash::kEnvFastReleaseMs * sampleRate));
@@ -243,6 +240,7 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     static_assert(dsp::TapeEcho::kGrid == kControlInterval, "the echo steps on the Tank's control grid");
     echo_.prepare(sampleRate, kEchoSeed, tape, tapeFloats);
     clock_.prepare(sampleRate);
+    tapClock_.prepare(sampleRate);
     springsDecay_ = std::log(echo::kSpringsT60Seconds / map::kT60MinSeconds)
                   / std::log(map::kT60MaxSeconds / map::kT60MinSeconds);
     levelCoeff_ = 1.0f - std::exp(-1000.0f * float(kControlInterval) / (splash::kTankLevelSmoothMs * sampleRate));
@@ -277,10 +275,13 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
         susGTarget_     = drive::dbToGain(2.0f * drive::kSusGentleTargetDb);
         susGNeedRelease_ = tick * drive::kSusGentleNeedReleaseDbPerS * (2.302585093f / 20.0f); // ln of a gain, per tick
     }
-    clatDelay_ = std::clamp(int(splash::kClatterSideMs * 0.001f * sampleRate + 0.5f), 1, int(kClatterSideMax));
-    // THROW's send ramp and the Hold's ducking follower (ThrowHold.h).
+    // THROW's send ramp, the button's exit gesture and the Hold's ducking
+    // follower (ThrowHold.h).
     thrOpenStep_  = 1.0f / (throwhold::kThrowOpenSeconds * sampleRate);
     thrCloseStep_ = 1.0f / (throwhold::kThrowCloseSeconds * sampleRate);
+    exitGap_    = uint32_t(throwhold::kExitGapSeconds * sampleRate);
+    exitTapMax_ = uint32_t(throwhold::kExitTapMaxSeconds * sampleRate);
+    exitHold_   = uint32_t(throwhold::kThrowExitHoldSeconds * sampleRate);
     duckAtt_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyAttackSeconds * sampleRate));
     duckRel_ = 1.0f - std::exp(-1.0f / (throwhold::kDuckKeyReleaseSeconds * sampleRate));
     {
@@ -578,12 +579,13 @@ RV_SIZE_OPT void Tank::reset()
     clangEnv_ = 0.0f;
     clangCeilPush_ = 1.0f;
     splashInput_ = 1.0f;
-    kick_.reset();
     for (auto& w : wobble_) w.reset();
     transport_.reset();
     echo_.reset();
     clock_.reset();
-    numPendingClocks_ = numClockQ_ = 0;
+    tapClock_.reset();
+    tapWins_ = false;
+    numPendingClocks_ = numClockQ_ = numTapQ_ = 0;
     sampleClock_      = 0;
     echoW_ = echoWFrom_ = fbFrom_ = fbTo_ = ginFrom_ = ginTo_ = 0.0f;
     division_ = -1;
@@ -613,8 +615,6 @@ RV_SIZE_OPT void Tank::reset()
     susGNeedHold_ = 0.0f;
     susEngaged_ = false;
     inTrimFrom_ = inTrimTo_ = excTrimTo_;
-    clatBuf_.fill(0.0f);
-    clatPos_ = 0;
     compDrive_ = -1.0f;
     limitEnv_  = 0.0f;
     limitHold_ = 0;
@@ -623,11 +623,13 @@ RV_SIZE_OPT void Tank::reset()
     s3SeriesFrom_ = s3SeriesTo_ = s3WFrom_ = 0.0f;
     s3InLp_.reset();
     s3SendLp_.reset();
-    numPendingKicks_ = 0;
-    // THROW: off again until the gate's next first rising edge (power-up).
-    numPendingGates_ = 0;
+    // THROW: off again until the gate's next first rising edge or the
+    // button's first press (power-up).
+    numPendingGates_ = numPendingButtons_ = 0;
     gateHigh_ = throwOn_ = throwParamHigh_ = false;
     thrReleasing_ = releaseThrow_ = false;
+    buttonDown_ = btnPressThrew_ = btnHaveRelease_ = btnTapShort_ = btnTapAlone_ = exitArmed_ = false;
+    btnPressAt_ = btnReleaseAt_ = exitAt_ = throwExits_ = 0;
     thrPos_    = 1.0f;
     thrRelPos_ = 0.0f;
     sendNow_ = 1.0f;
@@ -645,17 +647,66 @@ RV_SIZE_OPT void Tank::reset()
     primed_   = false;
 }
 
-void Tank::kick(int sampleOffset)
-{
-    if (numPendingKicks_ < kMaxPendingKicks)
-        pendingKicks_[size_t(numPendingKicks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
-}
-
 bool Tank::exitThrowMode()
 {
     if (!throwOn_ || thrReleasing_) return false;
     releaseThrow_ = true;
     return true;
+}
+
+// Leaving throw mode: crossfade from the throw's send to the plain one over
+// the open ramp (process()), then unlatch.
+void Tank::startThrowExit()
+{
+    if (!throwOn_ || thrReleasing_) return;
+    thrReleasing_ = true;
+    thrRelPos_    = 0.0f;
+    ++throwExits_;
+}
+
+void Tank::button(bool down, int sampleOffset)
+{
+    if (numPendingButtons_ < kMaxPendingGates)
+        pendingButtons_[size_t(numPendingButtons_++)] = GateEvent{sampleOffset < 0 ? 0 : sampleOffset, down};
+}
+
+// One button change at absolute sample `at` (ADR 0043, ThrowHold.h). In
+// positions 1-2 a press throws (switching throw mode on, as the gate's first
+// rising edge) and may arm the exit gesture: a short tap that stood alone,
+// then this press within kExitGapSeconds of its release. In position 3 a
+// press is a tap of the echo's tempo.
+void Tank::buttonEvent(bool down, uint32_t at, bool throwRole, float hs)
+{
+    if (down == buttonDown_) return; // no change
+    buttonDown_ = down;
+    if (down) {
+        btnPressThrew_ = throwRole;
+        btnPressAt_    = at;
+        if (throwRole) {
+            const bool soon = btnHaveRelease_ && at - btnReleaseAt_ <= exitGap_;
+            exitArmed_   = soon && btnTapShort_ && btnTapAlone_;
+            exitAt_      = at + exitHold_;
+            btnTapAlone_ = !soon;
+            latchThrow(hs);
+        } else {
+            exitArmed_ = btnHaveRelease_ = false;
+            if (numTapQ_ < kMaxPendingClocks) tapQ_[size_t(numTapQ_++)] = at; // reaches the tap clock at the next tick (feedClocks)
+        }
+    } else {
+        exitArmed_      = false;
+        btnHaveRelease_ = btnPressThrew_;
+        btnReleaseAt_   = at;
+        btnTapShort_    = at - btnPressAt_ <= exitTapMax_;
+    }
+}
+
+// The exit gesture's hold (ADR 0043): checked on the control grid (every
+// 32 samples, 0.7 ms), so any block size exits on the same sample.
+void Tank::buttonExitTick()
+{
+    if (!exitArmed_ || int32_t(sampleClock_ - exitAt_) < 0) return;
+    exitArmed_ = false;
+    if (throwhold::gateRole(springsPos_, echoMode_) == throwhold::GateRole::Throw) startThrowExit();
 }
 
 // The throw switches on (the first rising edge, or the next one after
@@ -679,26 +730,49 @@ void Tank::gate(bool high, int sampleOffset)
 
 void Tank::clock(int sampleOffset)
 {
-    if (numPendingClocks_ < kMaxPendingKicks)
+    if (numPendingClocks_ < kMaxPendingClocks)
         pendingClocks_[size_t(numPendingClocks_++)] = sampleOffset < 0 ? 0 : sampleOffset;
 }
 
 RV_SIZE_OPT void Tank::feedClocks() // control rate: the echo clock's queue (housekeeping)
 {
-    int k = 0;
-    while (k < numClockQ_ && int32_t(clockQ_[size_t(k)] - sampleClock_) <= 0) clock_.edge(clockQ_[size_t(k++)]);
-    if (k == 0) return;
-    for (int j = k; j < numClockQ_; ++j) clockQ_[size_t(j - k)] = clockQ_[size_t(j)];
-    numClockQ_ -= k;
+    // The gate's edges and the taps up to now, in time order. Of the two
+    // clocks the one that set its tempo last wins (tapWins_, echoTick).
+    int k = 0, t = 0;
+    for (;;) {
+        const bool g  = k < numClockQ_ && int32_t(clockQ_[size_t(k)] - sampleClock_) <= 0;
+        const bool tp = t < numTapQ_ && int32_t(tapQ_[size_t(t)] - sampleClock_) <= 0;
+        if (!g && !tp) break;
+        if (g && (!tp || int32_t(clockQ_[size_t(k)] - tapQ_[size_t(t)]) <= 0)) {
+            const uint32_t sets = clock_.tempoSets();
+            clock_.edge(clockQ_[size_t(k++)]);
+            if (clock_.tempoSets() != sets) tapWins_ = false;
+        } else {
+            const uint32_t sets = tapClock_.tempoSets();
+            tapClock_.edge(tapQ_[size_t(t++)]);
+            if (tapClock_.tempoSets() != sets) tapWins_ = true;
+        }
+    }
+    if (k > 0) {
+        for (int j = k; j < numClockQ_; ++j) clockQ_[size_t(j - k)] = clockQ_[size_t(j)];
+        numClockQ_ -= k;
+    }
+    if (t > 0) {
+        for (int j = t; j < numTapQ_; ++j) tapQ_[size_t(j - t)] = tapQ_[size_t(j)];
+        numTapQ_ -= t;
+    }
 }
 
 RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, bool snap)
 {
     // SPRINGS 3 echo mode (EchoVoicing.h, ADR 0041); its glide is in
     // controlTick. The clock: the host's tempo (Plugin), else the gate's (lost after a
-    // while without pulses), else none.
+    // while without pulses) or the tapped one (held; ADR 0043), whichever set
+    // its tempo last, else none.
     clock_.update(sampleClock_);
-    const float beat = hostBpm_ > 0.0f ? 60.0f / hostBpm_ : clock_.beatSamples() / sampleRate_;
+    tapClock_.update(sampleClock_, true);
+    const float beatSamples = tapClockInUse() ? tapClock_.beatSamples() : clock_.beatSamples();
+    const float beat = hostBpm_ > 0.0f ? 60.0f / hostBpm_ : beatSamples / sampleRate_;
     if (beat > 0.0f) {
         // TENSION's seven zones, long -> short, with a little hysteresis at
         // each border (kDivisionHysteresis).
@@ -880,7 +954,6 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     echoTick(decayKnob, tensionKnob, echoFresh, snap);
     if (snap || attW_ != voiceW_) { // the blends only when the Morph moved
         voice_  = dsp::blendVoice(attW_);
-        kick_.setAttitude(attW_);
         voiceW_ = attW_;
     }
     const drive::Voice& voice = voice_;
@@ -925,12 +998,12 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     }
     const float splashAmt = smoothed_[size_t(ParamId::Splash)];
 
-    // M7: Splash and Kick follow the Morph weights (their tables blend like
-    // the drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
+    // M7: the Splash follows the Morph weights (its table blends like the
+    // drive voicing: no steps on an ATTITUDE flip); WOBBLE glides.
 #if RV_TANKV_BUILT >= 7
     if (tankv::hasShipFixes(tankVoicing_)) {
         // 7: the transducers darken the crash against the tail most at low
-        // DRIVE; the Clang and the Clatter are lifted there (TankVoicing.h
+        // DRIVE; the Clang is lifted there (TankVoicing.h
         // tdSplashLiftDb), easing to none by DRIVE 0.8 (process()).
         const auto& t = tankv::tuning();
         const float u = std::clamp((t.tdSplashLiftTo - smoothed_[size_t(ParamId::Drive)]) / (t.tdSplashLiftTo - t.tdSplashLiftFrom), 0.0f, 1.0f);
@@ -1758,7 +1831,7 @@ RV_SIZE_OPT Tank::CoupleMatrix Tank::coupleMatrix(float angle, int kind)
     return m;
 }
 
-void Tank::processCoupled(const float* mono, float* const* clat, const float* jolt, const float* tapSamples, float* wobA,
+void Tank::processCoupled(const float* mono, const float* jolt, const float* tapSamples, float* wobA,
                           float (*wet)[kControlInterval], int tick, int n)
 {
     // The Springs' inputs as in process() (same order of the WOBBLE calls),
@@ -1771,12 +1844,11 @@ void Tank::processCoupled(const float* mono, float* const* clat, const float* jo
     const float inv = 1.0f / float(kControlInterval);
     for (size_t s = 0; s < springs_.size(); ++s) {
         const float scale = splash::kJoltSpringScale[s];
-        const float* c = clat[s];
         for (int i = 0; i < n; ++i) {
             lFrac[s][i]    = scale * jolt[i];
             lSamples[s][i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]);
-            loopIn[s][i]   = mono[i] + splash::kClatterLoop * c[i];
-            high[s][i]     = mono[i] + splash::kClatterHigh * c[i];
+            loopIn[s][i]   = mono[i];
+            high[s][i]     = mono[i];
         }
     }
 #ifndef RV_FIXED_VOICINGS
@@ -1870,8 +1942,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             outL[i] = inL[i];
             outR[i] = inR[i];
         }
-        numPendingKicks_ = numPendingClocks_ = 0;
-        numPendingGates_ = 0;
+        numPendingClocks_ = 0;
+        numPendingGates_ = numPendingButtons_ = 0;
         return;
     }
     // THROW from the ParamSpec switch (Plugin, Renderer): a change is a gate
@@ -1884,22 +1956,19 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             gateHigh_ = p;
         }
     }
-    // Throw mode off (a long press of KICK, ADR 0039): crossfade from the
+    // Throw mode off (exitThrowMode(), ADR 0039): crossfade from the
     // throw's send to the plain one over the open ramp, then unlatch.
     if (releaseThrow_) {
         releaseThrow_ = false;
-        if (throwOn_ && !thrReleasing_) {
-            thrReleasing_ = true;
-            thrRelPos_    = 0.0f;
-        }
+        startThrowExit();
     }
-    int gateIdx = 0; // next pending gate change
+    int gateIdx = 0, btnIdx = 0; // next pending gate and button changes
     // Echo mode's clock: this block's gate edges, on their exact samples,
     // queued; each reaches the clock at the first control tick at or after
     // it (feedClocks), so any block size reads the same tempo at the same tick.
     for (int k = 0; k < numPendingClocks_; ++k) {
         const uint32_t at = sampleClock_ + uint32_t(std::min(pendingClocks_[size_t(k)], numSamples - 1));
-        if (numClockQ_ == kMaxPendingKicks) break; // full: extras dropped (as kick())
+        if (numClockQ_ == kMaxPendingClocks) break; // full: extras dropped
         int j = numClockQ_++;
         for (; j > 0 && int32_t(clockQ_[size_t(j - 1)] - at) > 0; --j) clockQ_[size_t(j)] = clockQ_[size_t(j - 1)];
         clockQ_[size_t(j)] = at;
@@ -1912,9 +1981,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         primed_    = true;
     }
 
-    float mono[kControlInterval], driven[kControlInterval], high[kControlInterval], loopIn[kControlInterval];
+    float mono[kControlInterval], driven[kControlInterval], loopIn[kControlInterval];
     float xin[kControlInterval], det[kControlInterval], clang[kControlInterval], bite[kControlInterval], clangToday[kControlInterval];
-    float clatter[kControlInterval], clatterB[kControlInterval], clatterC[kControlInterval], jolt[kControlInterval], kickLoop[kControlInterval], kickDirect[kControlInterval];
+    float jolt[kControlInterval];
     float lFrac[kControlInterval], lSamples[kControlInterval], tapSamples[kControlInterval], wobA[kControlInterval],
         trem[kControlInterval];
     float wet[kMaxSprings][kControlInterval], send[kControlInterval], sendG[kControlInterval];
@@ -1924,6 +1993,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         if (tick_ == 0) { // fixed grid, independent of block size
             feedClocks();
             controlTick(false);
+            buttonExitTick();
         }
         prof::mark(prof::kControl);
         const int n = std::min(numSamples - pos, kControlInterval - tick_);
@@ -1932,15 +2002,18 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // sample, in front of everything that hears the input (the Splash
         // included: a thrown snare splashes), only while either is in play
         // (otherwise nothing here runs and the input is as before, bit for
-        // bit). Gate changes land on their sample; the throw latches on at
-        // the first rising edge. Thrown, the send follows the gate (an open
-        // throw overrides the freeze: it is how new sound gets into a held
-        // bed; the layer voicing keeps its lower send under the throw).
+        // bit). Gate and button changes land on their sample; the throw
+        // latches on at the first rising edge or press. Thrown, the send is
+        // open while the gate is high or the button held (an open throw
+        // overrides the freeze: it is how new sound gets into a held bed; the
+        // layer voicing keeps its lower send under the throw). In position 3
+        // a press is a tap of the echo's tempo instead (buttonEvent).
         // HOLD's ducking: the key's follower runs per sample below; the dip
         // is read on the tick (controlTick) and ramped over it.
         const bool  duckLive  = holdBed_ > 0.0f || duckFrom_ != 1.0f || duckTo_ != 1.0f;
         const float duckStep = (duckTo_ - duckFrom_) * (1.0f / float(kControlInterval));
-        const bool sendLive = throwOn_ || gateIdx < numPendingGates_ || holdSendFrom_ != 1.0f || holdSendTo_ != 1.0f;
+        const bool sendLive = throwOn_ || gateIdx < numPendingGates_ || btnIdx < numPendingButtons_ || holdSendFrom_ != 1.0f
+                           || holdSendTo_ != 1.0f;
         if (sendLive) {
             const float hStep = (holdSendTo_ - holdSendFrom_) * (1.0f / float(kControlInterval));
             const bool  layer = holdVoicing_ == throwhold::kVoicingLayer;
@@ -1951,13 +2024,17 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                     if (high && !gateHigh_ && throwRole) latchThrow(holdSendFrom_ + hStep * float(tick_ + i));
                     gateHigh_ = high;
                 }
+                while (btnIdx < numPendingButtons_ && std::min(pendingButtons_[size_t(btnIdx)].at, numSamples - 1) <= pos + i) {
+                    const bool down = pendingButtons_[size_t(btnIdx++)].high;
+                    buttonEvent(down, sampleClock_ + uint32_t(i), throwRole, holdSendFrom_ + hStep * float(tick_ + i));
+                }
                 const float hs = holdSendFrom_ + hStep * float(tick_ + i);
                 float g = hs;
                 if (throwOn_) {
                     // Where the gate is the echo's clock (SPRINGS 3, ADR
                     // 0041) the throw rests open: the send glides open and
-                    // follows the gate again back in positions 1-2.
-                    const bool open = throwRole ? gateHigh_ : true;
+                    // follows the gate and the button again back in positions 1-2.
+                    const bool open = throwRole ? gateHigh_ || buttonDown_ : true;
                     thrPos_ = open ? std::min(1.0f, thrPos_ + thrOpenStep_) : std::max(0.0f, thrPos_ - thrCloseStep_);
                     const float t = throwhold::smooth01(thrPos_);
                     g = layer ? t * hs : t;
@@ -2046,32 +2123,12 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             excAccBand_ += w * w;
         }
 
-        // Kick: onsets on their exact sample (offsets clamp to the block).
-        for (int k = 0; k < numPendingKicks_; ++k) {
-            const int at = std::min(pendingKicks_[size_t(k)], numSamples - 1) - pos;
-            if (at >= 0 && at < n) kick_.trigger(at);
-        }
-        kick_.process(kickLoop, kickDirect, n);
-        // A Kick forces a maximal Splash on its own sample (SPEC §4.6).
-        if (kick_.joltOffset() >= 0) splash_.strike(1.0f, kick_.joltOffset());
-        float* const clat[kMaxSprings] = {clatter, clatterB, clatterC};
-        splash_.process(det, clang, bite, clatter, clatterB, clatterC, jolt, n, splash::kVoicingsBuilt ? clangToday : nullptr);
+        splash_.process(det, clang, bite, jolt, n, splash::kVoicingsBuilt ? clangToday : nullptr);
         if (!splashOn_) { // test hooks (Tank.h)
-            for (auto* c : clat) std::fill(c, c + n, 0.0f);
             std::fill(clang, clang + n, 0.0f);
             std::fill(bite, bite + n, 0.0f);
         }
         if (!joltOn_) std::fill(jolt, jolt + n, 0.0f);
-#if RV_TANKV_BUILT >= 7
-        if (splashLift_ != 1.0f) { // 7: SPLASH at low DRIVE (controlTick)
-            const float k = splashLift_;
-            for (int i = 0; i < n; ++i) {
-                clatter[i] *= k;
-                clatterB[i] *= k;
-                clatterC[i] *= k;
-            }
-        }
-#endif
         prof::mark(prof::kSplash);
 
         // DriveIn (transducer -> tape). The Bite (ADR 0032, SplashVoicing.h):
@@ -2091,18 +2148,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 
         // Spring inputs: TONE's tilt and the excitation trim; the Clang (ADR
         // 0032): the hit's own highs, above splash::kClangHz, fed harder into
-        // the springs while it lasts, x + c (x - LP(x)); plus the Kick's
-        // high-passed Loop feed (post-drive, not clanged: a Kick has its own
-        // crash). Each Spring also gets its own Clatter stream (the Kick's
-        // crash: same burst envelope, independent noise, every spring clangs
-        // on its own), into the Loop (dispersed into the Chirp, decays with
-        // the tail) and the high path (fast echoes), splash::kClatterLoop /
-        // kClatterHigh.
-        // The Kick's Loop feed is divided by the level DRIVE adds on the
-        // Springs' output (heardGain_), so a Kick stays the same size at any
-        // DRIVE (ADR 0005: fixed strength, ATTITUDE only).
+        // the springs while it lasts, x + c (x - LP(x)). The same input goes
+        // into every Spring's Loop and high path.
         const float excStep = (inTrimTo_ - inTrimFrom_) * (1.0f / float(kControlInterval));
-        const float kickScale = 1.0f / driveInSettings_.heard;
         // The Clang's ceiling rises with KICKED's pickup push (clangCeilPush_):
         // driven KICKED pickups squash a big splash on their own (SplashVoicing.h).
         const float clangCeil = splash_.clangCeiling() * clangCeilPush_;
@@ -2157,7 +2205,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             c *= splashLift_; // 7: SPLASH at low DRIVE (controlTick), past the ceiling
 #endif
 #if RV_TANKV_BUILT >= 5
-            if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the input coil (the Kick's knock bypasses it)
+            if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the input coil
                 float u = x + c * (x - lo);
                 if (tdEven != 0.0f) { // the coil's even-order colour
                     // A plain square (only doubled frequencies: nothing above
@@ -2174,11 +2222,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #endif
                     u += tdEven / (1.0f + tankv::tuning().tdEvenEase * avg) * sq;
                 }
-                mono[i] = tdIn_.process(u) + kickScale * kickLoop[i];
+                mono[i] = tdIn_.process(u);
                 continue;
             }
 #endif
-            mono[i] = x + c * (x - lo) + kickScale * kickLoop[i];
+            mono[i] = x + c * (x - lo);
         }
         // Voicing 1: the shared Sweep, once for every Spring (Loop and high path).
 #if RV_TANKV_BUILT >= 1
@@ -2203,7 +2251,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             for (int i = 0; i < n; ++i) mono[i] -= (s3WFrom_ + step * float(tick_ + i)) * s3InLp_.process(mono[i]);
         }
         if (springs3::kPaletteBuilt && s3Coupled_) {
-            processCoupled(mono, clat, jolt, tapSamples, wobA, wet, tick_, n);
+            processCoupled(mono, jolt, tapSamples, wobA, wet, tick_, n);
         } else
         {
         // Spring C is heard nowhere with echo mode built (Tank.h "SPRINGS
@@ -2212,13 +2260,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         if (numRun < springs_.size()) std::fill(wet[2], wet[2] + n, 0.0f);
         for (size_t s = 0; s < numRun; ++s) {
             const float scale = splash::kJoltSpringScale[s];
-            const float* c = clat[s];
             for (int i = 0; i < n; ++i) {
                 lFrac[i]    = scale * jolt[i];
                 lSamples[i] = s == 0 ? (wobA[i] = wobble_[0].next()) : wobble_[s].next(wobA[i]); // B, C share A's at low WOBBLE
-                loopIn[i]   = mono[i] + splash::kClatterLoop * c[i];
-                high[i]     = mono[i] + splash::kClatterHigh * c[i];
             }
+            const float* lin = mono; // the Loop's input: the mono input, or (in series) A's output
             if (series && s > 0) {
                 // Only the Loops: the high paths keep the input, so the fast
                 // high echoes aren't echoed twice (a 5-6 kHz ring on tight
@@ -2227,10 +2273,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                     for (int i = 0; i < n; ++i) send[i] = sendCut ? wet[0][i] - s3SendLp_.process(wet[0][i]) : wet[0][i];
                 for (int i = 0; i < n; ++i) {
                     const float k = s3SeriesFrom_ + seriesStep * float(tick_ + i);
-                    loopIn[i] = mono[i] + k * (seriesSend * send[i] - mono[i]) + splash::kClatterLoop * c[i];
+                    loopIn[i] = mono[i] + k * (seriesSend * send[i] - mono[i]);
                 }
+                lin = loopIn;
             }
-            springs_[s].process(loopIn, high, lFrac, lSamples, tapSamples, wet[s], n);
+            springs_[s].process(lin, mono, lFrac, lSamples, tapSamples, wet[s], n);
             prof::mark(prof::Section(prof::kSpringA + int(s)));
         }
         }
@@ -2248,11 +2295,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #else
         const float outTrim = trimAfter ? tdTrim_ : 1.0f;
 #endif
-        const float kickIn  = trimAfter ? kWetGain / tdTrim_ : kWetGain; // the Kick's thump comes out as before
 #else
         constexpr float wetGain = kWetGain;
         constexpr float outTrim = 1.0f;
-        constexpr float kickIn  = kWetGain;
 #endif
         float wetL[kControlInterval], wetR[kControlInterval]; // the wet up to the mu-law box (ADR 0042 amendment)
         for (int i = 0; i < n; ++i) {
@@ -2320,10 +2365,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             }
 #endif
             // Output pickup (DriveOut), one per channel.
-            // The Kick's direct thump joins the mid here: centred, mono-safe,
-            // coloured by the pickups like the tank body moving under them.
-            const float body = mid + kickIn * kickDirect[i];
-            float inl = body + sd + d, inr = body - sd - d;
+            float inl = mid + sd + d, inr = mid - sd - d;
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the output pickup's treble loss
                 inl = tdOut_[0].process(inl);
@@ -2332,21 +2374,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #endif
             float wl = outTrim * driveOut_[0].process(inl);
             float wr = outTrim * driveOut_[1].process(inr);
-            // Clatter share straight to the wet (M8 round 1; 0 since round 2,
-            // splash::kClatterWet: it read as a hi-hat on top of the reverb):
-            // the crash on top of the tail, after the pickups (an asymmetric
-            // pickup would turn the burst's envelope into lows: KICKED Kick's low end, ADR
-            // 0016). Mid, plus a copy delayed by kClatterSideMs in the side
-            // (band noise a millisecond apart is uncorrelated): a wide crash
-            // that sums to the plain burst in mono.
-            if (kClatterWetGain > 0.0f) {
-                const float cw = kClatterWetGain * clatter[i];
-                const float cs = splash::kClatterSide * clatBuf_[size_t(clatPos_)];
-                clatBuf_[size_t(clatPos_)] = cw;
-                if (++clatPos_ >= clatDelay_) clatPos_ = 0;
-                wl += cw + cs;
-                wr += cw - cs;
-            }
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);
@@ -2371,8 +2398,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             } else if (tilt_.place() != drive::kTonePlacePre) {
                 // The Big Knob on the return (DriveVoicing.h "TONE
                 // placement", ADR 0036 amendment): the tail you hear thins
-                // at once. Its makeup followers (L + R above ~90 Hz, so the
-                // Kick's sub thump doesn't count) and its makeup.
+                // at once. Its makeup followers (L + R above ~90 Hz) and its
+                // makeup.
                 const float si = wl + wr;
                 toneReturn_.process(wl, wr);
                 const float so = wl + wr;
@@ -2431,8 +2458,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         sampleClock_ += uint32_t(n);
         tick_ = (tick_ + n) % kControlInterval;
     }
-    numPendingKicks_ = 0;
-    numPendingGates_ = 0;
+    numPendingGates_ = numPendingButtons_ = 0;
 }
 
 } // namespace rv

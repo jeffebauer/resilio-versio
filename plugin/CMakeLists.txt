@@ -19,7 +19,7 @@ juce_add_plugin(ResilioVersio
     PRODUCT_NAME "${RV_PLUGIN_NAME}"
     FORMATS AU VST3
     IS_SYNTH FALSE
-    NEEDS_MIDI_INPUT TRUE   # MIDI notes trigger Kick (ADR 0005)
+    NEEDS_MIDI_INPUT TRUE   # MIDI notes are the gate (ADR 0043)
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     AU_MAIN_TYPE kAudioUnitType_MusicEffect
@@ -47,7 +47,7 @@ target_link_libraries(ResilioVersio
 # ---------------------------------------------------------------------------
 # Console test bench (SPEC §7 M2): hosts the built AU/VST3 bundles the way a
 # DAW does (juce::AudioPluginFormatManager, headless — no GUI needed to load
-# and process a plugin). Verifies parameters, Kick timing, MIX-1 parity with
+# and process a plugin). Verifies parameters, MIDI-gate timing, MIX-1 parity with
 # a direct Tank render, latency/null-test at MIX 0, and state save/restore.
 add_executable(plugin_host_test tests/PluginHostTest.cpp)
 
