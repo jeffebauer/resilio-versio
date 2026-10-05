@@ -82,7 +82,7 @@
 #define RV_TANKV_BUILT 7 // the default, kGentleWide (ADR 0038 Decision)
 #endif
 #else
-#define RV_TANKV_BUILT 7
+#define RV_TANKV_BUILT 10 // desktop: every voicing, round 5's (8-10) included
 #endif
 
 namespace rv::tankv {
@@ -95,7 +95,15 @@ constexpr int kGentle   = 4;
 constexpr int kTransducers = 5;
 constexpr int kWide        = 6;
 constexpr int kGentleWide  = 7;
-constexpr int kNumVoicings     = 8;
+// Wellspring fit round 5 (ADR 0038 "Round 5", proposed; docs/m8-tuning-
+// backlog.md "Wellspring round 5"), all on top of 7 as shipped (F round 2's
+// low cut step included): 8 = "B" the front, the resonance and the stereo
+// image; 9 = "C" = 8 + held sounds that settle flat; 10 = "D" halfway from 7
+// to 9 (Tuning "Round 5").
+constexpr int kR5         = 8;
+constexpr int kR5Flat     = 9;
+constexpr int kR5Half     = 10;
+constexpr int kNumVoicings     = 11;
 // The owner's pick (2 Oct 2026, Wellspring fit round 4, "F, plus gentler";
 // ADR 0038 Decision): 7. The plugin and the firmware play it; 0-6 stay as
 // Renderer-only references (tank_voicing). RV_TANK_DEFAULT_VOICING (a scratch
@@ -121,6 +129,16 @@ constexpr bool hasGentleMakeup(int v) { return v >= kGentleWide; }
 // square term high-passed, the low cut's makeup read on the input too, and
 // the wet trim after the pickups. 5 and 6 stay as round 4 played them.
 constexpr bool hasShipFixes(int v) { return v >= kGentleWide; }
+// Round 5 (8-10): how far each of its changes goes, 0 = 7 as shipped, 1 =
+// the full change (D, 10, goes half way). flat: the held-sound part (C, 9,
+// and D's half of it).
+constexpr bool  hasR5(int v) { return v >= kR5; }
+constexpr float r5Amount(int v) { return v < kR5 ? 0.0f : v == kR5Half ? 0.5f : 1.0f; }
+constexpr float r5FlatAmount(int v) { return v == kR5Flat ? 1.0f : v == kR5Half ? 0.5f : 0.0f; }
+// The stereo image (r5Wide*, r5PickupBMs, r5DiffScale) goes all the way in D
+// too: half of it put D(mid) back at half weight, and with it the tones'
+// left / right lean (500 Hz +3.2 dB) and out-of-phase fronts.
+constexpr float r5StereoAmount(int v) { return v >= kR5 ? 1.0f : 0.0f; }
 
 // Diffusers per Loop (voicing 3).
 constexpr int kNumDiffusers = 3;
@@ -350,6 +368,108 @@ struct Tuning {
     float tdSplashLiftFrom     = 0.5f;
     float tdSplashLiftTo       = 0.8f;
     float tdSplashLiftKickedDb = 3.0f;
+
+#if RV_TANKV_BUILT >= 8 // (the firmware with 7 as its default carries none of it)
+    // ---- Round 5 (8-10; ADR 0038 "Round 5", proposed) ----
+    // Fitted to the owner's Wellspring takes of session 2 (J tone bursts, K
+    // pink noise, L held tones, M pad) and session 1 (A clicks) at the
+    // session-2 settings (2 Springs, CLEAN, MIX 1, DECAY 0.70, TONE / TENSION
+    // noon, the rest at the panel defaults) by docs/prototypes/wellspring-fit-5/
+    // fit5.py (coordinate search, score in its header; r5.py / r5an.cpp
+    // measure). 7's value is what each one is at r5Amount 0; D (10) goes half
+    // way. Numbers before -> after: docs/m8-tuning-backlog.md "Wellspring
+    // round 5".
+    //
+    // The front (target 1). The Loop diffusers move in front of the pickup,
+    // so the first echo is smeared too and the next echoes fill in sooner:
+    // on the clicks, the first 100 ms stand 7.0-8.3 dB over the next 400 ms
+    // at 125-500 Hz in 7, 4.0-4.5 here (the Wellspring 4.0-4.1). Same three
+    // allpasses per Spring (no new stage); longer (8.0 ms in all: what the
+    // firmware's pool holds, Spring C getting none where it never runs) and
+    // stronger. The pickup stays (r5DiffAlign 0, fitted): the smear's direct
+    // part keeps the first echo's time, its body comes a few ms later.
+    float r5DiffMs[kNumDiffusers] = {1.9f, 2.6f, 3.5f};
+    float r5DiffCoeff = 0.5f;
+    // Per Spring (A, B, C): in front of the pickup, unlike diffusers smear
+    // the Springs' first echoes differently, so the front comes out wide;
+    // alike, the front is centred and the Springs part as their Loops drift
+    // apart (the Wellspring's front: 125-500 Hz centred).
+    float r5DiffScale[3] = {1.0f, 1.0f, 0.89f};
+    float r5DiffAlign = 0.0f;
+    // The resonance (target 2). The Loop's damping becomes a biquad: a
+    // peaking cut of r5EqDb per trip at r5EqHz (width r5EqQ), so the octave
+    // around 1 kHz loses a little more each trip than 500 Hz and stops
+    // ringing longest (the Wellspring rings longest at 500 Hz, 7 at 1 kHz).
+    // Set by hand on the fit: the search alone traded it for the steady
+    // colour (a shorter 1 kHz is a quieter 1 kHz; the coil gives it back).
+    // Left of noon it eases to 7's (today's) low-pass; right of noon the cut
+    // eases to r5EqDbBright (TONE fully right; -0.3 let Spring B's ~1 kHz
+    // sing at TENSION 1, DECAY 0.75: M6 15.9 dB, limit 15). None of it in
+    // the Hold or the Howl (Tank.cpp updateSpringSettings).
+    float r5EqHz       = 1200.0f;
+    float r5EqDb       = -0.8f;
+    float r5EqQ        = 1.4f;
+    float r5EqDbBright = -0.6f;
+    // The Loop's DC blocker (Spring::kDcBlockHz 40 Hz). The fit took it to
+    // 35 Hz (125 Hz rings a little longer) for little; that let the Kick's
+    // low end ring 3 dB too long (test_kick), so it stays at 40.
+    float r5DcHz = 40.0f;
+    // The coil (5's input transducer): its resonance lower and sharper, the
+    // presence peak up from 1 kHz to 1.25-1.6 kHz (the Wellspring 1.25-1.6).
+    float r5TdInHz  = 1960.0f;
+    float r5TdInQ   = 1.57f;
+    float r5TdOutHz = 4500.0f;
+    float r5TdOutQ  = 0.67f;
+    // The high path: twice 7's length (4 kHz rang 1.2 s, the Wellspring 1.8).
+    float r5HighT60Ratio = 3.0f;
+    float r5HighFromDecay = 0.3f; // ... 7's 1.5 below this DECAY, easing (smoothstep) to
+    float r5HighFullDecay = 0.6f; // ... r5HighT60Ratio from this one
+    float r5HighCeilHz   = 9000.0f;
+    float r5HighLevel    = 0.9f;
+    // The low cut in front of the Springs (F round 2's step 2 at r5Amount 0):
+    // a little more bass in, a little more 150-400 Hz out.
+    float r5LcHpHz    = 138.0f;
+    float r5LcShelfDb = -3.0f;
+    // The stereo image (target 3). D(mid) put each pure tone left- or
+    // right-heavy (500 Hz-1 kHz 6-11 dB: its phase there); the width comes
+    // from the Springs' own difference (D2, 6's), which starts centred and
+    // widens as the Springs drift apart, like the Wellspring's two tanks.
+    // Below r5BassHz the difference is taken out (r5BassOrder2: a second pole;
+    // the fit kept one). D still widens 1 Spring.
+    float r5WideW    = 0.0f;
+    // ... except 3 Springs (SPRINGS 3 with echo mode off, the Renderer's
+    // coupled reference): its third Spring sits in the middle, so D stays at
+    // this weight there (test_tank_voicing's width, fine-structure L/R
+    // correlation <= 0.1, read 0.21 without it). Echo mode plays 2 Springs:
+    // r5WideW, as wide as 7's echo mode above 1 kHz, its lows centred.
+    float r5WideW3 = 0.5f;
+    // ... and at short DECAYs D's weight r5WideWShort at DECAY 0, easing out
+    // (smoothstep) by DECAY r5WideShortTo (Tank.cpp stereoMixFor).
+    float r5WideWShort  = 0.6f;
+    float r5WideShortTo = 0.45f;
+    float r5WideSide = 0.55f;
+    float r5WideSide3 = 0.55f;
+    float r5BassHz   = 150.0f;
+    float r5BassOrder2 = 0.0f;
+    // Spring B's pickup this much later (ms) than 7's alignment. Tried: 0.12
+    // puts the two Springs' 2-4 kHz first echoes in phase (a 2 kHz burst's
+    // front read -0.85 L/R, then +0.45; the Wellspring -0.12), but combs the
+    // mono sum of a short tail (DECAY 0: notch -6.3 dB at 1.4 kHz, test_tank's
+    // bar -6, margin -4.5; 0.06 still -5.4). Off: the clicks' 2 kHz front
+    // reads -0.12 (the Wellspring -0.02) as it is.
+    float r5PickupBMs = 0.0f;
+    // Held sounds (target 4, C): WOBBLE's random wow / flutter inside the
+    // Loops x r5FlatLoopWobble, the pickups' share (the transport) x
+    // r5FlatTransportWobble, left of noon only (Tank.cpp). All of it on the
+    // pickups: a held 1 kHz tone at WOBBLE 0.45 moves 2.2 dB instead of 7.8
+    // (the Wellspring 1.2), and x 1.6 there keeps its pitch movement (WOBBLE
+    // 0.25: p95 21.8 cents, 7 21.0; docs/prototypes/wellspring-fit-5/pitch5.py).
+    // The Sustain trim's glide down on held sounds x this (on top of F round
+    // 2's kFSusGlideScale; Tank.cpp updateBaseSettings).
+    float r5SusGlideScale = 0.6f;
+    float r5FlatLoopWobble = 0.0f;
+    float r5FlatTransportWobble = 1.6f;
+#endif
 };
 
 // ---- F round 2: the low cut at TONE noon (proto/wellspring-f2; ADR 0038
@@ -391,6 +511,24 @@ inline LowCutStep fLowCut(const Tuning& t, int s)
 {
     return s <= 0 ? LowCutStep{t.lcHpHz, t.lcHpQ, t.lcShelfHz, t.lcShelfDb, 1.0f} : kFLowCutSteps[s - 1];
 }
+
+// Round 5: a number at r5Amount k between 7's (a) and round 5's (b),
+// geometric (frequencies, gains).
+inline float r5Mix(float a, float b, float k) { return k <= 0.0f ? a : k >= 1.0f ? b : a + k * (b - a); }
+inline float r5MixHz(float a, float b, float k) { return k <= 0.0f ? a : k >= 1.0f ? b : a * std::exp(k * std::log(b / a)); }
+#if RV_TANKV_BUILT >= 8
+// The low cut a Tank playing voicing v uses (7: F round 2's step s).
+inline LowCutStep lowCutFor(const Tuning& t, int v, int s)
+{
+    LowCutStep lc = fLowCut(t, s);
+    const float k = r5Amount(v);
+    if (k > 0.0f) {
+        lc.hpHz    = r5MixHz(lc.hpHz, t.r5LcHpHz, k);
+        lc.shelfDb = r5Mix(lc.shelfDb, t.r5LcShelfDb, k);
+    }
+    return lc;
+}
+#endif
 
 // TONE re-map weights (7): left of noon 1 -> 0, right of noon 0 -> 1.
 inline float toneDarkWeight(float tone, float curve)

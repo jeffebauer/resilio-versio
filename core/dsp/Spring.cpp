@@ -134,6 +134,9 @@ RV_SIZE_OPT void Spring::reset()
     dc_.reset();
     chirpLowpass_.reset();
     damping_.reset();
+#if RV_TANKV_BUILT >= 8
+    dampBq_.reset();
+#endif
     highpass_.reset();
     highCeiling_.reset();
     loopSat_.reset();
@@ -176,7 +179,12 @@ bool Spring::setSettings(const SpringSettings& s, bool snap)
                    && s.loopSatAmount == settings_.loopSatAmount && s.loopSatKPos == settings_.loopSatKPos
                    && s.loopSatKNeg == settings_.loopSatKNeg && s.howl == settings_.howl
                    && s.modDepth == settings_.modDepth && s.lfoDepth == settings_.lfoDepth && s.lfoHz == settings_.lfoHz
-                   && s.hold == settings_.hold && s.highT60Seconds == settings_.highT60Seconds;
+                   && s.hold == settings_.hold && s.highT60Seconds == settings_.highT60Seconds
+#if RV_TANKV_BUILT >= 8
+                   && s.eqHz == settings_.eqHz && s.eqDb == settings_.eqDb && s.eqQ == settings_.eqQ
+                   && s.eqToLp == settings_.eqToLp
+#endif
+        ;
     if (!snap && same && lCur_ == lTarget_ && mPos_ == float(mTarget_)) return true;
 
     if (!snap && s.transitionHz != designFc_) {
@@ -236,18 +244,73 @@ void Spring::prepareTransition(float transitionHz)
     designFc_ = transitionHz;
 }
 
+#if RV_TANKV_BUILT >= 8
+namespace {
+// Group delay (samples) of a biquad at w (cos w): the numerator's less the
+// denominator's, each Re[(c1 e^-jw + 2 c2 e^-2jw) / (c0 + c1 e^-jw + c2 e^-2jw)].
+float polyDelay(float c0, float c1, float c2, float cw, float sw)
+{
+    const float c2w = 2.0f * cw * cw - 1.0f, s2w = 2.0f * sw * cw;
+    const float pr = c0 + c1 * cw + c2 * c2w, pi = -(c1 * sw + c2 * s2w);
+    const float qr = c1 * cw + 2.0f * c2 * c2w, qi = -(c1 * sw + 2.0f * c2 * s2w);
+    return (qr * pr + qi * pi) / std::max(pr * pr + pi * pi, 1.0e-20f);
+}
+float biquadDelay(const dsp::Biquad& b, float cw)
+{
+    const float sw = std::sqrt(std::fmax(0.0f, 1.0f - cw * cw));
+    return polyDelay(b.b0, b.b1, b.b2, cw, sw) - polyDelay(1.0f, b.a1, b.a2, cw, sw);
+}
+// The round-5 damping biquad: an RBJ peaking cut eased toward the one-pole
+// low-pass y += c (x - y) by u (coefficients blended: the stable region of
+// (a1, a2) is convex, so every blend is stable; u 1 = that low-pass exactly).
+void designLoopEq(dsp::Biquad& b, const SpringSettings& s, float dampingC, float sampleRate)
+{
+    const float A  = std::exp(s.eqDb * (2.302585093f / 40.0f));
+    const float w  = 2.0f * map::kPi * std::min(s.eqHz, 0.45f * sampleRate) / sampleRate;
+    const float al = std::sin(w) / (2.0f * s.eqQ), cw = std::cos(w);
+    const float a0 = 1.0f + al / A;
+    const float u  = std::clamp(s.eqToLp, 0.0f, 1.0f), v = 1.0f - u;
+    b.b0 = v * (1.0f + al * A) / a0 + u * dampingC;
+    b.b1 = v * (-2.0f * cw) / a0;
+    b.b2 = v * (1.0f - al * A) / a0;
+    b.a1 = v * (-2.0f * cw) / a0 - u * (1.0f - dampingC);
+    b.a2 = v * (1.0f - al / A) / a0;
+}
+} // namespace
+#endif
+
 void Spring::prepareDamping(float dampingHz)
 {
+#if RV_TANKV_BUILT >= 8
+    const SpringSettings& se = settings_;
+    const bool eqSame = se.eqHz == designEq_[0] && se.eqDb == designEq_[1] && se.eqQ == designEq_[2] && se.eqToLp == designEq_[3];
+    if (dampingHz == designDampHz_ && magFc_ == designFc_ && eqSame) return; // nothing moved
+    designEq_[0] = se.eqHz, designEq_[1] = se.eqDb, designEq_[2] = se.eqQ, designEq_[3] = se.eqToLp;
+#else
     if (dampingHz == designDampHz_ && magFc_ == designFc_) return; // neither moved
+#endif
     if (dampingHz != designDampHz_) {
         stagedDamping_.setCutoff(std::min(dampingHz, 0.45f * sampleRate_), sampleRate_);
         designDampHz_ = dampingHz;
     }
+#if RV_TANKV_BUILT >= 8
+    stagedEqOn_ = se.eqHz > 0.0f;
+    if (kR5Only || stagedEqOn_) designLoopEq(stagedBq_, se, stagedDamping_.c, sampleRate_);
+#endif
     // Loop magnitude per trip, excluding g (as loopMagnitudeAt, with the
     // staged filters), and the damping's group delay, at every point.
     float maxMag = 0.0f;
     for (int p = 0; p < kNumPoints; ++p) {
         const float cw = ptCos_[size_t(p)];
+#if RV_TANKV_BUILT >= 8
+        if (kR5Only || stagedEqOn_) {
+            ptDampDelay_[size_t(p)] = biquadDelay(stagedBq_, cw);
+            ptMag_[size_t(p)] = std::sqrt(dc_.magnitudeSquared(cw) * stagedLowpass_.magnitudeSquared(cw)
+                                          * stagedBq_.magnitudeSquared(cw));
+            if (p < kNumDesignHz) maxMag = std::max(maxMag, ptMag_[size_t(p)]);
+            continue;
+        }
+#endif
         ptDampDelay_[size_t(p)] = stagedDamping_.groupDelay(cw);
         ptMag_[size_t(p)] = std::sqrt(dc_.magnitudeSquared(cw) * stagedLowpass_.magnitudeSquared(cw)
                                       * stagedDamping_.magnitudeSquared(cw));
@@ -279,6 +342,11 @@ void Spring::commitDesign()
     copyCoefficients(chirpLowpass_, stagedLowpass_);
     copyCoefficients(highpass_, stagedHighpass_);
     damping_.c = stagedDamping_.c;
+#if RV_TANKV_BUILT >= 8
+    if (stagedEqOn_ && !eqOn_) dampBq_.reset(); // into the biquad: from rest
+    eqOn_ = stagedEqOn_;
+    copyCoefficients(dampBq_, stagedBq_);
+#endif
     highPathLevel_ = s.highPathLevel;
     tapRatio_      = std::clamp(s.tapRatio, 0.05f, 0.95f);
     tapOffsetTarget_ = s.tapOffsetSeconds * sampleRate_; // glides in advanceGlides()
@@ -319,6 +387,17 @@ void Spring::commitDesign()
 
     modDepth_ = std::max(0.0f, s.modDepth) * antires::kMicroModNorm;
     lfoDepth_ = std::max(0.0f, s.lfoDepth);
+#if RV_TANKV_BUILT >= 8
+    if (kR5Only || fbDiffPre_) {
+        // Round 5: the modulation moves L, and the round trip is L plus the
+        // diffusers (8 ms, longer than voicing 3's): scaled up so the round
+        // trip moves as much as before (the Howl's movement read 0.45-0.50 %,
+        // ADR 0019's bar 0.5; 7 0.67-0.79).
+        const float sc = withDiff(lTarget_) / std::max(lTarget_, 1.0f);
+        modDepth_ *= sc;
+        lfoDepth_ *= sc;
+    }
+#endif
     if (s.lfoHz != lfoHzSet_) { // fixed per Spring: one sin, not one per redesign
         lfoE_     = 2.0f * std::sin(map::kPi * std::max(0.0f, s.lfoHz) / sampleRate_); // magic-circle step
         lfoHzSet_ = s.lfoHz;
@@ -338,9 +417,20 @@ void Spring::commitDesign()
     if (hiAlignOn_) {
         const float fx  = hiXover_ * s.transitionHz;
         const float cw  = std::cos(2.0f * map::kPi * fx / sampleRate_);
+#if RV_TANKV_BUILT >= 8
+        const float dampDelay = (kR5Only || eqOn_) ? biquadDelay(dampBq_, cw) : damping_.groupDelay(cw);
+#else
+        const float dampDelay = damping_.groupDelay(cw);
+#endif
+        // (8+: the diffusers in front of the pickup delay the first echo by
+        // about their delay, the pickup reads pickShift() earlier.)
+#if RV_TANKV_BUILT >= 8
+        const float loopArr = tapRatio_ * withDiff(lTarget_) + tapOffsetTarget_ - pickShift() + preDiffDelay()
+#else
         const float loopArr = tapRatio_ * withDiff(lTarget_) + tapOffsetTarget_
+#endif
                             + float(mTarget_) * map::stretchedAllpassGroupDelaySamples(a_, k_, fx, sampleRate_) + lpfDelay_
-                            + damping_.groupDelay(cw);
+                            + dampDelay;
         const float highOwn = float(kHighStages) * map::stretchedAllpassGroupDelaySamples(kHighAllpassCoeff, 1.0f, fx, sampleRate_)
                             + highCeiling_.groupDelay(cw);
         hiPick_ = std::max(2.0f, loopArr - highOwn + hiAlignMs_ * 0.001f * sampleRate_);
@@ -373,7 +463,8 @@ float Spring::firstEchoSamples(float freqHz) const
 {
     const float cw = std::cos(2.0f * map::kPi * freqHz / sampleRate_);
     const float lpfDelay = 1.41421356f * sampleRate_ / (2.0f * map::kPi * settings_.transitionHz);
-    return chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + tapRatio_ * lCur_ + tapOffset_;
+    return chainGroupDelaySamples(freqHz) + damping_.groupDelay(cw) + lpfDelay + tapRatio_ * lCur_ + tapOffset_
+         - pickShift() + preDiffDelay();
 }
 #endif
 
@@ -384,6 +475,10 @@ float Spring::loopMagnitude(float freqHz) const
 
 float Spring::loopMagnitudeAt(float cw) const
 {
+#if RV_TANKV_BUILT >= 8
+    if (kR5Only || eqOn_)
+        return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * dampBq_.magnitudeSquared(cw));
+#endif
     return std::sqrt(dc_.magnitudeSquared(cw) * chirpLowpass_.magnitudeSquared(cw) * damping_.magnitudeSquared(cw));
 }
 
@@ -501,13 +596,18 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     // Pickup ~half way: first echo after ~half a round trip (+ the fixed
     // stagger and WOBBLE's transport).
     // (Tank voicing 3: along the full round trip, L + the feedback diffusers.)
-    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapMod;
+    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapMod - pickShift();
     tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
     const float tap = readLow(tapAt);
 
     // Tank voicing 3: the feedback diffusers (after the pickup: every trip
     // smears the echo a little more; the first echo never passes them).
+    // Voicing 8+ runs them in front of the pickup instead (below).
     float fbd = fb;
+#if RV_TANKV_BUILT >= 8
+    if (kR5Only || fbDiffPre_) {
+    } else
+#endif
 #if RV_TANKV_BUILT >= 3
     if (numFbDiff_ == 3) {
         // The three (voicing 3+ always has three) written out, each one's
@@ -551,12 +651,49 @@ inline float Spring::processLow(float in, float lMod, float tapMod)
     ringW_ = (iw + 1) & ringMask_;
 
     x = chirpLowpass_.process(x);
+#if RV_TANKV_BUILT >= 8
+    x = dampAndDiffuse(x);
+#else
     x = damping_.process(x);
+#endif
 
     lowBuf_[lowW_] = x;
     if (++lowW_ == lowSize_) lowW_ = 0;
     return tap;
 }
+
+#if RV_TANKV_BUILT >= 8
+// Voicing 8+: the damping (the round-5 biquad when on), then, if they sit
+// in front of the pickup, the three diffusers (as processLow's, in order).
+inline float Spring::dampAndDiffuse(float x)
+{
+    x = (kR5Only || eqOn_) ? dampBq_.process(x) : damping_.process(x);
+    if ((kR5Only || fbDiffPre_) && numFbDiff_ == 3) {
+        FbDiffuser& f0 = fbDiff_[0];
+        FbDiffuser& f1 = fbDiff_[1];
+        FbDiffuser& f2 = fbDiff_[2];
+        int r0 = f0.w - f0.d, r1 = f1.w - f1.d, r2 = f2.w - f2.d;
+        if (r0 < 0) r0 += f0.size;
+        if (r1 < 0) r1 += f1.size;
+        if (r2 < 0) r2 += f2.size;
+        const float z0 = f0.buf[r0], z1 = f1.buf[r1], z2 = f2.buf[r2];
+        const float c  = fbDiffC_;
+        float v = x - c * z0;
+        f0.buf[f0.w] = v;
+        x = c * v + z0;
+        v = x - c * z1;
+        f1.buf[f1.w] = v;
+        x = c * v + z1;
+        v = x - c * z2;
+        f2.buf[f2.w] = v;
+        x = c * v + z2;
+        if (++f0.w == f0.size) f0.w = 0;
+        if (++f1.w == f1.size) f1.w = 0;
+        if (++f2.w == f2.size) f2.w = 0;
+    }
+    return x;
+}
+#endif
 
 // The Loop after its input sum, for the coupled Loops (coupledFinish): the
 // same arithmetic as processLow's, kept as a copy so the firmware's hot loop
@@ -572,7 +709,11 @@ void Spring::loopWrite(float x)
     ringW_ = (iw + 1) & ringMask_;
 
     x = chirpLowpass_.process(x);
+#if RV_TANKV_BUILT >= 8
+    x = dampAndDiffuse(x);
+#else
     x = damping_.process(x);
+#endif
 
     lowBuf_[lowW_] = x;
     if (++lowW_ == lowSize_) lowW_ = 0;
@@ -628,12 +769,13 @@ float Spring::coupledReturn(float lFrac, float lSamples, float tapSamples)
     const float fb = readLow(lMod);
     // (Tank voicing 3: the pickup along the full round trip, and the
     // feedback diffusers, as processLow.)
-    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapSamples;
+    float tapAt = tapRatio_ * withDiff(lMod) + tapOffset_ + tapSamples - pickShift();
     tapAt = tapAt < 2.0f ? 2.0f : (tapAt > lMod ? lMod : tapAt);
     cTap_ = readLow(tapAt);
     float fbd = fb;
 #if RV_TANKV_BUILT >= 3
-    for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
+    if (preDiffDelay() == 0.0f) // 8+ in front of the pickup: loopWrite runs them
+        for (int k = 0; k < numFbDiff_; ++k) fbd = fbDiff_[size_t(k)].process(fbd, fbDiffC_);
 #endif
     return g_ * loopSat_.process(fbd);
 }

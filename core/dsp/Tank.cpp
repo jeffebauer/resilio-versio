@@ -93,17 +93,54 @@ int loopMaxStages(int v)
     const float frac = std::max(t.loopFracNoon, t.loopFracLoose);
     return std::min(Spring::kMaxStages, map::kMinStages + int(std::ceil(float(Spring::kMaxStages - map::kMinStages) * frac)) + 1);
 }
+#if RV_TANKV_BUILT >= 8
+// Loop diffuser delay (ms) voicing v plays, diffuser k (Spring A; 3+; round
+// 5's from 8 on, D half way).
+float diffMsFor(int v, size_t k)
+{
+    const auto& t = tankv::tuning();
+    return tankv::r5Mix(t.diffMs[k], t.r5DiffMs[k], tankv::r5Amount(v));
+}
+// ... and Spring s's scale on them.
+float diffScaleFor(int v, size_t s)
+{
+    const auto& t = tankv::tuning();
+    return tankv::r5Mix(t.diffSpringScale[s], t.r5DiffScale[s], tankv::r5StereoAmount(v));
+}
+// Loop diffuser buffer (voicing 3+), Spring s, diffuser k: its delay + 2,
+// in the firmware's layout for voicing v (its only one), or, v < 0, a desktop
+// build's (the longest any voicing plays). Round 5's firmware layout gives
+// Spring C none: it never runs there (echo mode, Tank.h "SPRINGS switching").
+int diffBufSize(float sampleRate, size_t s, size_t k, int v)
+{
+    const auto& t = tankv::tuning();
+    float ms = std::max(t.diffMs[k], t.r5DiffMs[k]);
+    if (v >= 0) {
+        if (s == 2 && tankv::hasR5(v)) return 0;
+        ms = diffMsFor(v, k);
+    }
+    const float sc = v >= 0 ? diffScaleFor(v, s) : std::max(t.diffSpringScale[s], t.r5DiffScale[s]);
+    return int(std::ceil(ms * sc * 0.001f * sampleRate)) + 2;
+}
+#else
 // Loop diffuser buffer (voicing 3), Spring s, diffuser k: its delay + 2.
-int diffBufSize(float sampleRate, size_t s, size_t k)
+int diffBufSize(float sampleRate, size_t s, size_t k, int = -1)
 {
     const auto& t = tankv::tuning();
     return int(std::ceil(t.diffMs[k] * t.diffSpringScale[s] * 0.001f * sampleRate)) + 2;
 }
-RV_SIZE_OPT size_t diffFloats(float sampleRate)
+#endif
+// This build's layout: the firmware its default voicing's, desktop every voicing's.
+#ifdef RV_FIXED_VOICINGS
+constexpr int kLayoutVoicing = tankv::kDefaultVoicing;
+#else
+constexpr int kLayoutVoicing = -1;
+#endif
+RV_SIZE_OPT size_t diffFloats(float sampleRate, int v)
 {
     size_t n = 0;
     for (size_t s = 0; s < size_t(Tank::kMaxSprings); ++s)
-        for (size_t k = 0; k < size_t(tankv::kNumDiffusers); ++k) n += size_t(diffBufSize(sampleRate, s, k));
+        for (size_t k = 0; k < size_t(tankv::kNumDiffusers); ++k) n += size_t(diffBufSize(sampleRate, s, k, v));
     return n;
 }
 // Voicing 6's D2 (the Springs' difference decorrelated), stage k: its delay + 2.
@@ -117,12 +154,12 @@ size_t wideFloats(float sampleRate)
     for (size_t k = 0; k < 3; ++k) n += size_t(wideBufSize(sampleRate, k));
     return n;
 }
-RV_SIZE_OPT size_t layoutFloats(float sampleRate, int loopStages, bool sweep, bool diffusers, bool wide)
+RV_SIZE_OPT size_t layoutFloats(float sampleRate, int loopStages, bool sweep, bool diffusers, bool wide, int v)
 {
     size_t n = size_t(Tank::kMaxSprings) * Spring::requiredFloats(sampleRate, loopStages);
     for (size_t i = 0; i < kDiffuserSeconds.size(); ++i) n += size_t(diffuserSize(sampleRate, i));
     if (sweep) n += dsp::Sweep::requiredFloats(sweepMaxStages(), sweepMinFcHz(), sampleRate);
-    if (diffusers) n += diffFloats(sampleRate);
+    if (diffusers) n += diffFloats(sampleRate, v);
     if (wide) n += wideFloats(sampleRate);
     return n;
 }
@@ -140,12 +177,12 @@ int poolLoopStages() { return Spring::kMaxStages; }
 
 RV_SIZE_OPT size_t Tank::requiredPoolFloats(float sampleRate)
 {
-    return layoutFloats(sampleRate, poolLoopStages(), kPoolSweep, kPoolDiffusers, kPoolWide);
+    return layoutFloats(sampleRate, poolLoopStages(), kPoolSweep, kPoolDiffusers, kPoolWide, kLayoutVoicing);
 }
 
 RV_SIZE_OPT size_t Tank::poolFloatsForVoicing(float sampleRate, int v)
 {
-    return layoutFloats(sampleRate, loopMaxStages(v), tankv::hasSweep(v), tankv::hasDiffusion(v), tankv::hasWide(v));
+    return layoutFloats(sampleRate, loopMaxStages(v), tankv::hasSweep(v), tankv::hasDiffusion(v), tankv::hasWide(v), v);
 }
 
 RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize)
@@ -269,7 +306,11 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
 #if RV_TANKV_BUILT >= 7 // voicing 7: the low cut's makeup followers, weighted like the Big Knob's
     for (auto& f : gmHp_) f.setCutoff(drive::kExcHpHz, sampleRate);
     {
+#if RV_TANKV_BUILT >= 8
+        const tankv::LowCutStep lc = tankv::lowCutFor(tankv::tuning(), tankVoicing_, fLowCut_);
+#else
         const tankv::LowCutStep lc = tankv::fLowCut(tankv::tuning(), fLowCut_);
+#endif
         lcShHp_.setHighpass(lc.hpHz, lc.hpQ, sampleRate);
         lcShShelf_.setLowShelf(lc.shelfHz, lc.shelfDb, sampleRate);
     }
@@ -306,7 +347,7 @@ RV_SIZE_OPT void Tank::bindPool(float* pool)
 #if RV_TANKV_BUILT >= 3
     for (size_t s = 0; s < springs_.size(); ++s)
         for (size_t k = 0; k < size_t(tankv::kNumDiffusers); ++k) {
-            diffSize_[s][k] = diffBufSize(sampleRate_, s, k);
+            diffSize_[s][k] = diffBufSize(sampleRate_, s, k, kLayoutVoicing);
             diffBuf_[s][k]  = p;
             p += diffSize_[s][k];
         }
@@ -349,14 +390,35 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
     for (size_t s = 0; s < springs_.size(); ++s) {
 #if RV_TANKV_BUILT >= 3
         float delays[tankv::kNumDiffusers];
+#if RV_TANKV_BUILT >= 8
+        for (size_t k = 0; k < size_t(tankv::kNumDiffusers); ++k) delays[k] = diffMsFor(tankVoicing_, k) * diffScaleFor(tankVoicing_, s) * 0.001f * sampleRate_;
+        float diffC = t.diffCoeff;
+        // Round 5: the diffusers in front of the pickup, longer and stronger
+        // (TankVoicing.h r5Diff*); Spring C has none where it never runs.
+        const float k5 = tankv::r5Amount(tankVoicing_);
+        springs_[s].setDiffusionPlace(k5 > 0.0f, t.r5DiffAlign);
+        diffC = k5 > 0.0f ? t.r5DiffCoeff : t.diffCoeff; // D too (half of it left its first echo's body 2.8 ms late)
+        const bool diffOn = tankv::hasDiffusion(tankVoicing_) && diffSize_[s][0] > 0;
+        springs_[s].setDiffusion(diffBuf_[s].data(), diffSize_[s].data(), delays, diffOn ? tankv::kNumDiffusers : 0, diffC);
+#else
         for (size_t k = 0; k < size_t(tankv::kNumDiffusers); ++k) delays[k] = t.diffMs[k] * t.diffSpringScale[s] * 0.001f * sampleRate_;
         springs_[s].setDiffusion(diffBuf_[s].data(), diffSize_[s].data(), delays,
                                  tankv::hasDiffusion(tankVoicing_) ? tankv::kNumDiffusers : 0, t.diffCoeff);
 #endif
+#endif
+#if RV_TANKV_BUILT >= 8
+        springs_[s].setDcBlock(tankv::r5MixHz(Spring::kDcBlockHz, t.r5DcHz, tankv::r5Amount(tankVoicing_)));
+#endif
         springs_[s].setHighT60Ratio(tankv::hasGentle(tankVoicing_)        ? t.gentleHighT60Ratio
                                     : tankv::hasTransducers(tankVoicing_) ? t.tdHighT60Ratio // voicing 5+
                                                                           : Spring::kHighT60Ratio);
+#if RV_TANKV_BUILT >= 8
+        springs_[s].setHighCeiling(tankv::hasTransducers(tankVoicing_)
+                                       ? tankv::r5MixHz(t.tdHighCeilHz, t.r5HighCeilHz, tankv::r5Amount(tankVoicing_))
+                                       : Spring::kHighCeilingHz);
+#else
         springs_[s].setHighCeiling(tankv::hasTransducers(tankVoicing_) ? t.tdHighCeilHz : Spring::kHighCeilingHz);
+#endif
         if (tankv::hasSweep(tankVoicing_)) springs_[s].setHighPathVoicing(t.hiXoverRatio, true, t.hiAlignMs);
         else springs_[s].setHighPathVoicing(Spring::kHighPassRatio, false, 0.0f);
     }
@@ -364,7 +426,11 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
     // The low cut: 4's, or 7's re-sized one (F round 2: one of its gentler
     // steps, Renderer-only; 0 = F's own).
     const bool lc7 = tankv::hasGentleMakeup(tankVoicing_);
+#if RV_TANKV_BUILT >= 8
+    const tankv::LowCutStep lc = tankv::lowCutFor(t, tankVoicing_, fLowCut_);
+#else
     const tankv::LowCutStep lc = tankv::fLowCut(t, fLowCut_);
+#endif
     gentleHp_.setHighpass(lc7 ? lc.hpHz : t.gentleHpHz, lc7 ? lc.hpQ : t.gentleHpQ, sampleRate_);
     gentleShelf_.setLowShelf(lc7 ? lc.shelfHz : t.gentleShelfHz, lc7 ? lc.shelfDb : t.gentleShelfDb, sampleRate_);
 #endif
@@ -373,6 +439,12 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
     // firmware's step never changes).
     lcShHp_.setHighpass(lc.hpHz, lc.hpQ, sampleRate_);
     lcShShelf_.setLowShelf(lc.shelfHz, lc.shelfDb, sampleRate_);
+#endif
+#if RV_TANKV_BUILT >= 8
+    // Round 5: the width's bass cut (TankVoicing.h r5BassHz, second order).
+    dBass_.setCutoff(tankv::r5MixHz(t.togetherBassHz, t.r5BassHz, tankv::r5Amount(tankVoicing_)), sampleRate_);
+    dBass2_.setCutoff(tankv::r5MixHz(t.togetherBassHz, t.r5BassHz, tankv::r5Amount(tankVoicing_)), sampleRate_);
+    bass2_ = tankv::hasR5(tankVoicing_) && t.r5BassOrder2 > 0.5f;
 #endif
 #if RV_TANKV_BUILT >= 7
     tdTone_ = -1.0f; // the coil and pickup corners again (controlTick)
@@ -417,9 +489,23 @@ RV_SIZE_OPT modes::StereoMix Tank::stereoMixFor(int mode) const
         if (tankv::hasWide(tankVoicing_) && mode > 0) {
             // Voicing 6: the Springs' difference back, through D2 (process()),
             // with D(mid) at wideW. 1 Spring has no difference: as 2.
+#if RV_TANKV_BUILT >= 8
+            // (Round 5: more of the difference, less or none of D: r5Wide*.)
+            const float k5 = tankv::r5StereoAmount(tankVoicing_);
+            m.side[0] = mode == 2 ? tankv::r5Mix(t.wideSide3, t.r5WideSide3, k5) : tankv::r5Mix(t.wideSide, t.r5WideSide, k5);
+            m.side[1] = -m.side[0];
+            // ... and at short DECAYs, where the tail is little more than its
+            // (centred) front, some of D back (r5WideWShort, easing out by
+            // DECAY r5WideShortTo): 2 Springs stay under test_tank's
+            // correlation bar (< 0.5; DECAY 0 read 0.60 without it).
+            const float u  = std::clamp(mixDecay_ / t.r5WideShortTo, 0.0f, 1.0f); // the Springs' DECAY, not the knob's (echo mode)
+            const float wS = (1.0f - u * u * (3.0f - 2.0f * u)) * t.r5WideWShort;
+            m.decorr  = tankv::r5Mix(t.wideW, mode == 2 ? t.r5WideW3 : std::max(t.r5WideW, wS), k5);
+#else
             m.side[0] = mode == 2 ? t.wideSide3 : t.wideSide;
             m.side[1] = -m.side[0];
             m.decorr  = t.wideW;
+#endif
 #ifndef RV_FIXED_VOICINGS
             // F round 2 "coupled wide" / "swell" (Springs3Voicing.h fParts):
             // position 3's own side gains into D2. Renderer-only.
@@ -446,6 +532,10 @@ RV_SIZE_OPT void Tank::reset()
 #endif
 #if RV_TANKV_BUILT >= 2
     dBass_.reset();
+#if RV_TANKV_BUILT >= 8
+    dBass2_.reset();
+    dRun_ = true;
+#endif
 #endif
 #if RV_TANKV_BUILT >= 4
     gentleHp_.reset();
@@ -677,6 +767,9 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             tension = (1.0f - echoW_) * tension + echoW_ * echo::kSpringsTension;
         }
     }
+#if RV_TANKV_BUILT >= 8
+    mixDecay_ = decay; // the Springs' DECAY (echo mode: the fixed tank's), for stereoMixFor
+#endif
     if (snap) {
         mode_     = mode;
         mixCur_   = mixTo_ = mixFrom_ = stereoMixFor(mode);
@@ -691,6 +784,31 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         trimTo_   = modeTrim(mode);
         fadePos_  = 0.0f;
     }
+#if RV_TANKV_BUILT >= 8
+    if (tankv::hasR5(tankVoicing_)) {
+        // Round 5: D's weight follows DECAY (stereoMixFor): between fades, take
+        // it as DECAY moves (continuous: no fade needed), the level kept.
+        const float d = stereoMixFor(mode_).decorr;
+        mixTo_.decorr = d;
+        if (fadePos_ >= 1.0f && d != mixCur_.decorr) {
+            mixCur_.decorr = d;
+            mixScale_      = trimCur_ / std::sqrt(modes::mixPower(mixCur_));
+        }
+    }
+    {
+        // Round 5 (r5WideW 0): D, the mid's decorrelator, is heard only where
+        // its weight isn't 0 (1 Spring, and a fade to or from it), so it runs
+        // only then, from silence when it starts again (the CPU it saves pays
+        // for round 5's Loop biquads). Before round 5 it always runs.
+        const bool run = !tankv::hasR5(tankVoicing_) || mixFrom_.decorr != 0.0f || mixTo_.decorr != 0.0f;
+        if (run && !dRun_)
+            for (auto& d : decorrelator_) {
+                std::fill(d.buf, d.buf + d.size, 0.0f);
+                d.w = 0;
+            }
+        dRun_ = run;
+    }
+#endif
     // SPRINGS 3 palette (Springs3Voicing.h): the Springs glide into position
     // 3's voicing (and back out) over springs3::kGlideSeconds, while the
     // output mix fades as above. At 0 everything is today's, bit for bit.
@@ -822,8 +940,26 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         wobbleScale *= 1.0f + u * u * (3.0f - 2.0f * u) * (t.tdWobbleLeftDecayMax - 1.0f);
     }
 #endif
+#if RV_TANKV_BUILT >= 8
+    float transportScale = 1.0f;
+    if (tankv::r5FlatAmount(tankVoicing_) > 0.0f && smoothed_[size_t(ParamId::Wobble)] < 0.5f) {
+        // Round 5 C (9, D half way): held sounds settle flat. WOBBLE's left
+        // side (random wow and flutter) inside the Loops moves their modes
+        // under a held note (a slow swell and dip of several dB: 7.8 dB on a
+        // held 1 kHz tone at the default 0.45); less of it there, more on the
+        // pickups (the transport), which move the pitch without moving the
+        // modes (TankVoicing.h r5Flat*). The right side (the LFO) is as before.
+        const auto& t = tankv::tuning();
+        const float f = tankv::r5FlatAmount(tankVoicing_);
+        wobbleScale *= tankv::r5Mix(1.0f, t.r5FlatLoopWobble, f);
+        transportScale = tankv::r5Mix(1.0f, t.r5FlatTransportWobble, f);
+    }
+    for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
+    transport_.setAmount(smoothed_[size_t(ParamId::Wobble)], transportScale);
+#else
     for (auto& w : wobble_) w.setAmount(smoothed_[size_t(ParamId::Wobble)], wobbleScale);
     transport_.setAmount(smoothed_[size_t(ParamId::Wobble)]);
+#endif
     // Tank level for KICKED's energy-dependent rattle (and the LoopSat fade
     // below): smoothed RMS of the wet mid over the last tick, scaled by
     // SPLASH. The mid is summed after DRIVE's heard gain (ADR 0033), so it is
@@ -1049,11 +1185,25 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                 const auto& t = tankv::tuning();
                 const float wd = tankv::toneDarkWeight(tone, t.toneDarkCurve);
                 const float wb = tankv::toneBrightWeight(tone, t.toneBrightCurve);
+#if RV_TANKV_BUILT >= 8
+                // (Round 5: its own coil and pickup at noon, r5Td*.)
+                const float k5    = tankv::r5Amount(tankVoicing_);
+                const float in0   = tankv::r5MixHz(t.tdInHz, t.r5TdInHz, k5);
+                const float out0  = tankv::r5MixHz(t.tdOutHz, t.r5TdOutHz, k5);
+                const float inQ   = tankv::r5Mix(t.tdInQ, t.r5TdInQ, k5 * (1.0f - wd));
+                const float outQ  = tankv::r5Mix(t.tdOutQ, t.r5TdOutQ, k5);
+                const float inHz  = in0 * std::exp(wd * std::log(t.toneDarkInHz / in0)
+                                                   + 0.693147f * t.tdDriveOpenOct * kickedOpen);
+                const float outHz = out0 * std::exp(wb * std::log(t.toneBrightOutHz / out0));
+                tdIn_.setLowpass(std::min(inHz, 0.45f * sampleRate_), inQ, sampleRate_);
+                for (auto& f : tdOut_) f.setLowpass(std::min(outHz, 0.45f * sampleRate_), outQ, sampleRate_);
+#else
                 const float inHz  = t.tdInHz * std::exp(wd * std::log(t.toneDarkInHz / t.tdInHz)
                                                         + 0.693147f * t.tdDriveOpenOct * kickedOpen);
                 const float outHz = t.tdOutHz * std::exp(wb * std::log(t.toneBrightOutHz / t.tdOutHz));
                 tdIn_.setLowpass(std::min(inHz, 0.45f * sampleRate_), t.tdInQ, sampleRate_);
                 for (auto& f : tdOut_) f.setLowpass(std::min(outHz, 0.45f * sampleRate_), t.tdOutQ, sampleRate_);
+#endif
                 if (t.tdEvenHpHz > 0.0f)
                     tdEvenHp_.setHighpass(t.tdEvenHpHz * std::exp(wb * std::log(t.toneBrightEvenHpHz / t.tdEvenHpHz)), 0.7071f, sampleRate_);
                 toneTrim_ = drive::dbToGain(wb * t.toneBrightDb);
@@ -1329,6 +1479,11 @@ void Tank::updateBaseSettings(float decay, float tension, float tone, const driv
 #if RV_TANKV_BUILT >= 7
     // F round 2's gentler low cut: held sounds trimmed a little sooner (TankVoicing.h kFSusGlideScale).
     if (tankv::hasShipFixes(tankVoicing_)) susGlide *= tankv::fLowCut(tankv::tuning(), fLowCut_).susGlideScale;
+#if RV_TANKV_BUILT >= 8
+    // Round 5: a held pad's loudest moment met the limiter a little harder
+    // (test_sustain_trim 3.11 dB, bar 3.0): the trim glides down sooner still.
+    if (tankv::hasR5(tankVoicing_)) susGlide *= tankv::tuning().r5SusGlideScale;
+#endif
 #endif
     susGDownCoeff_ = 1.0f - std::exp(-float(kControlInterval) / (sampleRate_ * susGlide));
     int cap = modes::kStageCap[size_t(mode_)];
@@ -1399,7 +1554,32 @@ void Tank::updateSpringSettings(size_t i)
     s.highT60Seconds   *= sh.decay; // the Hold's (0 otherwise)
     s.highPathLevel    *= sh.highPath;
 #if RV_TANKV_BUILT >= 5
+#if RV_TANKV_BUILT >= 8
+    if (tankv::hasTransducers(tankVoicing_)) // voicing 5+ (round 5: r5HighLevel)
+        s.highPathLevel *= tankv::r5Mix(tankv::tuning().tdHighLevel, tankv::tuning().r5HighLevel, tankv::r5Amount(tankVoicing_));
+#else
     if (tankv::hasTransducers(tankVoicing_)) s.highPathLevel *= tankv::tuning().tdHighLevel; // voicing 5+
+#endif
+#endif
+#if RV_TANKV_BUILT >= 8
+    if (tankv::hasR5(tankVoicing_)) {
+        // Round 5: the damping a peaking cut at noon (TankVoicing.h r5Eq*,
+        // each Spring's at its own detuned frequency): left of noon it eases
+        // to 7's low-pass (today's at TONE 0), right of noon the cut eases;
+        // D (10) half the cut. s.dampingHz stays 7's (the low-pass it eases to).
+        const auto& t  = tankv::tuning();
+        const float wd = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
+        const float wb = tankv::toneBrightWeight(keyTone_, t.toneBrightCurve);
+        const float k5 = tankv::r5Amount(tankVoicing_);
+        s.eqHz   = t.r5EqHz * sh.damping;
+        // ... and none of it in the Hold or the Howl (DECAY's top): there the
+        // Loop gain is set by its loudest band, and the dip narrowed that band
+        // to ~600 Hz, which then sang over minutes (M6: 7 Ringing cells at
+        // TENSION 1, one Howl cell too pure).
+        s.eqDb   = k5 * tankv::r5Mix(t.r5EqDb, t.r5EqDbBright, wb) * (1.0f - std::max(s.hold, s.howl));
+        s.eqQ    = t.r5EqQ;
+        s.eqToLp = wd;
+    }
 #endif
     s.tapRatio          = modes::kPickupTap[i];
     s.stages            = modes::springActive(mode_, int(i)) ? activeStages_ : modes::kIdleStages;
@@ -1417,11 +1597,24 @@ void Tank::updateSpringSettings(size_t i)
         ;
     if (springs3::kPaletteBuilt && s3W_ > 0.0f && springs3::voicing(s3Voicing_).keepTiming)
         keepTodaysTiming(i, s);
+#if RV_TANKV_BUILT >= 8
+    if (i == 1 && tankv::hasR5(tankVoicing_)) // round 5: Spring B's pickup (r5PickupBMs)
+        s.tapOffsetSeconds += tankv::r5StereoAmount(tankVoicing_) * tankv::tuning().r5PickupBMs * 0.001f;
+#endif
 #if RV_TANKV_BUILT >= 7
     if (tankv::hasShipFixes(tankVoicing_)) { // TONE re-map: the high path today's length fully left
         const auto& t = tankv::tuning();
         const float w = tankv::toneDarkWeight(keyTone_, t.toneDarkCurve);
+#if RV_TANKV_BUILT >= 8
+        // Round 5: r5HighT60Ratio from DECAY r5HighFullDecay up, 7's below r5HighFromDecay (a short
+        // DECAY stays short: the high path at 3x DECAY 0 rang 0.55 s, test_spring's 0.3-0.5).
+        const float uh = std::clamp((keyDecay_ - t.r5HighFromDecay) / (t.r5HighFullDecay - t.r5HighFromDecay), 0.0f, 1.0f);
+        const float r0 = tankv::r5Mix(t.tdHighT60Ratio, t.tdHighT60Ratio + uh * uh * (3.0f - 2.0f * uh) * (t.r5HighT60Ratio - t.tdHighT60Ratio),
+                                      tankv::r5Amount(tankVoicing_));
+        const float r = r0 + w * (t.toneDarkHighT60Ratio - r0);
+#else
         const float r = t.tdHighT60Ratio + w * (t.toneDarkHighT60Ratio - t.tdHighT60Ratio);
+#endif
         if (r != hiT60Set_[i]) {
             springs_[i].setHighT60Ratio(r);
             hiT60Set_[i] = r;
@@ -2038,6 +2231,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             // is live whatever the mode). It goes into L and R with opposite
             // signs, so it widens the image and cancels exactly in mono.
             float dd = mid;
+#if RV_TANKV_BUILT >= 8
+            if (dRun_) // round 5: only where D is heard (controlTick)
+#endif
             for (auto& ap : decorrelator_) dd = ap.process(dd);
 #if RV_TANKV_BUILT >= 2
             if (tankv::hasTogether(tankVoicing_) && !tankv::hasWide(tankVoicing_)) dd -= dBass_.process(dd); // voicing 2: bass centred
@@ -2051,6 +2247,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 float s2 = side;
                 for (auto& ap : wideDecorr_) s2 = ap.process(s2);
                 d   = mixCur_.decorr * dd + s2;
+#if RV_TANKV_BUILT >= 8
+                if (bass2_) d -= dBass2_.process(d); // round 5: 12 dB/oct
+#endif
                 d  -= dBass_.process(d); // bass centred
                 sd  = 0.0f;
             }
