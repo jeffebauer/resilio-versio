@@ -6,6 +6,7 @@
 // The parameters themselves still come only from the ParamSpec table.
 
 #include "ButtonLink.h"
+#include "EchoText.h"
 
 #include <juce_audio_utils/juce_audio_utils.h>
 
@@ -36,6 +37,7 @@ struct PanelLink {
         if (gain < limiterGain_.load(std::memory_order_relaxed)) limiterGain_.store(gain, std::memory_order_relaxed);
     }
     ButtonLink button; // the panel's button (ADR 0043)
+    EchoReadout echo;  // TENSION's note value in echo mode (EchoText.h)
     // Audio thread: throw mode was on and is now off (the LEDs blink).
     void noteThrowExited() { throwExited_.store(true, std::memory_order_release); }
     bool takeThrowExited() { return throwExited_.exchange(false, std::memory_order_acq_rel); }
