@@ -24,8 +24,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 2. The new release on the module + click check (≈10 min)
 - [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
 
-### 3. Wellspring round 5, the last fit (when Claude says the page is ready)
-- [ ] Page `renders/fit_round5/` with your Wellspring as the reference: A today, B a softer echo front + the ring moved to ~500 Hz with the presence peak at ~1.4 kHz + lows centred and wider 1/4 kHz tail, C B + held sounds that settle flat like the real tank, maybe D halfway. Also a TONE sweep over a ringing tail and the skank under the dry (MIX 0.4). Pick, then Claude merges
+### 3. Wellspring round 5, the last fit · ready to hear
+- [ ] [`renders/fit_round5/`](../renders/fit_round5/index.html), your Wellspring under "Compare with" (pick the matching take per row). **A** today; **B** softer front, ring lower (1 kHz no longer outlasts 500 Hz), presence up to 1.25–1.6 kHz, Wellspring-like stereo (centred lows, no left lean); **C** B + held sounds settle (WOBBLE's wow/flutter moved to the pickups: pads sit still, same drift); **D** halfway to C with B's stereo. Note: B alone makes held notes swell more with WOBBLE up (read it as the step to C). Not met: the Wellspring's 1 kHz swell-in, a 2 kHz out-of-phase front, the 4 kHz width. After your pick: a fix-up round (5–8 test suites to re-tune) and a small flash trim, then merge
 
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
@@ -54,7 +54,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
-- **Wellspring round 5** being built (§3)
+- **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
 - **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
