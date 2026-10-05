@@ -6,6 +6,9 @@
 #   tools/make_release.sh --publish  also create a GitHub Release with the zip
 #                                    and the firmware attached (asks gh; the
 #                                    repo is private, so the release is too)
+#   --notes <file> (any release)     "what's new" notes into the read-me, which
+#                                    is also the GitHub Release's notes
+#                                    (e.g. releases/whats-new-since-1-oct.md)
 #   tools/make_release.sh --candidate <ref> <label> [--notes <file>] [--publish]
 #       a sound candidate that isn't on main yet, for friends to A/B: the
 #       plugin is built from <ref> as "Resilio Versio <label>" (its own name

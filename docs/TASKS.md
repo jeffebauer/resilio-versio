@@ -40,7 +40,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md), MIDI clip `test_audio/midi/kicks_16ths.mid`. Loads (AU + VST3), automatable, MIDI Kicks, null test at MIX 0 (in CLEAN), 44.1/96 kHz. A **Bypass** control is normal
 
 ### Optional
-- [ ] Friends' feedback: wait for the release after round 5 rather than sending the old candidate. Paste any reply to Claude
+- [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md)). Paste any reply from your friend to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
@@ -55,7 +55,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Waiting on Claude (no action needed)
 - **Merging run 18** (after the current test run), then a small flash trim so round 5 fits; then the plugin install (§1) and the release (§2)
 - **Wellspring round 5:** page ready (§3); after your pick, a fix-up round for the tests it moves, then merge
-- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then a new friends' release with `tools/make_release.sh --publish`
+- **Docs after round 5:** `docs/manual.md`, `docs/presets.md`, the share read-me; then, once you've tested the build on the module and in the plugin, the friends' release with `tools/make_release.sh --notes releases/whats-new-since-1-oct.md --publish` (the what's-new summary you shared becomes the GitHub release notes; Claude checks it still matches the build first)
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
