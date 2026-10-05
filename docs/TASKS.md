@@ -31,7 +31,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
 - [x] **µ-law on the wet only, before TONE: picked B everywhere and merged** (5 Oct, `9245811`): the dry is clean in every ATTITUDE, TONE thins the grit. In the plugin after the next install
 
-### 3e. Kick removed; the button throws and taps tempo (5 Oct) · being built
+### 3e. Kick removed; the button throws and taps tempo (5 Oct) · built, merges after round 5
+- Two calls the build made: a tapped tempo **holds** after you stop tapping (a single lone tap returns to free time after ~2 s); in the plugin, **held MIDI notes act as the gate** (throws in 1–2, clock in 3), and Ableton's tempo beats taps. Say if you'd rather taps expire like the gate clock
 - Your call: **no Kick** (module and plugin; frees ~3–4 KB of flash). **The button:** held = a manual throw in SPRINGS 1–2 (the first press switches throw mode on, so it works with nothing patched); taps = tempo in echo mode. **Leave throw mode:** double-tap, then hold 2 s (single taps and holds of any length stay throws). The gate stays on/off: throw in 1–2, clock in 3 (the jack is digital, so no CV-level throw). Merges after round 5 and the µ-law move; the friends' release notes get updated to match
 
 ### 4. Play it (plugin and module)
