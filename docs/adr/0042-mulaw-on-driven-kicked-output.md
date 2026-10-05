@@ -1,6 +1,6 @@
 # 0042 — µ-law on the DRIVEN / KICKED output
 
-**Status:** Accepted, 4 Oct 2026 (owner: B on every panel and ATTITUDE of `renders/feat_output_mulaw/`). Amends SPEC §3 (MIX, ATTITUDE), §4.8, §7 M7. Numbers: `core/params/OutputVoicing.h`; code: `core/dsp/OutputBits.h`; method and measurements: `docs/prototypes/output-mulaw/README.md`; tests: `host/tests/test_output_bits.cpp`.
+**Status:** Accepted, 4 Oct 2026; amended 5 Oct 2026 (KICKED 10-bit; placement: the wet only, before TONE, see the amendments below) (owner: B on every panel and ATTITUDE of `renders/feat_output_mulaw/`). Amends SPEC §3 (MIX, ATTITUDE), §4.8, §7 M7. Numbers: `core/params/OutputVoicing.h`; code: `core/dsp/OutputBits.h`; method and measurements: `docs/prototypes/output-mulaw/README.md`; tests: `host/tests/test_output_bits.cpp`.
 
 **Context:** On the echo branch's bit-depth round the owner picked 8-bit µ-law on the repeats (`echo_bits_voicing` D), then: "I really like the sound of the 8-bit µ-law, but because it's only applied to the repeats, the character is still quite subtle. Could we apply µ-law to both the dry and wet signals when the ATTITUDE switch is set to DRIVEN or KICKED?" The owner's answers:
 - every SPRINGS position (position 3 is echo mode since ADR 0041: the box is after it too);
@@ -51,3 +51,35 @@
 
 **Consequence:** KICKED's lowest step is now ~−87 dBFS (8-bit: ~−75), so on the Versio the ADC's own noise (~−90 dBFS) can pass through KICKED as an occasional bottom step, like DRIVEN's (~−100 dBFS), instead of being gated to silence.
 
+
+## Amendment: Placement: wet only, before TONE (owner, 5 Oct 2026; branch `fix/mulaw-wet-pretone`)
+
+**Context:** playing the release on the module: "In KICKED mode, the aliasing is too present applied to both the input and output. Instead of applying it at the end of the chain so it applies to both dry and wet, let's move it back so it only affects the wet signal, pre-tone so I can filter out the higher aliasing artifacts if desired."
+
+**Decision:**
+1. **Where.** The box moves from after MIX (dry and wet) to **the wet only**: after the pickups (DriveOut) and the output high-shelf, **before TONE's return filter** (the Big Knob, ADR 0036 amendment), then the limiter, the Hold's ducking and MIX. DRIVEN too, same box, same place: the owner's reason (grit you can filter with TONE, a clean dry) holds for DRIVEN's 12 bits as well, and one placement keeps the ATTITUDE crossfade a plain fade of one stage. `Tank::process` now runs the wet in two passes per control step: up to the shelf into a 32-sample buffer, the box on that buffer (run 18's pair loops unchanged), then TONE's return, the limiter, the ducking and MIX.
+2. **The dry is untouched again:** MIX fully left is a clean passthrough, bit for bit, in every ATTITUDE (decision 1's "MIX fully left in DRIVEN / KICKED is no longer clean" is withdrawn). The Plugin still reports latency 0; the box's ~6 samples (0.12 ms) now delay only the wet in DRIVEN / KICKED, like the oversamplers' ~5 already did.
+3. **Full scale +8 dB** (`OutputVoicing.h` `kFullScale` 2.5). Before the limiter the wet runs hotter than 0 dBFS: up to 1.95 in DRIVEN and 2.29 in KICKED on the stimulus (DRIVE 0.4 / 1, SPLASH 1, every SPRINGS; 06_noise_bursts the worst). At full scale 1 the box would clip in ~40 % of those hot cells, and a clip at 24 kHz folds its harmonics back into the band (new pitches). With 2.5 nothing measured reaches it. The bottom step moves up with it: KICKED's lowest ~−79 dBFS (was ~−87), DRIVEN's ~−91 (was ~−99); µ-law's grain relative to the signal is unchanged above that (the box alone on a 1 kHz tone: KICKED 45 dB under the signal at −6 / −20 dBFS, DRIVEN 57).
+4. **The limiter reads the wet after the box**, grain included (what is heard), so its gain can differ by a hair from without the box (worst 0.08 dB per block on test_led_meter's held chord); the red LEDs light in the same blocks within 1 % (1607 vs 1609 of 4000), and only the limiter makes red, as before. Peaks are limited again, so the shipped output stays under the limiter's threshold (the 4 Oct placement could reach 1.107).
+5. Everything else as above: 48 → 24 → 48 kHz IIR half-bands, TPDF dither to the last step, under half a step exactly 0, silence in / silence out, the 20 ms ATTITUDE crossfade, run 18's expansion table and pair loops, KICKED 10-bit.
+
+**Measured** (`test_output_bits`, `test_kick`):
+- MIX 0 = the input, bit for bit, in CLEAN / DRIVEN / KICKED. CLEAN renders bit for bit as `main` (81 of 81 renders: 02_hits / 04_skank / 10_pad_cminor × SPRINGS × MIX 0 / 0.4 / 1 × CLEAN, and DRIVEN / KICKED at `output_bits_voicing` 0, vs main's renderer).
+- Level within ±0.5 dB of without the box at MIX 0.4 / 1 (worst +0.10 dB); the wet has almost nothing above 11 kHz, so the 24 kHz rate costs nothing (the old −1.2 dB on dry drums is gone with the dry).
+- No new pitches (limit 6 dB; the positive control 27.9–28.6 dB): DRIVEN rim tail 2.2, tone bursts 3.6, the last second before the tail's silence 5.5, a quiet tone a few steps up 1.6; KICKED 3.4 / 4.3 / 4.9 / 2.0. M6: no steady tone; ringing_db DRIVEN 0.4, KICKED 0.0 (today 0.4 / 1.8); SPRINGS 3 grid 0 of 20 flagged (13.4 vs 13.5 without the box).
+- Silence: silence in, exact silence out (18 of 18); the box alone exactly 0 9–10 ms after its input stops; a rim's tail at MIX 1 reaches exact silence 3.1 / 8.8 s (DRIVEN, DECAY noon / 0.85) and 2.7 / 7.4 s (KICKED).
+- The Kick's < 100 Hz tail (ADR 0016) in KICKED, with the box: 34.4 / 26.7 dB down in 300 ms at TONE 0.85 and 35.4 / 23.7 at TONE 1 (DECAY 0.88 / 1), ≥ 20 everywhere: TONE's low cut now thins the box's grain too, so the test no longer needs the "without the box" hook.
+
+**Tests reverted / changed:**
+- MIX 0 null tests (`test_mix`, `test_main`, `plugin_host_test`) run in the default ATTITUDE again (reverted to before ADR 0042); `test_mix`'s DRIVEN / KICKED "MIX 0 is the dry through the box" checks removed (no longer true); `test_output_bits` checks MIX 0 = input in all three.
+- `plugin_host_test` MIDI Kick onset: back in the default ATTITUDE, at **N + 5** (was 0): the Kick's thump is part of the wet, which the box delays in DRIVEN; still the same for every block schedule.
+- "Peak < 1" stability bars (`test_tank`, `test_spring`, `test_springs3`, `test_drive`, `test_echo_mode` stability, diffuse and wear extremes) read the shipped output again (the box is before the limiter; the "before the box" hooks and the shipped-peak reports removed). "Ends lower" also counts a last second of exact silence (the box takes fading tails to exact 0, and 0 < 0 would fail): `test_tank`, `test_spring`, `test_drive`.
+- `test_kick`: the hook removed (above). `test_drive` aliasing and `test_echo_mode`'s feedback / edge checks keep the hook: they measure the drive chain and the echo, not the box.
+- `test_output_bits`: the latency, noise-floor, "dry stops → exact 0" and quiet-tone checks use the box alone (`dsp::OutputBits`); the level check drops the "filters only" reference and the dry-hits exception; the LED check as in decision 4; flips on a held tone at MIX 1.
+
+**Cost.** Desktop (best of 7, two interleaved runs): KICKED SPRINGS 3 (echo) 479–480 → 464 ns/sample, KICKED 2 Springs 500–501 → 482–484, DRIVEN Hold 503–504 → 482–483, CLEAN Hold 488–489 → 467–468: **−3 to −4 %** (the wet's two-pass split lets the compiler run each part tighter; the box itself costs the same). Flash: release **127,484 B** (main 127,228: +256), profile **128,944 B** (main 128,744: +200), m0test 82,320; limit 131,072 (release 3,588 B spare, profile 2,128). vfma count unchanged (50, libm).
+
+**Consequences to watch (owner, by ear):**
+- KICKED / DRIVEN dry is clean at any MIX; the grit is the tail's only. At MIX 1 the sound is close to the 4 Oct placement, plus TONE now thins the grit.
+- The box's grain now comes before the limiter, so on very hot tails the limiter rides grit and signal together (as it did the drive chain's colour).
+- On the Versio the ADC's own noise (~−90 dBFS) no longer passes through the box (the dry is untouched), so KICKED's ~−79 dBFS bottom step only affects tails.

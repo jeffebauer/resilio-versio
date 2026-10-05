@@ -9,7 +9,8 @@
 //          KICKED has good character, but maybe sounds a little digital. Try
 //          10-bit instead of 8 for a little more grit than 12, but not as
 //          much as 8"; ADR 0042 amendment)
-// every SPRINGS position, dry and wet both (after MIX). dsp/OutputBits.h.
+// every SPRINGS position. Since 5 Oct 2026 (ADR 0042 amendment) the wet
+// only, before TONE's return filter; the dry is untouched. dsp/OutputBits.h.
 // The owner picked it on every panel (renders/feat_output_mulaw, 4 Oct 2026):
 // the default everywhere. Renderer key output_bits_voicing 0 renders "before
 // the box" (the pre-ADR 0042 reference, and the tests' hook for reading the
@@ -25,6 +26,14 @@ struct Depth {
 constexpr Depth kDepth[3] = {{24.0f}, {12.0f}, {10.0f}};
 
 constexpr int   kNumVoicings     = 2;
+// The box's full scale (Tank units). Since it moved before the limiter (ADR
+// 0042 amendment, 5 Oct 2026) it sees the wet before the limiter, which
+// runs hotter than 0 dBFS: up to 1.95 in DRIVEN and 2.29 in KICKED on the
+// stimulus at DRIVE 0.4 / 1, SPLASH 1, every SPRINGS (06_noise_bursts the
+// worst). A clip at the box's 24 kHz would fold its harmonics back into the
+// band (new pitches), so full scale sits above them: 2.5 (+8 dB). The
+// bottom step moves up with it (KICKED's lowest ~-79 dBFS, DRIVEN's ~-91).
+constexpr float kFullScale       = 2.5f;
 constexpr float kFadeSeconds     = 0.020f; // an ATTITUDE flip crossfades the box settings (ADR 0003: no click)
 // TPDF dither (+-1 step) down to the last step, fading out between 1 and 0.5
 // steps of signal; nearest rounding, so under half a step is exactly 0. (The

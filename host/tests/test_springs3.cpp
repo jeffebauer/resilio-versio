@@ -123,7 +123,6 @@ struct Settings {
     float wobble = rv::spec(rv::ParamId::Wobble).defaultValue;
     float splash = rv::spec(rv::ParamId::Splash).defaultValue;
     int   att = 0, springs = 2, voicing = 0;
-    int   outBits = -1; // output_bits_voicing (-1 = the default, ADR 0042's mu-law box); 0 = before the box
 };
 
 void apply(rv::Tank& t, const Settings& s)
@@ -153,7 +152,6 @@ Stereo render(const Settings& s, const Buf& in, int block = 48)
     rv::Tank t;
     t.prepare(kFs, block);
     apply(t, s);
-    if (s.outBits >= 0) t.setOutputBitsVoicing(s.outBits);
     const size_t n = in.size();
     Stereo o{Buf(n), Buf(n)};
     for (size_t pos = 0; pos < n; pos += size_t(block)) {
@@ -799,44 +797,32 @@ void sustain()
 // ---- stability --------------------------------------------------------------------------------
 void stability()
 {
-    // The Tank's stability: the peak is read before the output's mu-law box
-    // (ADR 0042: output_bits_voicing 0 as a test hook), since the box's 24 kHz
-    // filters and steps can lift a limited peak a little past 1.0 (what the
-    // box does is the converter's, not the Tank running away). The shipped
-    // output (box in) is checked finite and its peak reported, with the
-    // Versio's after the firmware's kOutputTrim (x 0.874).
     const Buf in = hits(10.0);
-    struct Row {
-        bool  finite;
-        float peak, shipped;
-    };
     const auto rows = perVoicing([&](int v) {
-        Row r{true, 0.0f, 0.0f};
+        float peak = 0.0f;
+        bool  finite = true;
         for (int a = 0; a < 3; ++a)
             for (float tension : {0.0f, 1.0f})
-                for (float tone : {0.0f, 1.0f})
-                    for (int box = 0; box < 2; ++box) {
-                        Settings s;
-                        s.voicing = v, s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tension, s.tone = tone, s.splash = 1.0f;
-                        s.outBits = box ? -1 : 0;
-                        const Stereo o = render(s, in);
-                        for (const Buf* ch : {&o.l, &o.r})
-                            for (float x : *ch) {
-                                r.finite &= std::isfinite(x);
-                                float& pk = box ? r.shipped : r.peak;
-                                pk = std::max(pk, std::fabs(x));
-                            }
-                    }
-        return r;
+                for (float tone : {0.0f, 1.0f}) {
+                    Settings s;
+                    s.voicing = v, s.att = a, s.decay = 1.0f, s.drive = 1.0f, s.tension = tension, s.tone = tone, s.splash = 1.0f;
+                    const Stereo o = render(s, in);
+                    for (const Buf* ch : {&o.l, &o.r})
+                        for (float x : *ch) {
+                            finite &= std::isfinite(x);
+                            peak = std::max(peak, std::fabs(x));
+                        }
+                }
+        return std::pair{finite, peak};
     });
     for (int v = 1; v < kNumVoicings; ++v) {
         if (!inPass(v)) continue;
-        const Row& r = rows[size_t(v - 1)];
+        const auto [finite, peak] = rows[size_t(v - 1)];
         std::snprintf(msg, sizeof msg,
                       "Stability, voicing %s, SPRINGS 3 at DECAY 1 DRIVE 1 SPLASH 1, every ATTITUDE, TENSION/TONE 0 and 1: "
-                      "finite, peak before the output box %.3f (< 1); shipped output peak %.3f (Versio after kOutputTrim %.3f)",
-                      kVoiceName[v], double(r.peak), double(r.shipped), double(r.shipped * 0.874f));
-        checkV(v, r.finite && r.peak < 1.0f, msg);
+                      "finite, peak %.3f (< 1)",
+                      kVoiceName[v], double(peak));
+        checkV(v, finite && peak < 1.0f, msg);
     }
 }
 
