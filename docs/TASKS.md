@@ -24,8 +24,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 2. The new release on the module + click check (≈10 min)
 - [ ] Claude builds it from `main` after the run 18 merge and tells you the file name. Flash it and do the **click check**: KICKED, DRIVE and DECAY up, move knobs fast, hit KICK, patch a gate in, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude. This replaces the `843c5fc` release check
 
-### 3. Wellspring round 5, the last fit · picked B (5 Oct)
-- [x] **B everywhere** (softer front, ring lower, presence up, Wellspring-like stereo), held-tone and pad rows included at WOBBLE 0.45 (where B's held notes move most: kept as you heard it). Being made the default now, with its test fix-ups and a flash trim so it fits; then merge, plugin install and the release for the module
+### 3. Wellspring round 5, the last fit · merged (5 Oct, `44224b1`)
+- [x] B (voicing 8) is the default. To pass the tests the build also changed a few things you haven't heard yet (check on the next plugin install / release): the wet 1 dB lower from TONE noon right (evens KICKED's loudness across TONE); DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top; the high end adjusted at TONE's ends (stops one ringing case)
 
 ### 3d. From your module play (5 Oct)
 - [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
