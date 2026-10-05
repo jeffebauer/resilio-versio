@@ -267,13 +267,7 @@ public:
     }
     // Voicing 5: the high path's ceiling low-pass (today kHighCeilingHz).
     // Redesigns on the next setSettings().
-    void setHighCeiling([[maybe_unused]] float hz)
-    {
-#if RV_TANKV_BUILT >= 5
-        highCeiling_.setCutoff(hz < 0.45f * sampleRate_ ? hz : 0.45f * sampleRate_, sampleRate_);
-        settings_.t60Seconds = -1.0f; // force the redesign (the high path's alignment)
-#endif
-    }
+    void setHighCeiling(float hz); // Spring.cpp (one copy: round 5 calls it on TONE moves)
     // Voicings 4, 5: the high path's T60 as a share of DECAY's (today
     // kHighT60Ratio). Redesigns on the next setSettings().
     void setHighT60Ratio([[maybe_unused]] float r)

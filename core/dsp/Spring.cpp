@@ -282,6 +282,14 @@ RV_NOINLINE void designLoopEq(dsp::Biquad& b, const SpringSettings& s, float sam
 } // namespace
 #endif
 
+RV_NOINLINE void Spring::setHighCeiling([[maybe_unused]] float hz)
+{
+#if RV_TANKV_BUILT >= 5
+    highCeiling_.setCutoff(hz < 0.45f * sampleRate_ ? hz : 0.45f * sampleRate_, sampleRate_);
+    settings_.t60Seconds = -1.0f; // force the redesign (the high path's alignment)
+#endif
+}
+
 void Spring::prepareDamping(float dampingHz)
 {
 #if RV_TANKV_BUILT >= 8

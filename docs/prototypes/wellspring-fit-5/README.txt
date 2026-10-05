@@ -18,9 +18,16 @@ pitch5.py    C: WOBBLE's pitch movement and the held level when the Loops' wow m
 tone5.py     TONE's character (tail brightness and level, TONE 0 / .25 / .5 / .75 / 1) per voicing
 levels5.py   the page's levels re A
 page5.py     the listening page (main checkout renders/fit_round5/), then the make_review.py line it prints
-bitcheck.sh  the default voicing renders bit for bit as main (needs an rv_render built from main)
+bitcheck.sh  a voicing renders bit for bit as main (needs an rv_render built from main; 3rd arg "--set tank_voicing=7" now 8 is the default)
 m6_d075.sh   M6 Ringing sweeps for one voicing with tuning overrides
 gates.sh     M6 grids for 7-10 and the suite as if 8 / 9 / 10 shipped (build-v8..10)
 fw_sizes.sh  firmware sizes as if 8 / 9 / 10 were the default, then the default again
 bench.cpp    desktop ns/sample (SPRINGS 2 and echo mode worst cases, the session-2 settings) and the firmware pool
 pool.cpp     the firmware pool per voicing
+Fix-up round (B ships):
+attlevels.py ATTITUDE switch levels per voicing
+morphprobe.cpp  test_drive's Morph level step, per voicing, box / Sustain trim on and off
+nullprobe.cpp   test_drive's DRIVE audibility null per voicing
+tailend.py   what a long tail ends on, with and without the mu-law box
+fwdiff.sh    per-function firmware size difference between two ELFs
+ratet60.cpp  test_spring's sample-rate T60, broadband and per octave, per ATTITUDE (IMP= impulse level, NOBOX=1)

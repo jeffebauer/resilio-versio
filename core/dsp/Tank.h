@@ -755,7 +755,8 @@ private:
     bool                bass2_ = false;
     bool                dRun_  = true;   // round 5: D runs (only where it is heard; controlTick)
     float               mixDecay_ = 0.5f; // round 5: the Springs' DECAY the mix's D weight follows (controlTick)
-    float               r5AttTrim_ = 1.0f; // round 5: KICKED's wet trim, with the Morph (controlTick)
+    float               r5AttTrim_ = 1.0f; // round 5: the wet's noon trim, by TONE (controlTick)
+    float               r5RelaxTrim_ = 1.0f; // round 5: the coil relax's level, KICKED's DRIVE (controlTick)
 #endif
 #if RV_TANKV_BUILT >= 3
     std::array<std::array<float*, tankv::kNumDiffusers>, kMaxSprings> diffBuf_{}; // voicing 3: Loop diffusers
@@ -792,6 +793,9 @@ private:
     float tdAccAll_ = 0.0f, tdAccLp_ = 0.0f, tdAll_ = 0.0f, tdLp_ = 0.0f, tdDarkDb_ = 0.0f, tdWd_ = 0.0f; // ... and its makeup
     float splashLift_ = 1.0f;         // the Clang and Clatter at low DRIVE (tdSplashLiftDb)
     std::array<float, kMaxSprings> hiT60Set_{{-1.0f, -1.0f, -1.0f}}; // high path T60 ratio sent to each Spring
+#if RV_TANKV_BUILT >= 8
+    std::array<float, kMaxSprings> hiCeilSet_{{-1.0f, -1.0f, -1.0f}}; // round 5: high path ceiling sent to each Spring (by TONE)
+#endif
 #endif
 
     // M8 direct Clatter share: the side's delayed copy (splash::kClatterSideMs).

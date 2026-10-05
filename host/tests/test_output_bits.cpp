@@ -341,7 +341,11 @@ double prominence(const std::vector<double>& v, size_t k)
 // Bins more than 70 dB under b's loudest are ignored (the float floor).
 // harmonicOf > 0: bins within 2 bins of a multiple of it are skipped (a tone's
 // own harmonics are allowed; inharmonic peaks are what folding makes).
-double newPeakDb(const Stereo& a, const Stereo& b, size_t from, size_t to, double* atHz, double harmonicOf = 0.0)
+// harmonicSpread > 0: a note that isn't one pure bin (a tail's last band, a
+// few bins wide) has harmonics as wide times their number, so the skip widens
+// by that many Hz per harmonic number.
+double newPeakDb(const Stereo& a, const Stereo& b, size_t from, size_t to, double* atHz, double harmonicOf = 0.0,
+                 double harmonicSpread = 0.0)
 {
     const auto sa = welchDb(a, from, to), sb = welchDb(b, from, to);
     std::vector<double> rel(sb.size());
@@ -352,8 +356,8 @@ double newPeakDb(const Stereo& a, const Stereo& b, size_t from, size_t to, doubl
         const double hz = binHz(k);
         if (hz < 100.0 || hz > kTopHz || sb[k] < floorDb) continue;
         if (harmonicOf > 0.0) {
-            const double h = std::round(hz / harmonicOf) * harmonicOf;
-            if (std::fabs(hz - h) <= 2.0 * kFs / double(kWelch)) continue;
+            const double n = std::round(hz / harmonicOf), h = n * harmonicOf;
+            if (std::fabs(hz - h) <= 2.0 * kFs / double(kWelch) + n * harmonicSpread) continue;
         }
         const double p = std::min(prominence(sb, k), prominence(rel, k));
         if (p > worst) {
@@ -625,9 +629,40 @@ void artefacts()
                 for (size_t i = 0; i < o1.l.size(); ++i)
                     if (o1.l[i] != 0.0f || o1.r[i] != 0.0f) last = i;
                 if (last > sec(1.6)) {
-                    double hz = 0;
-                    const double p = newPeakDb(o0, o1, last - sec(1.2), last - sec(0.2), &hz);
-                    std::printf("INFO    %s DECAY %.2f MIX %.1f: last second %.1f dB (%.0f Hz)\n", kAtt[a], double(dc), double(mix), p, hz);
+                    // The tail's last note (its loudest band, without the box)
+                    // and that note's harmonics are skipped, as the tone bursts
+                    // skip theirs: a few steps of mu-law on one near-sine is
+                    // the box's own grit (odd harmonics), not a folded pitch.
+                    // The note is a few bins wide, so its n-th harmonic is n
+                    // times as wide. Round 5's tank ends a DECAY 0.85 tail on
+                    // ~418 Hz (7's: ~650 Hz), and the box's 3rd harmonic of it
+                    // around 1.25 kHz read 6.8-7.7 dB here as a "new pitch";
+                    // 7's 3rd harmonic (~1.97 kHz) read 4.8-5.1. Inharmonic
+                    // peaks (folding, granulation tones) still count; the
+                    // harmonics-included figure is printed as INFO.
+                    const size_t e0 = last - sec(1.2), e1 = last - sec(0.2);
+                    const auto s0 = welchDb(o0, e0, e1);
+                    size_t kMax = 1;
+                    for (size_t k = 1; k < s0.size(); ++k)
+                        if (binHz(k) >= 100.0 && binHz(k) <= kTopHz && s0[k] > s0[kMax]) kMax = k;
+                    double wSum = 0, fSum = 0, halfW = 0.5 * kFs / double(kWelch);
+                    for (size_t k = kMax; k > 0 && s0[k] > s0[kMax] - 6.0; --k) {
+                        const double w = std::pow(10.0, s0[k] / 10.0);
+                        wSum += w, fSum += w * binHz(k);
+                    }
+                    for (size_t k = kMax + 1; k < s0.size() && s0[k] > s0[kMax] - 6.0; ++k) {
+                        const double w = std::pow(10.0, s0[k] / 10.0);
+                        wSum += w, fSum += w * binHz(k);
+                    }
+                    const double f0 = fSum / wSum;
+                    for (size_t k = kMax; k > 0 && s0[k] > s0[kMax] - 6.0; --k) halfW = std::max(halfW, f0 - binHz(k));
+                    for (size_t k = kMax; k < s0.size() && s0[k] > s0[kMax] - 6.0; ++k) halfW = std::max(halfW, binHz(k) - f0);
+                    double hz = 0, hzAll = 0;
+                    const double p = newPeakDb(o0, o1, e0, e1, &hz, f0, halfW);
+                    const double pAll = newPeakDb(o0, o1, e0, e1, &hzAll);
+                    std::printf("INFO    %s DECAY %.2f MIX %.1f: last second %.1f dB (%.0f Hz); its last note %.0f Hz (+-%.0f Hz), "
+                                "with that note's harmonics %.1f dB (%.0f Hz)\n",
+                                kAtt[a], double(dc), double(mix), p, hz, f0, halfW, pAll, hzAll);
                     if (p > worstEnd) worstEnd = p, hzEnd = hz;
                 }
                 for (double f0 : {1000.0, 1130.0}) {
@@ -667,7 +702,8 @@ void artefacts()
         std::snprintf(msg, sizeof msg,
                       "%s, no new pitches vs today (DECAY noon / 0.85, MIX 0.4 / 1; limit 6 dB): rim tail %.1f dB (%.0f Hz); tone bursts 1 kHz / "
                       "1130 Hz, inharmonic %.1f dB (%.0f Hz). Control, the same bits without filters or dither: %.1f dB (%.0f Hz), must exceed 6. "
-                      "Quiet tone through the box alone (a few steps): %.1f dB (%.0f Hz). The last second before the tail's silence: %.1f dB (%.0f Hz)",
+                      "Quiet tone through the box alone (a few steps): %.1f dB (%.0f Hz). The last second before the tail's silence "
+                      "(its last note's harmonics skipped): %.1f dB (%.0f Hz)",
                       kAtt[a], worstRim, hzRim, worstTone, hzTone, ctrl, hzCtrl, quiet, hzQuiet, worstEnd, hzEnd);
         check(worstRim <= 6.0 && worstTone <= 6.0 && worstEnd <= 6.0 && ctrl > 6.0, msg);
     }

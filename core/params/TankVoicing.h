@@ -397,12 +397,15 @@ struct Tuning {
     float r5DiffScale[3] = {1.0f, 1.0f, 0.89f};
     float r5DiffAlign = 0.0f;
     // ... and in the Hold (its zone weight) they ease to this coefficient
-    // (Tank.cpp updateSpringSettings: the Hold's ducking, ADR 0040).
+    // (Tank.cpp updateSpringSettings): at 0.5 the Hold's bed rose into the
+    // next kick (test_throw_hold "ducking is a dip, not a hump": +1.92 dB,
+    // bar +0.5). 0.15: -0.46 dB (7 itself -0.54); 0.2 read +0.49, 0 and 0.3
+    // +3.1 / +0.2 (where the one-drop's bass lands is partly phase luck).
     float r5HoldDiffCoeff = 0.15f;
     // WOBBLE's left side at DECAY 1 (7's tdWobbleLeftDecayMax 0.9, same
     // easing): fully left read 1.63x fully right at DECAY 1 (test_m7_tank,
     // bar 0.6..1.6; 7 1.53).
-    float r5WobbleLeftDecayMax = 0.8f; // hump: +0.49 dB at 7's 0.2, -0.46 here, 7 itself -0.54 (bar +0.5); 0 and 0.3 read +3.1 / +0.2: the one-drop bass is phase luck
+    float r5WobbleLeftDecayMax = 0.8f;
     // The resonance (target 2). A biquad in each Loop after 7's damping: a
     // peaking cut of r5EqDb per trip at r5EqHz (width r5EqQ), so the octave
     // around 1 kHz loses a little more each trip than 500 Hz and stops
@@ -432,6 +435,8 @@ struct Tuning {
     // 7's 9 kHz ceiling (4 kHz 1.30 s): that let the high path's ~1.2 kHz end
     // outlast the tail (test_output_bits: a new 1.25 kHz peak in the mu-law
     // box's last second, 6.5 dB, bar 6) and DECAY 0 ring 0.55 s.
+    // Toward TONE fully left it eases back to 7's 9 kHz (Tank.cpp
+    // updateSpringSettings; M6 echo mode TONE 0 rang 26.6 dB at 7.6 kHz).
     float r5HighCeilHz   = 14000.0f;
     float r5HighLevel    = 0.9f;
     // The low cut in front of the Springs (F round 2's step 2 at r5Amount 0):
@@ -469,6 +474,9 @@ struct Tuning {
     // pickups: a held 1 kHz tone at WOBBLE 0.45 moves 2.2 dB instead of 7.8
     // (the Wellspring 1.2), and x 1.6 there keeps its pitch movement (WOBBLE
     // 0.25: p95 21.8 cents, 7 21.0; docs/prototypes/wellspring-fit-5/pitch5.py).
+    // (Renderer only: the owner picked B, 8, which has none of it.)
+    float r5FlatLoopWobble = 0.0f;
+    float r5FlatTransportWobble = 1.6f;
     // The wet's level from noon right (dB; easing to none at TONE fully left,
     // as the tank eases back to 7's; after the pickups, as 7's wet trim).
     // Round 5 came back louder than 7 at noon (02_hits +2.1 dB, clicks +0.6,
@@ -488,15 +496,13 @@ struct Tuning {
     // its resonance (Tank.cpp), and SPLASH voicing C stays DRIVE-free.
     float r5KickedLiftDb = 2.0f;
     // The level the coil's resonance gave, given back as KICKED's DRIVE
-    // relaxes it (dB at full relax, on the Springs' input; Tank.cpp): without
-    // it KICKED grew only +3.2 dB from DRIVE 0 to 1 (ADR 0033: +6, test_drive
-    // limit 2 dB off).
+    // relaxes it (dB at full relax, on the wet after the pickups; Tank.cpp):
+    // without it KICKED grew only +3.2 dB from DRIVE 0 to 1 (ADR 0033: +6,
+    // test_drive limit 2 dB off).
     float r5CoilRelaxDb = 1.8f;
     // The Sustain trim's glide down on held sounds x this (on top of F round
     // 2's kFSusGlideScale; Tank.cpp updateBaseSettings).
     float r5SusGlideScale = 0.6f;
-    float r5FlatLoopWobble = 0.0f;
-    float r5FlatTransportWobble = 1.6f;
 #endif
 };
 

@@ -442,10 +442,14 @@ RV_SIZE_OPT void Tank::applyTankVoicing()
     dBass_.setCutoff(tankv::r5MixHz(t.togetherBassHz, t.r5BassHz, tankv::r5Amount(tankVoicing_)), sampleRate_);
     dBass2_.setCutoff(tankv::r5MixHz(t.togetherBassHz, t.r5BassHz, tankv::r5Amount(tankVoicing_)), sampleRate_);
     bass2_ = tankv::hasR5(tankVoicing_) && t.r5BassOrder2 > 0.5f;
+    r5AttTrim_ = r5RelaxTrim_ = 1.0f; // controlTick sets them in 8+ (a voicing switch back to 7 keeps none)
 #endif
 #if RV_TANKV_BUILT >= 7
     tdTone_ = -1.0f; // the coil and pickup corners again (controlTick)
     hiT60Set_.fill(-1.0f);
+#if RV_TANKV_BUILT >= 8
+    hiCeilSet_.fill(-1.0f);
+#endif
 #endif
     keyMode_ = -1; // the Springs' settings again (stage counts, pickups)
 #endif
@@ -1256,20 +1260,15 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
 #if RV_TANKV_BUILT >= 8
             // Round 5: as KICKED's DRIVE relaxes the coil's resonance (the
             // inQ ease above), its lost lift comes back (r5CoilRelaxDb), so
-            // DRIVE's loudness curve stays ADR 0033's (+6 dB at DRIVE 1).
-            const float relax = tankv::hasR5(tankVoicing_) ? t.r5CoilRelaxDb * std::min(1.0f, 2.0f * kickedOpen) : 0.0f;
-            trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen + relax);
-#else
-#if RV_TANKV_BUILT >= 8
-            // Round 5: as KICKED's DRIVE relaxes the coil's resonance (the
-            // inQ ease above), its lost lift comes back (r5CoilRelaxDb), so
-            // DRIVE's loudness curve stays ADR 0033's (+6 dB at DRIVE 1).
-            const float relax = tankv::hasR5(tankVoicing_) ? t.r5CoilRelaxDb * std::min(1.0f, 2.0f * kickedOpen) : 0.0f;
-            trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen + relax);
-#else
+            // DRIVE's loudness curve stays ADR 0033's (+6 dB at DRIVE 1). On
+            // the wet after the pickups (process(), outTrim), not into the
+            // Springs: there it drove KICKED's LoopSat harder at both SPLASH
+            // settings and squashed the splash's lift (test_m7_tank "DRIVE
+            // never reduces the splash", KICKED rim: 12.4 -> 11.2 dB from
+            // DRIVE 0.5 to 0.75).
+            r5RelaxTrim_ = drive::dbToGain(tankv::hasR5(tankVoicing_) ? t.r5CoilRelaxDb * std::min(1.0f, 2.0f * kickedOpen) : 0.0f);
+#endif
             trim *= toneTrim_ * drive::dbToGain(tdDarkDb_ - t.tdDriveOpenDb * kickedOpen);
-#endif
-#endif
         }
 #endif
         inTrimFrom_ = snap ? trim : inTrimTo_;
@@ -1668,6 +1667,19 @@ void Tank::updateSpringSettings(size_t i)
             springs_[i].setHighT60Ratio(r);
             hiT60Set_[i] = r;
         }
+#if RV_TANKV_BUILT >= 8
+        // Round 5's 14 kHz ceiling eases back to 7's 9 kHz toward TONE fully
+        // left, as the rest of its tank does: dark, the Loops lose their
+        // highs and the high path's 7.5-10 kHz rang on alone (M6, echo mode
+        // DRIVEN DECAY 1 TONE 0: 26.6 dB at 7.6 kHz, limit 15; 9 kHz: 6.2).
+        if (tankv::hasR5(tankVoicing_)) {
+            const float hz = tankv::r5MixHz(t.tdHighCeilHz, t.r5HighCeilHz, tankv::r5Amount(tankVoicing_) * (1.0f - w));
+            if (hz != hiCeilSet_[i]) {
+                springs_[i].setHighCeiling(hz);
+                hiCeilSet_[i] = hz;
+            }
+        }
+#endif
     }
 #endif
     s.lfoHz             = antires::kHowlLfoHz * antires::kHowlLfoRatio[i];
@@ -2232,7 +2244,7 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         const bool  trimAfter = tankv::hasShipFixes(tankVoicing_);
         const float wetGain = kWetGain * (tankv::hasTransducers(tankVoicing_) && !trimAfter ? tdTrim_ : 1.0f);
 #if RV_TANKV_BUILT >= 8
-        const float outTrim = (trimAfter ? tdTrim_ : 1.0f) * r5AttTrim_; // round 5: the level trim (controlTick)
+        const float outTrim = (trimAfter ? tdTrim_ : 1.0f) * r5AttTrim_ * r5RelaxTrim_; // round 5: the level trims (controlTick)
 #else
         const float outTrim = trimAfter ? tdTrim_ : 1.0f;
 #endif
