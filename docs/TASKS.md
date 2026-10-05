@@ -29,7 +29,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3d. From your module play (5 Oct)
 - [x] **All LEDs going white at times:** a bug (the throw-exit blink's timer compared against a clock that wraps: after ~36 min of uptime it held all four white for ~36 min). Fixed in `fa54cb6`; release `dist/resilio_versio_release_fa54cb6.bin` if you want it now (it also has run 18 and the echo tuning)
-- [ ] **µ-law moves to the wet only, before TONE** (being built): the dry stays clean in every ATTITUDE again (MIX fully left = clean), and TONE right of noon can thin the grit's highs. Applies to DRIVEN too. Short page `renders/mulaw_wet/` coming
+- [ ] **µ-law moved to the wet only, before TONE: ready to hear** [`renders/mulaw_wet/`](../renders/mulaw_wet/index.html) (A today, B wet only pre-TONE; KICKED and DRIVEN). MIX 0 row: B = your clean dry; TONE 0.8 row: TONE thins the grit. Say OK to merge
 
 ### 3e. Kick removed; the button throws and taps tempo (5 Oct) · being built
 - Your call: **no Kick** (module and plugin; frees ~3–4 KB of flash). **The button:** held = a manual throw in SPRINGS 1–2 (the first press switches throw mode on, so it works with nothing patched); taps = tempo in echo mode. **Leave throw mode:** double-tap, then hold 2 s (single taps and holds of any length stay throws). The gate stays on/off: throw in 1–2, clock in 3 (the jack is digital, so no CV-level throw). Merges after round 5 and the µ-law move; the friends' release notes get updated to match
