@@ -30,9 +30,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [x] Flashed `dist/resilio_versio_release_0267d0e.bin` (5 Oct: "sounding fantastic")
 - [ ] **Click check** (under way, no clicks so far): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
-### 3b. Listen: tape wear for echo mode (≈20 min)
-- [ ] Page: `renders/echo_tape_wear/index.html` (echo mode; columns CLEAN / DRIVEN / KICKED, switch **A** today's BBD grit, **B** tape saturation + roll-off, **C1** B + subtle crinkle, **C2** B + obvious crinkle). WOBBLE still, levels matched. Listen for: is the BBD's faint off-key shimmer gone in B? Does a loud build melt into warmth rather than fizz? Is B's 70 Hz lift warm or boomy on the pad? Is C1 audible at all; is C2 papery or too much? **At the held top (DECAY max)** B and C keep creeping up slowly (~1 dB a minute, never running away) where A settles in ~20 s: alive, or unsteady? Pick per ATTITUDE if they differ. Any pick needs a CPU run on the module (desktop says B/C cost about the same as A)
-
 ### 4. Play it (plugin and module)
 - [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
 - [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
@@ -57,6 +54,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
+- **Echo mode: tape wear B becomes the default** (your pick, B on every row, 6 Oct): the held top made to lock in like today (your call), then merged and installed in Ableton when every test passes, plus a new release and CPU-test build for the module (B needs a CPU run on the chip)
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -76,6 +74,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Tape wear listened:** B (tape saturation + roll-off) on every row and ATTITUDE; no crinkle. Held top: lock in like today
 - 5 Oct 2026: **Plugin `c7bf3e7` installed** (AU validated; all tests pass, 24 of 24): round 5, the wet µ-law, no Kick, the button throws / taps
 - 5 Oct 2026: **Merged:** Wellspring round 5 (your pick B, `44224b1`); µ-law on the wet only, before TONE (your pick B, `9245811`); the Kick removed and the button as throw / tap tempo (your call, `0267d0e`). Friends' release notes updated to match
 - 5 Oct 2026: **All LEDs going white** after ~36 min: a timer bug, fixed in `fa54cb6`
