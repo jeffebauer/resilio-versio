@@ -45,4 +45,4 @@ SPLASH is stronger
 
 Smaller fixes
 - BLEND fully right is now 100 % wet on the module (the pots stopped just short before).
-- The firmware runs about 10 points lighter on the Versio's CPU.
+- All of this fits the Versio: the firmware stays under 80 % of the chip at its busiest moment and inside its 128 KB of flash, checked on the module with no clicks or dropouts.
