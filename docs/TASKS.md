@@ -34,6 +34,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
+- **New panel names** (your picks, 6 Oct): MIX → **BLEND**; SPRINGS → **TANK** (1 · 2 · ECHO); ATTITUDE **CLEAN · TAPE · AMP** (were CLEAN · DRIVEN · KICKED); the button → **THROW / TAP**. Plugin, docs, manual (refreshed while at it) and release notes; saved Ableton sets keep working. Being built
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
