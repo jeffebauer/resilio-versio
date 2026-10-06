@@ -28,7 +28,7 @@ namespace rvled {
 
 // ---- Tuning (the owner judges them on the module) -------------------------
 constexpr float kTapFlashSeconds = 0.07f; // one flash / one pulse
-constexpr float kTapShowSeconds  = 2.0f;  // pulses whose beat lands within this after the last tap
+constexpr float kTapShowSeconds  = 4.0f;  // pulses whose beat lands within this after the last tap (owner, 6 Oct: 2 s was too short to confirm the tempo)
 // Purple, as drive values (the PWM cubes them: 0.85 -> 61 % red duty with
 // full blue, a violet-purple). Full brightness: the brightest channel is 1.
 constexpr Rgb kTapPurple{0.85f, 0.0f, 1.0f};
