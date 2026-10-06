@@ -36,10 +36,15 @@ TEMPLATE_NAME = "listen_template.html"
 # name of TENSION (older renders still carry it).
 PARAM_ORDER = ["decay", "tone", "tension", "splash", "drive", "wobble", "mix", "springs", "attitude"]
 PARAM_NAMES = {k: k.upper() for k in PARAM_ORDER}
+# Panel names since v1.0.43 (ADR 0044); the keys stay "mix" and "springs".
+PARAM_NAMES.update({"mix": "BLEND", "springs": "TANK"})
 PARAM_ALIASES = {"boing": "tension"}
 KNOBS = frozenset(["decay", "tone", "tension", "splash", "drive", "wobble", "mix"])
-SWITCH_LABELS = {"springs": ["1", "2", "3"], "attitude": ["CLEAN", "DRIVEN", "KICKED"]}
-ATTITUDE_WHAT = {"CLEAN": "hi-fi tank", "DRIVEN": "warm tape dub", "KICKED": "trashed, chaotic"}
+SWITCH_LABELS = {"springs": ["1", "2", "ECHO"], "attitude": ["CLEAN", "TAPE", "VALVE"]}
+# Labels from before v1.0.43 (older renders carry them), shown as today's.
+OLD_SWITCH_LABELS = {"springs": {"3": "ECHO"}, "attitude": {"DRIVEN": "TAPE", "KICKED": "VALVE", "AMP": "VALVE"}}
+ATTITUDE_WORDS = ("clean", "tape", "valve", "driven", "kicked")
+ATTITUDE_WHAT = {"CLEAN": "hi-fi tank", "TAPE": "tape saturation, the dub colour", "VALVE": "cranked valve, rattle and Howl"}
 BEFORE_AFTER = ["before", "old", "a", "after", "new", "b"]
 BEFORE_AFTER_SET = frozenset(["before", "after", "old", "new"])
 
@@ -90,8 +95,8 @@ def canon_value(key, v):
         if isinstance(v, (int, float)) and not isinstance(v, bool):
             # Normalised 0 / 0.5 / 1 (ParamSpec normalisedToSwitch).
             return labels[0 if v < 0.25 else (1 if v < 0.75 else 2)]
-        s = str(v)
-        return s.upper() if key == "attitude" else s
+        s = str(v).upper()
+        return OLD_SWITCH_LABELS.get(key, {}).get(s, s)
     return v
 
 
@@ -430,9 +435,9 @@ def collect_from_wavs(root, with_spec):
         vals = [p[lvl] if lvl < len(p) else "" for p in dir_parts]
         if len(set(vals)) < 2:
             continue
-        if all(v.lower() in ("clean", "driven", "kicked") for v in vals):
+        if all(v.lower() in ATTITUDE_WORDS for v in vals):
             for it, v in zip(items, vals):
-                it.dims["attitude"] = v.upper()
+                it.dims["attitude"] = canon_value("attitude", v)
         elif not variant_from_dir and all(letterish(v) for v in vals):
             variant_from_dir = True
             for it, v in zip(items, vals):
@@ -445,11 +450,11 @@ def collect_from_wavs(root, with_spec):
     if "attitude" not in items[0].dims:
         att_idx = []
         for t in toks:
-            hits = [i for i, x in enumerate(t) if x.lower() in ("clean", "driven", "kicked")]
+            hits = [i for i, x in enumerate(t) if x.lower() in ATTITUDE_WORDS]
             att_idx.append(hits[0] if len(hits) == 1 else None)
         if all(i is not None for i in att_idx):
             for it, t, i in zip(items, toks, att_idx):
-                it.dims["attitude"] = t[i].upper()
+                it.dims["attitude"] = canon_value("attitude", t[i])
                 del t[i]
     if not variant_from_dir:
         letter_idx = []
@@ -610,7 +615,7 @@ def dim_display(key, v, item=None):
     if key == "attitude":
         return (str(v), ATTITUDE_WHAT.get(str(v), ""))
     if key == "springs":
-        return ("{} SPRING{}".format(v, "" if str(v) == "1" else "S"), "")
+        return ("TANK {}".format(v), "")
     if key in KNOBS:
         return (param_name(key) + " " + fmt_num(v), clock(v))
     if key.startswith("folder") or key == "variant":
@@ -656,7 +661,7 @@ def variant_display(key, v, item, pos, readme_desc):
 
 
 PALETTE = ["--g1", "--g2", "--g3", "--g4", "--g5", "--g6"]
-ATT_COLOR = {"CLEAN": "--clean", "DRIVEN": "--driven", "KICKED": "--kicked"}
+ATT_COLOR = {"CLEAN": "--clean", "TAPE": "--driven", "VALVE": "--kicked"}  # CSS names predate v1.0.43
 
 
 def build_page_data(root, out_path, items, refs, rows=None, columns=None, variants=None,

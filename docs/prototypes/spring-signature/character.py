@@ -37,7 +37,7 @@ SRC = {
     "Wellspring": (f"{REF}/wellspring_A_clicks.wav", f"{REF}/wellspring_E_skank.wav"),
     "Magneto": (f"{REF}/magneto_MA_clicks.wav", f"{REF}/magneto_ME_skank.wav"),
     "Ours CLEAN": (f"{AB}/resilio_match_CLEAN_clicks.wav", f"{AB}/resilio_match_CLEAN_skank.wav"),
-    "Ours DRIVEN": (f"{AB}/resilio_match_DRIVEN_clicks.wav", f"{AB}/resilio_match_DRIVEN_skank.wav"),
+    "Ours TAPE": (f"{AB}/resilio_match_TAPE_clicks.wav", f"{AB}/resilio_match_TAPE_skank.wav"),  # DRIVEN until v1.0.43
 }
 cx, sr0 = load(f"{STIM}/01_clicks.wav")
 CLICKS = onsets(cx, sr0, -40, 1.0)

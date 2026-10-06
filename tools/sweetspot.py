@@ -468,9 +468,9 @@ def parse_sweep_dirname(name):
     assert name.startswith("m8_sweet_")
     rest = name[len("m8_sweet_"):]
     attitude = None
-    for att in ("clean", "driven", "kicked"):
+    for att in ("clean", "tape", "valve", "driven", "kicked"):  # old dir names too (ADR 0044)
         if rest.endswith("_" + att):
-            attitude = att
+            attitude = {"driven": "tape", "kicked": "valve"}.get(att, att)
             rest = rest[: -(len(att) + 1)]
             break
     stim = "skank" if rest.endswith("_skank") else ("hits" if not rest.endswith("skank") else "skank")
@@ -526,7 +526,7 @@ GAIN_STIMULI = [
 GAIN_DECAYS = [0.25, 0.5, 0.75, 1.0]
 # `rv_render --set` takes Switch3 labels (ParamSpec choices) and rejects
 # bare numbers on switches.
-GAIN_ATTITUDES = ["CLEAN", "DRIVEN", "KICKED"]
+GAIN_ATTITUDES = ["CLEAN", "TAPE", "VALVE"]  # was CLEAN / DRIVEN / KICKED until v1.0.43 (ADR 0044)
 LIMITER_THRESHOLD = 0.82  # SPEC/ADR safety limiter is 0.89; flag approach at 0.82
 
 
@@ -613,7 +613,7 @@ def render_report(sweep_analyses, gain_results, out_path, review_base_rel="../re
     lines.append(
         "To check this without relying on ears alone, this tool renders each knob from 0 to 1 "
         "in 11 steps (0, 0.1, 0.2 … 1.0), with every other knob left at its default, once per "
-        "ATTITUDE switch position (CLEAN / DRIVEN / KICKED). It then compares each pair of "
+        "ATTITUDE switch position (CLEAN / TAPE / VALVE). It then compares each pair of "
         "neighbouring renders (e.g. DECAY 0.3 vs DECAY 0.4) using five simple, independent "
         "measurements:"
     )

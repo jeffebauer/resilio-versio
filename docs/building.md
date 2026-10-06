@@ -23,7 +23,7 @@ cmake --build build
 ctest --test-dir build
 ```
 
-- Renderer: `build/rv_render in.wav out.wav [--set decay=0.8 --set attitude=KICKED ...]` (switches take their panel labels: `springs=1|2|3`, `attitude=CLEAN|DRIVEN|KICKED`)
+- Renderer: `build/rv_render in.wav out.wav [--set decay=0.8 --set attitude=VALVE ...]` (switches take their panel labels: `springs=1|2|ECHO`, `attitude=CLEAN|TAPE|VALVE`; the labels from before v1.0.43, `springs=3` and `attitude=DRIVEN|KICKED`, still work, ADR 0044)
 - Plugin: development builds do **not** install into `~/Library/Audio/Plug-Ins/` (`RV_INSTALL_PLUGIN` is off), so the plugin in Ableton only changes on purpose. To install a specific version: `tools/install_plugin.sh [commit]` (default: HEAD). It builds that commit in a throwaway worktree, installs AU + VST3, and runs `auval`. The installed version is recorded in `dist/installed_plugin.txt` (never inside the bundles: that breaks their code signature). In Ableton: rescan plug-ins, then find **Resilio → Resilio Versio**.
 
 ## Firmware
@@ -36,8 +36,9 @@ make -C firmware all-variants # builds all three, fails if any is over 128 KB (A
 `all-variants` prints each binary's size against the 128 KB limit, fails the
 build if any variant goes over, and warns (without failing) once a variant
 reaches 95%. See "Flash-budget techniques in use" in `firmware/README.md`
-for how the three variants stay well under the limit (currently release
-~75%, m0test ~65%, profile ~83%; ≥16 KB/≥12 KB headroom respectively).
+for how the three variants stay under the limit (6 Oct 2026: release
+126,380 B (96 %, ~4.6 KB left), m0test 82,320 B (63 %), profile 127,520 B
+(97 %, ~3.5 KB left), so both warn at 95 % and the flash budget is tight).
 
 Three variants (details: `firmware/README.md`):
 

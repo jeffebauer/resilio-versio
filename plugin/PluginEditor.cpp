@@ -48,7 +48,7 @@ constexpr Knob kKnobs[] = {
     {ParamId::Drive,   {43.330f, 60.440f}, false}, // P7
 };
 
-// SW1 = top toggle = SPRINGS, SW2 = ATTITUDE (ADR 0028, measured at M0).
+// SW1 = top toggle = TANK (code: Springs), SW2 = ATTITUDE (ADR 0028, measured at M0).
 // The hardware toggles throw left / centre / right: choices[0..2].
 struct Toggle {
     ParamId id;
@@ -130,7 +130,7 @@ juce::String knobText(ParamId id, double value, const EchoReadout& echo)
 // JUCE's standard look with three tweaks for a dark panel: the value arc
 // and the chosen toggle position in the accent colour (the dark scheme's
 // defaults are nearly invisible here), knobs drawn about the size of the
-// module's caps, and smaller button text so CLEAN / DRIVEN / KICKED fit a
+// module's caps, and smaller button text so CLEAN / TAPE / VALVE fit a
 // toggle position about 7 mm wide. A knob marked "bipolar" (WOBBLE) fills
 // its arc from noon, not from the left end.
 const juce::Identifier kBipolar{"bipolar"};
@@ -238,6 +238,8 @@ public:
         // 3 (unless the host gives a tempo: the host wins). Every press and
         // release goes to the audio thread, which hands it to the Tank at
         // the start of its next block; the Tank does the rest.
+        // Labelled THROW, and TAP while it taps (TANK ECHO; ADR 0044): the
+        // panel's THROW / TAP doesn't fit a 7 mm button.
         button_.setButtonText("THROW");
         button_.onStateChange = [this] {
             const bool down = button_.isDown();
@@ -376,6 +378,10 @@ private:
         const auto nowUs = static_cast<uint32_t>(static_cast<uint64_t>(now * 1000.0));
         tapPurple_ = tapFlash_.update(nowUs, link_.taps(), static_cast<uint32_t>(link_.tapBeatSeconds() * 1.0e6f),
                                       link_.tapping());
+        {
+            const juce::String label = link_.tapping() ? "TAP" : "THROW";
+            if (button_.getButtonText() != label) button_.setButtonText(label);
+        }
 
         const bool limiting = rvled::limiterReducing(link_.takeLimiterGain());
         meters_[PanelLink::kInL].update(peak[PanelLink::kInL], rvled::inputNearClip(peak[PanelLink::kInL]), dt);
