@@ -140,7 +140,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-title h1 { grid-column: 1 / span 9; }
 .hero-title h1 span { display: block; }
 .hero-title h1 > span:first-child { font-weight: var(--wt-medium); letter-spacing: -0.02em; }   /* the name in Medium, the tagline in Light (owner, 7 Oct) */
-.hero-title h1 > .quiet { font-weight: var(--wt-light); }
+.hero-title h1 > .quiet { font-weight: var(--wt-light); color: #888888; }   /* paler than --ink-2: 3.25:1 on paper, AA for display-size text (owner, 7 Oct) */
 .hero-title .actions { grid-column: 10 / -1; justify-self: end; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
 @media (max-width: 47.99rem) {
   .hero-title h1, .hero-title .actions { grid-column: 1 / -1; justify-self: start; justify-content: start; }
