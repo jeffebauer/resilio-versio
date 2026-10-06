@@ -8,7 +8,7 @@ build/rv_render test_audio/stimulus/02_hits.wav out.wav --preset presets/startin
 
 Clock positions are approximate (fully left 7 o'clock = 0, noon = 0.5, fully right 5 o'clock = 1, so each hour is about 0.1); the numbers are exact. Switches: TANK 1 / 2 / ECHO = left / centre / right; ATTITUDE CLEAN / TAPE / VALVE = left / centre / right (names since v1.0.43: SPRINGS 1 / 2 / 3, CLEAN / DRIVEN / KICKED before; the preset files read either).
 
-WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Every preset sits just left of noon for a little tape drift. TONE right of noon is the Big Knob low cut, so the presets that sit there (Tubby snare, tight slap) are slightly thinned. Rechecked on the sound of 6 Oct 2026 (the wet alone, on the test hits, skank and a held pad): skank and pads stay clear of the output limiter in every preset; loud drum hits reach it in Tubby snare splash, Drowned Howl and Kicked tank drop (the wet's peaks touch the limiter's ~−1.7 dBFS knee), so a red output light on the hardest hits is normal there.
+WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Every preset sits just left of noon for a little tape drift. TONE right of noon is the Big Knob low cut, so the presets that sit there (Tubby snare, tight slap) are slightly thinned. Rechecked on the sound of 6 Oct 2026 (the wet alone, on the test hits, skank and a held pad): skank and pads stay clear of the output limiter in every preset; loud drum hits reach it in Tubby snare splash, Drowned Howl and Valve tank drop (the wet's peaks touch the limiter's ~−1.7 dBFS knee), so a red output light on the hardest hits is normal there.
 
 | Preset | TANK | ATTITUDE | BLEND | DECAY | TONE | TENSION | SPLASH | DRIVE | WOBBLE |
 |---|---|---|---|---|---|---|---|---|---|
@@ -16,7 +16,7 @@ WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Eve
 | Skank chord wash | 2 | CLEAN | 0.35 (10:30) | 0.7 (2) | 0.4 (11) | 0.5 (12) | 0.2 (9) | 0.25 (9:30) | 0.43 (11:15) |
 | Tight slap | 1 | CLEAN | 0.35 (10:30) | 0.05 (7:30) | 0.6 (1) | 0.9 (4) | 0.3 (10) | 0.2 (9) | 0.45 (11:30) |
 | Drowned Howl | 2 | VALVE | 0.8 (3) | 0.95 (4:30) | 0.35 (10:30) | 0.3 (10) | 0.5 (12) | 0.6 (1) | 0.41 (11) |
-| Kicked tank drop | 1 | VALVE | 0.6 (1) | 0.7 (2) | 0.55 (12:30) | 0.2 (9) | 0.6 (1) | 0.55 (12:30) | 0.45 (11:30) |
+| Valve tank drop | 1 | VALVE | 0.6 (1) | 0.7 (2) | 0.55 (12:30) | 0.2 (9) | 0.6 (1) | 0.55 (12:30) | 0.45 (11:30) |
 | Mix-bus spring | 2 | CLEAN | 0.15 (8:30) | 0.35 (10:30) | 0.45 (11:30) | 0.6 (1) | 0.1 (8) | 0.1 (8) | 0.45 (11:30) |
 
 *Skank chord wash and Mix-bus spring were voiced on the old third position, three Springs, which became echo mode (ADR 0041). Since 6 Oct 2026 they sit on TANK 2, the closest spring sound (in ECHO they would have played a tape echo, not a dense halo); every other setting is unchanged.*
@@ -41,7 +41,8 @@ WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Eve
 **Play into it:** one hit or a dub-siren blip, then stop and ride the knobs.
 **Move next:** ride TONE and TENSION to steer the pitch and colour of the Howl; WOBBLE further left for more seasickness. Pull DECAY below ~4 o'clock to let it fall back into a normal tail (it fades in a second or two). Watch the output LEDs: red here means the limiter is holding it.
 
-## Kicked tank drop — `kicked_tank_drop.json`
+## Valve tank drop — `valve_tank_drop.json`
+*Was "Kicked tank drop" until 6 Oct 2026 (ATTITUDE's KICKED is now VALVE, ADR 0044).*
 **Sounds like:** a hard hit lands like the whole tank was kicked: a big metallic crash that boings out for ~3.5 s. One loose Spring keeps it sparse and splashy. (It was voiced around the Kick, removed in ADR 0043: it now needs a hit fed in.)
 **Play into it:** throw the snare or rim on the drop, the one before the bass comes back in: hold the button (or a gate) for that one hit.
 **Move next:** a gate sequence for rhythmic throws; DECAY past 4 o'clock and the crash can build into Howl; ATTITUDE to TAPE or CLEAN for a softer knock.
