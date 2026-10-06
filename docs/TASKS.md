@@ -21,9 +21,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 3. First chord after drums: one trade-off (A/B page being built)
-- [ ] The fix makes the first chord after a kick groove come in level with the chords after it (was up to +3.4 dB). Its price: **inside a groove, a snare or rim right after a kick comes in 1–2 dB quieter** than today (the kick's lows were lifting it). Listen on `renders/first_chord_fix_ab/` (Claude says when it's ready; not level-matched on purpose): should the snare after a kick come in as loud as today (A), or as loud as the same snare on its own (B)?
-
 ### 4. Stereo in: what it should sound like (answer whenever; study in `docs/research/stereo-input-study.md` once merged)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
 
@@ -38,7 +35,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord fix:** re-running all tests on the branch; merge after your answer to §3. Costs 1.3 KB of flash (CPU-test build down to 2.2 KB free); needs a CPU run on the chip before release
+- **First chord fix merged** (SPEC v1.0.45): full tests and firmware sizes being re-run; needs a CPU run on the chip and a plugin install before it reaches you (costs 1.3 KB of flash; CPU-test build ~2.2 KB free)
 - **Minisite package** (`docs/minisite/` on its branch): merge when you're happy; README's "up to three springs" and the old names in the share read-me get fixed with it
 
 ## What to send Claude
@@ -58,6 +55,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **First chord after drums listened:** B (the fix) on every row of `renders/first_chord_fix_ab`, including the snare after a kick 1–2 dB quieter. Merged (ADR 0035 amendment, SPEC v1.0.45)
 - 6 Oct 2026: **VALVE lurch across the stereo field listened:** A (today) / B together / C wider / D wider and louder barely tell apart, so nothing changes: today's lurch stays. Page deleted; branch `proto/valve-lurch-stereo` kept for reference
 - 6 Oct 2026: **Going-public decisions** (ADR 0045): plugin under the AGPL (no paid JUCE licence), our code MIT, commit email and the Wellspring spectrograms OK to publish, credit Jesse Bauer → jessebauer.xyz, feedback via GitHub Issues, prune old branches and keep the friends' releases, keep the name Resilio Versio with a Noise Engineering disclaimer
 - 6 Oct 2026: **Design answers:** In R is for stereo in (study under way); VALVE Howl on a tight tank is not too siren-like, keep it; the VALVE lurch spread: you want to hear it first (listening page coming)
