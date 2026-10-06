@@ -58,6 +58,7 @@ inline constexpr const char* kEchoDiffuseKey     = "echo_diffuse_voicing"; // 0 
 inline constexpr const char* kEchoWearKey        = "echo_wear_voicing";    // 0 none, 1 worn tape, 2 radio band, 3 BBD grit, 4 crushed, 5 tape sat (default since 6 Oct), 6 / 7 + crinkle subtle / obvious
 inline constexpr const char* kBbdKey             = "bbd_voicing";          // BBD strength: 0 A today, 1 B, 2 C, 3 D tracks the echo time
 inline constexpr const char* kEchoBitsKey        = "echo_bits_voicing";    // 0 none, 1 24 kHz/12-bit, 2 24 kHz/8-bit, 3 24 kHz/8-bit mu-law
+inline constexpr const char* kEchoSpringsKey     = "echo_springs_voicing"; // PROTOTYPE wet through the springs: 0 all (today), 1 half, 2 a quarter, 3 none (EchoVoicing.h kSpringsBlend)
 bool applyHidden(Tank& tank, const std::string& key, double value);
 std::string wobbleVoicingLabel(const Tank& tank); // "A" / "B" / "C"
 

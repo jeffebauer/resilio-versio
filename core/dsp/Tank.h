@@ -187,6 +187,9 @@
 #include "dsp/Drive.h"
 #include "dsp/Echo.h"
 #include "dsp/EchoClock.h"
+#ifndef RV_FIXED_VOICINGS
+#include "dsp/EchoDirect.h" // PROTOTYPE springs blend (Renderer / Plugin only)
+#endif
 #include "dsp/Filters.h"
 #include "dsp/OutputBits.h"
 #include "dsp/Splash.h"
@@ -489,6 +492,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setDiffuseVoicing(v);
+        direct_.tapeR.setDiffuseVoicing(v);
 #endif
     }
     int echoDiffuseVoicing() const { return echo_.diffuseVoicing(); }
@@ -498,6 +502,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setWearVoicing(v);
+        direct_.tapeR.setWearVoicing(v);
 #endif
     }
     int echoWearVoicing() const { return echo_.wearVoicing(); }
@@ -507,6 +512,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setBbdVoicing(v);
+        direct_.tapeR.setBbdVoicing(v);
 #endif
     }
     int   bbdVoicing() const { return echo_.bbdVoicing(); }
@@ -516,9 +522,25 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setBitsVoicing(v);
+        direct_.tapeR.setBitsVoicing(v);
 #endif
     }
     int echoBitsVoicing() const { return echo_.bitsVoicing(); }
+    // Renderer / test hook (PROTOTYPE, owner 6 Oct): how much of the wet goes
+    // through the springs and how the rest is heard directly: 0 A today (all
+    // through the springs), 1-3 wide, 4-6 ping-pong (EchoVoicing.h
+    // kSpringsBlend, dsp/EchoDirect.h). Set it before rendering.
+    void setEchoSpringsVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        direct_.setVoicing(v);
+#endif
+    }
+#ifndef RV_FIXED_VOICINGS
+    int echoSpringsVoicing() const { return direct_.voicing(); }
+#else
+    int echoSpringsVoicing() const { return 0; }
+#endif
     float bbdClockHz() const { return echo_.bbdClockHz(); }
     float echoFirstRepeatGain() const { return ginTo_; }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
@@ -871,6 +893,7 @@ private:
     static constexpr bool echoMode_ = true; // firmware: position 3 is always echo mode
 #else
     bool echoMode_ = true; // setEchoMode
+    dsp::EchoDirect direct_; // setEchoSpringsVoicing (PROTOTYPE): the direct repeats
 #endif
     dsp::TapeEcho  echo_;
     dsp::EchoClock clock_;

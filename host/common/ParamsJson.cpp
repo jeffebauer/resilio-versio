@@ -79,6 +79,10 @@ bool applyHidden(Tank& tank, const std::string& key, double value)
         tank.setEchoMode(value >= 0.5);
         return true;
     }
+    if (key == kEchoSpringsKey) {
+        tank.setEchoSpringsVoicing(int(std::lround(value)));
+        return true;
+    }
     if (key == kEchoBitsKey) {
         tank.setEchoBitsVoicing(int(std::lround(value)));
         return true;

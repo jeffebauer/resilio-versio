@@ -79,6 +79,15 @@
 //             cost (desktop, reported).
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
+//   blend     PROTOTYPE springs blend (echo_springs_voicing; owner 6 Oct 2026,
+//             EchoVoicing.h "Springs blend", dsp/EchoDirect.h): A (0) bit for
+//             bit the default; any voicing in SPRINGS 1 / 2 bit for bit today;
+//             1-6 deterministic, block 48 = 333, finite, no clicks (hits, and
+//             flipping SPRINGS 2 <-> 3 mid-tail); D (3, 6: no springs) has no
+//             spring tail (the wet before the first repeat and after the only
+//             one is silent, A's rings); ping-pong alternates (repeat 1 left,
+//             2 right ...); wide's right head kWideMs behind the left. Mono
+//             fold-down and desktop cost reported.
 
 #include "dsp/Filters.h"
 #include "dsp/Tank.h"
@@ -2645,6 +2654,184 @@ void tapeWear()
 }
 
 // ---- cost -----------------------------------------------------------------------------------
+// ---- blend (PROTOTYPE) ------------------------------------------------------------------------
+Stereo renderBlend(const Settings& s, int v, const Buf& in, int block = 48, size_t flipAt = 0)
+{
+    rv::Tank t;
+    t.prepare(kFs, block);
+    apply(t, s);
+    if (v >= 0) t.setEchoSpringsVoicing(v);
+    const size_t n = in.size();
+    Stereo o{Buf(n), Buf(n)};
+    int pos3 = 1; // flipAt: SPRINGS 3 <-> 2 every flipAt samples (switching mid-tail)
+    for (size_t pos = 0; pos < n; pos += size_t(block)) {
+        if (flipAt > 0) {
+            const int want = (pos / flipAt) % 2 == 0 ? 1 : 0;
+            if (want != pos3) {
+                pos3 = want;
+                t.setParam(rv::ParamId::Springs, rv::switchToNormalised(want ? 2 : 1));
+            }
+        }
+        const int m = int(std::min<size_t>(size_t(block), n - pos));
+        t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, m);
+    }
+    return o;
+}
+
+void blend()
+{
+    static const char* kName[rv::echo::kNumSpringsBlendVoicings] = {"A today",   "B-wide 50 %", "C-wide 25 %", "D-wide 0 %",
+                                                                    "B-pp 50 %", "C-pp 25 %",   "D-pp 0 %"};
+    const Buf h = hits(10.0), st = stabs(8.0);
+    // A: bit for bit the default, every ATTITUDE (hits and stabs).
+    {
+        bool ok = true;
+        for (int att = 0; att < 3; ++att) {
+            Settings s;
+            s.att = att, s.drive = 0.5f, s.decay = 0.8f;
+            ok = ok && same(renderBlend(s, -1, h), renderBlend(s, 0, h)) && same(renderBlend(s, -1, st), renderBlend(s, 0, st));
+        }
+        check(ok, "Blend A (voicing 0): bit for bit the default (hits + stabs, DECAY 0.8, every ATTITUDE)");
+    }
+    // SPRINGS 1 and 2: any voicing changes nothing.
+    {
+        bool ok = true;
+        for (int sp = 0; sp < 2; ++sp)
+            for (int v = 1; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+                Settings s;
+                s.springs = sp, s.decay = 0.7f;
+                ok = ok && same(renderBlend(s, -1, h), renderBlend(s, v, h));
+            }
+        check(ok, "Blend voicings 1-6 in SPRINGS 1 and 2: bit for bit today");
+    }
+    for (int v = 1; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+        for (int att = 0; att < 3; ++att) {
+            Settings s;
+            s.att = att, s.decay = 0.85f, s.tension = 0.6f, s.drive = 0.5f;
+            const Stereo a = renderBlend(s, v, h), b = renderBlend(s, v, h), c = renderBlend(s, v, h, 333);
+            const Stereo f = renderBlend(s, v, st, 48, sec(1.37));
+            double w1 = 0, w2 = 0;
+            const int c1 = clicksBoth(a, sec(0.5), &w1), c2 = clicksBoth(f, sec(0.5), &w2);
+            std::snprintf(msg, sizeof msg,
+                          "Blend %s %s (hits, DECAY 0.85): the same twice %d, block 48 = 333 %d, finite %d, peak %.2f, %d clicks "
+                          "(worst %.1f); flipping SPRINGS 3 <-> 2 every 1.37 s on stabs: %d clicks (worst %.1f)",
+                          kName[v], att == 0 ? "CLEAN" : (att == 1 ? "DRIVEN" : "KICKED"), int(same(a, b)), int(same(a, c)),
+                          int(finite(a) && finite(f)), double(peakOf(a)), c1, w1, c2, w2);
+            check(same(a, b) && same(a, c) && finite(a) && finite(f) && peakOf(a) < 1.0f && c1 == 0 && c2 == 0, msg);
+        }
+    }
+    // D: no spring tail. A burst at 0.5 s, DECAY 0 (one repeat, 0.4 s later), MIX 1 (the wet alone):
+    // before the repeat and after it D is silent; A rings there.
+    {
+        const Buf b = burst(2.0, 0.5);
+        Settings s;
+        s.decay = 0.0f, s.mix = 1.0f;
+        const Stereo a = renderBlend(s, 0, b);
+        const double aPre = stereoDb(a, sec(0.55), sec(0.88)), aPost = stereoDb(a, sec(1.05), sec(1.6));
+        for (int v : {3, 6}) {
+            const Stereo d = renderBlend(s, v, b);
+            const double pre = stereoDb(d, sec(0.55), sec(0.88)), rep = stereoDb(d, sec(0.9), sec(0.95)),
+                         post = stereoDb(d, sec(1.05), sec(1.6));
+            std::snprintf(msg, sizeof msg,
+                          "Blend %s, no spring tail (burst, DECAY 0, MIX 1): before the repeat %.0f dB, the repeat %.0f dB, after it "
+                          "%.0f dB (want before / after under -90 and the repeat over -60; A there: %.0f / %.0f dB)",
+                          kName[v], pre, rep, post, aPre, aPost);
+            check(pre < -90.0 && post < -90.0 && rep > -60.0 && aPre > -60.0 && aPost > -60.0, msg);
+        }
+    }
+    // Ping-pong: repeat 1 left, 2 right, 3 left ... (D-pp, burst, DECAY noon, 0.4 s).
+    {
+        const Buf b = burst(4.5, 0.5);
+        Settings s;
+        s.mix = 1.0f;
+        const Stereo d = renderBlend(s, 6, b);
+        bool ok = true;
+        std::string lr;
+        for (int k = 1; k <= 6; ++k) {
+            const size_t t0 = sec(0.5 + 0.4 * k - 0.02), t1 = sec(0.5 + 0.4 * k + 0.1);
+            const double l = db(power(d.l, t0, t1)), r = db(power(d.r, t0, t1));
+            const double lead = (k % 2 ? l - r : r - l);
+            ok = ok && lead > 40.0;
+            char one[48];
+            std::snprintf(one, sizeof one, " %d:%s %+.0f dB", k, k % 2 ? "L" : "R", lead);
+            lr += one;
+        }
+        std::snprintf(msg, sizeof msg, "Blend D-pp alternates (burst, DECAY noon): each repeat's side over the other by%s (want > 40)",
+                      lr.c_str());
+        check(ok, msg);
+    }
+    // Wide: R's highs kWideMs behind L's (cross-correlation of the first repeat, above ~1 kHz).
+    {
+        const Buf b = burst(1.5, 0.5);
+        Settings s;
+        s.mix = 1.0f;
+        const Stereo d = renderBlend(s, 3, b);
+        Buf l(d.l.begin() + long(sec(0.85)), d.l.begin() + long(sec(1.05)));
+        Buf r(d.r.begin() + long(sec(0.85)), d.r.begin() + long(sec(1.05)));
+        for (Buf* x : {&l, &r}) { // crude high-pass: x - LP(x)
+            Buf lo = *x;
+            lowpass(lo, 1000.0);
+            for (size_t i = 0; i < x->size(); ++i) (*x)[i] -= lo[i];
+        }
+        int    best  = 0;
+        double bestC = -1e30;
+        for (int lag = -int(sec(0.02)); lag <= int(sec(0.02)); ++lag) {
+            double c = 0;
+            for (size_t i = 0; i < l.size(); ++i) {
+                const long j = long(i) + lag;
+                if (j >= 0 && j < long(r.size())) c += double(l[i]) * r[size_t(j)];
+            }
+            if (c > bestC) bestC = c, best = lag;
+        }
+        const double ms = 1000.0 * best / kFs;
+        std::snprintf(msg, sizeof msg, "Blend D-wide: R's highs %.2f ms behind L's (want %.1f +- 0.5)", ms, double(rv::echo::kWideMs));
+        check(std::fabs(ms - rv::echo::kWideMs) <= 0.5, msg);
+    }
+    // Mono fold-down (reported): K-weighted mono vs stereo loudness, the wet alone, hits DECAY noon.
+    {
+        Settings s;
+        s.mix = 1.0f;
+        std::string out;
+        for (int v = 0; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+            const Stereo o = renderBlend(s, v, h);
+            char one[80];
+            std::snprintf(one, sizeof one, " %s %+.1f dB (stereo %.1f);", kName[v], monoLoudnessDb(o) - loudnessDb(o), loudnessDb(o));
+            out += one;
+        }
+        std::snprintf(msg, sizeof msg, "Blend mono fold-down, the wet alone (hits, MIX 1, DECAY noon): (L+R)/2 vs stereo loudness:%s",
+                      out.c_str());
+        info(msg);
+    }
+    // Cost (desktop, reported): KICKED, DRIVE 1, DECAY 1, TENSION 0, as "cost".
+    {
+        const Buf in = hits(6.0);
+        auto ns = [&](int v) {
+            double best = 1e30;
+            for (int run = 0; run < 5; ++run) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings s;
+                s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = 0.0f;
+                apply(t, s);
+                t.setEchoSpringsVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            return best;
+        };
+        const double a = ns(0), w = ns(3), pp = ns(6);
+        std::snprintf(msg, sizeof msg,
+                      "Blend cost (desktop, KICKED, DRIVE 1, DECAY 1, TENSION 0): A %.1f ns/sample, wide %.1f (%+.1f %%), ping-pong "
+                      "%.1f (%+.1f %%)",
+                      a, w, 100.0 * (w / a - 1.0), pp, 100.0 * (pp / a - 1.0));
+        info(msg);
+    }
+}
+
 void cost()
 {
     const Buf in = hits(6.0);
@@ -2692,7 +2879,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"tapewear", tapeWear}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"tapewear", tapeWear}, {"blend", blend}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

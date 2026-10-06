@@ -239,6 +239,9 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     // gives the fixed springs their T60 (Mappings.h decayT60Seconds inverted).
     static_assert(dsp::TapeEcho::kGrid == kControlInterval, "the echo steps on the Tank's control grid");
     echo_.prepare(sampleRate, kEchoSeed, tape, tapeFloats);
+#ifndef RV_FIXED_VOICINGS
+    direct_.prepare(sampleRate, kEchoSeed); // PROTOTYPE springs blend: ping-pong's second tape, the wide heads
+#endif
     clock_.prepare(sampleRate);
     tapClock_.prepare(sampleRate);
     springsDecay_ = std::log(echo::kSpringsT60Seconds / map::kT60MinSeconds)
@@ -582,6 +585,9 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& w : wobble_) w.reset();
     transport_.reset();
     echo_.reset();
+#ifndef RV_FIXED_VOICINGS
+    direct_.reset();
+#endif
     clock_.reset();
     tapClock_.reset();
     tapWins_ = false;
@@ -796,13 +802,20 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
     fbFrom_ = snap ? fb : fbTo_;
     fbTo_   = fb;
     echo_.setHold(echo::holdWeight(fb)); // the held top (tape wear, EchoVoicing.h)
+#ifndef RV_FIXED_VOICINGS
+    if (direct_.pingPong()) direct_.tapeR.setHold(echo::holdWeight(fb));
+#endif
     // The input onto the tape at the feedback's own gain: every repeat a step
     // down from the hit, the first included (EchoVoicing.h "The first repeat").
     const float gin = std::clamp(fb, echo::kFirstRepeatMin, echo::kFirstRepeatMax);
     ginFrom_ = snap ? gin : ginTo_;
     ginTo_   = gin;
-    if (echoW_ > 0.0f || echoWFrom_ > 0.0f)
+    if (echoW_ > 0.0f || echoWFrom_ > 0.0f) {
         echo_.tick(echoSecs_, smoothed_[size_t(ParamId::Wobble)], snap || fresh); // a fresh tape starts at the time
+#ifndef RV_FIXED_VOICINGS
+        if (direct_.pingPong()) direct_.tapeR.tick(echoSecs_, smoothed_[size_t(ParamId::Wobble)], snap || fresh);
+#endif
+    }
 }
 
 RV_SIZE_OPT void Tank::controlTick(bool snap)
@@ -836,6 +849,9 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         const float target  = echoPos ? 1.0f : 0.0f;
         echoFresh = target > 0.0f && echoW_ <= 0.0f;
         if (echoFresh) echo_.clearTape();
+#ifndef RV_FIXED_VOICINGS
+        if (echoFresh) direct_.clearTape();
+#endif
         echoWFrom_ = snap ? target : echoW_;
         echoW_     = snap ? target : (target > echoW_ ? std::min(target, echoW_ + s3Step_) : std::max(target, echoW_ - s3Step_));
         if (echoPos) mode = 1;
@@ -2062,8 +2078,19 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // input and its own playback x the feedback (series: the feedback
         // stays on the tape).
         const bool echoRun = echoW_ > 0.0f || echoWFrom_ > 0.0f;
+#ifndef RV_FIXED_VOICINGS
+        // PROTOTYPE springs blend (EchoVoicing.h kSpringsBlend): the direct
+        // repeats, L and R. Ping-pong: echo_ is the left tape, direct_.tapeR the
+        // right; each records the other's playback x the feedback.
+        const bool directOn = echoRun && direct_.active();
+        const bool pp       = directOn && direct_.pingPong();
+        float      dirL[kControlInterval], dirR[kControlInterval], fbsR[kControlInterval];
+#endif
         if (echoRun) {
             echo_.play(echoPlay, n);
+#ifndef RV_FIXED_VOICINGS
+            if (pp) direct_.tapeR.play(dirR, n);
+#endif
             const float gStep = (echoW_ - echoWFrom_) * (1.0f / float(kControlInterval));
             const float fStep = (fbTo_ - fbFrom_) * (1.0f / float(kControlInterval));
             const float iStep = (ginTo_ - ginFrom_) * (1.0f / float(kControlInterval));
@@ -2077,6 +2104,15 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 fbs[i] = trim * (fbFrom_ + fStep * float(tick_ + i)) * echoPlay[i];
                 xs[i]  = (ginFrom_ + iStep * float(tick_ + i)) * (0.5f * (inL[pos + i] + inR[pos + i]));
             }
+#ifndef RV_FIXED_VOICINGS
+            if (pp)
+                for (int i = 0; i < n; ++i) {
+                    fbsR[i] = fbs[i]; // L's playback onto R's tape
+                    fbs[i]  = trim * (fbFrom_ + fStep * float(tick_ + i)) * dirR[i]; // R's onto L's
+                }
+            if (pp && diffuse) direct_.tapeR.diffuse(fbsR, n);
+            if (pp && direct_.tapeR.wearActive()) direct_.tapeR.wear(fbsR, n);
+#endif
             if (diffuse) echo_.diffuse(fbs, n);
             if (echo_.wearActive()) {
                 echo_.wear(fbs, n);
@@ -2088,6 +2124,16 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 echoRec[i]    = w * xs[i] + fbs[i];
                 echoPlay[i] *= w;
             }
+#ifndef RV_FIXED_VOICINGS
+            if (pp)
+                for (int i = 0; i < n; ++i) {
+                    dirL[i] = echoPlay[i];
+                    dirR[i] *= echoGain[i];
+                    echoPlay[i] += dirR[i]; // the springs hear both tapes: every repeat once
+                }
+            else if (directOn)
+                direct_.widen(echoPlay, dirL, dirR, n);
+#endif
             prof::mark(prof::kSpringC); // echo mode: the echo's share (Spring C doesn't run)
         }
 
@@ -2308,7 +2354,8 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
             // level at every DRIVE (the tail's length and colour don't move
             // with DRIVE), and the pickups' hardness is divided by the same
             // gain (controlTick), so they bend the louder tail as before.
-            float wg = wetGain * heardGain_.next() * trem[i];
+            const float heard = heardGain_.next();
+            float wg = wetGain * heard * trem[i];
             if (echoRun) wg *= 1.0f + echoGain[i] * (echo::kTrim - 1.0f); // echo mode's level (EchoVoicing.h kTrim), with the glide
             const float src[modes::kNumSources] = {wg * wet[0][i], wg * wet[1][i], wg * wet[2][i]};
 
@@ -2367,6 +2414,14 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #endif
             // Output pickup (DriveOut), one per channel.
             float inl = mid + sd + d, inr = mid - sd - d;
+#ifndef RV_FIXED_VOICINGS
+            if (directOn) { // PROTOTYPE springs blend: s x the springs + (1 - s) x the direct repeats (at the springs' level)
+                const float s = 1.0f - echoGain[i] * (1.0f - direct_.springs());
+                const float g = (1.0f - s) * heard * trem[i] * (1.0f + echoGain[i] * (echo::kTrim - 1.0f));
+                inl = s * inl + g * dirL[i];
+                inr = s * inr + g * dirR[i];
+            }
+#endif
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the output pickup's treble loss
                 inl = tdOut_[0].process(inl);
@@ -2455,6 +2510,9 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         }
         prof::mark(prof::kOutput);
         if (echoRun) echo_.record(echoRec, n); // the record head: after this step's playback (Echo.h)
+#ifndef RV_FIXED_VOICINGS
+        if (pp) direct_.tapeR.record(fbsR, n);
+#endif
         pos += n;
         sampleClock_ += uint32_t(n);
         tick_ = (tick_ + n) % kControlInterval;
