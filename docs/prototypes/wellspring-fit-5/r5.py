@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-MAIN = Path("/Users/jesse/Documents/Sites/resilio-versio")
+MAIN = ROOT  # run from the main checkout (renders, recordings)
 REF = MAIN / "test_audio" / "reference"
 STIM = ROOT / "test_audio" / "stimulus"
 RENDER = ROOT / "build-r" / "rv_render"

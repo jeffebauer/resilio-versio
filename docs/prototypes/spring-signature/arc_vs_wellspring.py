@@ -1,7 +1,7 @@
 """Smooth-arc D vs the Wellspring: the 'pew' on clicks, pitch steadiness on skank, roundness, ringiness."""
 import numpy as np, soundfile as sf, glob
 from scipy.signal import butter, sosfiltfilt, stft
-R="/Users/jesse/Documents/Sites/resilio-versio"; P=f"{R}/renders/proto_smooth_arc/clean"
+R=str(__import__("pathlib").Path(__file__).resolve().parents[3]); P=f"{R}/renders/proto_smooth_arc/clean"
 S="/private/tmp/claude-501/-Users-jesse-Documents-Sites-resilio-versio/91ef3bc9-5b58-43de-aeb9-3361a42117a2/scratchpad/arc2"
 def f(stim,v): return glob.glob(f"{P}/{stim}_{v}_*.wav")[0]
 SRC={"A bright tail":lambda s:f(s,"A"),"D light smear":lambda s:f(s,"D"),"D, WOBBLE+SPLASH off":lambda s:f"{S}/D_still_{s}.wav","W wellspring":lambda s:f(s,"W")}

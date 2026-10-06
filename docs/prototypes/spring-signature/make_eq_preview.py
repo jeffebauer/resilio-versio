@@ -4,7 +4,7 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, sosfilt, tf2sos
 
-ROOT = "/Users/jesse/Documents/Sites/resilio-versio"
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])  # the repo root; run from the main checkout
 AB = f"{ROOT}/renders/references/wellspring/ab"
 REF = f"{ROOT}/test_audio/reference"
 OUT = f"{ROOT}/renders/eq_preview"

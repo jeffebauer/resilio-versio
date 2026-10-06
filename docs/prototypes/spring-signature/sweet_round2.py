@@ -1,7 +1,7 @@
 """Owner round 2 on the sweet-tank page: tail wavers (decay smoothness), perceived width, the Wellspring's high pitch bend."""
 import numpy as np, soundfile as sf
 from scipy.signal import butter, sosfiltfilt, stft
-R="/Users/jesse/Documents/Sites/resilio-versio"; P=f"{R}/renders/proto_sweet_tank/clean"
+R=str(__import__("pathlib").Path(__file__).resolve().parents[3]); P=f"{R}/renders/proto_sweet_tank/clean"
 V={"A":"A_bright_tail","B":"B_no_single_beat","C":"C_no_growing_sweep","D":"D_tank_stereo","E":"E_light_smear","W":"W_wellspring"}
 import glob,os
 names={k:(glob.glob(f"{P}/01_clicks_{k}_*.wav")+[None])[0] for k in V}

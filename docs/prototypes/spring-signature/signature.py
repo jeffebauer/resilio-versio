@@ -8,7 +8,7 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, sosfiltfilt
 
-ROOT = "/Users/jesse/Documents/Sites/resilio-versio"
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])  # the repo root; run from the main checkout
 REF = f"{ROOT}/test_audio/reference"
 STIM = f"{ROOT}/test_audio/stimulus"
 AB = f"{ROOT}/renders/references/wellspring/ab"

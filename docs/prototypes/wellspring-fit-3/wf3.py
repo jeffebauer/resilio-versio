@@ -22,7 +22,7 @@ from scipy.signal import butter, sosfiltfilt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '../../..'))          # the worktree / checkout
-ROOT = '/Users/jesse/Documents/Sites/resilio-versio'         # the main checkout (renders, recordings)
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])         # the main checkout (renders, recordings)
 sys.path.insert(0, os.path.join(WT, 'tools'))
 sys.path.insert(0, HERE)
 import wellspring_character as WC          # noqa: E402
