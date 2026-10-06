@@ -88,12 +88,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 /* ---- Sections ------------------------------------------------------------ */
 .section { padding-bottom: var(--section-y); }
 .section-head { row-gap: var(--stack-1); align-items: baseline; }
-/* Section headers read as headers, a clear step above the contents list (owner, 7 Oct): heading size, the number small mono. */
+/* Section headers read as headers, a clear step above the contents list (owner, 7 Oct): lede size, smaller than the content titles; the number the same size, in grey. */
 .section-head { padding-block: var(--stack-3) var(--stack-4); }
-.section-head .label { font-family: var(--font-sans); font-weight: var(--wt-light); font-size: var(--fs-h2); line-height: var(--lh-snug); letter-spacing: -0.015em; }
+.section-head .label { font-family: var(--font-sans); font-weight: var(--wt-light); font-size: var(--fs-lede); line-height: var(--lh-snug); letter-spacing: -0.01em; }
 .grid.section-head > .index { grid-column: 1 / calc(var(--main-start)); }   /* the header may use the empty columns before the content */
 @media (max-width: 47.99rem) { .grid.section-head > .index { grid-column: 1 / -1; } }
-.section-head .label .num { font-size: var(--fs-micro); vertical-align: 0.35em; margin-right: 0.75em; }
+.section-head .label .num { font-family: var(--font-sans); font-weight: var(--wt-light); font-size: 1em; vertical-align: baseline; letter-spacing: 0; margin-right: 0.6em; color: var(--ink-2); }
 .section-head .aside { color: var(--ink-2); }
 .section-body { padding-top: var(--stack-5); row-gap: var(--stack-4); }
 .statement { font-size: var(--fs-h2); line-height: var(--lh-snug); letter-spacing: -0.01em; max-width: 18em; }
