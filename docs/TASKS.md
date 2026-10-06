@@ -7,7 +7,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | Milestone | State |
 |---|---|
 | M2 plugin | Built, installed `bdd3910`. Your Ableton check is open (§5) |
-| M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (the springs blend) ready to flash (§2): desktop says ~+1.5 %, so echo mode ~77–78.5 %. Flash: release 96.4 %, CPU-test build 97.3 % |
+| M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (6 Oct, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %: the blend costs nothing measurable. Flash: release 96.4 %, CPU-test build 97.3 % |
 | Real firmware on the Versio | `3b70fba` (purple tap light; click check passed on `9ba726f`, same sound). Next: `bdd3910` (§2) |
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
@@ -24,7 +24,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
 
 ### 2. CPU run 21, then the new release, on the module (≈20 min)
-- [ ] Flash `dist/resilio_versio_m3_profile_run21.bin` and leave it streaming in your terminal (Claude reads it there). Echo mode now runs the direct echo next to the springs: expected ~77–78.5 % peak, ceiling 80 %
+- [x] CPU run 21 read (6 Oct): echo mode 75.7 % peak, worst moment 78.1 %, under the 80 % ceiling
 - [ ] Then flash `dist/resilio_versio_release_bdd3910.bin` and a **click check** (flip SPRINGS 3 ↔ 1/2 under load, knobs fast, throws, taps). The purple now pulses 4 s after the last tap: long enough?
 
 ### 3. Hear the new echo (plugin, or `renders/echo_springs_c_check/`) (≈15 min)
@@ -76,6 +76,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **CPU run 21 on the chip** (`bdd3910`, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %; the same as run 20. Under the 80 % ceiling
 - 6 Oct 2026: **Merged and installed `bdd3910`:** echo mode's springs blend C (25 % springs, the rest the tape's repeats heard directly, wide; level-matched to the old echo, image centred; ADR 0041 amendment, SPEC v1.0.40) and the purple pulses for 4 s (SPEC v1.0.41). The first repeat on a send as loud as the hit: fine (your call). Release `bdd3910` + CPU run 21 built
 - 6 Oct 2026: **Purple tap light on the module:** works well; asked for longer pulses (now 4 s)
 - 6 Oct 2026: **Echo with less spring listened:** C (25 % springs, the rest the tape's repeats heard directly, wide) on every row and ATTITUDE
