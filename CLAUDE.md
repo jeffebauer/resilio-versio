@@ -26,7 +26,7 @@ A senior designer, new to DSP and embedded C++. Brings the ears and musical goal
 ## Commands
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release   # once
-cmake --build build && ctest --test-dir build              # 15 suites incl. plugin_host_test (~5 min)
+cmake --build build && ctest --test-dir build              # 24 suites incl. plugin_host_test (~10 min)
 export PATH="$HOME/.local/arm-gnu-toolchain/bin:$PATH"
 make -C firmware all-variants                              # release / m0test / profile, each <= 128 KB
 build/rv_render --sweep presets/sweeps/<name>.json --out-dir renders/<name>

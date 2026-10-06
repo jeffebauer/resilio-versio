@@ -1052,3 +1052,13 @@ docs/prototypes/wellspring-fit-5/gates.sh                            # M6 + as-i
 **CPU** (desktop `bench.cpp`, best of 5, ns/sample; `main`'s 7 vs this branch's 8): SPRINGS 2 worst case 556.7 → 562.1 (+1.0 %), echo mode worst 533.0 → 538.5 (+1.0 %), session settings 488.7 → 494.6 (+1.2 %); the page's B was −0.4 %, the cut now in series after the damping one-pole (one more filter per Spring and sample) pays the difference. Pool 29,987 of 30,000 floats. The chip runs the control-rate housekeeping at -Os now (`feedClocks`, `TapeEcho::tick`), so the next M3 run should check the `ctl` section and echo mode.
 
 **Owner, on the module:** play B after flashing the release (the first build with 8): TONE fully left vs 7 (the ceiling eases there), KICKED with DRIVE swept (the coil relax), a Hold over a kick (the diffusers ease), echo mode at DECAY 1 with TONE left.
+
+## Session 8 (6 Oct 2026): echo mode reworked, panel renamed
+
+All merged and on the module (release published as `v2026.10.06-a6c70a4`):
+- **Tape wear B** replaces the BBD grit in echo mode (owner: B on every row of `renders/echo_tape_wear/`); held top locked with a compander + RMS ceiling (ADR 0041 amendment, SPEC v1.0.38).
+- **Springs blend C**: a quarter of echo mode's wet through the springs, the tape's repeats heard directly and wide (two heads, 8 ms, bass identical L/R); make-up ~+10.4 dB on the wet, −8 dB per unit of feedback on the direct repeats (owner: C on every row of `renders/echo_springs_blend/`; ADR 0041 amendment, SPEC v1.0.40). On a send the first repeat is about as loud as the hit from DECAY ~0.75: owner says fine. Ping-pong rejected (needed a second 388 KB tape).
+- **Gate clock holds** when its pulses stop, a lone pulse releases it (SPEC v1.0.42).
+- **Tap tempo LEDs** purple, 70 ms per tap + pulses for 4 s (SPEC v1.0.39 / v1.0.41). **TENSION note values** in the plugin.
+- **Panel names** BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP (ADR 0044, SPEC v1.0.43); code identifiers and ParamSpec keys unchanged.
+- CPU run 21 on the chip: echo mode 69.0 / 75.7 %, switch 76.0, lap wrap 78.1 (ceiling 80). Click check passed on 9ba726f (same sound as later builds).
