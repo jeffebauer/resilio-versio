@@ -79,6 +79,15 @@
 //             cost (desktop, reported).
 //   cost      Desktop ns/sample, SPRINGS 3 echo vs SPRINGS 2 vs the coupled
 //             reference. Reported.
+//   blend     PROTOTYPE springs blend (echo_springs_voicing; owner 6 Oct 2026,
+//             EchoVoicing.h "Springs blend", dsp/EchoDirect.h): A (0) bit for
+//             bit the default; any voicing in SPRINGS 1 / 2 bit for bit today;
+//             1-6 deterministic, block 48 = 333, finite, no clicks (hits, and
+//             flipping SPRINGS 2 <-> 3 mid-tail); D (3, 6: no springs) has no
+//             spring tail (the wet before the first repeat and after the only
+//             one is silent, A's rings); ping-pong alternates (repeat 1 left,
+//             2 right ...); wide's right head kWideMs behind the left. Mono
+//             fold-down and desktop cost reported.
 
 #include "dsp/Filters.h"
 #include "dsp/Tank.h"
@@ -101,6 +110,11 @@ namespace {
 
 int  failures = 0;
 char msg[600];
+
+// The held top's build (1 s windows over 10-30 s): within 3 dB through the
+// springs only (their wash evens the windows); the shipped blend's repeats are
+// distinct, so a window's level depends on how many land in it: 4 dB.
+const double kHeldBuildDb = rv::echo::kSpringsBlend[rv::echo::kSpringsBlendDefault].style != rv::echo::DirectStyle::None ? 4.0 : 3.0;
 
 void check(bool ok, const char* what)
 {
@@ -164,6 +178,10 @@ Stereo render(const Settings& s, const Buf& in, int block = 48, const std::vecto
     }
     return o;
 }
+
+// Renders with echo_springs_voicing v (-1 = the default), optionally flipping
+// SPRINGS 3 <-> 2 every flipAt samples (section "blend").
+Stereo renderBlend(const Settings& s, int v, const Buf& in, int block = 48, size_t flipAt = 0);
 
 std::vector<size_t> steadyClock(double bpm, double from, double to)
 {
@@ -436,6 +454,12 @@ double repeatDelaySeconds(const Settings& s, const Buf& in)
         diff[i] = 0.5f * ((o[1].l[i] - o[0].l[i]) + (o[1].r[i] - o[0].r[i]));
         dry[i]  = 0.5f * (o[0].l[i] + o[0].r[i]);
     }
+    // Since the springs blend (6 Oct 2026) the first repeat is heard directly,
+    // at the echo time after the input's own hit; through the springs only
+    // (voicing A) it came the springs' ~27 ms transit later, after their splash
+    // of the hit, which was the reference then.
+    if (rv::echo::kSpringsBlend[rv::echo::kSpringsBlendDefault].style != rv::echo::DirectStyle::None)
+        return (double(onset(diff)) - double(onset(in))) / kFs;
     return (double(onset(diff)) - double(onset(dry))) / kFs;
 }
 
@@ -835,10 +859,10 @@ void feedback()
         const double a = stereoDb(o, sec(20.0), sec(25.0)), b = stereoDb(o, sec(25.0), sec(30.0));
         std::snprintf(msg, sizeof msg,
                       "Feedback %s DECAY 1, a single rim: repeats persist at %.1f dB re the hit (%.1f dBFS; 2-4 s %+.1f), 1 s windows "
-                      "over 10-30 s within %.1f dB (want <= 3), 25-30 s vs 20-25 s %+.2f dB (want < +1: no growth); peak %.3f, "
+                      "over 10-30 s within %.1f dB (want <= %.0f), 25-30 s vs 20-25 s %+.2f dB (want < +1: no growth); peak %.3f, "
                       "limiter gain never under %.3f (want 1: under the limiter); shipped finite %d",
-                      kAttName[att], b - hit, b, early - hit, hi - lo, b - a, double(peakOf(o)), double(lim), int(finite(sh)));
-        check(b > early && hi - lo <= 3.0 && b - a < 1.0 && lim >= 1.0f && finite(o) && finite(sh), msg);
+                      kAttName[att], b - hit, b, early - hit, hi - lo, kHeldBuildDb, b - a, double(peakOf(o)), double(lim), int(finite(sh)));
+        check(b > early && hi - lo <= kHeldBuildDb && b - a < 1.0 && lim >= 1.0f && finite(o) && finite(sh), msg);
     }
     // DECAY 1 with continuous input (skank stabs, 30 s; DRIVE 0 and 1):
     // bounded (peak under the limiter's threshold, without the wet's mu-law box) and not
@@ -940,24 +964,48 @@ void steps()
         std::copy(b.begin(), b.end(), in.begin() + long(sec(0.2)));
     }
     auto win = [&](const Stereo& o, int k) { return stereoDb(o, sec(0.15 + 2.0 * k), sec(0.15 + 2.0 * (k + 1))); };
-    bool ok = true;
-    char line[500] = "";
-    for (float dc : {0.0f, 0.3f, 0.5f, 0.7f, 0.9f}) {
-        Settings s;
-        s.tension = 0.0f, s.decay = dc, s.splash = 0.0f, s.att = 0;
-        const Stereo o = render(s, in);
-        const double s1 = win(o, 1) - win(o, 0), s2 = win(o, 2) - win(o, 1), s3 = win(o, 3) - win(o, 2);
-        const double g = 20.0 * std::log10(std::max(double(rv::echo::feedbackClean(dc)), 1e-9));
-        if (dc == 0.0f) ok &= std::fabs(s1 + 10.0) < 2.0 && s2 < -15.0;
-        else ok &= s1 < -0.5 && std::fabs(s1 - s2) < 1.5 && std::fabs(s2 - s3) < 1.5;
-        char one[90];
-        std::snprintf(one, sizeof one, "%sDECAY %.1f (g %.1f dB): %+.1f %+.1f %+.1f", line[0] ? "; " : "", double(dc), g, s1, s2, s3);
-        std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+    // Voicing A (the whole wet through the springs, ADR 0041 "The first
+    // repeat"): window 0 is the springs' splash of the hit, and every step,
+    // the first included, is geometric. The shipped blend (C, 6 Oct 2026):
+    // the hit's splash is mostly gone from the wet, so at MIX 1 the first
+    // step (the springs' quarter of the hit -> the direct repeat) is no longer
+    // the tape's step; the repeats' steps (2nd, 3rd) still are, and DECAY 0
+    // is still one repeat. The first step is reported at MIX 1 and with the
+    // dry hit (MIX 0.6, the springs-blend page's).
+    for (int v : {0, rv::echo::kSpringsBlendDefault}) {
+        const bool a = v == 0;
+        bool ok = true;
+        char line[500] = "", first[300] = "";
+        for (float dc : {0.0f, 0.3f, 0.5f, 0.7f, 0.9f}) {
+            Settings s;
+            s.tension = 0.0f, s.decay = dc, s.splash = 0.0f, s.att = 0;
+            const Stereo o = renderBlend(s, v, in);
+            const double s1 = win(o, 1) - win(o, 0), s2 = win(o, 2) - win(o, 1), s3 = win(o, 3) - win(o, 2);
+            const double g = 20.0 * std::log10(std::max(double(rv::echo::feedbackClean(dc)), 1e-9));
+            if (dc == 0.0f) ok &= (a ? std::fabs(s1 + 10.0) < 2.0 : s1 < 0.0) && s2 < -15.0;
+            else ok &= (a ? s1 < -0.5 && std::fabs(s1 - s2) < 1.5 : s2 < -0.5 && std::fabs(s2 - g) < 1.5) && std::fabs(s2 - s3) < 1.5;
+            char one[90];
+            std::snprintf(one, sizeof one, "%sDECAY %.1f (g %.1f dB): %+.1f %+.1f %+.1f", line[0] ? "; " : "", double(dc), g, s1, s2, s3);
+            std::strncat(line, one, sizeof line - std::strlen(line) - 1);
+            if (!a) {
+                s.mix = 0.6f;
+                const Stereo m = renderBlend(s, v, in);
+                std::snprintf(one, sizeof one, "%sDECAY %.1f %+.1f", first[0] ? ", " : "", double(dc), win(m, 1) - win(m, 0));
+                std::strncat(first, one, sizeof first - std::strlen(first) - 1);
+            }
+        }
+        if (a)
+            std::snprintf(msg, sizeof msg,
+                          "Steps (A, springs only): every repeat a step down from the hit, the first included (repeat k vs k-1, dB): "
+                          "%s. Want steps within 1.5 dB of each other, below 0; DECAY 0 one repeat at ~-10 dB, then nothing", line);
+        else
+            std::snprintf(msg, sizeof msg,
+                          "Steps (C, the shipped blend), repeat k vs k-1 at MIX 1, dB: %s. Want the 2nd and 3rd steps the tape's (within "
+                          "1.5 dB of g and of each other), DECAY 0 one repeat then nothing; the first step (reported) at MIX 0.6, with "
+                          "the dry hit: %s",
+                          line, first);
+        check(ok, msg);
     }
-    std::snprintf(msg, sizeof msg,
-                  "Steps: every repeat a step down from the hit, the first included (repeat k vs k-1, dB): %s. Want steps "
-                  "within 1.5 dB of each other, below 0; DECAY 0 one repeat at ~-10 dB, then nothing", line);
-    check(ok, msg);
 }
 
 // ---- springs --------------------------------------------------------------------------------
@@ -2513,10 +2561,10 @@ void tapeWear()
                               "windows over 30-120 s within %.2f dB (want <= %.2f; A %.2f), the last 10 s %+.2f dB (want within 0.5); "
                               "peak %.3f, limiter %.3f (want 1)",
                               kTapeWearName[k], kAttName[att], kMatName[mat], held, mat == 0 ? "" : "(reported) ", build,
-                              mat == 0 ? " (want <= 3)" : "", drift, mat == 2 ? std::max(1.0, aDrift) : 1.0, aDrift, last,
+                              mat == 0 ? (kHeldBuildDb > 3.0 ? " (want <= 4)" : " (want <= 3)") : "", drift, mat == 2 ? std::max(1.0, aDrift) : 1.0, aDrift, last,
                               double(peakOf(o)), double(lim));
                 const double bar = mat == 2 ? std::max(1.0, aDrift) : 1.0;
-                check((mat != 0 || (held > early && build <= 3.0)) && drift <= bar && std::fabs(last) <= 0.5 && lim >= 1.0f && finite(o), msg);
+                check((mat != 0 || (held > early && build <= kHeldBuildDb)) && drift <= bar && std::fabs(last) <= 0.5 && lim >= 1.0f && finite(o), msg);
             }
         // KICKED's top bounded and dying when DECAY comes back to noon; extremes finite.
         {
@@ -2645,6 +2693,272 @@ void tapeWear()
 }
 
 // ---- cost -----------------------------------------------------------------------------------
+// ---- blend (PROTOTYPE) ------------------------------------------------------------------------
+Stereo renderBlend(const Settings& s, int v, const Buf& in, int block, size_t flipAt)
+{
+    rv::Tank t;
+    t.prepare(kFs, block);
+    apply(t, s);
+    if (v >= 0) t.setEchoSpringsVoicing(v);
+    const size_t n = in.size();
+    Stereo o{Buf(n), Buf(n)};
+    int pos3 = 1; // flipAt: SPRINGS 3 <-> 2 every flipAt samples (switching mid-tail)
+    for (size_t pos = 0; pos < n; pos += size_t(block)) {
+        if (flipAt > 0) {
+            const int want = (pos / flipAt) % 2 == 0 ? 1 : 0;
+            if (want != pos3) {
+                pos3 = want;
+                t.setParam(rv::ParamId::Springs, rv::switchToNormalised(want ? 2 : 1));
+            }
+        }
+        const int m = int(std::min<size_t>(size_t(block), n - pos));
+        t.process(in.data() + pos, in.data() + pos, o.l.data() + pos, o.r.data() + pos, m);
+    }
+    return o;
+}
+
+void blend()
+{
+    static const char* kName[rv::echo::kNumSpringsBlendVoicings] = {"A springs",  "B-wide 50 %", "C-wide 25 %", "D-wide 0 %",
+                                                                    "B-pp 50 %", "C-pp 25 %",   "D-pp 0 %"};
+    const Buf h = hits(10.0), st = stabs(8.0);
+    // The default is C (voicing 2, the owner's pick 6 Oct 2026), bit for bit, every ATTITUDE (hits and stabs).
+    {
+        bool ok = rv::echo::kSpringsBlendDefault == 2;
+        for (int att = 0; att < 3; ++att) {
+            Settings s;
+            s.att = att, s.drive = 0.5f, s.decay = 0.8f;
+            ok = ok && same(renderBlend(s, -1, h), renderBlend(s, 2, h)) && same(renderBlend(s, -1, st), renderBlend(s, 2, st));
+        }
+        check(ok, "Blend: the default is C (voicing 2), bit for bit (hits + stabs, DECAY 0.8, every ATTITUDE)");
+    }
+    // SPRINGS 1 and 2: any voicing changes nothing.
+    {
+        bool ok = true;
+        for (int sp = 0; sp < 2; ++sp)
+            for (int v = 1; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+                Settings s;
+                s.springs = sp, s.decay = 0.7f;
+                ok = ok && same(renderBlend(s, 0, h), renderBlend(s, v, h));
+            }
+        check(ok, "Blend voicings 1-6 in SPRINGS 1 and 2: bit for bit A (the blend only acts in echo mode)");
+    }
+    for (int v = 1; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+        for (int att = 0; att < 3; ++att) {
+            Settings s;
+            s.att = att, s.decay = 0.85f, s.tension = 0.6f, s.drive = 0.5f;
+            const Stereo a = renderBlend(s, v, h), b = renderBlend(s, v, h), c = renderBlend(s, v, h, 333);
+            const Stereo f = renderBlend(s, v, st, 48, sec(1.37));
+            double w1 = 0, w2 = 0;
+            const int c1 = clicksBoth(a, sec(0.5), &w1), c2 = clicksBoth(f, sec(0.5), &w2);
+            std::snprintf(msg, sizeof msg,
+                          "Blend %s %s (hits, DECAY 0.85): the same twice %d, block 48 = 333 %d, finite %d, peak %.2f, %d clicks "
+                          "(worst %.1f); flipping SPRINGS 3 <-> 2 every 1.37 s on stabs: %d clicks (worst %.1f)",
+                          kName[v], att == 0 ? "CLEAN" : (att == 1 ? "DRIVEN" : "KICKED"), int(same(a, b)), int(same(a, c)),
+                          int(finite(a) && finite(f)), double(peakOf(a)), c1, w1, c2, w2);
+            check(same(a, b) && same(a, c) && finite(a) && finite(f) && peakOf(a) < 1.0f && c1 == 0 && c2 == 0, msg);
+        }
+    }
+    // D: no spring tail. A burst at 0.5 s, DECAY 0 (one repeat, 0.4 s later), MIX 1 (the wet alone):
+    // before the repeat and after it D is silent; A rings there.
+    {
+        const Buf b = burst(2.0, 0.5);
+        Settings s;
+        s.decay = 0.0f, s.mix = 1.0f;
+        const Stereo a = renderBlend(s, 0, b);
+        const double aPre = stereoDb(a, sec(0.55), sec(0.88)), aPost = stereoDb(a, sec(1.05), sec(1.6));
+        for (int v : {3, 6}) {
+            const Stereo d = renderBlend(s, v, b);
+            const double pre = stereoDb(d, sec(0.55), sec(0.88)), rep = stereoDb(d, sec(0.9), sec(0.95)),
+                         post = stereoDb(d, sec(1.05), sec(1.6));
+            std::snprintf(msg, sizeof msg,
+                          "Blend %s, no spring tail (burst, DECAY 0, MIX 1): before the repeat %.0f dB, the repeat %.0f dB, after it "
+                          "%.0f dB (want before / after under -90 and the repeat over -60; A there: %.0f / %.0f dB)",
+                          kName[v], pre, rep, post, aPre, aPost);
+            check(pre < -90.0 && post < -90.0 && rep > -60.0 && aPre > -60.0 && aPost > -60.0, msg);
+        }
+    }
+    // Ping-pong: repeat 1 left, 2 right, 3 left ... (D-pp, burst, DECAY noon, 0.4 s).
+    {
+        const Buf b = burst(4.5, 0.5);
+        Settings s;
+        s.mix = 1.0f;
+        const Stereo d = renderBlend(s, 6, b);
+        bool ok = true;
+        std::string lr;
+        for (int k = 1; k <= 6; ++k) {
+            const size_t t0 = sec(0.5 + 0.4 * k - 0.02), t1 = sec(0.5 + 0.4 * k + 0.1);
+            const double l = db(power(d.l, t0, t1)), r = db(power(d.r, t0, t1));
+            const double lead = (k % 2 ? l - r : r - l);
+            ok = ok && lead > 40.0;
+            char one[48];
+            std::snprintf(one, sizeof one, " %d:%s %+.0f dB", k, k % 2 ? "L" : "R", lead);
+            lr += one;
+        }
+        std::snprintf(msg, sizeof msg, "Blend D-pp alternates (burst, DECAY noon): each repeat's side over the other by%s (want > 40)",
+                      lr.c_str());
+        check(ok, msg);
+    }
+    // Wide: R's highs kWideMs behind L's (cross-correlation of the first repeat, above ~1 kHz).
+    {
+        const Buf b = burst(1.5, 0.5);
+        Settings s;
+        s.mix = 1.0f;
+        const Stereo d = renderBlend(s, 3, b);
+        Buf l(d.l.begin() + long(sec(0.85)), d.l.begin() + long(sec(1.05)));
+        Buf r(d.r.begin() + long(sec(0.85)), d.r.begin() + long(sec(1.05)));
+        for (Buf* x : {&l, &r}) { // crude high-pass: x - LP(x)
+            Buf lo = *x;
+            lowpass(lo, 1000.0);
+            for (size_t i = 0; i < x->size(); ++i) (*x)[i] -= lo[i];
+        }
+        int    best  = 0;
+        double bestC = -1e30;
+        for (int lag = -int(sec(0.02)); lag <= int(sec(0.02)); ++lag) {
+            double c = 0;
+            for (size_t i = 0; i < l.size(); ++i) {
+                const long j = long(i) + lag;
+                if (j >= 0 && j < long(r.size())) c += double(l[i]) * r[size_t(j)];
+            }
+            if (c > bestC) bestC = c, best = lag;
+        }
+        const double ms = 1000.0 * best / kFs;
+        std::snprintf(msg, sizeof msg, "Blend D-wide: R's highs %.2f ms behind L's (want %.1f +- 0.5)", ms, double(rv::echo::kWideMs));
+        check(std::fabs(ms - rv::echo::kWideMs) <= 0.5, msg);
+    }
+    // Mono fold-down (reported): K-weighted mono vs stereo loudness, the wet alone, hits DECAY noon.
+    {
+        Settings s;
+        s.mix = 1.0f;
+        std::string out;
+        for (int v = 0; v < rv::echo::kNumSpringsBlendVoicings; ++v) {
+            const Stereo o = renderBlend(s, v, h);
+            char one[80];
+            std::snprintf(one, sizeof one, " %s %+.1f dB (stereo %.1f);", kName[v], monoLoudnessDb(o) - loudnessDb(o), loudnessDb(o));
+            out += one;
+        }
+        std::snprintf(msg, sizeof msg, "Blend mono fold-down, the wet alone (hits, MIX 1, DECAY noon): (L+R)/2 vs stereo loudness:%s",
+                      out.c_str());
+        info(msg);
+    }
+    // Cost (desktop, reported): KICKED, DRIVE 1, DECAY 1, TENSION 0, as "cost".
+    {
+        const Buf in = hits(6.0);
+        auto ns = [&](int v) {
+            double best = 1e30;
+            for (int run = 0; run < 5; ++run) {
+                rv::Tank t;
+                t.prepare(kFs, 48);
+                Settings s;
+                s.att = 2, s.drive = 1.0f, s.decay = 1.0f, s.tone = 1.0f, s.tension = 0.0f;
+                apply(t, s);
+                t.setEchoSpringsVoicing(v);
+                Buf l(in.size()), r(in.size());
+                const auto t0 = std::chrono::steady_clock::now();
+                for (size_t pos = 0; pos < in.size(); pos += 48)
+                    t.process(in.data() + pos, in.data() + pos, l.data() + pos, r.data() + pos, 48);
+                const auto t1 = std::chrono::steady_clock::now();
+                best = std::min(best, std::chrono::duration<double, std::nano>(t1 - t0).count() / double(in.size()));
+            }
+            return best;
+        };
+        const double a = ns(0), w = ns(2), pp = ns(6);
+        std::snprintf(msg, sizeof msg,
+                      "Blend cost (desktop, KICKED, DRIVE 1, DECAY 1, TENSION 0): A %.1f ns/sample, C (shipped, wide) %.1f (%+.1f %%), ping-pong "
+                      "%.1f (%+.1f %%)",
+                      a, w, 100.0 * (w / a - 1.0), pp, 100.0 * (pp / a - 1.0));
+        info(msg);
+    }
+}
+
+// ---- blendlevel: the shipped blend (C) as loud as A was --------------------------------------
+// The owner picked C on a level-matched page, so C must be as loud as A
+// (K-weighted, stereo), in every ATTITUDE, across MIX, DECAY, TENSION and
+// DRIVE, on hits, stabs and a held pad. Each cell C - A; per ATTITUDE the
+// mean within +-1 dB and every cell within +-4 dB (MIX 1, the wet alone,
+// is the hardest: below it the dry carries the level). What is left is the
+// material: without most of the springs' splash a hit's wet is ~1-2 dB
+// under A's, and a held pad's overlapping direct repeats ~1-3 dB over it.
+void blendLevelOrBalance(bool level)
+{
+    const Buf h = hits(10.0), st = stabs(8.0);
+    Buf pad(sec(9.0), 0.0f); // a held C minor pad, 4 s
+    for (double f : {130.81, 155.56, 196.0, 261.63})
+        for (size_t i = 0; i < sec(4.0); ++i) {
+            const double t = double(i) / kFs, env = std::min({1.0, t / 0.4, (4.0 - t) / 0.8});
+            pad[sec(1.0) + i] += float(env * (2 * std::fmod(f * t, 1.0) - 1) / 4);
+        }
+    lowpass(pad, 1800.0);
+    normalise(pad, -9.0f);
+    const Buf* mats[3]       = {&h, &st, &pad};
+    const char* matName[3]   = {"hits", "stabs", "pad"};
+    const char* attName[3]   = {"CLEAN", "DRIVEN", "KICKED"};
+    for (int att = 0; level && att < 3; ++att) {
+        double sum = 0, worst = 0, sumWet = 0;
+        int    cells = 0, cellsWet = 0;
+        char   worstAt[120] = "";
+        auto cell = [&](float mix, float decay, float tension, float drive, int m) {
+            Settings s;
+            s.att = att, s.mix = mix, s.decay = decay, s.tension = tension, s.drive = drive;
+            const double d = loudnessDb(renderBlend(s, rv::echo::kSpringsBlendDefault, *mats[m])) - loudnessDb(renderBlend(s, 0, *mats[m]));
+            sum += d, ++cells;
+            if (mix >= 1.0f) sumWet += d, ++cellsWet;
+            if (std::getenv("RV_BLEND_VERBOSE"))
+                std::printf("INFO  %s MIX %.1f DECAY %.1f TENSION %.2f DRIVE %.1f %s: C - A %+.2f dB\n", attName[att], double(mix),
+                            double(decay), double(tension), double(drive), matName[m], d);
+            if (std::fabs(d) > std::fabs(worst)) {
+                worst = d;
+                std::snprintf(worstAt, sizeof worstAt, "MIX %.1f DECAY %.1f TENSION %.2f DRIVE %.1f %s", double(mix), double(decay),
+                              double(tension), double(drive), matName[m]);
+            }
+        };
+        for (int m = 0; m < 3; ++m) {
+            for (float decay : {0.0f, 0.5f, 0.8f})
+                for (float tension : {0.25f, 0.5f, 0.75f})
+                    for (float drive : {0.0f, 0.5f, 1.0f}) cell(1.0f, decay, tension, drive, m);
+            for (float mix : {0.3f, 0.6f}) cell(mix, 0.5f, 0.5f, 0.25f, m);
+        }
+        const double mean = sum / cells, meanWet = sumWet / cellsWet;
+        std::snprintf(msg, sizeof msg,
+                      "Blend level %s: C - A K-weighted over %d cells (MIX 1: DECAY 0 / 0.5 / 0.8 x TENSION 0.25 / 0.5 / 0.75 x DRIVE "
+                      "0 / 0.5 / 1; MIX 0.3, 0.6) x hits / stabs / pad: mean %+.2f dB (MIX 1 %+.2f; want within +-1), worst %+.2f "
+                      "at %s (want within +-4)",
+                      attName[att], cells, mean, meanWet, worst, worstAt);
+        check(std::fabs(mean) <= 1.0 && std::fabs(meanWet) <= 1.0 && std::fabs(worst) <= 4.0, msg);
+    }
+    if (level) return;
+    // L / R balance, the wet alone: the wide heads on their own (D-wide, no
+    // springs) centred, on average over the three within +-0.3 dB, each within
+    // +-1; the shipped C and A reported (the springs' own image leans a little,
+    // differently per material).
+    {
+        std::string out;
+        double sumD = 0, worstD = 0;
+        for (int m = 0; m < 3; ++m) {
+            double b[3];
+            const int vs[3] = {0, rv::echo::kSpringsBlendDefault, 3};
+            for (int k = 0; k < 3; ++k) {
+                Settings s;
+                const Stereo o = renderBlend(s, vs[k], *mats[m]);
+                b[k] = db(power(o.l, 0, SIZE_MAX)) - db(power(o.r, 0, SIZE_MAX));
+            }
+            sumD += b[2] / 3.0;
+            worstD = std::max(worstD, std::fabs(b[2]));
+            char one[96];
+            std::snprintf(one, sizeof one, " %s heads %+.2f, C %+.2f, A %+.2f;", matName[m], b[2], b[1], b[0]);
+            out += one;
+        }
+        std::snprintf(msg, sizeof msg,
+                      "Blend L - R level, the wet alone (CLEAN, DECAY noon):%s dB; the heads' mean %+.2f (want within +-0.3, each "
+                      "within +-1)",
+                      out.c_str(), sumD);
+        check(std::fabs(sumD) <= 0.3 && worstD <= 1.0, msg);
+    }
+}
+
+void blendLevel() { blendLevelOrBalance(true); }
+void blendBalance() { blendLevelOrBalance(false); }
+
 void cost()
 {
     const Buf in = hits(6.0);
@@ -2692,7 +3006,7 @@ int main(int argc, char** argv)
     const Section sections[] = {{"identity", identity}, {"free", freeTime},   {"clock", clockDivisions}, {"host", hostTempo},
                                 {"swoop", swoop},       {"feedback", feedback}, {"steps", steps}, {"springs", springs},   {"tape", tape},
                                 {"level", level},       {"switching", switching}, {"stability", stability}, {"hothighs", hotHighs}, {"blocks", blocks},
-                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"tapewear", tapeWear}, {"cost", cost}};
+                                {"diffuse", diffuse}, {"wear", wear}, {"bbd", bbd}, {"bits", bits}, {"tapewear", tapeWear}, {"blend", blend}, {"blendlevel", blendLevel}, {"blendbalance", blendBalance}, {"cost", cost}};
     for (const auto& s : sections) {
         if (only && std::strcmp(only, s.name) != 0) continue;
         std::printf("== %s\n", s.name);

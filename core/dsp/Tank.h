@@ -187,6 +187,7 @@
 #include "dsp/Drive.h"
 #include "dsp/Echo.h"
 #include "dsp/EchoClock.h"
+#include "dsp/EchoDirect.h"
 #include "dsp/Filters.h"
 #include "dsp/OutputBits.h"
 #include "dsp/Splash.h"
@@ -503,6 +504,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setDiffuseVoicing(v);
+        direct_.tapeR.setDiffuseVoicing(v);
 #endif
     }
     int echoDiffuseVoicing() const { return echo_.diffuseVoicing(); }
@@ -512,6 +514,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setWearVoicing(v);
+        direct_.tapeR.setWearVoicing(v);
 #endif
     }
     int echoWearVoicing() const { return echo_.wearVoicing(); }
@@ -521,6 +524,7 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setBbdVoicing(v);
+        direct_.tapeR.setBbdVoicing(v);
 #endif
     }
     int   bbdVoicing() const { return echo_.bbdVoicing(); }
@@ -530,9 +534,26 @@ public:
     {
 #ifndef RV_FIXED_VOICINGS
         echo_.setBitsVoicing(v);
+        direct_.tapeR.setBitsVoicing(v);
 #endif
     }
     int echoBitsVoicing() const { return echo_.bitsVoicing(); }
+    // Renderer / test hook (owner 6 Oct): how much of the wet goes through
+    // the springs and how the rest is heard directly: 0 A (all through the
+    // springs, until 6 Oct), 1-3 wide (2 = C, the default: a quarter), 4-6
+    // ping-pong (EchoVoicing.h kSpringsBlend, dsp/EchoDirect.h). The firmware
+    // builds only the default. Set it before rendering (ping-pong allocates).
+    void setEchoSpringsVoicing([[maybe_unused]] int v)
+    {
+#ifndef RV_FIXED_VOICINGS
+        direct_.setVoicing(v);
+        direct_.tapeR.setDiffuseVoicing(echo_.diffuseVoicing()); // a freshly prepared second tape: the same voicings
+        direct_.tapeR.setWearVoicing(echo_.wearVoicing());
+        direct_.tapeR.setBbdVoicing(echo_.bbdVoicing());
+        direct_.tapeR.setBitsVoicing(echo_.bitsVoicing());
+#endif
+    }
+    int echoSpringsVoicing() const { return direct_.voicing(); }
     float bbdClockHz() const { return echo_.bbdClockHz(); }
     float echoFirstRepeatGain() const { return ginTo_; }
     // Echo mode, read-only (tests, meters): how far the echo is in (0..1,
@@ -888,6 +909,7 @@ private:
     bool echoMode_ = true; // setEchoMode
 #endif
     dsp::TapeEcho  echo_;
+    dsp::EchoDirect direct_; // the repeats heard directly (EchoVoicing.h "Springs blend")
     dsp::EchoClock clock_;
     dsp::EchoClock tapClock_; // the button's taps (ADR 0043)
     bool     tapWins_ = false; // both clocks locked: the taps set the tempo last
