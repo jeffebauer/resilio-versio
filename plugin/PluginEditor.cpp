@@ -64,8 +64,11 @@ constexpr Toggle kToggles[] = {
 // at 1x and still clears ATTITUDE's VALVE.
 constexpr Part kButton{28.0f, 69.330f};
 // GATE (the throw_gate param, ADR 0039): the gate jack's stand-in, not on
-// the printed panel. Under DRIVE, below its label.
-constexpr Part kThrow{43.330f, 74.0f};
+// the printed panel. In the bottom row with SIZE (the plugin's own controls):
+// SIZE at the left margin, GATE at the right, on one centre line.
+constexpr float kBottomRowYMm = 121.0f;
+constexpr float kBottomRowHMm = 4.0f;
+constexpr float kThrowWMm     = 9.0f;
 
 // LED1..LED4, left to right: In L, In R, Out L, Out R (PanelLink::Meter order).
 constexpr Part kLeds[PanelLink::kNumMeters] = {
@@ -302,11 +305,16 @@ public:
             }
 
         button_.setBounds(centred(kButton, kButtonWMm, kButtonHMm));
-        throw_.setBounds(centred(kThrow, 9.0f, kSegmentHMm));
+        // The bottom row: SIZE left-aligned with TANK and ATTITUDE, GATE
+        // right-aligned at the same margin.
+        throw_.setBounds(centred({kPanelW - kSegmentLeftMm - kThrowWMm * 0.5f, kBottomRowYMm}, kThrowWMm, kBottomRowHMm));
 
+        // Start on TANK's rounded left edge (7.5 px rounds to 8) so the three
+        // 35 px segments land on whole pixels and butt together.
         constexpr float sizeW = 7.0f;
+        const float sizeLeftMm = float(juce::roundToInt(px(kSegmentLeftMm))) / kPxPerMm;
         for (size_t i = 0; i < sizes_.size(); ++i)
-            sizes_[i].setBounds(centred({kPanelW * 0.5f + sizeW * (float(i) - 1.0f), 121.0f}, sizeW, 4.0f));
+            sizes_[i].setBounds(centred({sizeLeftMm + sizeW * (float(i) + 0.5f), kBottomRowYMm}, sizeW, kBottomRowHMm));
     }
 
     void paint(juce::Graphics& g) override
@@ -346,7 +354,7 @@ public:
             text(spec(t.id).name, {kSegmentLeftMm + 7.0f, t.at.y - kSegmentHMm * 0.5f - 1.6f}, kLabelHMm, 11.0f,
                  kTextColour, juce::Justification::centredLeft, 14.0f);
 
-        text("SIZE", {kPanelW * 0.5f, 117.0f}, kLabelHMm, 9.0f, kDimTextColour);
+        text("SIZE", {kSegmentLeftMm + 7.0f, 117.0f}, kLabelHMm, 9.0f, kDimTextColour, juce::Justification::centredLeft, 14.0f);
 
         for (int m = 0; m < PanelLink::kNumMeters; ++m) {
             const auto  c = kLeds[m];
