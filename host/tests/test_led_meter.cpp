@@ -4,8 +4,11 @@
 // the Tank's output limiter (Tank::limiterGain(), read-only) pulling down.
 // Also the PWM tables the release firmware streams to the LED pins by DMA
 // (30 Sep 2026 fix for "LEDs flicker rather than dim").
+// And the tap tempo flash (firmware/TapLed.h, ADR 0043 amendment): purple on
+// each tap in SPRINGS 3 and on the tapped beat for 2 s after the last.
 
 #include "../../firmware/LedMeter.h"
+#include "../../firmware/TapLed.h"
 
 #include "dsp/Tank.h"
 #include "params/ParamSpec.h"
@@ -280,6 +283,173 @@ void pwm()
     check(exact2, "PWM table rebuilt with new duties matches them exactly");
 }
 
+
+// ---- Tap tempo flash (TapLed.h) ---------------------------------------------
+// One simulated main loop: 1 ms steps from t0 (us, may wrap). Events change
+// the inputs at given milliseconds; returns the times (ms) each purple pulse
+// started and how long it lasted.
+struct TapEvent {
+    int      ms;
+    int      tap;      // 1: a tap now
+    int      beatUs;   // >= 0: the tapped beat from now on (0 = none)
+    int      tapping;  // >= 0: Tank::tapping() from now on
+};
+struct Pulse {
+    int start, len;
+};
+std::vector<Pulse> tapRun(const std::vector<TapEvent>& ev, int endMs, uint32_t t0 = 0)
+{
+    rvled::TapFlash f;
+    uint32_t taps = 0, beat = 0;
+    bool     tapping = true;
+    std::vector<Pulse> out;
+    bool was = false;
+    for (int ms = 0; ms < endMs; ++ms) {
+        for (const auto& e : ev)
+            if (e.ms == ms) {
+                taps += uint32_t(e.tap);
+                if (e.beatUs >= 0) beat = uint32_t(e.beatUs);
+                if (e.tapping >= 0) tapping = e.tapping != 0;
+            }
+        const bool on = f.update(t0 + uint32_t(ms) * 1000u, taps, beat, tapping);
+        if (on && !was) out.push_back({ms, 0});
+        if (on) ++out.back().len;
+        was = on;
+    }
+    return out;
+}
+bool pulsesAre(const std::vector<Pulse>& p, std::vector<int> starts, int len = 70)
+{
+    if (p.size() != starts.size()) return false;
+    for (size_t i = 0; i < p.size(); ++i)
+        if (p[i].start != starts[i] || p[i].len != len) return false;
+    return true;
+}
+
+void tapFlash()
+{
+    // No tempo: each tap flashes 70 ms, nothing more.
+    auto p = tapRun({{0, 1, 0, -1}, {1000, 1, 0, -1}}, 5000);
+    check(pulsesAre(p, {0, 1000}), "tap LED: no tempo -> each tap one 70 ms purple flash, no continuation");
+
+    // A tempo locked (120 bpm): the tap's flash, then a pulse on each beat
+    // whose start is within 2 s of the tap (0.5 .. 2.0 s), then dark.
+    p = tapRun({{0, 1, 500000, -1}}, 6000);
+    check(pulsesAre(p, {0, 500, 1000, 1500, 2000}), "tap LED: 120 bpm -> pulses at 0.5 / 1 / 1.5 / 2 s after the tap, then off");
+    p = tapRun({{0, 1, 600000, -1}}, 6000);
+    check(pulsesAre(p, {0, 600, 1200, 1800}), "tap LED: 100 bpm -> pulses at 0.6 / 1.2 / 1.8 s (2.4 s is past the 2 s), then off");
+    p = tapRun({{0, 1, 2000000, -1}}, 6000);
+    check(pulsesAre(p, {0, 2000}), "tap LED: 30 bpm -> one pulse at 2 s");
+    // The tempo settles a block after the tap (the Tank's control tick):
+    // the beat arriving during the flash still counts.
+    p = tapRun({{0, 1, 0, -1}, {1, 0, 500000, -1}}, 6000);
+    check(pulsesAre(p, {0, 500, 1000, 1500, 2000}), "tap LED: the beat arriving 1 ms after the tap still continues");
+
+    // A new tap restarts it, phase-locked to the new tap.
+    p = tapRun({{0, 1, 500000, -1}, {1250, 1, -1, -1}}, 6000);
+    check(pulsesAre(p, {0, 500, 1000, 1250, 1750, 2250, 2750, 3250}), "tap LED: a new tap restarts the pulses from itself");
+
+    // SPRINGS off 3 mid-continuation: dark at once, and back in 3 without a
+    // new tap it stays dark. Mid-flash too.
+    p = tapRun({{0, 1, 500000, -1}, {700, 0, -1, 0}, {900, 0, -1, 1}}, 6000);
+    check(pulsesAre(p, {0, 500}), "tap LED: leaving SPRINGS 3 stops the pulses at once (and they don't come back)");
+    p = tapRun({{0, 1, 500000, -1}, {30, 0, -1, 0}}, 6000);
+    check(p.size() == 1 && p[0].start == 0 && p[0].len == 30, "tap LED: leaving SPRINGS 3 mid-flash darkens at once");
+    // Taps outside SPRINGS 3 (the Tank doesn't count them, but if the count
+    // moved anyway): nothing.
+    p = tapRun({{0, 0, -1, 0}, {10, 1, 500000, -1}}, 3000);
+    check(p.empty(), "tap LED: no purple when the button doesn't tap (SPRINGS 1-2)");
+
+    // The tempo released (or taken by the gate clock / host) mid-continuation.
+    p = tapRun({{0, 1, 500000, -1}, {1200, 0, 0, -1}, {1300, 0, 500000, -1}}, 6000);
+    check(pulsesAre(p, {0, 500, 1000}), "tap LED: the tempo released stops the pulses at once");
+
+    // The us clock's wrap (~71.6 min): a tap 1 s before it pulses exactly
+    // as anywhere else, and once over nothing lights again for over a wrap.
+    const uint32_t nearWrap = 0xFFFFFFFFu - 999999u;
+    p = tapRun({{0, 1, 500000, -1}}, 6000, nearWrap);
+    check(pulsesAre(p, {0, 500, 1000, 1500, 2000}), "tap LED: a tap 1 s before the us clock wraps pulses the same");
+    {
+        rvled::TapFlash f;
+        bool lit = false, first = f.update(0, 1, 500000, true);
+        for (uint32_t ms = 1; ms < 75u * 60u * 1000u; ++ms) {
+            const bool on = f.update(ms * 1000u, 1, 500000, true);
+            if (ms > 2100) lit |= on;
+        }
+        check(first && !lit, "tap LED: dark for 75 min after the show ends (no false flash as the clock wraps)");
+    }
+
+    // White (the throw exit) wins over purple; purple over the meter.
+    const Rgb meter{0.3f, 0.3f, 0.0f};
+    const Rgb w = rvled::shown(true, true, meter), pu = rvled::shown(false, true, meter), m = rvled::shown(false, false, meter);
+    check(w.r == 1.0f && w.g == 1.0f && w.b == 1.0f && pu.r == rvled::kTapPurple.r && pu.b == rvled::kTapPurple.b
+              && pu.g == 0.0f && m.r == meter.r && m.g == meter.g,
+          "tap LED: white wins over purple, purple over the meter");
+    // Purple is a colour the meters never make: they have no blue.
+    bool noBlue = rvled::kRed.b == 0.0f;
+    for (int i = 0; i <= 100; ++i) noBlue &= rvled::positionColour(float(i) / 100.0f).b == 0.0f;
+    check(noBlue && rvled::kTapPurple.b == 1.0f && rvled::pwmCount(rvled::kTapPurple.b) == rvled::kPwmSteps,
+          "tap LED: purple (full blue) is never a meter colour (no blue in green/amber/red), full brightness");
+}
+
+// The Tank's side, end to end: button taps in SPRINGS 3 through Tank::taps()
+// / tappedBeatSamples() / tapping() into TapFlash, one 1 ms block at a time
+// (as the firmware's callback and main loop).
+std::vector<Pulse> tankTapRun(const std::vector<double>& pressSec, int springs, float hostBpm, double endSec,
+                              bool* tapClockAtEnd = nullptr)
+{
+    constexpr float kFs = 48000.0f;
+    constexpr int   kBlock = 48;
+    rv::Tank t;
+    t.prepare(kFs, kBlock);
+    t.setParam(rv::ParamId::Springs, rv::switchToNormalised(springs - 1));
+    t.setParam(rv::ParamId::Mix, 0.5f);
+    t.setHostTempo(hostBpm);
+    std::vector<float> zero(kBlock, 0.0f), l(kBlock), r(kBlock);
+    rvled::TapFlash f;
+    std::vector<Pulse> out;
+    bool was = false;
+    const int blocks = int(endSec * 1000.0);
+    for (int b = 0; b < blocks; ++b) {
+        for (double p : pressSec) {
+            const int at = int(std::lround(p * 1000.0));
+            if (b == at) t.button(true, 0);
+            if (b == at + 30) t.button(false, 0);
+        }
+        t.process(zero.data(), zero.data(), l.data(), r.data(), kBlock);
+        const uint32_t beatUs = uint32_t(t.tappedBeatSamples() * (1.0e6f / kFs));
+        const bool on = f.update(uint32_t(b) * 1000u, t.taps(), beatUs, t.tapping());
+        if (on && !was) out.push_back({b, 0});
+        if (on) ++out.back().len;
+        was = on;
+    }
+    if (tapClockAtEnd) *tapClockAtEnd = t.tapClockInUse();
+    return out;
+}
+
+void tapFlashFromTank()
+{
+    // Four taps at 120 bpm: a flash on each, then the beat to 2 s after the last.
+    auto p = tankTapRun({1.0, 1.5, 2.0, 2.5}, 3, 0.0f, 6.0);
+    check(pulsesAre(p, {1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500}),
+          "tap LED via the Tank: taps at 120 bpm flash, then pulse at 3 / 3.5 / 4 / 4.5 s, then the meters");
+    // Then a lone tap at 8 s (it lets the tempo go): just its flash.
+    bool inUse = true;
+    p = tankTapRun({1.0, 1.5, 2.0, 2.5, 8.0}, 3, 0.0f, 12.0, &inUse);
+    check(pulsesAre(p, {1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 8000}) && !inUse,
+          "tap LED via the Tank: a lone tap (it releases the tempo) flashes once, no continuation");
+    // One tap alone: one flash.
+    p = tankTapRun({1.0}, 3, 0.0f, 4.0);
+    check(pulsesAre(p, {1000}), "tap LED via the Tank: the first tap flashes once (no tempo yet)");
+    // SPRINGS 1 / 2: presses throw, no purple.
+    p = tankTapRun({1.0, 1.5, 2.0, 2.5}, 1, 0.0f, 5.0);
+    const auto p2 = tankTapRun({1.0, 1.5, 2.0, 2.5}, 2, 0.0f, 5.0);
+    check(p.empty() && p2.empty(), "tap LED via the Tank: no purple in SPRINGS 1 or 2 (the button throws)");
+    // The Plugin in a DAW (the host's tempo wins, ADR 0043): each tap still
+    // flashes, no continuation.
+    p = tankTapRun({1.0, 1.5, 2.0, 2.5}, 3, 100.0f, 5.0);
+    check(pulsesAre(p, {1000, 1500, 2000, 2500}), "tap LED via the Tank: with the host's tempo each tap flashes, no continuation");
+}
 } // namespace
 
 int main()
@@ -290,6 +460,8 @@ int main()
     redHold();
     limiterFromTank();
     pwm();
+    tapFlash();
+    tapFlashFromTank();
     std::printf("%d failure(s)\n", failures);
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

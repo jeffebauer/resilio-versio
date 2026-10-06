@@ -140,6 +140,8 @@ public:
             exitsSeen_ = tank_.throwExits();
             panel_.noteThrowExited();
         }
+        // Tap tempo on the LEDs (ADR 0043, firmware/TapLed.h).
+        panel_.noteTaps(tank_.taps(), tank_.tappedBeatSamples() / float(getSampleRate()), tank_.tapping());
     }
 
     juce::AudioProcessorEditor* createEditor() override { return new rv::plugin::PanelEditor(*this, state_, panel_); }
