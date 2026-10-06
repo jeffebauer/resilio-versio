@@ -22,7 +22,7 @@
 //      divisions of it, held after the taps stop, a lone tap = free time;
 //   9. with a gate clock: the last to set a tempo wins (the taps over a
 //      steady gate clock, a gate clock that changes tempo over the taps, the
-//      taps again when the gate clock is lost); the host's tempo wins over all;
+//      the gate's tempo holds when it stops, like the taps); the host's tempo wins over all;
 //  10. a press in 3 never throws; presses in 1-2 never tap.
 //  11. Renderer automation: "buttons" parsed; "kicks" refused.
 
@@ -513,10 +513,10 @@ void tapWithGateClock()
     const auto b = tapRun({4.0, 4.5, 5.0, 5.5}, gates, {3.9, 7.5, 12.0, 17.5}, 18.0);
     std::snprintf(msg, sizeof msg,
                   "taps with a gate clock, the last to set a tempo wins: gate 100 bpm -> %.3f s; taps at 120 over the "
-                  "steady gate -> %.3f s; the gate changes to 90 bpm -> %.3f s; the gate lost -> the tapped tempo %.3f s",
+                  "steady gate -> %.3f s; the gate changes to 90 bpm -> %.3f s; the gate stops -> it holds 90 bpm %.3f s",
                   b[0], b[1], b[2], b[3]);
     check(std::fabs(b[0] - 0.6) < 0.006 && std::fabs(b[1] - 0.5) < 0.005 && std::fabs(b[2] - 60.0 / 90.0) < 0.007
-              && std::fabs(b[3] - 0.5) < 0.005,
+              && std::fabs(b[3] - 60.0 / 90.0) < 0.007,
           msg);
     // The host's tempo (the Plugin) wins over taps.
     const auto h = tapRun({1.0, 1.5, 2.0, 2.5}, {}, {2.6}, 3.0, 0.5f, 100.0f);

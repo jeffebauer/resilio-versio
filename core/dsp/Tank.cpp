@@ -772,7 +772,7 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
     // controlTick. The clock: the host's tempo (Plugin), else the gate's (lost after a
     // while without pulses) or the tapped one (held; ADR 0043), whichever set
     // its tempo last, else none.
-    clock_.update(sampleClock_);
+    clock_.update(sampleClock_, true); // the gate's tempo holds when its pulses stop (owner, 6 Oct: transport stop/start)
     tapClock_.update(sampleClock_, true);
     const float beatSamples = tapClockInUse() ? tapClock_.beatSamples() : clock_.beatSamples();
     const float beat = hostBpm_ > 0.0f ? 60.0f / hostBpm_ : beatSamples / sampleRate_;

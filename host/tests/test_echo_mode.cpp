@@ -13,8 +13,9 @@
 //             1/4, 1/4, dotted 1/8, 1/8, dotted 1/16, 1/16 at 120 bpm;
 //             longer than 2 s plays at half (30 bpm); a knob on a border
 //             doesn't flicker (hysteresis); a jittery clock (+-1 %) doesn't
-//             move the time; a bounce is ignored; lost after 2.25 beats
-//             (back to free time); edges anywhere in a block, any block size.
+//             move the time; a bounce is ignored; the tempo holds when the
+//             pulses stop (a lone pulse -> free time); edges anywhere in a
+//             block, any block size.
 //   host      The Plugin's tempo (setHostTempo) sets the beat, overrides the gate.
 //   swoop     A time change glides (~0.3 s), never faster than 0.5 samples
 //             per sample, and doesn't click (TENSION jumps, the clock arriving
@@ -600,22 +601,40 @@ void clockDivisions()
         check(t.clockLocked() && hi - lo <= 0.021 * 0.6 && std::fabs(ref - 0.6) < 0.02 * 0.6, msg);
     }
 
-    // Lost: pulses stop; after 2.25 beats the echo glides back to free time.
+    // Held (owner, 6 Oct 2026): the pulses stop (a DAW's transport stopping);
+    // the tempo holds, and a restart at the same tempo leaves the echo time
+    // untouched (no swoop). A lone pulse lets it go: free time ~2 s on.
     {
         rv::Tank t;
         t.prepare(kFs, 48);
         Settings s;
-        s.tension = 0.5f; // zone 3 clocked (dotted 1/8 = 0.375 s at 60 bpm... 1.0 s beat), 0.4 s free
+        s.tension = 0.5f; // zone 3 clocked (dotted 1/8 of a 1.0 s beat at 60 bpm), 0.4 s free
         apply(t, s);
         run(t, 4.0, 48, steadyClock(60.0, 0.1, 3.2)); // last pulse at 3.1 s
-        const bool lockedBefore = t.clockLocked();
-        run(t, 1.0, 48, {}, sec(4.0)); // 4..5 s: 1.9 beats since the last: still locked
-        const bool stillLocked = t.clockLocked();
-        run(t, 1.0, 48, {}, sec(5.0)); // 5..6 s: 2.9 beats: lost
-        const bool lost = !t.clockLocked() && t.echoDivision() < 0 && std::fabs(t.echoSeconds() - 0.4f) < 1e-3;
-        std::snprintf(msg, sizeof msg, "Clock lost after 2.25 beats at 60 bpm: locked %d, at 1.9 beats %d, at 2.9 beats lost %d (free 0.4 s)",
-                      int(lockedBefore), int(stillLocked), int(lost));
-        check(lockedBefore && stillLocked && lost, msg);
+        const bool  lockedBefore = t.clockLocked();
+        const float before       = t.echoSeconds();
+        run(t, 10.0, 48, {}, sec(4.0)); // 4..14 s: no pulses (transport stopped)
+        const bool held = t.clockLocked() && t.echoSeconds() == before;
+        // The transport starts again at 14 s, same tempo: the echo time never moves.
+        const auto restart = steadyClock(60.0, 14.0, 18.0);
+        float lo = 1e9f, hi = 0.0f;
+        for (int k = 0; k < 40; ++k) {
+            run(t, 0.1, 48, restart, sec(14.0 + 0.1 * k));
+            lo = std::min(lo, t.echoSeconds()), hi = std::max(hi, t.echoSeconds());
+        }
+        const bool steady = t.clockLocked() && lo == before && hi == before;
+        // Stopped again, then one lone pulse at 30 s: free time once no second
+        // pulse has come within the slowest interval (~2 s).
+        run(t, 12.0, 48, {}, sec(18.0));
+        run(t, 1.0, 48, {sec(30.0)}, sec(30.0));
+        const bool stillAt31 = t.clockLocked();
+        run(t, 2.0, 48, {}, sec(31.0));
+        const bool freed = !t.clockLocked() && t.echoDivision() < 0 && std::fabs(t.echoSeconds() - 0.4f) < 1e-3;
+        std::snprintf(msg, sizeof msg,
+                      "Clock held when the pulses stop (60 bpm, %.3f s): locked %d, after 10 s silence %d, restart at the same "
+                      "tempo moves it %.6f s, a lone pulse -> still held 1 s on %d, free time 3 s on %d",
+                      double(before), int(lockedBefore), int(held), double(hi - lo), int(stillAt31), int(freed));
+        check(lockedBefore && held && steady && stillAt31 && freed, msg);
     }
 
     // Edges anywhere in a block: the beat is the same at block 16, 48, 512

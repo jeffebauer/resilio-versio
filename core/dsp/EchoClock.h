@@ -8,15 +8,16 @@
 // within echo::kClockJitter of the tempo in use is ignored, so a gate read
 // once per audio block (1 ms) or a slightly wobbly clock doesn't move the
 // echo. An interval shorter than kClockMaxBpm's is a bounce (ignored); one
-// longer than kClockMinBpm's starts the count again. The clock is lost after
-// kClockLostBeats beats with no pulse (at most kClockLostSeconds): the Tank
-// then glides back to free time.
+// longer than kClockMinBpm's starts the count again.
 //
-// Tap tempo (ADR 0043: the button in SPRINGS 3) is a second EchoClock fed by
-// the taps, the same code with one difference (update(now, true)): a tapped
-// tempo holds after the taps stop, since you stop tapping once it's right.
-// The way back to free time is one lone tap: a tap with no second one within
-// the slowest interval (kClockMinBpm's, ~2 s) lets the tempo go.
+// Both the gate clock and tap tempo (ADR 0043: the button in SPRINGS 3, a
+// second EchoClock) call update(now, true): a tempo **holds** after its
+// pulses stop: you stop tapping once it's right, and a DAW's transport stop
+// shouldn't swoop the echo back to free time and again on start (owner,
+// 6 Oct 2026; ADR 0041 amendment). The way back to free time is one lone
+// edge: a pulse or tap with no second one within the slowest interval
+// (kClockMinBpm's, ~2 s) lets the tempo go. update(now) without the hold
+// (kClockLostBeats / kClockLostSeconds) is no longer used by the Tank.
 //
 // Sample positions are a running uint32 count (wraps after ~24 h at 48 kHz;
 // differences stay right across the wrap).
