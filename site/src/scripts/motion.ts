@@ -84,28 +84,14 @@ function panelDraws() {
   });
 }
 
-/** Features: pinned on wide screens, lines light up one by one, each note after its line. */
+/** Features: each line transitions in as it enters the view (no pin, no scrub), its note just after. */
 function featureStack() {
   const box = document.querySelector<HTMLElement>('[data-features]');
   if (!box) return;
-  const lines = [...box.querySelectorAll<HTMLElement>('[data-line]')];
-  const mm = gsap.matchMedia();
-  mm.add('(min-width: 48rem) and (min-height: 40rem)', () => {
-    const tl = gsap.timeline({
-      scrollTrigger: { trigger: box, start: 'center center', end: `+=${lines.length * 90}`, pin: true, scrub: 0.5 },
-    });
-    lines.forEach((line) => {
-      const note = line.querySelector('[data-note]');
-      tl.fromTo(line.firstElementChild, { opacity: 0.12 }, { opacity: 1, duration: 1 });
-      if (note) tl.fromTo(note, { opacity: 0 }, { opacity: 1, duration: 0.6 }, '>-0.2');
-    });
-  });
-  mm.add('(max-width: 47.99rem), (max-height: 39.99rem)', () => {
-    lines.forEach((line) => {
-      gsap.from(line, {
-        opacity: 0, y: 16, duration: 0.6, ease: 'power2.out',
-        scrollTrigger: { trigger: line, start: 'top 92%', once: true },
-      });
-    });
+  box.querySelectorAll<HTMLElement>('[data-line]').forEach((line) => {
+    const note = line.querySelector('[data-note]');
+    const tl = gsap.timeline({ scrollTrigger: { trigger: line, start: 'top 88%', once: true } });
+    tl.from(line.firstElementChild, { opacity: 0, y: 24, duration: 0.8, ease: 'power3.out' });
+    if (note) tl.from(note, { opacity: 0, duration: 0.5, ease: 'power2.out' }, '-=0.35');
   });
 }

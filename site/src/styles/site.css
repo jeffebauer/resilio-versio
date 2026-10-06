@@ -10,7 +10,7 @@
 html { scroll-padding-top: calc(var(--header-h) + 0.5rem); }
 body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip; }
 main { flex: 1 0 auto; }
-strong, b { font-weight: var(--wt-reg); }           /* no bold: Regular against Light */
+strong, b { font-weight: var(--wt-medium); }        /* Medium against Light: a clear step (owner, 7 Oct) */
 code { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* Never set Light below 15 px (DESIGN blind spot 3): small UI text is Regular. */
@@ -157,13 +157,22 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .on-ink .player .ab button[aria-pressed="true"] { background: var(--paper); color: var(--ink); }
 .on-ink .player .wave { color: var(--paper); }
 .on-ink :focus-visible { outline-color: var(--signal); }
-.demos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); column-gap: var(--gutter); row-gap: var(--stack-4); list-style: none; padding: 0; margin: 0; }
-.demo { display: flex; flex-direction: column; gap: var(--stack-2); border-top: var(--hair) solid var(--line); padding-top: var(--stack-2); }
+.demos { --card-bg: rgb(17 17 17 / 0.04); display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: var(--gutter); list-style: none; padding: 0; margin: 0; }
+.on-ink .demos { --card-bg: rgb(255 255 255 / 0.06); }
+/* Each card spans six shared rows (title, chips, caption, player, settings, transcript): opening
+   Settings or Transcript in one card only grows those rows, so the neighbour's caption-to-player
+   spacing never moves (owner, 7 Oct). */
+.demo {
+  display: grid; grid-row: span 6; grid-template-rows: subgrid; row-gap: var(--stack-2); align-content: start;
+  padding: var(--stack-3); border-radius: var(--radius-card); background: var(--card-bg);
+}
+@supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
+.demo .disclosure + .disclosure { margin-top: calc(-1 * var(--stack-2)); }
 .demo h3 { font-size: var(--fs-lede); line-height: var(--lh-snug); display: flex; gap: 0.6em; align-items: baseline; }
 .demo h3 .num { font-size: var(--fs-micro); }
 .demo .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .demo .caption { padding: 0; }
-.demo .player { margin-top: auto; }
+.demo .player { align-self: end; }
 
 /* ---- Disclosure (settings, transcript) ------------------------------------ */
 .disclosure { border-top: var(--hair) solid var(--line); }
@@ -269,7 +278,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* ---- Doc pages ----------------------------------------------------------- */
 .doc-hero { padding-top: calc(var(--header-h) + var(--stack-5)); padding-bottom: var(--stack-4); row-gap: var(--stack-3); align-items: end; }
-.doc-hero .display { grid-column: 4 / -1; }
+.doc-hero .display { grid-column: var(--main-start) / -1; }
 .doc-hero .kicker { grid-column: 1 / span 3; color: var(--ink-2); }
 @media (max-width: 47.99rem) { .doc-hero .display, .doc-hero .kicker { grid-column: 1 / -1; } }
 .doc-body { padding-top: var(--stack-4); padding-bottom: var(--section-y); align-items: start; }
@@ -326,7 +335,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .switch { display: inline-flex; padding: 0.25rem; border-radius: var(--radius-pill); box-shadow: inset 0 0 0 var(--hair) var(--line); margin-top: var(--stack-4); }
 .switch a, .switch button {
   border: 0; background: none; color: inherit; cursor: pointer; text-decoration: none;
-  min-height: 2.5rem; display: inline-flex; align-items: center; padding: 0 1.2rem; border-radius: var(--radius-pill);
+  min-height: 2.5rem; display: inline-flex; align-items: center; padding: 0 1.2rem; border-radius: var(--radius-inner);
   font: var(--wt-reg) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
 }
 .switch [aria-selected="true"] { background: var(--ink); color: var(--paper); }
