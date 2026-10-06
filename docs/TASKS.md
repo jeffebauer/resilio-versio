@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, session 9. Four agents reported: the VALVE lurch page is ready (§2), the first-chord fix needs your ear on one trade-off (§3), the stereo-in study has questions (§4), and going public + the minisite brief need decisions (§5). Nothing merged yet
+**Last updated:** 6 Oct 2026, session 9. Going-public prep merged (repo still private); the first-chord A/B page is being built (§3); the VALVE lurch stays as it is
 
 | Milestone | State |
 |---|---|
@@ -21,16 +21,15 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 3. First chord after drums: one trade-off (Claude is re-running the tests)
-- [ ] The fix makes the first chord after a kick groove come in level with the chords after it (was up to +3.4 dB). Its price: **inside a groove, a snare or rim right after a kick comes in 1–2 dB quieter** than today (the kick's lows were lifting it). Should the snare after a kick come in as loud as today, or as loud as the same snare on its own? Claude can build an A/B page if you'd rather hear it
+### 3. First chord after drums: one trade-off (A/B page being built)
+- [ ] The fix makes the first chord after a kick groove come in level with the chords after it (was up to +3.4 dB). Its price: **inside a groove, a snare or rim right after a kick comes in 1–2 dB quieter** than today (the kick's lows were lifting it). Listen on `renders/first_chord_fix_ab/` (Claude says when it's ready; not level-matched on purpose): should the snare after a kick come in as loud as today (A), or as loud as the same snare on its own (B)?
 
 ### 4. Stereo in: what it should sound like (answer whenever; study in `docs/research/stereo-input-study.md` once merged)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
 
 ### 5. Going public + the minisite (decisions before anything is published)
 - [ ] **Listen to the ten demo clips** in the minisite package (rendered, not yet heard by anyone) and approve, cut or redo
-- [ ] **Going-public prep is ready** (branch `chore/going-public`, all 24 test suites pass): licence files, README credit/disclaimer, issue forms, fixed download names, draft public release notes (`docs/release-notes-public.md`), and the plugin layout fix (THROW reads in full, GATE moves under DRIVE; the button sits 1.8 mm right of the module's spot). OK to merge? OK to delete the 15 old branches on GitHub? Want an About/credit line in the plugin panel?
-- Your going-public answers are recorded in ADR 0045 (AGPL plugin, MIT code, email and spectrograms fine, credit Jesse Bauer → jessebauer.xyz, GitHub Issues, prune branches and keep releases, keep the name with a disclaimer). Claude prepares it all on a branch; **the repo only goes public when you say "flip it"**
+- Going-public prep **merged** (6 Oct, ADR 0045, SPEC v1.0.44): licences, README, issue forms, fixed download names, draft public release notes (`docs/release-notes-public.md`), the plugin panel layout (THROW in full; SIZE left and GATE right on the bottom row). Old branches kept, no credit line on the panel, no "test build" wording. **The repo only goes public when you say "flip it"**; the new panel reaches Ableton with the next install
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 
