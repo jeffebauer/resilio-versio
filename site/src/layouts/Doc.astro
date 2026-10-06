@@ -1,0 +1,74 @@
+---
+// Doc pages (PLAN §B3): a sticky index column with the page's headings, numbered in
+// mono, and a prose column (max 38em). Cream for the reference pages (Manual, Presets),
+// paper for the rest. No scroll choreography here.
+import Base from './Base.astro';
+import IndexNav from '../components/IndexNav.astro';
+import { pageHeadings, type Page } from '../lib/content';
+
+interface Props {
+  page: Page;
+  h1: string;
+  kicker: string;
+  surface?: 'cream' | 'paper';
+  /** Include h3 headings under these h2 slugs in the index (e.g. the manual's controls). */
+  expand?: string[];
+  /** Headings to leave out of the index. */
+  skip?: string[];
+}
+const { page, h1, kicker, surface = 'paper', expand = [], skip = [] } = Astro.props;
+
+const items: { href: string; label: string; sub?: boolean }[] = [];
+let parent = '';
+for (const h of pageHeadings(page)) {
+  if (skip.includes(h.slug)) continue;
+  if (h.depth === 2) { parent = h.slug; items.push({ href: `#${h.slug}`, label: h.text }); }
+  else if (h.depth === 3 && expand.includes(parent)) items.push({ href: `#${h.slug}`, label: h.text, sub: true });
+}
+---
+<Base title={page.data.title} description={page.data.description} bodyClass={surface === 'cream' ? 'on-cream' : undefined}>
+  <div class="doc-hero grid">
+    <p class="kicker small">{kicker}</p>
+    <h1 class="display">{h1}</h1>
+  </div>
+  <slot name="media" />
+  <div class="doc-body grid ruled-top">
+    <div class="index">
+      {items.length > 0 && <IndexNav items={items} label={`${h1}: contents`} />}
+      <slot name="index" />
+    </div>
+    <div class="main">
+      <div class="prose" data-prose>
+        <slot />
+      </div>
+    </div>
+  </div>
+  <script>
+    // Copy buttons on code blocks (BRIEF §8: selectable, with an accessible label).
+    document.querySelectorAll<HTMLPreElement>('[data-prose] pre').forEach((pre, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'code-wrap';
+      pre.replaceWith(wrap);
+      wrap.append(pre);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'copy';
+      btn.textContent = 'Copy';
+      btn.setAttribute('aria-label', `Copy command ${i + 1} to the clipboard`);
+      const status = document.createElement('span');
+      status.className = 'visually-hidden';
+      status.setAttribute('role', 'status');
+      btn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(pre.innerText.trim());
+          btn.textContent = 'Copied';
+          status.textContent = 'Copied to the clipboard';
+        } catch {
+          btn.textContent = 'Select and copy';
+        }
+        setTimeout(() => { btn.textContent = 'Copy'; status.textContent = ''; }, 2000);
+      });
+      wrap.append(btn, status);
+    });
+  </script>
+</Base>

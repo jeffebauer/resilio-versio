@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+.vercel/
+# Copied in by scripts/prebuild.mjs from docs/minisite/assets (one source of truth)
+public/audio/
+public/panel/
+# Licensed fonts: never committed (see README "Fonts")
+public/fonts/

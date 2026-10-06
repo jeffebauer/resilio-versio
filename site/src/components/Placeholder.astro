@@ -1,0 +1,11 @@
+---
+// A render slot until the Blender renders exist (PLAN §A3): a --mist card at the
+// final aspect ratio, labelled in mono.
+interface Props { id: string; name: string; ratio: string; class?: string; children?: unknown }
+const { id, name, ratio, class: cls = '' } = Astro.props;
+const [w, h] = ratio.split(':').map(Number);
+---
+<div class={`placeholder ${cls}`.trim()} style={`aspect-ratio: ${w} / ${h}`} role="img" aria-label={`${id} ${name}: render pending`}>
+  <slot />
+  <span class="ph-label"><span class="dot" aria-hidden="true"></span>{id} {name} · {ratio} · render pending</span>
+</div>

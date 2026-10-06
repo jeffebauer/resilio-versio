@@ -1,0 +1,111 @@
+---
+// Every page: <head> (SEO, OG, fonts), the header with the nav pill, the footer.
+import '../../../docs/minisite/design/tokens.css';
+import '../styles/site.css';
+import Analytics from '@vercel/analytics/astro';
+import Footer from '../components/Footer.astro';
+import { NAV } from '../data/site';
+import { FONT_FILES, fontsPresent } from '../lib/fonts';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  bodyClass?: string;
+}
+const { title, description, ogImage = '/og/default.png', noindex = false, bodyClass } = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const og = new URL(ogImage, Astro.site);
+const path = Astro.url.pathname.replace(/\/?$/, '/');
+const current = (href: string) => (href !== '/#sound' && path === href ? 'page' : undefined);
+
+// Fonts: preload the two most-used cuts when the licensed files are present
+// (scripts/prebuild.mjs). When they're absent, the fallback stack in tokens.css takes over.
+const fonts = fontsPresent();
+// When any file is missing, take Phonic out of the stacks (html:root outranks the
+// tokens' :root), so the browser never asks for a file that isn't there.
+const fallbackFaces = Object.values(fonts).every(Boolean)
+  ? ''
+  : `html:root {
+  --font-sans: "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}`;
+const onVercel = Boolean(process.env.VERCEL);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#f6f5f3" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Resilio Versio" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Resilio Versio: a dub spring reverb for the Noise Engineering Versio" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    {fonts.light && <link rel="preload" href={`/fonts/${FONT_FILES.light}`} as="font" type="font/woff2" crossorigin />}
+    {fonts.mono && <link rel="preload" href={`/fonts/${FONT_FILES.mono}`} as="font" type="font/woff2" crossorigin />}
+    {fallbackFaces && <style is:inline set:html={fallbackFaces} />}
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header" data-header>
+      <a class="wordmark" href="/" aria-label="Resilio Versio, home">Resilio Versio</a>
+      <nav aria-label="Main">
+        <ul class="nav-pill">
+          {NAV.map((n) => <li><a href={n.href} aria-current={current(n.href)}>{n.label}</a></li>)}
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <details class="menu">
+          <summary>Menu</summary>
+          <nav aria-label="Main (compact)">
+            <ul>
+              {NAV.map((n) => <li><a href={n.href} aria-current={current(n.href)}>{n.label}</a></li>)}
+              <li><a href="/faq/" aria-current={current('/faq/')}>FAQ</a></li>
+            </ul>
+          </nav>
+        </details>
+        <a class="btn btn-dark" href="/#download">Download</a>
+      </div>
+    </header>
+    <main id="content" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    {onVercel && <Analytics />}
+    <script>
+      // The wordmark gets the same blurred pill as the nav once the page scrolls.
+      const header = document.querySelector('[data-header]');
+      const onScroll = () => header?.classList.toggle('is-scrolled', window.scrollY > 8);
+      addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+      // Close the compact menu after choosing a link (same-page anchors don't reload).
+      document.querySelectorAll<HTMLAnchorElement>('.menu a').forEach((a) =>
+        a.addEventListener('click', () => a.closest('details')?.removeAttribute('open')),
+      );
+      // Escape closes it and returns focus to the Menu button.
+      document.addEventListener('keydown', (e) => {
+        const menu = document.querySelector<HTMLDetailsElement>('.menu[open]');
+        if (e.key === 'Escape' && menu) { menu.open = false; menu.querySelector('summary')?.focus(); }
+      });
+    </script>
+  </body>
+</html>

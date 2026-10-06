@@ -1,0 +1,88 @@
+---
+// Install: Module / Plugin as a pill switch (PLAN §B3). Without JS both halves are
+// shown and the switch is a pair of jump links; with JS it becomes real tabs.
+import Doc from '../layouts/Doc.astro';
+import DocContent from '../components/DocContent.astro';
+import { getPage, pageHtml, splitSections, splitSlots, takeH1 } from '../lib/content';
+
+const page = await getPage('install');
+const { h1, rest } = takeH1(pageHtml(page));
+const { lead, sections } = splitSections(rest);
+const TABS = [
+  { id: 'on-the-versio', label: 'Module' },
+  { id: 'in-a-daw-macos', label: 'Plugin' },
+];
+const h2 = (s: { id: string; title: string }) => `<h2 id="${s.id}">${s.title}</h2>`;
+const before = sections.filter((s) => !TABS.some((t) => t.id === s.id) && sections.indexOf(s) < sections.findIndex((x) => x.id === TABS[0].id));
+const after = sections.filter((s) => !TABS.some((t) => t.id === s.id) && !before.includes(s));
+const tabbed = TABS.map((t) => ({ ...t, section: sections.find((s) => s.id === t.id)! }));
+---
+<Doc page={page} h1={h1} kicker="Resilio Versio · firmware and plugin">
+  <DocContent parts={splitSlots(lead)} />
+  {before.map((s) => <DocContent parts={splitSlots(h2(s) + s.html)} />)}
+  <div class="tabs" data-tabs>
+    <div class="switch" data-tablist aria-label="Install on">
+      {tabbed.map((t) => <a href={`#${t.id}`} data-tab={t.id}>{t.label}</a>)}
+    </div>
+    {tabbed.map((t) => (
+      <div class="tabpanel" data-panel={t.id} id={`panel-${t.id}`}>
+        <DocContent parts={splitSlots(h2(t.section) + t.section.html)} />
+      </div>
+    ))}
+  </div>
+  {after.map((s) => <DocContent parts={splitSlots(h2(s) + s.html)} />)}
+</Doc>
+<script>
+  const root = document.querySelector<HTMLElement>('[data-tabs]');
+  if (root) {
+    const list = root.querySelector<HTMLElement>('[data-tablist]')!;
+    const links = [...list.querySelectorAll<HTMLAnchorElement>('[data-tab]')];
+    // Turn the jump links into buttons with tab semantics.
+    const tabs = links.map((a) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = a.textContent;
+      b.dataset.tab = a.dataset.tab;
+      b.id = `tab-${a.dataset.tab}`;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', `panel-${a.dataset.tab}`);
+      a.replaceWith(b);
+      return b;
+    });
+    list.setAttribute('role', 'tablist');
+    const panels = tabs.map((t) => {
+      const p = root.querySelector<HTMLElement>(`[data-panel="${t.dataset.tab}"]`)!;
+      p.setAttribute('role', 'tabpanel');
+      p.setAttribute('aria-labelledby', t.id);
+      return p;
+    });
+    const select = (i: number, focus = false) => {
+      tabs.forEach((t, j) => {
+        t.setAttribute('aria-selected', String(i === j));
+        t.tabIndex = i === j ? 0 : -1;
+        panels[j].hidden = i !== j;
+      });
+      if (focus) tabs[i].focus();
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(i));
+      t.addEventListener('keydown', (e) => {
+        const n = tabs.length;
+        const k: Record<string, number> = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 };
+        if (e.key in k) { e.preventDefault(); select(k[e.key], true); }
+      });
+    });
+    // Links into a hidden half (e.g. /install#in-a-daw-macos) open its tab first.
+    const fromHash = () => {
+      const target = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      const i = target ? panels.findIndex((p) => p.contains(target)) : -1;
+      select(Math.max(0, i));
+      if (i >= 0 && target) target.scrollIntoView();
+    };
+    addEventListener('hashchange', fromHash);
+    document.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach((a) =>
+      a.addEventListener('click', () => setTimeout(fromHash)),
+    );
+    fromHash();
+  }
+</script>

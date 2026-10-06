@@ -1,0 +1,15 @@
+---
+import Doc from '../layouts/Doc.astro';
+import DocContent from '../components/DocContent.astro';
+import Placeholder from '../components/Placeholder.astro';
+import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
+
+const page = await getPage('manual');
+const { h1, rest } = takeH1(pageHtml(page));
+---
+<Doc page={page} h1={h1} kicker="Resilio Versio · the player’s guide" surface="cream" expand={['controls']}>
+  <div class="doc-media" slot="media">
+    <Placeholder id="R5" name="Panel macro: knobs, TANK and ATTITUDE" ratio="21:9" />
+  </div>
+  <DocContent parts={splitSlots(rest)} />
+</Doc>

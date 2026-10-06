@@ -1,0 +1,276 @@
+---
+// The style tile (PLAN §A1): the system on one page, before any layout. Built from the
+// real tokens and components, so it doubles as the component test page.
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import IndexNav from '../components/IndexNav.astro';
+import Button from '../components/Button.astro';
+import Chip from '../components/Chip.astro';
+import MediaCard from '../components/MediaCard.astro';
+import SpecTable from '../components/SpecTable.astro';
+import AudioAB from '../components/AudioAB.astro';
+import { getDemos } from '../lib/demos';
+import { contrast, grade } from '../lib/contrast';
+import { fontsPresent } from '../lib/fonts';
+
+const { clips } = await getDemos();
+const fonts = fontsPresent();
+const allFonts = Object.values(fonts).every(Boolean);
+
+const TYPE = [
+  { cls: 'display', token: '--fs-display', range: '40 → 84 px', meta: 'Light 300 · line 1.0 · −1.5 %', sample: 'Resilio Versio' },
+  { cls: 'h2', token: '--fs-h2', range: '28 → 56 px', meta: 'Light 300 · line 1.15', sample: 'What it sounds like' },
+  { cls: 'lede', token: '--fs-lede', range: '20 → 30 px', meta: 'Light 300 · line 1.15', sample: 'A simulated spring tank you can throw snares into, splash, drive, filter like King Tubby, hold forever, push into a howl.' },
+  { cls: '', token: '--fs-body', range: '17 → 22 px', meta: 'Light 300 · line 1.35', sample: 'Every hit lands in the springs as its own splash: a bright clang on the attack, then echoes that sweep upward, then a tail that darkens and blurs into a wash.' },
+  { cls: 'small', token: '--fs-small', range: '15 → 18 px', meta: 'Light 300 · line 1.35 · captions, index, tables', sample: 'Fully right is 100 % wet, for a send/return: the classic dub way, throwing the snare into it.' },
+  { cls: 'ui', token: '--fs-ui', range: '14 px', meta: 'Regular 400 · +0.04 em · nav, buttons', sample: 'Manual   Install   Presets   Changelog' },
+  { cls: 'micro', token: '--fs-micro', range: '12 px', meta: 'Mono 400 · notes, chips, badges', sample: 'TAP TEMPO · CLOCK' },
+];
+
+// Text pairs (4.5:1 needed for body text, 3:1 for large text and UI marks).
+const COLOURS = [
+  { name: 'Paper', token: '--paper', hex: '#f6f5f3', use: 'Page', pairs: [['Ink', '#111111']] },
+  { name: 'White', token: '--white', hex: '#ffffff', use: 'Image bands', pairs: [['Ink', '#111111'], ['Ink 2', '#5f5f5f']] },
+  { name: 'Mist', token: '--mist', hex: '#ececec', use: 'Image cards, quiet fills', pairs: [['Ink 2', '#5f5f5f']] },
+  { name: 'Cream', token: '--cream', hex: '#f0e7db', use: 'Reference pages (manual, spec)', pairs: [['Ink', '#111111'], ['Ink 2 cream', '#5e5745']] },
+  { name: 'Ink', token: '--ink', hex: '#111111', use: 'Text, dark buttons', pairs: [['Paper', '#f6f5f3']] },
+  { name: 'Ink 2', token: '--ink-2', hex: '#5f5f5f', use: 'Secondary text on paper and white', pairs: [['on Paper', '#f6f5f3']] },
+  { name: 'Ink 2 cream', token: '--ink-2-cream', hex: '#5e5745', use: 'Secondary text on cream', pairs: [['on Cream', '#f0e7db']] },
+  { name: 'Panel', token: '--panel', hex: '#0b0b0b', use: 'Dark cards: the panel, the demos', pairs: [['Paper', '#f6f5f3'], ['Grey', '#a3a3a3']] },
+  { name: 'Signal', token: '--signal', hex: '#ee5641', use: 'Marks only: dots, playheads, LEDs. Never small text', pairs: [['on Paper (mark)', '#f6f5f3'], ['on Panel (mark)', '#0b0b0b']] },
+  { name: 'Signal ink', token: '--signal-ink', hex: '#c83d16', use: 'Filled buttons, focus ring', pairs: [['White text', '#ffffff']] },
+  { name: 'Signal hover', token: '--signal-hover', hex: '#b23512', use: 'Button hover', pairs: [['White text', '#ffffff']] },
+  { name: 'Line', token: '--line', hex: '#cfcfcf', use: 'Hairlines on paper and white', pairs: [] },
+  { name: 'Line cream', token: '--line-cream', hex: '#cec7b1', use: 'Hairlines on cream', pairs: [] },
+  { name: 'Line dark', token: '--line-dark', hex: '#2b2b2b', use: 'Hairlines on ink', pairs: [] },
+];
+const textOn = (hex: string) => (contrast(hex, '#111111') > contrast(hex, '#f6f5f3') ? '#111111' : '#f6f5f3');
+
+const SECTIONS = [
+  ['type', 'Type'], ['mono', 'Mono labels'], ['colour', 'Colour'], ['rules', 'Rules and surfaces'],
+  ['softness', 'Softness'], ['buttons', 'Buttons, pills, chips'], ['nav', 'Nav over an image'],
+  ['card', 'Image card'], ['spec', 'Spec rows'], ['player', 'A/B player'],
+].map(([id, label]) => ({ href: `#${id}`, label }));
+---
+<Base title="Style tile: Resilio Versio minisite" description="The Resilio Versio minisite's design system on one page: type, colour, rules, buttons, pills, cards, spec rows and the A/B player." noindex>
+  <div class="doc-hero grid">
+    <p class="kicker small">Style tile · first review</p>
+    <h1 class="display">The system, before the pages</h1>
+  </div>
+
+  <div class="doc-body grid ruled-top">
+    <div class="index">
+      <IndexNav items={SECTIONS} label="Style tile: contents" />
+    </div>
+    <div class="main flow">
+      <p class="lede">Everything here is built from <code>docs/minisite/design/tokens.css</code> and the site’s real components. What to judge: type sizes and weights in Phonic, the two accent tones, and how soft the rounding feels against the square grid.</p>
+      <p class="small quiet">
+        Fonts this build: {allFonts ? 'Phonic and Phonic Mono, all four files.' : 'Phonic files not supplied, so this page shows the fallback stack (Helvetica Neue / Arial, and the system monospace). Sizes and weights will shift slightly once Phonic is in.'}
+      </p>
+    </div>
+  </div>
+
+  <!-- Type -->
+  <section class="tile-section" aria-labelledby="type">
+    <SectionHead num="01" label="Type" id="type">One family, Light for nearly everything. No bold. Hierarchy by size, grey against ink, and position.</SectionHead>
+    <div class="grid">
+      <div class="main">
+        {TYPE.map((t) => (
+          <div class="tile-row">
+            <p class="micro quiet">{t.token}<br />{t.range}<br />{t.meta}</p>
+            <p class={`type-specimen ${t.cls === 'ui' ? '' : t.cls}`} style={t.cls === 'ui' ? 'font: var(--wt-reg) var(--fs-ui)/1.4 var(--font-sans); letter-spacing: var(--track-ui); white-space: pre' : undefined}>{t.sample}</p>
+          </div>
+        ))}
+        <div class="tile-row">
+          <p class="micro quiet">Weights</p>
+          <div class="lede">
+            <p style="font-weight: 300">Light 300 · the default, all reading text</p>
+            <p style="font-weight: 400">Regular 400 · UI, and anything under 15 px</p>
+            <p style="font-weight: 500">Medium 500 · rare: an active item, a table head</p>
+          </div>
+        </div>
+        <div class="tile-row">
+          <p class="micro quiet">Display pair<br />title + quiet line</p>
+          <p class="display">Resilio Versio <span class="quiet">A dub spring reverb for the Noise Engineering Versio.</span></p>
+        </div>
+        <div class="tile-row">
+          <p class="micro quiet">Feature stack<br />caps, centred, mono note</p>
+          <ul class="feature-stack" aria-label="Feature stack sample">
+            <li><span>Two springs</span><sup>TANK 1 · 2</sup></li>
+            <li><span>Tape echo</span><sup>TAP TEMPO · CLOCK</sup></li>
+          </ul>
+        </div>
+        <div class="tile-row">
+          <p class="micro quiet">Long reading<br />2 em indent after the first paragraph</p>
+          <div class="prose">
+            <p>How long the tail rings: from a quick slap (about 0.4 s) to a long wash (about 9 s). It always fades out, except at the very top, which depends on ATTITUDE.</p>
+            <p>Pull DECAY back and either one falls into a normal tail and fades. In TANK ECHO, DECAY is the echo’s feedback instead.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mono -->
+  <section class="tile-section" aria-labelledby="mono">
+    <SectionHead num="02" label="Mono labels" id="mono">Phonic Monospaced for every number a player might compare.</SectionHead>
+    <div class="grid">
+      <div class="main">
+        <div class="tile-row"><p class="micro quiet">Index</p>
+          <IndexNav label="Index sample" items={[{ href: '#mono', label: 'Introduction' }, { href: '#mono', label: 'The sound' }, { href: '#mono', label: 'The panel' }]} />
+        </div>
+        <div class="tile-row"><p class="micro quiet">Version, date</p><p><span class="mono lede">v2026.10.06-a6c70a4</span> <span class="quiet">6 October 2026</span></p></div>
+        <div class="tile-row"><p class="micro quiet">Parameter values</p><p class="mono">BLEND 0.45 (11:30) · DECAY 0.6 (1) · TONE 0.65 (1:30)</p></div>
+        <div class="tile-row"><p class="micro quiet">Figure caption</p><p class="caption"><span class="num">Fig. 02</span>The tank, rear transducer</p></div>
+        <div class="tile-row"><p class="micro quiet">Micro note</p><p class="micro">CLEAN · TAPE · VALVE</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Colour -->
+  <section class="tile-section" aria-labelledby="colour">
+    <SectionHead num="03" label="Colour" id="colour">Light, warm neutrals. One accent, LED red, used about once per screen. Ratios are WCAG 2, computed at build.</SectionHead>
+    <div class="grid">
+      <div class="main"><div class="swatches">
+        {COLOURS.map((c) => (
+          <div class="swatch">
+            <div class="chipbox" style={`background: ${c.hex}; color: ${textOn(c.hex)}`}><span class="micro">{c.hex}</span></div>
+            <p>{c.name} <span class="micro quiet">{c.token}</span></p>
+            <p class="small quiet">{c.use}</p>
+            {c.pairs.length > 0 && (
+              <dl class="micro">
+                {c.pairs.map(([label, other]) => {
+                  const r = contrast(c.hex, other);
+                  return <><dt>{label}</dt><dd>{r.toFixed(1)}:1 {grade(r)}</dd></>;
+                })}
+              </dl>
+            )}
+          </div>
+        ))}
+      </div></div>
+    </div>
+  </section>
+
+  <!-- Rules -->
+  <section class="tile-section" aria-labelledby="rules">
+    <SectionHead num="04" label="Rules and surfaces" id="rules">1 px hairlines are structure only: section openers, table rows, one vertical joiner. Never boxes around text.</SectionHead>
+    <div class="surfaces">
+      {[['Paper', ''], ['Cream', 'on-cream'], ['Ink', 'on-ink']].map(([name, cls]) => (
+        <div class={cls} style={cls ? undefined : 'background: var(--paper)'}>
+          <p class="section-head small" style="padding-inline: 0"><span class="num">0{name === 'Paper' ? 1 : name === 'Cream' ? 2 : 3}</span>{name}</p>
+          <p class="small quiet">Secondary text on {name.toLowerCase()}, readable at AA.</p>
+          <table class="spec"><tbody>
+            <tr><th scope="row">TANK</th><td>1 · 2 · ECHO</td></tr>
+            <tr><th scope="row">ATTITUDE</th><td>CLEAN · TAPE · VALVE</td></tr>
+          </tbody></table>
+          <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: stretch">
+            <p class="small">On the module</p><div class="v-rule" style="min-height: 4rem" aria-hidden="true"></div><p class="small">In your DAW</p>
+          </div>
+          <p><Chip dot>TANK 2</Chip> <Chip>TAPE</Chip></p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Softness -->
+  <section class="tile-section" aria-labelledby="softness">
+    <SectionHead num="05" label="Softness" id="softness">Rounded only where your hand or eye lands. Everything structural stays square.</SectionHead>
+    <div class="grid">
+      <div class="main">
+        <div class="tile-row"><p class="micro quiet">--radius-card<br />≈ 0.8 vw, 8 → 14 px</p><div class="placeholder" style="aspect-ratio: 5 / 2; max-width: 28rem"><span class="ph-label">Image card</span></div></div>
+        <div class="tile-row"><p class="micro quiet">--radius-ui<br />10 px</p><p><Button href="#softness" variant="primary">Firmware for the Versio (.bin)</Button></p></div>
+        <div class="tile-row"><p class="micro quiet">--radius-pill</p><p class="demo-row"><Button href="#softness" variant="dark">Download</Button><Chip dot>Pill</Chip></p></div>
+        <div class="tile-row"><p class="micro quiet">Square<br />grid, rules, tables</p><div style="height: 6rem; border-top: 1px solid var(--line); border-left: 1px solid var(--line); max-width: 28rem"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Buttons -->
+  <section class="tile-section" aria-labelledby="buttons">
+    <SectionHead num="06" label="Buttons, pills, chips" id="buttons">The red fill appears once per screen: the download. Focus: tab through this row to see the ring.</SectionHead>
+    <div class="grid">
+      <div class="main">
+        <div class="tile-row"><p class="micro quiet">Primary<br />--signal-ink, white 5.1:1</p><p class="demo-row"><Button href="#buttons" variant="primary" arrow>Download</Button><Button href="#buttons" variant="primary">Firmware for the Versio (.bin)<span class="mono">126 KB</span></Button></p></div>
+        <div class="tile-row"><p class="micro quiet">Dark pill</p><p class="demo-row"><Button href="#buttons" variant="dark">Download</Button><Button href="#buttons" variant="dark">Plugin for macOS (AU/VST3)<span class="mono">7.8 MB</span></Button></p></div>
+        <div class="tile-row"><p class="micro quiet">Ghost pill</p><p class="demo-row"><Button href="#buttons" variant="ghost">Listen</Button><Button href="#buttons" variant="ghost" arrow>Read the manual</Button></p></div>
+        <div class="tile-row"><p class="micro quiet">Coming soon<br />before the repo is public</p><p class="download"><span class="soon"><Button variant="primary" disabled>Firmware for the Versio (.bin)<span class="mono">126 KB</span></Button><span class="micro quiet">Coming soon: the link goes live when the repository is public.</span></span></p></div>
+        <div class="tile-row"><p class="micro quiet">Nav pill</p><nav aria-label="Nav pill sample"><ul class="nav-pill" style="display: inline-flex; list-style: none; margin: 0"><li><a href="#buttons">Sound</a></li><li><a href="#buttons" aria-current="page">Manual</a></li><li><a href="#buttons">Install</a></li><li><a href="#buttons">Presets</a></li></ul></nav></div>
+        <div class="tile-row"><p class="micro quiet">Chips, badges</p><p class="demo-row"><Chip dot>TANK 2</Chip><Chip>TAPE</Chip><Chip>VALVE</Chip><span class="badge">Pre-release</span><span class="badge">AU · VST3</span></p></div>
+        <div class="tile-row"><p class="micro quiet">Switch pill</p><div class="switch" role="group" aria-label="Switch sample"><button type="button" aria-pressed="true" style="background: var(--ink); color: var(--paper)">Module</button><button type="button" aria-pressed="false">Plugin</button></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Nav over image -->
+  <section class="tile-section" aria-labelledby="nav">
+    <SectionHead num="07" label="Nav over an image" id="nav">The pill blurs whatever passes under it. (Stand-in image: a CSS gradient, until the renders exist.)</SectionHead>
+    <div class="grid">
+      <div class="main">
+        <div class="nav-over">
+          <div class="fake-image" aria-hidden="true"></div>
+          <div class="bar">
+            <nav aria-label="Nav over image sample"><ul class="nav-pill" style="list-style: none; margin: 0"><li><a href="#nav">Sound</a></li><li><a href="#nav">Manual</a></li><li><a href="#nav">Install</a></li><li><a href="#nav">Presets</a></li><li><a href="#nav">Changelog</a></li></ul></nav>
+          </div>
+          <span class="ph-label micro">Stand-in image · R1 pending</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Card -->
+  <section class="tile-section" aria-labelledby="card">
+    <SectionHead num="08" label="Image card" id="card">Caption above, in the index style. Renders arrive from Blender (PLAN §A3); until then, a mist card at the final ratio.</SectionHead>
+    <div class="grid">
+      <div class="main" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: var(--gutter)">
+        <MediaCard fig="01" caption="The tank, three-quarter top view" ratio="16:9" render={{ id: 'R1', name: 'Tank hero' }} />
+        <MediaCard fig="02" caption="The module, three-quarter view" ratio="4:5" render={{ id: 'R3', name: 'Module 3/4' }} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Spec -->
+  <section class="tile-section on-cream" aria-labelledby="spec">
+    <SectionHead num="09" label="Spec rows" id="spec">Hairline rows on cream, the reference surface.</SectionHead>
+    <div class="grid">
+      <div class="main" style="padding-block: var(--stack-3)">
+        <SpecTable caption="Spec sample" rows={[
+          { name: 'BLEND', value: 'Dry ↔ wet. Fully right is 100 % wet, for a send/return.', href: '/manual/#blend' },
+          { name: 'DECAY', value: 'How long the tail rings, from a quick slap to a long wash.', href: '/manual/#decay' },
+          { name: 'Firmware', value: '126 KB · fits the Versio’s 128 KB of flash', mono: false },
+        ]} />
+      </div>
+    </div>
+  </section>
+
+  <!-- Player -->
+  <section class="tile-section" aria-labelledby="player">
+    <SectionHead num="10" label="A/B player" id="player">Real audio. Press play; Tab to the waveform and use the arrow keys to seek. One clip plays at a time.</SectionHead>
+    <div class="grid">
+      <div class="main">
+        <ul class="demos">
+          <AudioAB clip={clips[0]} n={1} idPrefix="tile-paper" />
+        </ul>
+      </div>
+    </div>
+    <div class="on-ink" style="margin-top: var(--stack-4); padding-block: var(--stack-4)">
+      <div class="grid">
+        <p class="index small quiet">On ink, as in the sound band.</p>
+        <div class="main">
+          <ul class="demos">
+            <AudioAB clip={clips[1]} n={2} idPrefix="tile-ink" />
+            <AudioAB clip={clips[3]} n={4} idPrefix="tile-ink" />
+          </ul>
+          <div class="tile-row" style="margin-top: var(--stack-4)">
+            <p class="micro quiet">DRY / WET switch<br />appears once demos.json lists a dry file</p>
+            <div class="player" inert style="border: 0; padding: 0; grid-template-columns: auto">
+              <span class="ab"><button type="button" aria-pressed="false">Dry</button><button type="button" aria-pressed="true">Wet</button></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+    import '../scripts/player';
+  </script>
+</Base>

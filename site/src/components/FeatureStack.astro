@@ -1,0 +1,10 @@
+---
+// Centred uppercase display lines, each with a small mono superscript note.
+interface Props { items: { line: string; note?: string }[]; label?: string }
+const { items, label = 'Features' } = Astro.props;
+---
+<ul class="feature-stack" aria-label={label} data-feature-stack>
+  {items.map((f) => (
+    <li data-line><span>{f.line}</span>{f.note && <sup data-note>{f.note}</sup>}</li>
+  ))}
+</ul>

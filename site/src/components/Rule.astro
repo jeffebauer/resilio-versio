@@ -1,0 +1,6 @@
+---
+// A full-bleed 1 px hairline. Structure only, never decoration (DESIGN "Grid and linework").
+interface Props { vertical?: boolean }
+const { vertical = false } = Astro.props;
+---
+{vertical ? <div class="v-rule" aria-hidden="true" /> : <hr class="rule" />}

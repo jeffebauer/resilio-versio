@@ -1,0 +1,23 @@
+---
+// The numbered index: "01 Introduction …", numbers in mono grey (AUDIT §5).
+interface Item { href: string; label: string; sub?: boolean }
+interface Props { items: Item[]; label?: string; class?: string; numbered?: boolean }
+const { items, label = 'On this page', class: cls = '', numbered = true } = Astro.props;
+let n = 0;
+---
+<nav class={`index-nav ${cls}`} aria-label={label}>
+  <ol>
+    {items.map((it) => {
+      if (!it.sub) n++;
+      return (
+        <li class={it.sub ? 'sub-item' : undefined}>
+          <a href={it.href}>
+            {numbered && !it.sub && <span class="num">{String(n).padStart(2, '0')}</span>}
+            {it.sub && <span class="num" aria-hidden="true">·</span>}
+            <span class="label-text">{it.label}</span>
+          </a>
+        </li>
+      );
+    })}
+  </ol>
+</nav>

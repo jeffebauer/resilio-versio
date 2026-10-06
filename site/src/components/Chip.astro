@@ -1,0 +1,6 @@
+---
+// Small outlined pill in mono caps; `dot` adds the signal mark.
+interface Props { dot?: boolean; class?: string }
+const { dot = false, class: cls = '' } = Astro.props;
+---
+<span class={`chip ${cls}`.trim()}>{dot && <span class="dot" aria-hidden="true" />}<slot /></span>

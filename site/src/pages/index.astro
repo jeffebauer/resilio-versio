@@ -1,0 +1,195 @@
+---
+// Home (PLAN §B2): the story, sections 00–08. Copy comes from
+// docs/minisite/content/overview.md, split at its headings and placed section by section.
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import IndexNav from '../components/IndexNav.astro';
+import Button from '../components/Button.astro';
+import MediaCard from '../components/MediaCard.astro';
+import SpecTable from '../components/SpecTable.astro';
+import FeatureStack from '../components/FeatureStack.astro';
+import PanelDiagram from '../components/PanelDiagram.astro';
+import DemoList from '../components/DemoList.astro';
+import DownloadBlock from '../components/DownloadBlock.astro';
+import ScrubSequence from '../components/ScrubSequence.astro';
+import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
+import { CONTROLS, FEATURES } from '../data/controls';
+
+const page = await getPage('overview');
+const { h1, rest } = takeH1(pageHtml(page));
+const { lead, sections } = splitSections(rest);
+const noSlots = (html: string) => splitSlots(html).filter((p) => p.kind === 'html').map((p) => (p as { html: string }).html).join('');
+
+// Lead: the tagline (bold line), the lede, and the etymology note.
+const leadParas = noSlots(lead).match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const tagline = stripTags(leadParas[0] ?? '');
+const lede = leadParas[1]?.replace(/^<p>|<\/p>$/g, '') ?? '';
+const etymology = leadParas[2] ?? '';
+
+const sound = section(sections, 'what-it-sounds-like');
+const moves = section(sections, 'built-around-the-dub-moves');
+const panel = section(sections, 'the-panel');
+const safe = section(sections, 'safe-to-try');
+const plugin = section(sections, 'the-plugin');
+const status = section(sections, 'status');
+
+const panelParas = noSlots(panel.html).match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const movesHtml = moves.html.replace(/<p><a href="\/manual">Read the manual<\/a><\/p>/, '');
+const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\/p>/, '');
+
+const INDEX = [
+  { href: '#introduction', label: 'Introduction' },
+  { href: '#sound', label: 'The sound' },
+  { href: '#panel', label: 'The panel' },
+  { href: '#features', label: 'Features' },
+  { href: '#two-ways', label: 'Two ways to play' },
+  { href: '#download', label: 'Download' },
+];
+---
+<Base title={page.data.title} description={page.data.description} bodyClass="home">
+  <!-- 01 Hero -->
+  <section class="hero" aria-labelledby="title">
+    <div class="hero-media">
+      <div class="placeholder hero-frame" style="aspect-ratio: 16 / 9" role="img" aria-label="R1 Tank hero: render pending">
+        <div class="hero-zoom" data-hero-zoom>
+          <span class="ph-label"><span class="dot" aria-hidden="true"></span>R1 Tank hero · 16:9 · render pending</span>
+        </div>
+        <span class="sweep" data-sweep aria-hidden="true"></span>
+      </div>
+    </div>
+    <div class="hero-title grid">
+      <h1 class="display" id="title"><span>{h1}</span> <span class="quiet">{tagline}</span></h1>
+      <div class="actions">
+        <Button href="#sound" variant="ghost">Listen</Button>
+        <Button href="#download" variant="primary" arrow>Download</Button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 Introduction -->
+  <section class="section" aria-labelledby="introduction">
+    <SectionHead num="01" label="Introduction" id="introduction" />
+    <div class="section-body grid">
+      <div class="index">
+        <IndexNav items={INDEX} label="Sections" />
+      </div>
+      <div class="main flow">
+        <p class="lede" data-split set:html={lede} />
+        <div class="small quiet" set:html={etymology} />
+      </div>
+    </div>
+  </section>
+
+  <div class="doc-media section" data-reveal>
+    <MediaCard fig="01" caption="The tank, springs close up" ratio="21:9" render={{ id: 'R2', name: 'Tank macro, spring coils' }} />
+  </div>
+
+  <!-- 03 The sound -->
+  <section class="section on-ink" id="sound" aria-labelledby="sound-h">
+    <SectionHead num="02" label="The sound" id="sound-h" />
+    <div class="section-body grid">
+      <div class="index small quiet">
+        <p>Ten clips, each Resilio itself, rendered from test signals the project made. Loudness-matched. Headphones or monitors.</p>
+      </div>
+      <div class="main flow">
+        <h3 class="statement">{sound.title}</h3>
+        <div class="flow" set:html={sound.html} />
+      </div>
+      <div class="main">
+        <DemoList />
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 The panel -->
+  <section class="section" id="panel" aria-labelledby="panel-h">
+    <SectionHead num="03" label="The panel" id="panel-h" />
+    <div class="section-body grid">
+      <div class="index small">
+        <div set:html={panelParas[0] ?? ''} />
+      </div>
+      <div class="main">
+        <div class="panel-grid">
+          <figure class="figure">
+            <figcaption class="caption"><span class="num">Fig. 02</span>The module</figcaption>
+            <ScrubSequence />
+            <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
+          </figure>
+          <figure class="figure">
+            <figcaption class="caption"><span class="num">Fig. 03</span>The panel, and the map</figcaption>
+            <div class="panel-card">
+              <figure>
+                <img src="/panel/resilio-versio-panel-art.svg" width="191" height="486" loading="lazy" decoding="async"
+                  alt="Resilio Versio panel art: black panel, white control names, red secondary labels." />
+                <figcaption class="micro">Panel art</figcaption>
+              </figure>
+              <figure>
+                <PanelDiagram prefix="home-panel" draw class="on-dark" />
+                <figcaption class="micro">Panel map</figcaption>
+              </figure>
+            </div>
+          </figure>
+        </div>
+      </div>
+      <div class="main flow">
+        <div set:html={panelParas[1] ?? ''} />
+        <SpecTable caption="Resilio’s controls" rows={CONTROLS.map((c) => ({ name: c.name, value: c.line, href: `/manual/#${c.anchor}` }))} />
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 Features -->
+  <section class="section" id="features" aria-labelledby="features-h">
+    <SectionHead num="04" label="Features" id="features-h" />
+    <div class="features" data-features>
+      <FeatureStack items={FEATURES} />
+    </div>
+    <div class="grid">
+      <div class="index"><h3 class="small">{moves.title}</h3></div>
+      <div class="main flow">
+        <div class="flow" set:html={movesHtml} />
+        <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 Two ways to play -->
+  <section class="section" id="two-ways" aria-labelledby="two-ways-h">
+    <SectionHead num="05" label="Two ways to play" id="two-ways-h" />
+    <div class="section-body grid">
+      <div class="main two-ways">
+        <div>
+          <h3>On the module</h3>
+          <p class="small quiet">Firmware for the Noise Engineering Versio</p>
+          <div class="flow" set:html={safeHtml} />
+          <Button href="/install/#on-the-versio" variant="ghost" arrow>How to install</Button>
+        </div>
+        <div class="v-rule" aria-hidden="true"></div>
+        <div>
+          <h3>In your DAW</h3>
+          <p class="small quiet">AU/VST3 plugin for macOS</p>
+          <div class="flow" set:html={plugin.html} />
+          <Button href="/install/#in-a-daw-macos" variant="ghost" arrow>Install the plugin</Button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 Download -->
+  <section class="section on-cream" id="download" aria-labelledby="download-h">
+    <SectionHead num="06" label="Download" id="download-h" />
+    <div class="section-body grid">
+      <div class="index small">
+        <h3 class="small">{status.title}</h3>
+        <div class="flow quiet" set:html={status.html} />
+      </div>
+      <div class="main">
+        <DownloadBlock />
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/motion';
+</script>

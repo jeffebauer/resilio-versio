@@ -1,0 +1,27 @@
+{
+  "name": "resilio-versio-site",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "predev": "node scripts/prebuild.mjs",
+    "dev": "astro dev",
+    "prebuild": "node scripts/prebuild.mjs",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.2",
+    "@astrojs/sitemap": "^3.7.4",
+    "@vercel/analytics": "^2.0.1",
+    "astro": "^7.3.5",
+    "gsap": "^3.15.0",
+    "mpg123-decoder": "^1.0.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3"
+  }
+}

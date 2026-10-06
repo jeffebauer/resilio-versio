@@ -1,0 +1,72 @@
+---
+// The two downloads with version, date and size (PLAN §B5, BRIEF §6).
+// Links use the stable "latest" names, so they never change between releases.
+// While the repo is private (DOWNLOADS_LIVE false) the buttons show "coming soon".
+import Button from './Button.astro';
+import { getRelease, fileSize, longDate } from '../lib/release';
+import { DOWNLOAD, DOWNLOADS_LIVE } from '../data/site';
+
+interface Props { compact?: boolean; headingLevel?: 'h2' | 'h3'; idPrefix?: string }
+const { compact = false, headingLevel: H = 'h3', idPrefix = 'dl' } = Astro.props;
+const r = await getRelease();
+const live = DOWNLOADS_LIVE;
+const targets = [
+  {
+    key: 'firmware',
+    title: 'On the Versio',
+    button: 'Firmware for the Versio (.bin)',
+    size: fileSize(r.firmwareBytes),
+    href: DOWNLOAD.firmware,
+    variant: 'primary' as const,
+    needs: [
+      'A Noise Engineering Versio module.',
+      'A computer with Chrome and a micro-USB data cable.',
+      'Going back to Noise Engineering’s firmware is one step, with the same app.',
+    ],
+  },
+  {
+    key: 'plugin',
+    title: 'In your DAW',
+    button: 'Plugin for macOS (AU/VST3)',
+    size: fileSize(r.pluginBytes),
+    href: DOWNLOAD.plugin,
+    variant: 'dark' as const,
+    needs: [
+      'macOS 12 or newer, Apple Silicon or Intel.',
+      'A DAW that loads AU or VST3. No Windows or Linux build.',
+      'Not notarised by Apple: one Terminal step lets macOS open it.',
+    ],
+  },
+];
+---
+<div class={`download ${compact ? 'compact' : ''}`.trim()}>
+  <p class="release-line">
+    <span class="label quiet">Latest release</span>
+    <span class="version">{r.version}</span>
+    <span class="quiet"><time datetime={r.date}>{longDate(r.date)}</time></span>
+    <a class="small" href="/changelog/">What’s new</a>
+  </p>
+  <div class="targets">
+    {targets.map((t) => (
+      <section class="target" aria-labelledby={`${idPrefix}-${t.key}`}>
+        {compact ? <p class="label quiet" id={`${idPrefix}-${t.key}`}>{t.title}</p> : <H id={`${idPrefix}-${t.key}`}>{t.title}</H>}
+        {live ? (
+          <Button href={t.href} variant={t.variant} data-download={t.key} download>
+            {t.button}<span class="mono">{t.size}</span>
+          </Button>
+        ) : (
+          <span class="soon">
+            <Button variant={t.variant} disabled>{t.button}<span class="mono">{t.size}</span></Button>
+            <span class="micro quiet">Coming soon: the link goes live when the repository is public.</span>
+          </span>
+        )}
+        {!compact && <ul class="small">{t.needs.map((n) => <li>{n}</li>)}</ul>}
+      </section>
+    ))}
+  </div>
+  <p class="small">
+    <a href="/install/">How to install</a>
+    <span class="quiet" aria-hidden="true">  ·  </span>
+    <a href={live ? r.url : DOWNLOAD.release}>All files and checksums on GitHub</a>
+  </p>
+</div>

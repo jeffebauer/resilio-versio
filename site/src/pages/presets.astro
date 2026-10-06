@@ -1,0 +1,13 @@
+---
+import Doc from '../layouts/Doc.astro';
+import DocContent from '../components/DocContent.astro';
+import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
+
+const page = await getPage('presets');
+const { h1, rest } = takeH1(pageHtml(page));
+// The settings table is ten columns wide: keep its cells on one line, scroll on phones.
+const html = rest.replace('<table class="spec">', '<table class="spec wide">');
+---
+<Doc page={page} h1={h1} kicker="Resilio Versio · six dub settings" surface="cream">
+  <DocContent parts={splitSlots(html)} />
+</Doc>

@@ -1,0 +1,18 @@
+---
+// Hairline rows: a name and a value (with an optional link out).
+interface Row { name: string; value: string; href?: string; mono?: boolean }
+interface Props { rows: Row[]; caption?: string; class?: string }
+const { rows, caption, class: cls = '' } = Astro.props;
+---
+<table class={`spec ${cls}`.trim()}>
+  {caption && <caption class="visually-hidden">{caption}</caption>}
+  <tbody>
+    {rows.map((r) => (
+      <tr>
+        <th scope="row">{r.href ? <a href={r.href}>{r.name}</a> : r.name}</th>
+        <td class={r.mono ? 'mono' : undefined}>{r.value}</td>
+        {rows.some((x) => x.href) && <td class="go">{r.href && <a href={r.href} aria-hidden="true" tabindex="-1">Manual →</a>}</td>}
+      </tr>
+    ))}
+  </tbody>
+</table>
