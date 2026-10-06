@@ -297,6 +297,20 @@ public:
     uint32_t throwExits() const { return throwExits_; }
     // The tapped tempo is the echo's clock now (tests).
     bool tapClockInUse() const { return tapClock_.locked() && (tapWins_ || !clock_.locked()); }
+    // For the LEDs' tap feedback (firmware/TapLed.h); nothing here touches the sound.
+    // Presses read as taps (SPRINGS 3, echo mode) since construction: it moves
+    // on each one (not cleared by reset(), so a host never sees a false tap).
+    uint32_t taps() const { return taps_; }
+    // The button taps here: SPRINGS 3 in echo mode (ThrowHold.h gateRole).
+    bool tapping() const { return throwhold::gateRole(springsPos_, echoMode_) == throwhold::GateRole::Clock; }
+    // The tapped beat the echo follows now, in samples; 0 when there is none:
+    // no tempo locked from the taps yet, the latest tap stands alone (a lone
+    // tap lets the tempo go), the gate clock set its tempo later, or the
+    // host's tempo wins (Plugin).
+    float tappedBeatSamples() const
+    {
+        return hostBpm_ <= 0.0f && tapClockInUse() && tapClock_.counting() ? tapClock_.beatSamples() : 0.0f;
+    }
 
     // THROW (ADR 0039, params/ThrowHold.h): the gate's level from a sample
     // offset within the next process() block (clamped to it; give them in
@@ -684,6 +698,7 @@ private:
     bool     buttonDown_ = false, btnPressThrew_ = false, btnHaveRelease_ = false;
     bool     btnTapShort_ = false, btnTapAlone_ = false, exitArmed_ = false;
     uint32_t btnPressAt_ = 0, btnReleaseAt_ = 0, exitAt_ = 0, throwExits_ = 0;
+    uint32_t taps_ = 0; // taps() (the LEDs; never reset)
     uint32_t exitGap_ = 0, exitTapMax_ = 0, exitHold_ = 0; // ThrowHold.h, in samples
     void     buttonEvent(bool down, uint32_t at, bool throwRole, float holdSend);
     float sendNow_ = 1.0f; // last sample's send gain (tests)

@@ -7,6 +7,7 @@
 #include "PluginEditor.h"
 
 #include "../firmware/LedMeter.h"
+#include "../firmware/TapLed.h"
 #include "params/ParamSpec.h"
 #include "params/ThrowHold.h"
 #include "params/WobbleVoicing.h"
@@ -272,7 +273,9 @@ public:
 
         setSize(kWidthPx, kHeightPx);
         lastTickMs_ = juce::Time::getMillisecondCounterHiRes();
-        startTimerHz(30);
+        // Taps made before the panel opened are not new ones (no flash on opening).
+        tapFlash_.update(0u, link_.taps(), 0u, false);
+        startTimerHz(60);
     }
 
     ~Panel() override
@@ -344,7 +347,7 @@ public:
             const float r = px(kLedRadiusMm);
             const auto  e = juce::Rectangle<float>(2.0f * r, 2.0f * r).withCentre({px(c.x), px(c.y)});
             const bool blink = juce::Time::getMillisecondCounterHiRes() < blinkUntilMs_;
-            g.setColour(blink ? juce::Colours::white : ledColour(meters_[static_cast<size_t>(m)].colour()));
+            g.setColour(ledColour(rvled::shown(blink, tapPurple_, meters_[static_cast<size_t>(m)].colour())));
             g.fillEllipse(e);
             g.setColour(kOutlineColour);
             g.drawEllipse(e, 1.0f);
@@ -352,7 +355,7 @@ public:
     }
 
 private:
-    // Same steps as firmware/main.cpp's main loop, at ~30 Hz with the real
+    // Same steps as firmware/main.cpp's main loop, at ~60 Hz (so a 70 ms tap flash shows 4 frames) with the real
     // elapsed time, so ballistics and red hold match the module.
     void timerCallback() override
     {
@@ -368,6 +371,11 @@ private:
         // Throw mode off (the button's double tap and hold, ADR 0043): the
         // LEDs blink white, as on the module.
         if (link_.takeThrowExited()) blinkUntilMs_ = now + 1000.0 * double(rv::throwhold::kThrowExitBlinkSeconds);
+        // Tap tempo (ADR 0043): purple on each tap and on the tapped beat for
+        // 2 s after the last, the module's logic on a wrapping us clock.
+        const auto nowUs = static_cast<uint32_t>(static_cast<uint64_t>(now * 1000.0));
+        tapPurple_ = tapFlash_.update(nowUs, link_.taps(), static_cast<uint32_t>(link_.tapBeatSeconds() * 1.0e6f),
+                                      link_.tapping());
 
         const bool limiting = rvled::limiterReducing(link_.takeLimiterGain());
         meters_[PanelLink::kInL].update(peak[PanelLink::kInL], rvled::inputNearClip(peak[PanelLink::kInL]), dt);
@@ -390,6 +398,8 @@ private:
     juce::TextButton                button_;
     bool                            buttonDown_   = false;
     double                          blinkUntilMs_ = 0.0; // throw mode off: the LEDs white until then
+    rvled::TapFlash                 tapFlash_;           // tap tempo: the LEDs purple (TapLed.h)
+    bool                            tapPurple_ = false;
     juce::TextButton                throw_;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> throwAttach_;
     std::array<juce::TextButton, 3> sizes_;

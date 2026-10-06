@@ -41,6 +41,18 @@ struct PanelLink {
     // Audio thread: throw mode was on and is now off (the LEDs blink).
     void noteThrowExited() { throwExited_.store(true, std::memory_order_release); }
     bool takeThrowExited() { return throwExited_.exchange(false, std::memory_order_acq_rel); }
+    // Audio thread, once per block: tap tempo for the LEDs (firmware/TapLed.h):
+    // Tank::taps(), the tapped beat in seconds (0 = none: in a DAW the host's
+    // tempo wins, so only the taps' flash shows) and Tank::tapping().
+    void noteTaps(uint32_t taps, float beatSeconds, bool tapping)
+    {
+        tapBeat_.store(beatSeconds, std::memory_order_relaxed);
+        tapping_.store(tapping, std::memory_order_relaxed);
+        taps_.store(taps, std::memory_order_release);
+    }
+    uint32_t taps() const { return taps_.load(std::memory_order_acquire); }
+    float    tapBeatSeconds() const { return tapBeat_.load(std::memory_order_relaxed); }
+    bool     tapping() const { return tapping_.load(std::memory_order_relaxed); }
     float takePeak(int m) { return peak_[static_cast<size_t>(m)].exchange(0.0f, std::memory_order_relaxed); }
     float takeLimiterGain() { return limiterGain_.exchange(1.0f, std::memory_order_relaxed); }
 
@@ -48,6 +60,9 @@ private:
     std::array<std::atomic<float>, kNumMeters> peak_{{{0.0f}, {0.0f}, {0.0f}, {0.0f}}};
     std::atomic<float> limiterGain_{1.0f}; // lowest Tank::limiterGain() since the last take
     std::atomic<bool>  throwExited_{false};
+    std::atomic<uint32_t> taps_{0};
+    std::atomic<float>    tapBeat_{0.0f};
+    std::atomic<bool>     tapping_{false};
 };
 
 class PanelEditor final : public juce::AudioProcessorEditor {
