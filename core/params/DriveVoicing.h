@@ -236,6 +236,37 @@ constexpr float kExcStrength  = 1.0f;
 constexpr float kExcRefShare  = 0.4f;
 constexpr float kExcMaxDb     = 6.0f;
 constexpr float kExcGateDb    = -60.0f;
+// New sound (v1.0.45; owner: "the first chord after drums should be as loud
+// as the chords that follow it"). The followers above, and the low-cut, TONE
+// and Big Knob makeups that share their 0.3 s, average whatever came in
+// lately. After a run of drums they still held the drums when the first
+// chord came: a kick's lows count as level the springs don't hear, so the
+// chord was turned up (and the low-cut makeup, reading snares, turned it
+// down a little), and chord 1 peaked up to 3.4 dB over chords 2-4 (CLEAN,
+// MIX 1, noon; the backlog's "+2.5 dB"). It was never a one-tick lag: a
+// trim set right on the chord's first tick moved it 0.3 dB at most.
+// Now, when the input jumps (a tick's power over kExcNewRatio x the
+// followers', after its fast level had fallen under kExcNewRearm x them),
+// the Tank remembers what the followers held. Once the new sound has been
+// heard for kExcNewJudgeTicks, it compares the input trims' gain with and
+// without that memory: if they differ by more than kExcNewDiffDb, every
+// input-side follower leaves the memory out (it decays in them as it always
+// did; the Tank subtracts it until it weighs under kExcNewGoneShare), so the
+// new sound is read as if it came from silence. The sustain trim's held
+// detector still reads the plain followers. Nothing changes where the old
+// weighs under kExcNewMinShare (after a pause, e.g. 02_hits' hits 6 s
+// apart) or where the new sound reads like the old (chord after chord,
+// pads, drones, sweeps, noise): those render bit for bit as before
+// (08_held_tones' chord after the 1 kHz tone moves: +0.4 dB for 0.3 s).
+// Trade-off (owner's call): inside a groove with a kick, the snare or rim
+// right after a kick is a new sound too, so it loses the lift the kick's
+// lows gave it (H2 settings: snares -1.3..-2.1 dB, rims -0.8 dB at the peak).
+constexpr float kExcNewRatio      = 2.0f;  // a new sound: a tick's input power over twice (3 dB) the followers'
+constexpr int   kExcNewJudgeTicks = 8;      // judged once heard for 8 control ticks (5.3 ms)
+constexpr float kExcNewDiffDb     = 1.0f;   // read on its own when that reading differs from today's by more
+constexpr float kExcNewMinShare   = 0.02f;  // ... and the old still weighs over 2 % of the followers
+constexpr float kExcNewGoneShare  = 0.01f;  // back to the plain followers once it weighs under 1 %
+constexpr float kExcNewRearm      = 0.25f;  // ready for the next once the input's fast level (kSusFastSeconds) falls under 1/4 of the followers
 
 // ---- Sustain trim (M8, owner, hardware, 1 Oct 2026; ADR 0035) ----------------
 // A held sound (pad, drone, organ) keeps adding to what the Tank is still

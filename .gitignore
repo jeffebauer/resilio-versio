@@ -5,7 +5,7 @@ build/
 # commercial units are never committed or published (CLAUDE.md, ADR 0009 amendment).
 tools/review/sample/out/
 tools/review/sample/reference/
-renders/
+/renders/
 dist/
 *.asd
 Ableton Project Info/

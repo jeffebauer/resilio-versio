@@ -595,6 +595,12 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& f : excHp_) f.reset();
     for (auto& f : excLp_) f.reset();
     excAccBroad_ = excAccBand_ = excBroad_ = excBand_ = 0.0f;
+    excPend_.fill(0.0f);
+    excOld_.fill(0.0f);
+    excPendW_ = excOldW_ = 0.0f;
+    excPendTicks_ = -1;
+    excForget_ = false;
+    excArmed_ = true;
     for (auto& f : bkHp_) f.reset();
     bkAccIn_ = bkAccOut_ = bkIn_ = bkOut_ = 0.0f;
     bkGain_  = 1.0f;
@@ -813,6 +819,52 @@ RV_SIZE_OPT void Tank::echoTick(float decayKnob, float tensionKnob, bool fresh, 
         if (direct_.pingPong()) direct_.tapeR.tick(echoSecs_, smoothed_[size_t(ParamId::Wobble)], snap || fresh);
 #endif
     }
+}
+
+// What the input-side followers hold (Tank.h "A new sound").
+RV_SIZE_OPT void Tank::excSnapshot(std::array<float, kNumExcMem>& s) const
+{
+    s[kMemBroad] = excBroad_;
+    s[kMemBand]  = excBand_;
+    s[kMemBkIn]  = bkIn_;
+    s[kMemBkOut] = bkOut_;
+#if RV_TANKV_BUILT >= 7
+    s[kMemGmIn]    = gmIn_;
+    s[kMemGmOut]   = gmOut_;
+    s[kMemGmShIn]  = gmShIn_;
+    s[kMemGmShOut] = gmShOut_;
+    s[kMemTdAll]   = tdAll_;
+    s[kMemTdLp]    = tdLp_;
+#endif
+}
+
+// The input-side trims' gain (log): the Excitation trim, and the low-cut,
+// TONE-dark and Big Knob makeups where they run; their follower-dependent
+// parts, read with w x old left out of the followers (old = nullptr: as
+// they read now). Judges a new sound (controlTick); the trims themselves
+// are computed where they are applied.
+RV_SIZE_OPT float Tank::excMakeupLog(const std::array<float, kNumExcMem>* old, float w, float tone) const
+{
+    auto f = [&](float v, ExcMem m) { return old ? std::max(v - w * (*old)[m], 1.0e-30f) : excFresh(v, m); };
+    constexpr float kMaxLog = drive::kExcMaxDb * (2.302585093f / 20.0f);
+    float l = std::clamp(0.5f * drive::kExcStrength * std::log(drive::kExcRefShare * f(excBroad_, kMemBroad)
+                                                                / std::max(f(excBand_, kMemBand), 1.0e-12f)),
+                         -kMaxLog, kMaxLog);
+    if (tilt_.voicing() != drive::kToneVoicingToday && tone > 0.5f)
+        l += 0.5f * drive::kBigKnobMakeupShare * std::log(f(bkIn_, kMemBkIn) / std::max(f(bkOut_, kMemBkOut), 1.0e-12f));
+#if RV_TANKV_BUILT >= 7
+    if (tankv::hasGentleMakeup(tankVoicing_)) {
+        float g = std::log(f(gmIn_, kMemGmIn) / std::max(f(gmOut_, kMemGmOut), 1.0e-12f));
+        if (tankv::hasShipFixes(tankVoicing_))
+            g = std::min(g, std::log(f(gmShIn_, kMemGmShIn) / std::max(f(gmShOut_, kMemGmShOut), 1.0e-12f)));
+        l += std::clamp(0.5f * tankv::tuning().gentleMakeupShare * g, 0.0f, tankv::tuning().gentleMakeupMaxDb * (2.302585093f / 20.0f));
+    }
+    if (tankv::hasShipFixes(tankVoicing_) && tdWd_ > 0.0f) {
+        const float lossDb = (10.0f / 2.302585093f) * std::log(f(tdAll_, kMemTdAll) / std::max(f(tdLp_, kMemTdLp), 1.0e-12f));
+        l += (2.302585093f / 20.0f) * tdWd_ * std::min(tankv::tuning().toneDarkDb, tankv::tuning().toneDarkShare * lossDb);
+    }
+#endif
+    return l;
 }
 
 RV_SIZE_OPT void Tank::controlTick(bool snap)
@@ -1088,15 +1140,47 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
     const float tickIn = excAccBroad_ * (1.0f / float(kControlInterval)); // raw input power, last tick
     {
         constexpr float kInv = 1.0f / float(kControlInterval);
+        // A new sound (DriveVoicing.h "New sound"), once heard for
+        // kExcNewJudgeTicks: if the input trims it would get on its own differ
+        // from what they give it now by more than kExcNewDiffDb, the followers
+        // leave out what they held before it (excFresh) until it has decayed
+        // away in them. Only where the old still weighs something: after a
+        // pause the followers have forgotten it anyway, and nothing changes.
+        if (excPendTicks_ >= drive::kExcNewJudgeTicks) {
+            excPendTicks_ = -1;
+            if (excPendW_ * excPend_[kMemBroad] > drive::kExcNewMinShare * excBroad_
+                && std::fabs(excMakeupLog(&excPend_, excPendW_, tone) - excMakeupLog(nullptr, 0.0f, tone))
+                       > drive::kExcNewDiffDb * (2.302585093f / 20.0f)) {
+                excOld_    = excPend_;
+                excOldW_   = excPendW_;
+                excForget_ = true;
+            }
+        }
+        // A new sound: the input jumps well above what the followers hold.
+        if (excArmed_ && tickIn > excGate_ && tickIn > drive::kExcNewRatio * excBroad_) {
+            excArmed_ = false;
+            excSnapshot(excPend_);
+            excPendW_     = 1.0f;
+            excPendTicks_ = 0;
+        }
         excBroad_ += excCoeff_ * (tickIn - excBroad_);
         susFast_ += susFastCoeff_ * (tickIn - susFast_);
         excBand_ += excCoeff_ * (excAccBand_ * kInv - excBand_);
         excAccBroad_ = excAccBand_ = 0.0f;
         constexpr float kMaxLog = drive::kExcMaxDb * (2.302585093f / 20.0f);
+        if (excPendTicks_ >= 0) {
+            excPendW_ *= 1.0f - excCoeff_;
+            ++excPendTicks_;
+        }
+        if (excForget_) {
+            excOldW_ *= 1.0f - excCoeff_;
+            if (excOldW_ * excOld_[kMemBroad] < drive::kExcNewGoneShare * excBroad_) excForget_ = false; // gone: back to the plain followers
+        }
+        if (susFast_ < drive::kExcNewRearm * excBroad_) excArmed_ = true; // its fast level has fallen away: the next jump is a new sound
         float trim = excTrimTo_;
         if (excBroad_ > excGate_) {
             const float l = 0.5f * drive::kExcStrength
-                          * std::log(drive::kExcRefShare * excBroad_ / std::max(excBand_, 1.0e-12f));
+                          * std::log(drive::kExcRefShare * excFresh(excBroad_, kMemBroad) / std::max(excFresh(excBand_, kMemBand), 1.0e-12f));
             trim = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
         }
         excTrimFrom_ = snap ? trim : excTrimTo_;
@@ -1242,7 +1326,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             bkGain_ = 1.0f;
         } else if (bkIn_ > excGate_) {
             constexpr float kMaxLog = drive::kBigKnobMakeupMaxDb * (2.302585093f / 20.0f);
-            const float l = 0.5f * drive::kBigKnobMakeupShare * std::log(bkIn_ / std::max(bkOut_, 1.0e-12f))
+            const float l = 0.5f * drive::kBigKnobMakeupShare * std::log(excFresh(bkIn_, kMemBkIn) / std::max(excFresh(bkOut_, kMemBkOut), 1.0e-12f))
                           + (2.302585093f / 20.0f) * drive::bigKnobPreTrimDb(tilt_.place(), tilt_.voicing(), tone, attW_, drive);
             bkGain_ = std::exp(std::clamp(l, -kMaxLog, kMaxLog));
         }
@@ -1275,7 +1359,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             gmGain_ = 1.0f;
         } else if (gmIn_ > excGate_) {
             const float kMaxLog = tankv::tuning().gentleMakeupMaxDb * (2.302585093f / 20.0f);
-            float l = std::log(gmIn_ / std::max(gmOut_, 1.0e-12f));
+            float l = std::log(excFresh(gmIn_, kMemGmIn) / std::max(excFresh(gmOut_, kMemGmOut), 1.0e-12f));
             if (tankv::hasShipFixes(tankVoicing_)) {
                 // The same reading on the raw input (before DRIVE: KICKED's
                 // own low products, which the low cut removes, made the makeup
@@ -1284,7 +1368,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
                 // passes), into and out of a copy of the low cut.
                 gmShIn_ += excCoeff_ * (gmShAccIn_ * kInv - gmShIn_);
                 gmShOut_ += excCoeff_ * (gmShAccOut_ * kInv - gmShOut_);
-                l = std::min(l, std::log(gmShIn_ / std::max(gmShOut_, 1.0e-12f)));
+                l = std::min(l, std::log(excFresh(gmShIn_, kMemGmShIn) / std::max(excFresh(gmShOut_, kMemGmShOut), 1.0e-12f)));
             }
             gmGain_ = std::exp(std::clamp(0.5f * tankv::tuning().gentleMakeupShare * l, 0.0f, kMaxLog));
         }
@@ -1339,7 +1423,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
             tdLp_ += excCoeff_ * (tdAccLp_ * kInv - tdLp_);
             tdAccAll_ = tdAccLp_ = 0.0f;
             if (tdAll_ > excGate_) {
-                const float lossDb = (10.0f / 2.302585093f) * std::log(tdAll_ / std::max(tdLp_, 1.0e-12f));
+                const float lossDb = (10.0f / 2.302585093f) * std::log(excFresh(tdAll_, kMemTdAll) / std::max(excFresh(tdLp_, kMemTdLp), 1.0e-12f));
                 tdDarkDb_ = tdWd_ * std::min(t.toneDarkDb, t.toneDarkShare * lossDb);
             }
 #if RV_TANKV_BUILT >= 8
