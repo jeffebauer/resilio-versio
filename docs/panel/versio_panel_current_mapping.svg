@@ -12,7 +12,7 @@
   <circle class="potring" cx="7.77" cy="18.53" r="6.7"/>
   <circle class="pot" cx="7.77" cy="18.53" r="5.8"/>
   <text class="id" x="7.77" y="19.43" text-anchor="middle">P1</text>
-  <text class="fn" x="7.77" y="27.43" text-anchor="middle">MIX</text>
+  <text class="fn" x="7.77" y="27.43" text-anchor="middle">BLEND</text>
   <text class="idx" x="7.77" y="29.13" text-anchor="middle">K0</text>
   <circle class="potring" cx="43.33" cy="18.53" r="6.7"/>
   <circle class="pot" cx="43.33" cy="18.53" r="5.8"/>
@@ -51,16 +51,16 @@
   <text class="small" x="22.375" y="13.9" text-anchor="middle" font-size="1.2px">wet</text>
   <circle class="led" cx="29.36" cy="19.8" r="1.5"/>
   <text class="sid" x="29.36" y="17.5" text-anchor="middle" font-size="1.5px">L3</text>
-  <text class="small" x="29.36" y="15.6" text-anchor="middle" font-size="1.2px">springs</text>
+  <text class="small" x="29.36" y="15.6" text-anchor="middle" font-size="1.2px">tank</text>
   <circle class="led" cx="34.44" cy="19.8" r="1.5"/>
   <text class="sid" x="34.44" y="17.5" text-anchor="middle" font-size="1.5px">L4</text>
   <text class="small" x="34.44" y="13.9" text-anchor="middle" font-size="1.2px">attitude</text>
   <circle class="tog" cx="8.405" cy="57.9" r="2.54"/>
-  <text class="sid" x="11.745" y="57.6">SW1 SPRINGS</text>
-  <text class="small" x="11.745" y="59.6">1 · 2 · 3 (left→right)</text>
+  <text class="sid" x="11.745" y="57.6">SW1 TANK</text>
+  <text class="small" x="11.745" y="59.6">1 · 2 · ECHO (left→right)</text>
   <circle class="tog" cx="8.405" cy="67.425" r="2.54"/>
   <text class="sid" x="11.745" y="67.125">SW2 ATTITUDE</text>
-  <text class="small" x="11.745" y="69.125">CLN·DRV·KCK</text>
+  <text class="small" x="11.745" y="69.125" style="font-size:1.05px">CLEAN·TAPE·VALVE</text>
   <circle class="tog" cx="26.185" cy="69.33" r="2.667"/>
   <text class="sid" x="29.652" y="69.03">BTN THROW/TAP</text>
   <text class="small" x="29.652" y="71.03">(also gate in)</text>
