@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, session 9 start. Your answers on In R, the VALVE lurch and the VALVE Howl recorded; three agents working (the first-chord fix, a lurch listening page, a stereo-in study). One small module check left (§1)
+**Last updated:** 6 Oct 2026, session 9. Four agents reported: the VALVE lurch page is ready (§2), the first-chord fix needs your ear on one trade-off (§3), the stereo-in study has questions (§4), and going public + the minisite brief need decisions (§5). Nothing merged yet
 
 | Milestone | State |
 |---|---|
@@ -21,15 +21,31 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
+### 2. VALVE lurch across the stereo field (≈10 min, headphones)
+- [ ] Listen to [renders/valve_lurch_stereo/index.html](../renders/valve_lurch_stereo/index.html): A today (one ear dips, the other rises), B together (stays centred), C a little wider, D the obvious stereo throw. The chord stab shows it best; TANK 1 rows are a blind check (A = B = C there). Pick one, or say if you meant the lurch *travelling* left → right instead (not built yet). B and D would need a small follow-up to pass the stereo-safety tests
+
+### 3. First chord after drums: one trade-off (Claude is re-running the tests)
+- [ ] The fix makes the first chord after a kick groove come in level with the chords after it (was up to +3.4 dB). Its price: **inside a groove, a snare or rim right after a kick comes in 1–2 dB quieter** than today (the kick's lows were lifting it). Should the snare after a kick come in as loud as today, or as loud as the same snare on its own? Claude can build an A/B page if you'd rather hear it
+
+### 4. Stereo in: what it should sound like (answer whenever; study in `docs/research/stereo-input-study.md` once merged)
+- [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
+
+### 5. Going public + the minisite (decisions before anything is published)
+- [ ] **Licence:** do you have a paid JUCE licence? If not, the plugin ships under the AGPL (fine once the source is public). Our own code: MIT suggested
+- [ ] **Your email** is on 537 commits and becomes public with the repo: OK? **Two Wellspring spectrogram images** in the repo: keep or remove?
+- [ ] **Credit and feedback:** how to credit you (name/handle + link); where feedback goes (GitHub issues, email, form)
+- [ ] **Listen to the ten demo clips** in the minisite package (rendered, not yet heard by anyone) and approve, cut or redo
+- [ ] **Plugin layout check in Ableton:** does GATE sit on top of DRIVE's label and the button read "THR…"? (It does in a scratch build; fix before any public screenshot)
+- Claude will then: fixed download names in releases, prune old branches, notices files, public release notes, and only flip the repo public when you say so
+
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [ ] **Big hits in VALVE:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. You want to hear it: a listening page (today / lurch together / wider spread) is being built at `renders/valve_lurch_stereo/`
 
 ## Later
-- **Stereo in:** In R is for the right channel of a stereo input (your call, 6 Oct). Claude is studying what it takes on the module (CPU, flash, mono patches unchanged); the options and your decisions come next
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). An agent is fixing it now; everything else should stay bit-identical
+- **First chord fix:** re-running all tests on the branch; merge after your answer to §3. Costs 1.3 KB of flash (CPU-test build down to 2.2 KB free); needs a CPU run on the chip before release
+- **Minisite package** (`docs/minisite/` on its branch): merge when you're happy; README's "up to three springs" and the old names in the share read-me get fixed with it
 
 ## What to send Claude
 - **Recordings:** say they're done and where (the Ableton project). Claude copies, renames and analyses them; the WAVs stay on your Mac, never in git
