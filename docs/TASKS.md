@@ -8,7 +8,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 |---|---|
 | M2 plugin | Built, installed `9ba726f`. Your Ableton check is open (§5) |
 | M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. Flash: release 95.7 %, CPU-test build 97.2 % |
-| Real firmware on the Versio | `9ba726f` (flashed 6 Oct): everything merged, incl. tape wear B. Click check under way (§3) |
+| Real firmware on the Versio | `9ba726f` (flashed 6 Oct): everything merged, incl. tape wear B. **Click check passed** |
 | M8 sound | All merged, incl. tape wear B for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
@@ -22,11 +22,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **What's new since your last install:** the Kick is gone; the button **throws** in SPRINGS 1–2 (hold = send open; the first press switches throw mode on, so it works with nothing patched; leave throw mode: double-tap, then hold 2 s, four LEDs blink white) and **taps tempo** in SPRINGS 3 (Ableton's tempo wins in the plugin, so taps only count on the module). Held **MIDI notes act as the gate**. µ-law grit is on the wet only, before TONE: the dry is clean in every ATTITUDE, TONE left tames the grit
 - [ ] **Round 5's side changes** you haven't heard: the wet 1 dB lower from TONE noon right; DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top
 - [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
-
-### 3. The new release on the module + click check (≈10 min)
-- [x] `0267d0e` flashed 5 Oct ("sounding fantastic"); no clicks so far on it
-- [x] Flashed `dist/resilio_versio_release_9ba726f.bin` (6 Oct, adds tape wear B)
-- [ ] **Click check** (under way): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
 ### 3b. Hear tape wear B in the plugin (≈10 min)
 - [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
@@ -76,6 +71,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Click check passed** on release `9ba726f` (tape wear B, the button, SPRINGS 3 ↔ 1/2 under load): no clicks
 - 6 Oct 2026: **CPU run 20 on the chip:** everything merged incl. tape wear B is a little lighter than run 18: echo mode 75.8 % peak, the SPRINGS switch 75.9 %, worst moment 77.7 % (was 79.9 %). Under the 80 % ceiling
 - 6 Oct 2026: **Merged and installed `9ba726f`:** tape wear B as echo mode's wear (held top locked; ADR 0041 amendment, SPEC v1.0.38) and TENSION's note-value readout in the plugin. Release `9ba726f` + CPU run 20 built
 - 6 Oct 2026: **Tape wear listened:** B (tape saturation + roll-off) on every row and ATTITUDE; no crinkle. Held top: lock in like today
