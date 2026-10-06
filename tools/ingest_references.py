@@ -24,7 +24,7 @@ docs/recording-recipe-magneto.md) from a directory. For each take found:
     true THD -- see docs/reference-ingest.md) on the MD takes and
     Wellspring take C;
   - searches DECAY so our own render's T60 matches the Wellspring take A's
-    measured T60 (MIX 1, ATTITUDE CLEAN and DRIVEN), then builds an A/B
+    measured T60 (BLEND 1, ATTITUDE CLEAN and TAPE), then builds an A/B
     review page pinning the references next to those matched renders.
 
 Missing takes are listed, not fatal: whatever exists is still processed.
@@ -760,7 +760,7 @@ def ingest(ref_dir, out_root, notes_text=None, tmp_dir=None):
             search_stim = make_search_stimulus(tmp)
             matched = {}
             renders_entries = []
-            for attitude in ("CLEAN", "DRIVEN"):
+            for attitude in ("CLEAN", "TAPE"):
                 base_sets = {"mix": 1.0, "attitude": attitude}
                 decay, history, err = search_decay(target_t60, search_stim, tmp, base_sets)
                 matched[attitude] = {"decay": decay, "iterations": len(history), "error": err,
@@ -1042,7 +1042,7 @@ def build_fake_references(fake_dir):
     tank_c = fake_dir / "_tank_C.wav"
     err = rv_render_set(str(STIMULUS_DIR / "02_hits.wav"), str(tank_c),
                          {"decay": 0.55, "tension": 0.5, "mix": 1.0, "drive": 0.8,
-                          "attitude": "DRIVEN"})
+                          "attitude": "TAPE"})
     if err:
         raise RuntimeError(f"fake take C render failed: {err}")
     c_ch, c_sr = read_wav(tank_c)

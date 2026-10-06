@@ -42,9 +42,15 @@ void labelsAndNumbers()
     check(set(tank, "attitude=DRIVEN") && tank.param(rv::ParamId::Attitude) == 0.5f, "attitude=DRIVEN sets the centre position");
     check(set(tank, "springs=1") && tank.param(rv::ParamId::Springs) == 0.0f, "springs=1 is the label '1' (1 Spring), not a number");
     check(set(tank, "springs=2") && tank.param(rv::ParamId::Springs) == 0.5f, "springs=2 is 2 Springs, not clamped to 3");
-    check(set(tank, "springs=3") && tank.param(rv::ParamId::Springs) == 1.0f, "springs=3 is 3 Springs");
+    check(set(tank, "springs=3") && tank.param(rv::ParamId::Springs) == 1.0f, "springs=3 (the old label) is TANK ECHO");
     check(set(tank, "decay=0.8") && std::fabs(tank.param(rv::ParamId::Decay) - 0.8f) < 1e-6f, "numeric knob value accepted");
     check(set(tank, "mix=1") && tank.param(rv::ParamId::Mix) == 1.0f, "integer knob value accepted");
+
+    // The v1.0.43 panel names (ADR 0044): same positions as the old labels above.
+    check(set(tank, "attitude=VALVE") && tank.param(rv::ParamId::Attitude) == 1.0f, "attitude=VALVE sets the right position (was KICKED)");
+    check(set(tank, "attitude=TAPE") && tank.param(rv::ParamId::Attitude) == 0.5f, "attitude=TAPE sets the centre position (was DRIVEN)");
+    check(set(tank, "attitude=AMP") && tank.param(rv::ParamId::Attitude) == 1.0f, "attitude=AMP (the short-lived name) is VALVE");
+    check(set(tank, "springs=ECHO") && tank.param(rv::ParamId::Springs) == 1.0f, "springs=ECHO is the right position (was 3)");
 }
 
 void rejections()
@@ -54,7 +60,8 @@ void rejections()
     std::string error;
 
     check(!rv::paramsjson::applySetArg(tank, "attitude=kicked", error), "label is case-sensitive: 'kicked' rejected");
-    check(error.find("CLEAN, DRIVEN or KICKED") != std::string::npos, "unknown-label error lists the valid labels");
+    check(error.find("CLEAN, TAPE or VALVE") != std::string::npos, "unknown-label error lists the valid labels");
+    check(!set(tank, "springs=echo"), "springs=echo rejected (case-sensitive)");
     check(!set(tank, "attitude=HOT"), "unknown label rejected");
     check(!set(tank, "attitude=1"), "switch given a bare number rejected");
     check(!set(tank, "attitude=0.5"), "switch given a Normalised number rejected");
@@ -116,13 +123,16 @@ void cliMatchesPreset()
     check(run(inPath + " " + dir + "/set.wav --set attitude=KICKED --set springs=2") == 0, "cli: --set with labels exits 0");
     check(run(inPath + " " + dir + "/preset.wav --preset " + dir + "/kicked.json") == 0, "cli: --preset exits 0");
     check(run(inPath + " " + dir + "/clean.wav --set attitude=CLEAN --set springs=2") == 0, "cli: --set attitude=CLEAN exits 0");
+    check(run(inPath + " " + dir + "/valve.wav --set attitude=VALVE --set springs=2") == 0, "cli: --set attitude=VALVE exits 0");
 
-    rv::wav::Audio viaSet, viaPreset, clean;
-    const bool read = readWav(dir + "/set.wav", viaSet) && readWav(dir + "/preset.wav", viaPreset) && readWav(dir + "/clean.wav", clean);
+    rv::wav::Audio viaSet, viaPreset, clean, valve;
+    const bool read = readWav(dir + "/set.wav", viaSet) && readWav(dir + "/preset.wav", viaPreset) && readWav(dir + "/clean.wav", clean)
+                   && readWav(dir + "/valve.wav", valve);
     check(read, "cli: renders read back");
     if (read) {
         check(sameAudio(viaSet, viaPreset), "cli: --set attitude=KICKED renders identically to --preset KICKED");
         check(!sameAudio(viaSet, clean), "cli: --set attitude=KICKED differs from CLEAN");
+        check(sameAudio(viaSet, valve), "cli: --set attitude=VALVE renders identically to the old label KICKED (ADR 0044)");
     }
 
     check(run(inPath + " " + dir + "/bad.wav --set attitude=HOT") != 0, "cli: unknown label exits non-zero");

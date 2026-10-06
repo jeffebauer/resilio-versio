@@ -14,6 +14,12 @@ namespace rv::paramsjson {
 
 bool findParamId(const std::string& key, ParamId& id);
 
+// A Switch3 label -> its position (0, 1, 2): a ParamSpec::choices label
+// (TANK 1 / 2 / ECHO, ATTITUDE CLEAN / TAPE / VALVE) or one from before the
+// v1.0.43 panel names (springs "3", attitude "DRIVEN" / "KICKED"; ADR 0044).
+// Returns false for anything else.
+bool switchPosition(ParamId id, const std::string& label, int& position);
+
 bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& error);
 
 // Hidden, Renderer-only keys (not panel controls, not in ParamSpec): used by
@@ -67,8 +73,8 @@ bool applyPreset(Tank& tank, const json::Value& preset, std::string& error);
 
 // Applies one rv_render `--set key=value` argument. Stricter than JSON,
 // where the type tells a number from a label: knobs take a number 0-1;
-// Switch3 params take only a ParamSpec::choices label (springs=2,
-// attitude=KICKED), so a bare number on a switch is an error rather than
+// Switch3 params take only a label (springs=ECHO, attitude=VALVE, or an
+// old one, see switchPosition), so a bare number on a switch is an error rather than
 // a silently wrong position.
 bool applySetArg(Tank& tank, const std::string& arg, std::string& error);
 

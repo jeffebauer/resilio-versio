@@ -5,7 +5,7 @@ deciding a remap (which knob does what) before a custom panel exists.
 Geometry comes from tools/make_panel_svg.py (NE's official template).
 Functions and the pot -> libDaisy knob order mirror the release firmware
 (firmware/main.cpp kPotParams / kPotKnob, ADR 0028). The pot order was
-measured at the M0 LED check (29 Sep 2026); SW_0 = top toggle = SPRINGS,
+measured at the M0 LED check (29 Sep 2026); SW_0 = top toggle = TANK (was SPRINGS),
 SW_1 = ATTITUDE; button = throw / tap tempo, gate = throw / clock (ADR 0043).
 
 Usage: python3 tools/make_panel_mapping_svg.py [out.svg]
@@ -19,12 +19,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_panel_svg import PANEL_W, PANEL_H, PARTS, f  # noqa: E402
 
 KNOBS = {  # pot id -> (libDaisy knob index, function)
-    "P1": ("K0", "MIX"), "P2": ("K4", "DECAY"), "P3": ("K2", "TONE"),
+    "P1": ("K0", "BLEND"), "P2": ("K4", "DECAY"), "P3": ("K2", "TONE"),
     "P4": ("K1", "SPLASH"), "P5": ("K5", "TENSION"), "P6": ("K3", "WOBBLE"),
     "P7": ("K6", "DRIVE"),
 }
-TOGGLES = {"SW1": ("SW_0", "SPRINGS", "1 · 2 · 3 (left→right)"), "SW2": ("SW_1", "ATTITUDE", "CLN·DRV·KCK")}
-LEDS = {"LED1": "clip", "LED2": "wet", "LED3": "springs", "LED4": "attitude"}
+TOGGLES = {"SW1": ("SW_0", "TANK", "1 · 2 · ECHO (left→right)"), "SW2": ("SW_1", "ATTITUDE", "CLEAN·TAPE·VALVE")}
+LEDS = {"LED1": "clip", "LED2": "wet", "LED3": "tank", "LED4": "attitude"}
 SCALE = 8  # px per mm for the default on-screen size
 
 
@@ -77,7 +77,8 @@ def build():
             idx, fn, pos = TOGGLES[pid]
             a(f'  <circle class="tog" cx="{f(cx)}" cy="{f(cy)}" r="{f(d / 2)}"/>')
             a(f'  <text class="sid" x="{f(cx + d / 2 + 0.8)}" y="{f(cy - 0.3)}">{pid} {fn}</text>')
-            a(f'  <text class="small" x="{f(cx + d / 2 + 0.8)}" y="{f(cy + 1.7)}">{pos}</text>')
+            size = ' style="font-size:1.05px"' if pid == "SW2" else ""  # stops short of the button
+            a(f'  <text class="small" x="{f(cx + d / 2 + 0.8)}" y="{f(cy + 1.7)}"{size}>{pos}</text>')
         elif kind == "button":
             a(f'  <circle class="tog" cx="{f(cx)}" cy="{f(cy)}" r="{f(d / 2)}"/>')
             a(f'  <text class="sid" x="{f(cx + d / 2 + 0.8)}" y="{f(cy - 0.3)}">BTN THROW/TAP</text>')

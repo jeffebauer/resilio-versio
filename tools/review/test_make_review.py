@@ -103,7 +103,7 @@ class ListenPageTest(unittest.TestCase):
         make_sweep(d, "m7_splash", {"attitude": [0.0, 0.5, 1.0], "splash": [0.0, 0.5, 1.0]})
         run(d)
         data = self.assertAudioResolves(d / "index.html")
-        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "DRIVEN", "KICKED"])
+        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "TAPE", "VALVE"])
         self.assertEqual([c["color"] for c in data["cols"]], ["--clean", "--driven", "--kicked"])
         self.assertEqual(self.variant_names(data), ["SPLASH 0", "SPLASH 0.5", "SPLASH 1"])
         self.assertEqual(data["legend"][1], {"k": "B", "n": "SPLASH 0.5", "d": "noon"})
@@ -170,7 +170,7 @@ class ListenPageTest(unittest.TestCase):
         run(d)
         data = self.assertAudioResolves(d / "index.html")
         self.assertEqual([r["name"] for r in data["rows"]], ["Hits", "Skank"])
-        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "DRIVEN", "KICKED"])
+        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "TAPE", "VALVE"])
         self.assertEqual([(v["k"], v["n"]) for v in data["legend"]], [("A", "today"), ("B", "drive led"), ("C", "bright led")])
         self.assertEqual(data["legend"][0]["d"], "a burst of noise (reference)")
         self.assertEqual(data["lede"], "SPLASH voicings. Same hits in each ATTITUDE.")
@@ -218,7 +218,7 @@ class ListenPageTest(unittest.TestCase):
         run(self.root / "sweet")
         data = self.assertAudioResolves(self.root / "sweet" / "index.html")
         self.assertEqual([r["name"] for r in data["rows"]], ["DECAY sweep", "TENSION sweep"])
-        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "KICKED"])
+        self.assertEqual([c["name"] for c in data["cols"]], ["CLEAN", "VALVE"])  # old KICKED sidecars show as VALVE (ADR 0044)
         self.assertEqual(self.variant_names(data, "r1|c0"), ["TENSION 0", "TENSION 0.5", "TENSION 1"])
         self.assertEqual(data["panels"]["r0|c0"]["chips"], [{"k": "TENSION", "v": "0.5", "c": "noon"}])
 
@@ -269,7 +269,10 @@ class HelpersTest(unittest.TestCase):
 
     def test_canon_params(self):
         self.assertEqual(listen.canon_params({"boing": 0.5, "attitude": 1.0, "springs": 0.5}),
-                         {"tension": 0.5, "attitude": "KICKED", "springs": "2"})
+                         {"tension": 0.5, "attitude": "VALVE", "springs": "2"})
+        # Labels from before v1.0.43 (ADR 0044) show as today's.
+        self.assertEqual(listen.canon_params({"attitude": "DRIVEN", "springs": "3"}),
+                         {"attitude": "TAPE", "springs": "ECHO"})
         self.assertEqual(listen.fmt_num(0.703125), "0.7")
 
 

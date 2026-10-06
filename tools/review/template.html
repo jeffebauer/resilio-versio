@@ -548,10 +548,14 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
   /* ---------- render cards ---------- */
   var abState = { a: null, b: null, active: "a", levelMatch: false, ctx: null, nodes: {} };
 
+  /* Panel names since v1.0.43 (ADR 0044); the keys stay "mix" and "springs". */
+  var PANEL_NAMES = { mix: "BLEND", springs: "TANK" };
+  function panelName(k) { return PANEL_NAMES[k] || String(k).toUpperCase(); }
+
   function paramsLine(params) {
     if (!params) return "";
     var keys = Object.keys(params);
-    return keys.map(function (k) { return k.toUpperCase() + " " + params[k]; }).join("  ·  ");
+    return keys.map(function (k) { return panelName(k) + " " + params[k]; }).join("  ·  ");
   }
 
   function buildCard(render, kind) {
@@ -634,7 +638,7 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     var toolbar = document.getElementById("toolbar");
     DATA.filterParams.forEach(function (fp) {
       var group = el("div", { class: "filter-group" });
-      group.appendChild(el("label", { text: fp.key.toUpperCase() }));
+      group.appendChild(el("label", { text: panelName(fp.key) }));
       var row = el("div", { class: "chip-row", "data-param": fp.key });
       fp.values.forEach(function (v) {
         var chip = el("div", { class: "chip", role: "button", tabindex: "0", "aria-pressed": "false", "data-value": String(v), text: String(v) });
@@ -698,7 +702,7 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     var thead = el("thead");
     var headTr = el("tr");
     var corner = el("th");
-    corner.appendChild(el("div", { class: "axis-label", text: axisCol.key.toUpperCase() }));
+    corner.appendChild(el("div", { class: "axis-label", text: panelName(axisCol.key) }));
     headTr.appendChild(corner);
     axisCol.values.forEach(function (v) { headTr.appendChild(el("th", { text: String(v) })); });
     thead.appendChild(headTr);
@@ -724,7 +728,7 @@ canvas.spectro-large { width: 100%; height: 360px; display: block; border-radius
     });
     table.appendChild(tbody);
     wrap.appendChild(table);
-    area.appendChild(el("div", { text: axisRow.key.toUpperCase() + " ↓  /  " + axisCol.key.toUpperCase() + " →", style: "color:var(--fg-dim); font-size:0.8rem; margin-bottom:0.4rem;" }));
+    area.appendChild(el("div", { text: panelName(axisRow.key) + " ↓  /  " + panelName(axisCol.key) + " →", style: "color:var(--fg-dim); font-size:0.8rem; margin-bottom:0.4rem;" }));
     area.appendChild(wrap);
   }
 

@@ -61,10 +61,12 @@ from pathlib import Path
 TEMPLATE_NAME = "template.html"
 
 # Params known from core/params/ParamSpec.h, used to order switch values
-# sensibly (e.g. ATTITUDE: CLEAN/DRIVEN/KICKED) instead of alphabetically.
+# sensibly (e.g. ATTITUDE: CLEAN/TAPE/VALVE) instead of alphabetically.
+# Renders from before v1.0.43 (ADR 0044) carry the old labels (SPRINGS 3,
+# DRIVEN, KICKED): each sits next to its new name so either orders right.
 KNOWN_SWITCH_ORDER = {
-    "springs": ["1", "2", "3"],
-    "attitude": ["CLEAN", "DRIVEN", "KICKED"],
+    "springs": ["1", "2", "ECHO", "3"],
+    "attitude": ["CLEAN", "TAPE", "DRIVEN", "VALVE", "AMP", "KICKED"],
 }
 
 

@@ -14,6 +14,36 @@ bool findParamId(const std::string& key, ParamId& id)
     return false;
 }
 
+namespace {
+// Switch labels from before the v1.0.43 panel names (ADR 0044), still read
+// so older presets, sweeps, scripts and reference notes render the same:
+// SPRINGS 3 is TANK ECHO; DRIVEN is TAPE, KICKED is VALVE (AMP was the
+// name for a few hours on 6 Oct 2026, so it is read too). Same positions.
+struct LegacyLabel {
+    ParamId     id;
+    const char* label;
+    int         position;
+};
+constexpr LegacyLabel kLegacyLabels[] = {
+    {ParamId::Springs, "3", 2},
+    {ParamId::Attitude, "DRIVEN", 1},
+    {ParamId::Attitude, "KICKED", 2},
+    {ParamId::Attitude, "AMP", 2},
+};
+} // namespace
+
+bool switchPosition(ParamId id, const std::string& label, int& position)
+{
+    const ParamSpec& s = spec(id);
+    for (int pos = 0; pos < 3; ++pos) {
+        if (s.choices[pos] && label == s.choices[pos]) { position = pos; return true; }
+    }
+    for (const auto& l : kLegacyLabels) {
+        if (l.id == id && label == l.label) { position = l.position; return true; }
+    }
+    return false;
+}
+
 bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& error)
 {
     const ParamSpec& s = spec(id);
@@ -23,9 +53,8 @@ bool applyValue(Tank& tank, ParamId id, const json::Value& val, std::string& err
     }
     if (val.isString() && s.kind == ParamKind::Switch3) {
         const std::string label = val.stringValue();
-        for (int pos = 0; pos < 3; ++pos) {
-            if (label == s.choices[pos]) { tank.setParam(id, switchToNormalised(pos)); return true; }
-        }
+        int pos = 0;
+        if (switchPosition(id, label, pos)) { tank.setParam(id, switchToNormalised(pos)); return true; }
         error = "unknown label '" + label + "' for " + s.key;
         return false;
     }
@@ -143,9 +172,8 @@ bool applySetArg(Tank& tank, const std::string& arg, std::string& error)
     const ParamSpec& s = spec(id);
 
     if (s.kind == ParamKind::Switch3) {
-        for (int pos = 0; pos < 3; ++pos) {
-            if (text == s.choices[pos]) { tank.setParam(id, switchToNormalised(pos)); return true; }
-        }
+        int pos = 0;
+        if (switchPosition(id, text, pos)) { tank.setParam(id, switchToNormalised(pos)); return true; }
         error = "'" + text + "' is not a position of " + s.key + " (use " + s.choices[0] + ", "
               + s.choices[1] + " or " + s.choices[2] + ")";
         return false;

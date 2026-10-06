@@ -59,9 +59,14 @@ inline constexpr std::array<ParamSpec, static_cast<size_t>(ParamId::Count)> kPar
     {ParamId::Splash,   "splash",   "SPLASH",   ParamKind::Knob,    0.3f, Smoothing::Snappy,   5.0f, {}},
     {ParamId::Drive,    "drive",    "DRIVE",    ParamKind::Knob,    0.25f, Smoothing::Snappy,  5.0f, {}},
     {ParamId::Wobble,   "wobble",   "WOBBLE",   ParamKind::Knob,    0.45f, Smoothing::Gliding, 80.0f, {}},
-    {ParamId::Mix,      "mix",      "MIX",      ParamKind::Knob,    0.5f, Smoothing::Snappy,   5.0f, {}},
-    {ParamId::Springs,  "springs",  "SPRINGS",  ParamKind::Switch3, 0.5f, Smoothing::Switch,  20.0f, {"1", "2", "3"}},
-    {ParamId::Attitude, "attitude", "ATTITUDE", ParamKind::Switch3, 0.5f, Smoothing::Switch,  20.0f, {"CLEAN", "DRIVEN", "KICKED"}},
+    // Panel names since v1.0.43 (ADR 0044): MIX -> BLEND, SPRINGS -> TANK
+    // (1 / 2 / ECHO, was 1 / 2 / 3), ATTITUDE CLEAN / TAPE / VALVE (was
+    // CLEAN / DRIVEN / KICKED). Keys and positions unchanged, so saved sets
+    // keep their values; the Renderer still reads the old labels
+    // (host/common/ParamsJson.cpp, legacy labels).
+    {ParamId::Mix,      "mix",      "BLEND",    ParamKind::Knob,    0.5f, Smoothing::Snappy,   5.0f, {}},
+    {ParamId::Springs,  "springs",  "TANK",     ParamKind::Switch3, 0.5f, Smoothing::Switch,  20.0f, {"1", "2", "ECHO"}},
+    {ParamId::Attitude, "attitude", "ATTITUDE", ParamKind::Switch3, 0.5f, Smoothing::Switch,  20.0f, {"CLEAN", "TAPE", "VALVE"}},
     // THROW (ADR 0039): the Plugin's and Renderer's stand-in for the gate.
     // On = gate high (the send open), off = gate low. Like the gate, it only
     // takes effect from the first time it goes on: until then the send is
