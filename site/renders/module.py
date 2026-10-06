@@ -100,12 +100,19 @@ def _knurled(name, r_out, r_in, depth, loc, mat, teeth=48):
 
 
 KNOB_H = 13.0     # panel face to top of cap (v1 12.4, v2 6.5 with a skirt)
+KNOB_LIFT = 0.6   # cap base sits this far above the panel face, over the pot nut
 
 
 def _knob(name, x, z, angle, mats):
-    # plain 9 mm cylinder cap (diameter from the owner's art), slight taper, no skirt
-    body = C.cylinder(f"{name}_cap", 4.5, KNOB_H, (x, -KNOB_H / 2, z), mats["knob"], axis="X",
-                      segs=64, r2=4.35, bevel=0.5)
+    """Plain cap, 9.5 mm at the base tapering to 9 mm at the top (the owner's
+    art draws 9 mm). NE's pot hole is also 9.0 mm, so a straight 9 mm cap left
+    the hole's dark edge showing as a ring. Now the pot's flat nut (9.4 mm,
+    0.5 mm thick, dark) sits on the panel face and closes the hole, and the
+    slightly flared cap base hovers just above it and overhangs it."""
+    C.cylinder(f"{name}_potnut", 4.7, 0.5, (x, -0.25, z), mats["potnut"], axis="X", segs=64, bevel=0.1)
+    body_h = KNOB_H - KNOB_LIFT
+    body = C.cylinder(f"{name}_cap", 4.75, body_h, (x, -KNOB_LIFT - body_h / 2, z), mats["knob"], axis="X",
+                      segs=64, r2=4.5, bevel=0.3)
     # cylinder(axis X) points its +Z (r2 end) towards -Y: the top face is at y = -KNOB_H
     top_y = -KNOB_H
     a = math.radians(angle)
@@ -229,6 +236,7 @@ def build(params=None):
         ink=C.clay("mod_ink", 0.85, 0.5),           # white indicator lines
         metal=C.steel("mod_metal", 0.8, 0.28),      # toggles, bushings, screws
         nickel=C.steel("mod_nickel", 0.88, 0.12),   # polished nickel jack nuts
+        potnut=C.clay("mod_potnut", 0.03, 0.5),     # flat pot nut under each cap
         black=C.clay("mod_black", 0.04, 0.55),      # jack/switch bodies, headers
         insert=C.clay("mod_insert", 0.07, 0.5),     # jack plastic insert ring (dark, so the socket reads hollow)
         void=C.clay("mod_void", 0.005, 0.9),        # inside the jack bore
