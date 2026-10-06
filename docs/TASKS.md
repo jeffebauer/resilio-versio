@@ -31,12 +31,9 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
 
 ### 5. Going public + the minisite (decisions before anything is published)
-- [ ] **Licence:** do you have a paid JUCE licence? If not, the plugin ships under the AGPL (fine once the source is public). Our own code: MIT suggested
-- [ ] **Your email** is on 537 commits and becomes public with the repo: OK? **Two Wellspring spectrogram images** in the repo: keep or remove?
-- [ ] **Credit and feedback:** how to credit you (name/handle + link); where feedback goes (GitHub issues, email, form)
 - [ ] **Listen to the ten demo clips** in the minisite package (rendered, not yet heard by anyone) and approve, cut or redo
 - [ ] **Plugin layout check in Ableton:** does GATE sit on top of DRIVE's label and the button read "THR…"? (It does in a scratch build; fix before any public screenshot)
-- Claude will then: fixed download names in releases, prune old branches, notices files, public release notes, and only flip the repo public when you say so
+- Your going-public answers are recorded in ADR 0045 (AGPL plugin, MIT code, email and spectrograms fine, credit Jesse Bauer → jessebauer.xyz, GitHub Issues, prune branches and keep releases, keep the name with a disclaimer). Claude prepares it all on a branch; **the repo only goes public when you say "flip it"**
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 
@@ -64,6 +61,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Going-public decisions** (ADR 0045): plugin under the AGPL (no paid JUCE licence), our code MIT, commit email and the Wellspring spectrograms OK to publish, credit Jesse Bauer → jessebauer.xyz, feedback via GitHub Issues, prune old branches and keep the friends' releases, keep the name Resilio Versio with a Noise Engineering disclaimer
 - 6 Oct 2026: **Design answers:** In R is for stereo in (study under way); VALVE Howl on a tight tank is not too siren-like, keep it; the VALVE lurch spread: you want to hear it first (listening page coming)
 - 6 Oct 2026: **Friends' release published:** [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private): universal plugin (macOS 12+), firmware, read-me and what's-new since 1 Oct. README rewritten for visitors and pushed
 - 6 Oct 2026: **New panel names merged and installed** (`c1d98ac`, ADR 0044, SPEC v1.0.43): BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP; saved sets keep their values. Player docs checked against the code (manual refreshed: echo mode, the Hold, LEDs; two presets moved off the old 3 Springs to TANK 2; "Kicked tank drop" is now "Valve tank drop"). Rescan in Ableton; existing devices may show old names until a fresh instance
