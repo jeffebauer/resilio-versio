@@ -898,6 +898,77 @@ void firstHit()
     }
 }
 
+// ---- 2f. First chord after a run of drums (v1.0.44) -------------------------------------
+// The same H2 settings. A groove of -6 dBFS kicks, snares and rims, then
+// 04_skank's chords. The input trims (the Excitation trim and the low-cut
+// makeup) follow the input over 0.3 s, so when the first chord arrived they
+// still read the drums (a kick's lows: more level than the chord wants) and
+// it peaked up to 3.5 dB over chords 2-4. Now a new sound whose own reading
+// differs is read on its own (DriveVoicing.h "New sound"). Owner: "the
+// first chord after drums should be as loud as the chords that follow it".
+// The chords' level: their wet peak with the drums' own render (and tail)
+// taken out (no output box, CLEAN: the tank adds the two linearly). Limit:
+// chord 1 within 0.5 dB of the loudest of chords 2-4, at three gaps.
+void firstChordAfterDrums()
+{
+    rv::wav::Audio sk, hits;
+    if (!readStimulus("04_skank.wav", sk) || !readStimulus("02_hits.wav", hits)) {
+        check(false, "First chord after drums: 04_skank.wav and 02_hits.wav found");
+        return;
+    }
+    Settings s;
+    s.att = 0;
+    s.decay = s.tension = s.tone = 0.5f;
+    s.mix = 1.0f;
+    s.splash = s.drive = 0.0f;
+    s.wobble = 0.5f;
+    auto peakIn = [](const Stereo& o, double from, double len) {
+        float p = 0.0f;
+        for (size_t i = size_t(from * kFs); i < size_t((from + len) * kFs) && i < o.l.size(); ++i)
+            p = std::max({p, std::fabs(o.l[i]), std::fabs(o.r[i])});
+        return 20.0 * std::log10(double(p) + 1e-30);
+    };
+    const Buf& h = hits.channels[0];
+    const Buf& c = sk.channels[0];
+    // 02_hits: the -6 dBFS snare at 1 s (0.25 s), the -6 dBFS rim at 19 s (0.06 s).
+    auto paste = [](Buf& dst, const Buf& src, double srcFrom, double len, double at) {
+        const size_t a = size_t(srcFrom * kFs), n = size_t(len * kFs), d = size_t(at * kFs);
+        for (size_t i = 0; i < n && a + i < src.size() && d + i < dst.size(); ++i) dst[d + i] += src[a + i];
+    };
+    // A kick: 0.3 s of a sine falling from 135 to 55 Hz, -6 dBFS.
+    Buf kick(size_t(0.3 * kFs));
+    for (size_t i = 0; i < kick.size(); ++i) {
+        const double t = double(i) / kFs;
+        kick[i] = float(0.5 * std::sin(2.0 * rv::map::kPi * (55.0 + 80.0 * std::exp(-t / 0.02)) * t) * std::exp(-t / 0.12));
+    }
+    for (const double gap : {0.4, 0.75, 1.5}) {
+        // Kick, snare, kick, rim, twice, 0.375 s apart from 0.5 s; then 04_skank
+        // from its first chord (1.4 s in the file; chords 0.8 s apart).
+        const double chord1 = 0.5 + 7 * 0.375 + gap;
+        Buf drums(size_t((chord1 + 3.4) * kFs), 0.0f);
+        for (int k = 0; k < 8; ++k) {
+            const double at = 0.5 + k * 0.375;
+            if (k % 2 == 0) paste(drums, kick, 0.0, 0.3, at);
+            else if (k % 4 == 1) paste(drums, h, 1.0, 0.25, at);
+            else paste(drums, h, 19.0, 0.06, at);
+        }
+        Buf in = drums;
+        paste(in, c, 1.4, 3.2, chord1);
+        Stereo o = renderWith(s, in, 0);
+        const Stereo d = renderWith(s, drums, 0);
+        for (size_t i = 0; i < o.l.size(); ++i) {
+            o.l[i] -= d.l[i];
+            o.r[i] -= d.r[i];
+        }
+        const double c1 = peakIn(o, chord1, 0.8);
+        const double later = std::max({peakIn(o, chord1 + 0.8, 0.8), peakIn(o, chord1 + 1.6, 0.8), peakIn(o, chord1 + 2.4, 0.8)});
+        std::snprintf(msg, sizeof msg,
+                      "First chord after drums (gap %.2f s): chord 1 peaks %.2f dBFS, chords 2-4 %.2f (%+.2f dB; limit +-0.5)",
+                      gap, c1, later, c1 - later);
+        check(std::fabs(c1 - later) <= 0.5, msg);
+    }
+}
+
 // Level follows the intended rise on quiet sustained material too (ADR 0022:
 // no loudness cue beyond ADR 0033's +6 dB): steady noise ~ -25 dBFS RMS, a
 // pad-like input that the saturators hardly squash, so a fixed makeup tuned
@@ -1990,7 +2061,7 @@ int main(int argc, char** argv)
     };
     const T tests[] = {{"blocks", buildingBlocks}, {"loop", loopMagnitude},       {"attitude", attitudeLevels},
                        {"drive", driveSweep},      {"drive-audibility", driveAudibility},
-                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit}, {"drive-tail", driveTail},
+                       {"drive-sweetspot", driveSweetSpot}, {"wet-level", wetLevelVsMaterial}, {"first-hit", firstHit}, {"chord-after-drums", firstChordAfterDrums}, {"drive-tail", driveTail},
                        {"drive-held", driveLevelHeld}, {"audible", audibleAtDriveZero}, {"alias", aliasing},
                        {"tone", tone},             {"bigknob", bigKnob},          {"morph", morphClickFree},     {"determinism", determinism},
                        {"howl", howl},             {"stability", stabilityGrid},  {"performance", performance}};

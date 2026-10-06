@@ -747,6 +747,19 @@ private:
     std::array<dsp::OnePoleLowpass, 2> excHp_{}, excLp_{}; // 2 x one-pole HP, 2 x one-pole LP
     float excAccBroad_ = 0.0f, excAccBand_ = 0.0f, excBroad_ = 0.0f, excBand_ = 0.0f, excCoeff_ = 0.0f;
     float excTrimFrom_ = 1.0f, excTrimTo_ = 1.0f, excGate_ = 1.0e-12f;
+    // A new sound (DriveVoicing.h "New sound", v1.0.44): what the input-side
+    // followers (Excitation trim, Big Knob, low-cut and TONE makeups) held
+    // when it arrived, decayed as they decay, so their readings can leave it
+    // out (excFresh). Pending: the snapshot of the latest onset, until it is
+    // judged; on: the one being left out.
+    enum ExcMem { kMemBroad, kMemBand, kMemBkIn, kMemBkOut, kMemGmIn, kMemGmOut, kMemGmShIn, kMemGmShOut, kMemTdAll, kMemTdLp, kNumExcMem };
+    std::array<float, kNumExcMem> excPend_{}, excOld_{};
+    float excPendW_ = 0.0f, excOldW_ = 0.0f; // the snapshot's weight now: (1 - excCoeff_)^ticks
+    int   excPendTicks_ = -1;                // ticks since the pending onset (-1: none)
+    bool  excForget_ = false, excArmed_ = true;
+    float excFresh(float follower, ExcMem m) const { return excForget_ ? std::max(follower - excOldW_ * excOld_[m], 1.0e-30f) : follower; }
+    void  excSnapshot(std::array<float, kNumExcMem>& s) const;
+    float excMakeupLog(const std::array<float, kNumExcMem>* old, float w, float tone) const;
     // Big Knob makeup (DriveVoicing.h, Renderer voicings 1-3): power into
     // and out of the Tilt above ~90 Hz, slow followers (kExcSeconds), gain
     // (1 = none).
