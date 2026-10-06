@@ -14,15 +14,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 **Plugin in Ableton:** `c1d98ac` (installed 6 Oct 17:54, AU validated): the new panel names (BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP); the gate clock holds its tempo when the pulses stop; echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
-**Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
+**Share package:** [GitHub Release v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private, Latest): universal plugin, firmware, read-me with the what's-new notes
 
 ## Now (in this order)
 
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash `dist/resilio_versio_release_7e73dfe.bin`. Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
-
-### Optional
-- [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude refreshes the manual and starting points and publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md), up to date). Paste any reply from your friend to Claude
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
@@ -53,6 +50,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Friends' release published:** [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private): universal plugin (macOS 12+), firmware, read-me and what's-new since 1 Oct. README rewritten for visitors and pushed
 - 6 Oct 2026: **New panel names merged and installed** (`c1d98ac`, ADR 0044, SPEC v1.0.43): BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP; saved sets keep their values. Player docs checked against the code (manual refreshed: echo mode, the Hold, LEDs; two presets moved off the old 3 Springs to TANK 2; "Kicked tank drop" is now "Valve tank drop"). Rescan in Ableton; existing devices may show old names until a fresh instance
 - 6 Oct 2026: **The gate clock holds** (your ask: no swoop on Ableton's transport stop/start), merged and installed `7e73dfe` (ADR 0041 amendment, SPEC v1.0.42); a lone pulse lets it go (your pick). Release `7e73dfe` built
 - 6 Oct 2026: **All of Now §1–5 checked off:** the new build heard in the plugin (no Kick, THROW button, taps, MIDI as gate, wet-only µ-law, round 5's side changes; a tapped tempo holding is fine); release `bdd3910` flashed, **click check passed**, 4 s of purple fine; the new echo (25 % springs, wide) and tape wear B heard, held top and TENSION note values fine; echo-mode feel (0.4 s noon, DECAY range, ~10 s settle, swoop), the limiter at DECAY max with DRIVE high, KICKED's wet-only grit (no 8-bit), the low-mid pad, play on the real panel: all fine as they are; panel interface and the **M2 Ableton check** done
