@@ -2,15 +2,15 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, evening. Everything checked off: `bdd3910` on the module and in Ableton (springs blend C, tape wear B, TENSION note values, the purple tap light 4 s), click check passed, the M2 Ableton check done. Next: the friends' release (Optional), after Claude refreshes the manual and starting points
+**Last updated:** 6 Oct 2026, end of session 8. Released [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4): everything is merged, installed in Ableton (`c1d98ac`) and published. One small module check left (§1)
 
 | Milestone | State |
 |---|---|
 | M2 plugin | **Passed** (6 Oct): Ableton check and panel done; installed `c1d98ac` (new panel names) |
 | M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (6 Oct, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %: the blend costs nothing measurable. Flash: release 96.4 %, CPU-test build 97.3 % |
-| Real firmware on the Versio | `bdd3910` (6 Oct), click check passed. Next: `7e73dfe` (the gate clock holds, §1) |
+| Real firmware on the Versio | `bdd3910` (6 Oct), click check passed. Next: the released `a6c70a4` (the gate clock holds; same sound, §1) |
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
-| M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
+| M9 polish | Manual, starting points, share read-me and README refreshed and checked against the code (6 Oct); friends' release published. Left: a printed panel overlay with the new names |
 
 **Plugin in Ableton:** `c1d98ac` (installed 6 Oct 17:54, AU validated): the new panel names (BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP); the gate clock holds its tempo when the pulses stop; echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
@@ -19,7 +19,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ## Now (in this order)
 
 ### 1. The gate clock holds (≈5 min)
-- [ ] Flash `dist/resilio_versio_release_7e73dfe.bin`. Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
+- [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 - [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
