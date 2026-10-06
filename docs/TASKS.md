@@ -6,17 +6,20 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 | Milestone | State |
 |---|---|
-| M2 plugin | **Passed** (6 Oct): Ableton check and panel done; installed `bdd3910` |
+| M2 plugin | **Passed** (6 Oct): Ableton check and panel done; installed `7e73dfe` |
 | M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (6 Oct, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %: the blend costs nothing measurable. Flash: release 96.4 %, CPU-test build 97.3 % |
-| Real firmware on the Versio | `bdd3910` (6 Oct): everything merged. **Click check passed** |
+| Real firmware on the Versio | `bdd3910` (6 Oct), click check passed. Next: `7e73dfe` (the gate clock holds, §1) |
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
-**Plugin in Ableton:** `bdd3910` (installed 6 Oct 14:25, AU validated): echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
+**Plugin in Ableton:** `7e73dfe` (installed 6 Oct 15:33, AU validated): the gate clock holds its tempo when the pulses stop; echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
 
 ## Now (in this order)
+
+### 1. The gate clock holds (≈5 min)
+- [ ] Flash `dist/resilio_versio_release_7e73dfe.bin`. Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
 ### Optional
 - [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude refreshes the manual and starting points and publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md), up to date). Paste any reply from your friend to Claude
@@ -50,6 +53,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **The gate clock holds** (your ask: no swoop on Ableton's transport stop/start), merged and installed `7e73dfe` (ADR 0041 amendment, SPEC v1.0.42); a lone pulse lets it go (your pick). Release `7e73dfe` built
 - 6 Oct 2026: **All of Now §1–5 checked off:** the new build heard in the plugin (no Kick, THROW button, taps, MIDI as gate, wet-only µ-law, round 5's side changes; a tapped tempo holding is fine); release `bdd3910` flashed, **click check passed**, 4 s of purple fine; the new echo (25 % springs, wide) and tape wear B heard, held top and TENSION note values fine; echo-mode feel (0.4 s noon, DECAY range, ~10 s settle, swoop), the limiter at DECAY max with DRIVE high, KICKED's wet-only grit (no 8-bit), the low-mid pad, play on the real panel: all fine as they are; panel interface and the **M2 Ableton check** done
 - 6 Oct 2026: **CPU run 21 on the chip** (`bdd3910`, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %; the same as run 20. Under the 80 % ceiling
 - 6 Oct 2026: **Merged and installed `bdd3910`:** echo mode's springs blend C (25 % springs, the rest the tape's repeats heard directly, wide; level-matched to the old echo, image centred; ADR 0041 amendment, SPEC v1.0.40) and the purple pulses for 4 s (SPEC v1.0.41). The first repeat on a send as loud as the hit: fine (your call). Release `bdd3910` + CPU run 21 built
