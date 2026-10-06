@@ -2,13 +2,13 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, afternoon. Merged and in Ableton (`bdd3910`): echo mode with a quarter through the springs (the rest the tape's repeats heard directly, wide), tape wear B, TENSION's note values, the purple tap light (now 4 s). Next for you: CPU run 21 and the new release on the module (§2), then listen (§3)
+**Last updated:** 6 Oct 2026, evening. Everything checked off: `bdd3910` on the module and in Ableton (springs blend C, tape wear B, TENSION note values, the purple tap light 4 s), click check passed, the M2 Ableton check done. Next: the friends' release (Optional), after Claude refreshes the manual and starting points
 
 | Milestone | State |
 |---|---|
-| M2 plugin | Built, installed `bdd3910`. Your Ableton check is open (§5) |
+| M2 plugin | **Passed** (6 Oct): Ableton check and panel done; installed `bdd3910` |
 | M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (6 Oct, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %: the blend costs nothing measurable. Flash: release 96.4 %, CPU-test build 97.3 % |
-| Real firmware on the Versio | `3b70fba` (purple tap light; click check passed on `9ba726f`, same sound). Next: `bdd3910` (§2) |
+| Real firmware on the Versio | `bdd3910` (6 Oct): everything merged. **Click check passed** |
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
@@ -17,32 +17,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
 
 ## Now (in this order)
-
-### 1. Hear the new build in the plugin (≈15 min)
-- [ ] **What's new since your last install:** the Kick is gone; the button **throws** in SPRINGS 1–2 (hold = send open; the first press switches throw mode on, so it works with nothing patched; leave throw mode: double-tap, then hold 2 s, four LEDs blink white) and **taps tempo** in SPRINGS 3 (Ableton's tempo wins in the plugin, so taps only count on the module). Held **MIDI notes act as the gate**. µ-law grit is on the wet only, before TONE: the dry is clean in every ATTITUDE, TONE left tames the grit
-- [ ] **Round 5's side changes** you haven't heard: the wet 1 dB lower from TONE noon right; DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top
-- [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
-
-### 2. CPU run 21, then the new release, on the module (≈20 min)
-- [x] CPU run 21 read (6 Oct): echo mode 75.7 % peak, worst moment 78.1 %, under the 80 % ceiling
-- [ ] Then flash `dist/resilio_versio_release_bdd3910.bin` and a **click check** (flip SPRINGS 3 ↔ 1/2 under load, knobs fast, throws, taps). The purple now pulses 4 s after the last tap: long enough?
-
-### 3. Hear the new echo (plugin, or `renders/echo_springs_c_check/`) (≈15 min)
-- [ ] **Echo mode is now a quarter through the springs** (your pick C): each repeat a distinct hit, wide but centred, as loud as before. The check page compares it with the old echo, **not** level-matched: same loudness? Centred, not leaning left? Does turning DECAY up keep it level with the old one? On a send (MIX fully wet) the first repeat comes out about as loud as the hit from DECAY ~3 o'clock up: you said that's fine
-### 3b. Hear tape wear B in the plugin (≈10 min)
-- [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
-- [ ] TENSION in echo mode shows the note value (1/2 … 1/16, dotted) on the panel and in Ableton's device view (it may need a knob touch to refresh after flipping SPRINGS)
-
-### 4. Play it (plugin and module)
-- [ ] **Echo mode feel:** is TENSION noon's **0.4 s** a good resting echo time (range 2 s → 80 ms)? Does **DECAY** feel right from one repeat to the held top? The held top takes ~10 s to settle from one hit: fine, or should it lock in sooner? Is the **swoop** (~0.3 s) the right speed?
-- [ ] **Echo mode at DECAY max in CLEAN/DRIVEN with DRIVE past ¾:** the output limiter works (red LED flickers). Bothersome, or fine?
-- [ ] **KICKED's grit now it's wet-only:** still enough, or try 8-bit on the wet? (8-bit sounded "a little digital" when it was on the dry too)
-- [ ] Your low-mid pad again (CLEAN, DECAY noon, 2–3 Springs, TENSION past 3 o'clock): output LEDs mostly out of red, any brief red clean, not driven
-- [ ] Play it thoroughly on the real panel: how does it feel? Anything surprising compared with the plugin?
-
-### 5. The plugin in Ableton (≈20 min)
-- [ ] **Panel interface:** does the layout read like your panel? Knobs comfortable? LEDs match the module? The button throws (SPRINGS 1–2) and taps (SPRINGS 3)?
-- [ ] **M2 Ableton check (≈15 min):** [m2-ableton-check.md](m2-ableton-check.md). Loads (AU + VST3), automatable, held MIDI notes throw, null test at MIX 0 (in CLEAN), 44.1/96 kHz. Skip step 3 (MIDI Kicks: retired). A **Bypass** control is normal
 
 ### Optional
 - [ ] Friends' release: after you've tested the new build on the module and in the plugin, Claude refreshes the manual and starting points and publishes it with the what's-new notes ([releases/whats-new-since-1-oct.md](../releases/whats-new-since-1-oct.md), up to date). Paste any reply from your friend to Claude
@@ -76,6 +50,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **All of Now §1–5 checked off:** the new build heard in the plugin (no Kick, THROW button, taps, MIDI as gate, wet-only µ-law, round 5's side changes; a tapped tempo holding is fine); release `bdd3910` flashed, **click check passed**, 4 s of purple fine; the new echo (25 % springs, wide) and tape wear B heard, held top and TENSION note values fine; echo-mode feel (0.4 s noon, DECAY range, ~10 s settle, swoop), the limiter at DECAY max with DRIVE high, KICKED's wet-only grit (no 8-bit), the low-mid pad, play on the real panel: all fine as they are; panel interface and the **M2 Ableton check** done
 - 6 Oct 2026: **CPU run 21 on the chip** (`bdd3910`, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %; the same as run 20. Under the 80 % ceiling
 - 6 Oct 2026: **Merged and installed `bdd3910`:** echo mode's springs blend C (25 % springs, the rest the tape's repeats heard directly, wide; level-matched to the old echo, image centred; ADR 0041 amendment, SPEC v1.0.40) and the purple pulses for 4 s (SPEC v1.0.41). The first repeat on a send as loud as the hit: fine (your call). Release `bdd3910` + CPU run 21 built
 - 6 Oct 2026: **Purple tap light on the module:** works well; asked for longer pulses (now 4 s)
