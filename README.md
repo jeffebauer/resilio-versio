@@ -2,11 +2,13 @@
 
 **A dub spring reverb for the Noise Engineering Versio.** A simulated spring tank you can throw snares into, splash, drive, filter like King Tubby, hold forever, push into a howl, or feed from a worn tape echo.
 
-*Resilio*: Latin, "I leap back, rebound".
+*Resilio*: Latin, "I leap back, rebound". By [Jesse Bauer](https://jessebauer.xyz).
+
+Resilio Versio is firmware for the Noise Engineering Versio. Not affiliated with or endorsed by Noise Engineering.
 
 Resilio is alternative firmware for the [Versio](https://noiseengineering.us/products/versio), Noise Engineering's open Eurorack platform (an Electro-Smith Daisy Seed behind seven knobs, two switches, a button and a gate). It replaces the module's firmware entirely and goes back just as easily. The same sound also runs as an AU/VST3 plugin, so a patch on the desk can be sketched in a DAW first.
 
-> **Status:** working firmware, played on real hardware; shared with friends as pre-release builds. Not affiliated with or endorsed by Noise Engineering.
+> **Status:** working firmware, played on real hardware. Firmware and plugin builds are on the [Releases](https://github.com/jeffebauer/resilio-versio/releases/latest) page.
 
 ## What it sounds like
 
@@ -29,9 +31,9 @@ Dub treats the mixing desk as an instrument played live. The reverb isn't a back
 
 ## How it was shaped
 
-Resilio was designed by ear. Its owner, a designer and dub enthusiast, brought the musical goals and made every sonic decision; Claude (Anthropic's AI) was the engineering partner, writing the DSP, the firmware and the tooling, and turning each technical question into a musical one.
+Resilio was designed by ear. [Jesse Bauer](https://jessebauer.xyz), a designer and dub enthusiast, brought the musical goals and made every sonic decision; Claude (Anthropic's AI) was the engineering partner, writing the DSP, the firmware and the tooling, and turning each technical question into a musical one.
 
-- **Modelled on physics.** The springs follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (JAES, 2010): each spring is a feedback loop around a chain of "stretched" allpass filters that spread each echo in time by frequency, which is what makes the chirp. On top: up to three detuned springs spread across the stereo field, a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and a layered defence against single-tone ringing.
+- **Modelled on physics.** The springs follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (JAES, 2010): each spring is a feedback loop around a chain of "stretched" allpass filters that spread each echo in time by frequency, which is what makes the chirp. On top: one or two detuned springs spread across the stereo field (TANK 1 or 2; TANK ECHO is a tape echo feeding two), a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and a layered defence against single-tone ringing.
 - **Fitted to a real tank.** The tank was tuned, round after round, against recordings of the owner's Teaching Machines Wellspring (a desktop BBD delay and stereo spring reverb): its softer hit, its warmer main ring, where its width sits. A Strymon Magneto was a second reference.
 - **Every change heard before it shipped.** Each candidate sound became a level-matched listening page (A against B, in every ATTITUDE, on rim hits, a reggae skank and a held pad), and the owner picked. Over forty decisions are recorded, with their reasons, in [`docs/adr/`](docs/adr/).
 - **Desktop first, hardware for the feel.** Sound work happens in an offline renderer and the plugin; the module is where CPU is measured and the final feel is judged. The firmware runs inside 128 KB of flash and under 80 % of the chip at its busiest moment.
@@ -73,9 +75,9 @@ Full player's guide: [`docs/manual.md`](docs/manual.md). Dub starting points: [`
 
 ## Getting it
 
-**On the Versio:** download the firmware (`.bin`) from this repository's Releases and install it with Noise Engineering's [Firmware Swap](https://noiseengineering.us/portal/firmware) web app (Chrome): *Select Custom File*, *Connect*, *Change Firmware*. Use USB power only: **never connect USB and Eurorack power at the same time.** To go back, run the same app and pick any Noise Engineering firmware; Resilio changes nothing else on the module. Step by step: [`docs/manual.md`](docs/manual.md#installing-noise-engineering-firmware-swap).
+**On the Versio:** download the firmware ([`resilio-versio-firmware.bin`](https://github.com/jeffebauer/resilio-versio/releases/latest/download/resilio-versio-firmware.bin)) from this repository's [Releases](https://github.com/jeffebauer/resilio-versio/releases/latest) and install it with Noise Engineering's [Firmware Swap](https://noiseengineering.us/portal/firmware) web app (Chrome): *Select Custom File*, *Connect*, *Change Firmware*. Use USB power only: **never connect USB and Eurorack power at the same time.** To go back, run the same app and pick any Noise Engineering firmware; Resilio changes nothing else on the module. Step by step: [`docs/manual.md`](docs/manual.md#installing-noise-engineering-firmware-swap).
 
-**In a DAW:** the AU/VST3 plugin (macOS) has the same panel, the same sound and the same LEDs. It follows the DAW's tempo in echo mode, and held MIDI notes act as the gate.
+**In a DAW:** the AU/VST3 plugin for macOS 12 or newer, Apple Silicon or Intel ([`resilio-versio-plugin-macos.zip`](https://github.com/jeffebauer/resilio-versio/releases/latest/download/resilio-versio-plugin-macos.zip); install steps in its read-me) has the same panel, the same sound and the same LEDs. It follows the DAW's tempo in echo mode, and held MIDI notes act as the gate.
 
 ## For builders
 
@@ -85,12 +87,23 @@ One DSP core with no platform code, three hosts: an offline renderer (WAV in, WA
 - The specification: [`SPEC.md`](SPEC.md); vocabulary: [`CONTEXT.md`](CONTEXT.md); decisions: [`docs/adr/`](docs/adr/)
 - Firmware variants, CPU runs and flash budget: [`firmware/README.md`](firmware/README.md)
 
+## Feedback
+
+Found a bug, or have an idea for the sound? Open an issue on [GitHub Issues](https://github.com/jeffebauer/resilio-versio/issues/new/choose). There are two short templates: a bug report (where it happened, the version, the settings in panel names, ideally a recording) and a sound idea.
+
 ## Licence
 
-No licence has been chosen yet. The plugin builds on [JUCE](https://juce.com), which is dual-licensed (AGPLv3 or JUCE's commercial licences), so distributing plugin builds brings those terms into play. The firmware and the DSP core don't depend on JUCE.
+- **Code, tools and docs:** MIT, see [`LICENSE`](LICENSE).
+- **Plugin binaries:** AGPLv3. The plugin is built on [JUCE](https://juce.com), used under its AGPLv3 licence, so the plugin as distributed is AGPLv3 (full text in [`LICENSES/AGPL-3.0.txt`](LICENSES/AGPL-3.0.txt)). Each release's source is this repository at that release's tag.
+- **Firmware:** our MIT code with libDaisy (MIT), the STM32 HAL (BSD-3-Clause) and CMSIS (Apache-2.0). No JUCE, and no Noise Engineering code.
+- Third-party notices: [`NOTICE`](NOTICE).
 
 ## Acknowledgements
 
 - Spring reverb modelling: V. Välimäki, J. Parker and J. S. Abel; J. Parker; S. Bilbao (full references in [`SPEC.md` §11](SPEC.md)).
-- [Electro-Smith](https://electro-smith.com) for libDaisy and DaisySP, and [Noise Engineering](https://noiseengineering.us) for the open Versio platform.
+- [Electro-Smith](https://electro-smith.com) for libDaisy, and [Noise Engineering](https://noiseengineering.us) for the open Versio platform.
 - The engineers whose moves this is built around: King Tubby, Lee "Scratch" Perry, Scientist, Dennis Bovell, Adrian Sherwood, and the dub techno lineage after them.
+
+## Trademarks
+
+Versio is a trademark of Noise Engineering. VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc.
