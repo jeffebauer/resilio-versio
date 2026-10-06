@@ -26,7 +26,7 @@ def tape_material():
     m.use_nodes = True
     nt = m.node_tree
     front = nt.nodes["Principled BSDF"]
-    front.inputs["Base Color"].default_value = (0.045, 0.025, 0.015, 1)
+    front.inputs["Base Color"].default_value = (0.075, 0.040, 0.022, 1)  # brown-black oxide
     front.inputs["Roughness"].default_value = 0.16
     front.inputs["Coat Weight"].default_value = 0.4
     back = nt.nodes.new("ShaderNodeBsdfPrincipled")
@@ -100,7 +100,7 @@ def reel(center, radius=89.0, pack_r=60.0, hub_r=28.0, axis_angle=0.0):
     windows, a hub, a partly wound tape pack. axis along X rotated by
     axis_angle (radians, about Z). Returns the pack's tangent point at the
     bottom-front (where a strand leaves)."""
-    alu = _mat("reel_alu", (0.80, 0.80, 0.82), 0.22, metallic=1.0)
+    alu = _mat("reel_alu", (0.78, 0.78, 0.80), 0.42, metallic=1.0)  # satin: mirror-bright flanges read as blobs
     hubm = _mat("reel_hub", (0.05, 0.05, 0.05), 0.4)
     gap = TAPE_W + 1.6
     objs = []
@@ -211,7 +211,7 @@ def patch_cable(ref, hid, colour, route):
 
 
 def cables_all(ref):
-    """IN L, IN R, OUT L, OUT R (J9-J12) patched, in black, red and cream.
+    """IN L, IN R, OUT L, OUT R (J9-J12) patched: black/red for each L/R pair.
     Inputs leave to the left, outputs to the right; cords sag to the floor in
     front of the module and never cross the knobs."""
     def x(h):
@@ -221,7 +221,102 @@ def cables_all(ref):
                                       (-80, -120, 1.6), (-260, -170, 1.6), (-600, -260, 1.6)])
     patch_cable(ref, "J10", "red", [(x("J10") - 1, -58, z - 9), (x("J10") - 10, -100, 1.6),
                                      (-60, -160, 1.6), (-220, -260, 1.6), (-560, -420, 1.6)])
-    patch_cable(ref, "J11", "cream", [(x("J11") + 1, -58, z - 9), (x("J11") + 10, -105, 1.6),
+    patch_cable(ref, "J11", "black", [(x("J11") + 1, -58, z - 9), (x("J11") + 10, -105, 1.6),
                                        (60, -165, 1.6), (220, -250, 1.6), (560, -400, 1.6)])
-    patch_cable(ref, "J12", "black", [(x("J12") + 2, -55, z - 8), (x("J12") + 14, -88, 1.6),
+    patch_cable(ref, "J12", "red", [(x("J12") + 2, -55, z - 8), (x("J12") + 14, -88, 1.6),
                                        (85, -118, 1.6), (260, -165, 1.6), (600, -250, 1.6)])
+
+
+# ------------------------------------------------------------------ ribbon v2
+# Real tape is a thin ribbon: it bends about its width (it can't bend in its
+# own plane), stands on edge in curls, twists gently along its length and now
+# and then lies flat. v1 used a curve with a flat extrude and per-point tilt,
+# which mostly rotated a flat strip on the floor. v2 sweeps the ribbon
+# explicitly: a smooth centre line plus a roll angle theta per point
+# (0 = lying flat, 90 = standing on its edge), and the centre line is lifted
+# so the lower edge always rests on the floor.
+
+def _catmull(points, samples=18):
+    """Catmull-Rom through points (tuples of any length), endpoints clamped."""
+    pts = [points[0]] + list(points) + [points[-1]]
+    out = []
+    for i in range(1, len(pts) - 2):
+        p0, p1, p2, p3 = pts[i - 1], pts[i], pts[i + 1], pts[i + 2]
+        for k in range(samples):
+            t = k / samples
+            t2, t3 = t * t, t * t * t
+            out.append(tuple(0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2
+                                    + (-a + 3 * b - 3 * c + d) * t3)
+                             for a, b, c, d in zip(p0, p1, p2, p3)))
+    out.append(tuple(points[-1]))
+    return out
+
+
+def ribbon(name, keys, width=TAPE_W, samples=18):
+    """keys: (x, y, lift, theta_deg) control points. lift raises the centre
+    line (for loops that rise off the floor); theta rolls the ribbon about its
+    path. Returns the object."""
+    dense = _catmull(keys, samples)
+    cl = []
+    for x, y, lift, th in dense:
+        t = math.radians(th)
+        cl.append((Vector((x, y, lift + 0.5 * width * abs(math.sin(t)) + 0.06)), t))
+    bm = bmesh.new()
+    rows = []
+    side_prev = Vector((0, 1, 0))
+    for i, (c, t) in enumerate(cl):
+        a = cl[max(i - 1, 0)][0]
+        b = cl[min(i + 1, len(cl) - 1)][0]
+        tan = (b - a).normalized()
+        side = Vector((0, 0, 1)).cross(tan)
+        if side.length < 0.25:          # near-vertical: carry the last side over
+            side = side_prev - tan * side_prev.dot(tan)
+        side.normalize()
+        if side.dot(side_prev) < 0:
+            side = -side
+        side_prev = side
+        up = tan.cross(side).normalized()
+        w = math.cos(t) * side + math.sin(t) * up
+        rows.append((bm.verts.new(c - w * width / 2), bm.verts.new(c + w * width / 2)))
+    for (a0, a1), (b0, b1) in zip(rows, rows[1:]):
+        bm.faces.new((a0, b0, b1, a1))
+    ob = C.mesh_obj(name, bm, tape_material(), smooth=True)
+    ob.data.set_sharp_from_angle(angle=math.radians(80))
+    return ob
+
+
+def tape_spill_v2():
+    """Unspooled tape spilling across the floor and round the base: flat
+    runs, on-edge curls, a twist, one loop rising off the floor."""
+    K = [(-430, -270, 0, 0), (-300, -215, 0, 10), (-200, -160, 0, 70), (-140, -120, 0, 90),
+         # an on-edge curl
+         (-95, -95, 0, 90), (-70, -115, 0, 90), (-85, -140, 0, 90), (-112, -128, 0, 88),
+         (-105, -98, 0, 80), (-70, -70, 0, 45),
+         # flat round the left of the base, twisting up on edge behind it
+         (-48, -30, 0, 0), (-42, 10, 0, 0), (-30, 42, 0, 30), (0, 56, 0, 90), (32, 46, 0, 90),
+         (46, 14, 0, 70), (40, -16, 0, 20), (22, -34, 0, 0),
+         # a loop rising off the floor (bending about the width)
+         (8, -44, 1, 0), (0, -58, 8, 0), (4, -66, 18, 0), (14, -60, 24, 0), (20, -50, 18, 0),
+         (16, -48, 8, 0), (18, -66, 1, 0),
+         # out to the right, another curl on edge, then flat to the foreground
+         (50, -86, 0, 30), (95, -96, 0, 90), (126, -72, 0, 90), (112, -46, 0, 90), (86, -58, 0, 90),
+         (82, -88, 0, 60), (70, -140, 0, 15), (40, -200, 0, 0), (70, -265, 0, 35),
+         (160, -310, 0, 0), (300, -360, 0, 0)]
+    ribbon("tape_spill", K)
+    K2 = [(-170, -30, 0, 0), (-128, -6, 0, 20), (-98, -26, 0, 90), (-104, -52, 0, 90),
+          (-130, -58, 0, 90), (-140, -36, 0, 80), (-118, -14, 0, 40), (-80, -70, 0, 0),
+          (-96, -150, 0, 20), (-120, -240, 0, 0)]
+    ribbon("tape_spill2", K2)
+
+
+def tape_reel_strand_v2(reel_center=(-120, 300, 89)):
+    """The reel behind, lit, and one strand from its pack: hanging down to the
+    floor, then running forward past the module with twists and curls."""
+    bottom = reel(reel_center, axis_angle=math.radians(98))  # flanges square to the camera
+    b = bottom
+    K = [(b.x, b.y - 2, b.z - 0.5, 0), (b.x - 2, b.y - 14, b.z - 30, 10),
+         (b.x - 6, b.y - 30, 6, 40), (b.x - 12, b.y - 60, 0, 60), (b.x - 30, b.y - 110, 0, 90),
+         (-80, 150, 0, 90), (-62, 90, 0, 70), (-56, 30, 0, 10), (-50, -20, 0, 0),
+         (-40, -55, 0, 60), (-58, -82, 0, 90), (-86, -68, 0, 90), (-80, -40, 0, 90), (-54, -60, 0, 50),
+         (-20, -110, 0, 0), (40, -170, 0, 30), (140, -250, 0, 0), (320, -370, 0, 0)]
+    ribbon("tape_reel_strand", K)

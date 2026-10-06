@@ -50,7 +50,8 @@ DEFAULTS = dict(
     toggles=dict(SW1=1, SW2=0),
     leds_lit=dict(LED1=1.0, LED2=1.0, LED3=1.0, LED4=1.0),
     led_strength=14.0,
-    panel_value=0.025,  # satin black paint (linear); v1-v4 0.05 read grey
+    panel_value=0.025,  # black paint (linear); v1-v4 0.05 read grey
+    panel_rough=0.27,   # semi-gloss (owner, round 7); satin was 0.5
 )
 
 
@@ -77,7 +78,8 @@ def _panel(holes, mats, p):
         for li in poly.loop_indices:
             co = pan.matrix_world @ me.vertices[me.loops[li].vertex_index].co
             uv.data[li].uv = ((co.x + PW / 2) / PW, co.z / PH)
-    C.assign(pan, C.decal_material("panel_decal", DECAL, base_value=p["panel_value"]))
+    C.assign(pan, C.decal_material("panel_decal", DECAL, base_value=p["panel_value"],
+                                   rough=p["panel_rough"], ink_rough=p["panel_rough"] + 0.06))
     C.add_bevel(pan, 0.25)
     return pan
 

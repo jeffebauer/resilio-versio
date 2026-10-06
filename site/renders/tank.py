@@ -40,11 +40,11 @@ DEFAULTS = dict(
              (28.0, 2.3, 0.55, 2.6)],
     pts_per_turn=20,
     transducer_inset=20.0,  # transducer centre from each end wall
-    finish="galv",          # chassis: "galv" (bright galvanised) or "yellow" (yellow-chromate zinc)
+    finish="charcoal",      # chassis: charcoal hammertone (site), green, galv, yellow
     wires=dict(in_=("red", "black"), out=("white", "yellow")),
     label=True,
     waveform=False,         # "waveform springs": the helix centre line traces a decaying wave
-    wave=dict(amp=13.0, cycles=5.0, decay=1.6, portion=0.75),
+    wave=dict(amp=4.5, portion=0.75, seed=7, pitch=1.5, wire=0.36, coil_r=1.6, spring_z=29.0),  # bend radius stays > 2x coil radius
 )
 
 FONT_PRINT = "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"
@@ -158,18 +158,43 @@ def _rca(p, mats, side):
     C.box("rca_lug", (0.6, 5, 9), (x0 - side * 0.8, y, z - 6), mats["metal_light"])
 
 
-def _wave_offset(p, t):
-    """Lateral (Y) offset of the spring's centre line at t in [0, 1] along it,
-    for "waveform springs": a decaying sine over the first `portion`, eased
-    to zero so the last quarter is a plain straight spring."""
+def _song(u, seed):
+    """A generic 'song' waveform at u in [0, 1]: many small peaks (a few
+    incommensurate partials with drifting phase) under a loud/quiet envelope
+    (verse, chorus, a break, a final hit), like a zoomed-out audio file."""
+    import random
+    rnd = random.Random(seed)
+    parts = [(rnd.uniform(8, 11), rnd.uniform(0, 6.28), 1.0),
+             (rnd.uniform(15, 18), rnd.uniform(0, 6.28), 0.3),
+             (rnd.uniform(4, 5), rnd.uniform(0, 6.28), 0.4)]
+    sig = sum(a * math.sin(2 * math.pi * f * u + ph + 1.7 * math.sin(2 * math.pi * 3.1 * u)) for f, ph, a in parts)
+    sig /= 1.7
+    # envelope: quiet intro, verse, loud chorus, break, loud chorus, tail
+    keys = [(0.0, 0.15), (0.08, 0.45), (0.25, 0.5), (0.32, 1.0), (0.5, 0.95), (0.55, 0.25),
+            (0.62, 0.3), (0.68, 1.0), (0.88, 0.9), (1.0, 0.0)]
+    for (u0, e0), (u1, e1) in zip(keys, keys[1:]):
+        if u0 <= u <= u1:
+            k = (u - u0) / (u1 - u0)
+            k = k * k * (3 - 2 * k)
+            env = e0 + (e1 - e0) * k
+            break
+    else:
+        env = 0.0
+    return sig * env
+
+
+def _wave_offset(p, t, idx=0):
+    """Vertical (Z) offset of the spring's centre line at t in [0, 1] along it
+    for "waveform springs": a song-like waveform over the first `portion`,
+    eased to zero so the last quarter is a plain straight spring."""
     if not p["waveform"]:
         return 0.0
     w = p["wave"]
     u = t / w["portion"]
     if u >= 1.0:
         return 0.0
-    ease = (1 - u) ** 2 * (1 + 2 * u)   # smoothstep down: zero value and slope at u = 1
-    return w["amp"] * math.exp(-w["decay"] * u) * math.sin(2 * math.pi * w["cycles"] * u) * ease
+    edge = min(1.0, u / 0.04) * min(1.0, (1 - u) / 0.06)
+    return w["amp"] * _song(u, w["seed"] + idx) * edge
 
 
 def _spring(p, mats, idx, y, R, wr, pitch, a, b):
@@ -180,7 +205,7 @@ def _spring(p, mats, idx, y, R, wr, pitch, a, b):
     zc = a.z
     phase = idx * 1.3
     ns = 2000
-    cl = [Vector((x0 + (x1 - x0) * i / ns, y + _wave_offset(p, i / ns), zc)) for i in range(ns + 1)]
+    cl = [Vector((x0 + (x1 - x0) * i / ns, y, zc + _wave_offset(p, i / ns, idx))) for i in range(ns + 1)]
     arc = [0.0]
     for i in range(1, ns + 1):
         arc.append(arc[-1] + (cl[i] - cl[i - 1]).length)
@@ -196,8 +221,8 @@ def _spring(p, mats, idx, y, R, wr, pitch, a, b):
         f = (s - arc[j]) / max(arc[j + 1] - arc[j], 1e-9)
         c = cl[j].lerp(cl[j + 1], f)
         tan = (cl[j + 1] - cl[j]).normalized()
-        n1 = Vector((-tan.y, tan.x, 0.0)).normalized()   # in the floor plane
-        n2 = Vector((0, 0, 1))
+        n1 = Vector((0, 1, 0))                     # across the tank
+        n2 = tan.cross(n1).normalized() * -1       # up, tilted with the wave
         ang = phase + 2 * math.pi * turns * i / n
         pts.append(tuple(c + R * (math.cos(ang) * n1 + math.sin(ang) * n2)))
     C.curve_obj(f"spring{idx}", pts, wr, mats["spring"], resolution=2)
@@ -271,6 +296,8 @@ def _front_sticker(p, mats):
 def build(params=None):
     p = dict(DEFAULTS)
     p.update(params or {})
+    if p["waveform"]:  # the wave rides higher so its peaks show over the front wall
+        p["spring_z"] = p["wave"]["spring_z"]
     mats = dict(
         steel=(TM.enamel(f"paint_{p['finish']}", TM.PAINTS[p["finish"]][0]) if p["finish"] in TM.PAINTS
                else TM.zinc(p["finish"])),                         # chassis: zinc plate or enamel
@@ -304,6 +331,8 @@ def build(params=None):
         _front_sticker(p, mats)
     turns = []
     for i, ((y, R, wr, pitch), a, b) in enumerate(zip(p["springs"], tips_in, tips_out)):
+        if p["waveform"]:  # finer coils so the waveform's small peaks read
+            R, wr, pitch = p["wave"]["coil_r"], p["wave"]["wire"], p["wave"]["pitch"]
         turns.append(_spring(p, mats, i, y, R, wr, pitch, a, b))
     print(f"[tank] springs: {turns} turns")
     L, W, H = p["length"], p["width"], p["height"]

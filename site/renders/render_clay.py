@@ -44,7 +44,7 @@ def tank_variants(ref):
     c = ref["center"]
     R = ref["radius"]
     return [
-        dict(id="R1_tank_a", shot="R1", note="Three-quarter from above, whole tank: the reference hero (bright galvanised chassis).",
+        dict(id="R1_tank_a", shot="R1", note="Three-quarter from above, whole tank: the reference hero.",
              target=c, az=26, el=34, f=70, fit=0.86, by="width"),
         dict(id="R1_tank_a_yellow", shot="R1", mood="yellow",
              note="R1a in the other chassis finish: yellow-chromate zinc (pale gold, faint iridescence).",
@@ -62,11 +62,18 @@ def tank_variants(ref):
              note="Painted charcoal, from the output end.",
              target=c + C.Vector((70, 0, 0)), az=74, el=22, f=50, fit=1.35, by="width"),
         dict(id="R9_wave_a", shot="R9", mood="wave",
-             note="Waveform springs on the R1a camera (charcoal chassis): each spring traces a decaying wave, the last quarter plain.",
-             target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+             note="Waveform springs, low and side-on over the front wall: the coils trace a song's waveform up and down.",
+             target=C.Vector((-45, 0, 29)), az=8, el=24, f=100, fit=1.35, by="width"),
         dict(id="R9_wave_b", shot="R9", mood="wave",
-             note="Waveform springs from high above the input end, where the wave is biggest.",
-             target=C.Vector((-75, 0, 18)), az=12, el=62, f=85, fit=1.55, by="width"),
+             note="Waveform springs from the input end, low: the waveform runs away in perspective.",
+             target=C.Vector((-40, 0, 28)), az=-62, el=11, f=70, fit=1.6, by="width"),
+        dict(id="R2_tank_macro_a_moody", shot="R2", mood="moody",
+             note="Moody: coils catching a rim light out of the dark.",
+             target=ref["spring_quarter"], az=55, el=36, f=100, dist=170, fstop=16),
+        dict(id="R2_tank_macro_b_moody", shot="R2", mood="moody",
+             note="Moody: the output transducer emerging from shadow, rims on the springs and copper.",
+             target=ref["transducer_out"] + C.Vector((-12, 0, 6)), az=-58, el=34, f=100, dist=260, fstop=8,
+             focus=ref["transducer_out"] + C.Vector((-15.5, 0, 9))),
         dict(id="R1_tank_b", shot="R1", note="High and steep, looking down into the springs.",
              target=c, az=14, el=58, f=85, fit=0.88, by="width"),
         dict(id="R1_tank_c", shot="R1", note="Low from the output end, wide lens: the springs run away down the tank.",
@@ -100,7 +107,7 @@ def module_variants(ref):
                       target=c, az=az, el=12, f=85, fit=1.0))
     v += [
         dict(id="R5_panel_macro_a", shot="R5", note="Macro: TANK and ATTITUDE toggles with SPLASH and WOBBLE.",
-             target=(at("SW1") + at("P6")) / 2 + C.Vector((0, -6, -2)), az=30, el=16, f=100, dist=175, fstop=5.6,
+             target=(at("SW1") + at("P6")) / 2 + C.Vector((0, -6, -2)), az=30, el=16, f=100, dist=175, fstop=11,
              focus=at("SW1", -10)),
         dict(id="R5_panel_macro_b", shot="R5", note="Macro: BLEND and the four lit LEDs under the title.",
              target=(at("P1") + at("LED4")) / 2 + C.Vector((0, -6, 0)), az=-24, el=26, f=100, dist=170, fstop=5.6,
@@ -109,18 +116,18 @@ def module_variants(ref):
     PH = module.PH
     v += [
         dict(id="R6_front_a", shot="R6", note="Front-on, 200 mm: flat, almost orthographic product view.",
-             target=c, az=0, el=1, f=200, fit=1.08),
+             target=c, az=0, el=1, f=200, fit=0.64),
         dict(id="R6_front_b", shot="R6", note="Front-on with a 7° turn, 135 mm: just enough depth to show the knobs and stack.",
              target=c, az=7, el=3, f=135, fit=1.04),
         dict(id="R6_front_c", shot="R6", mood="gloss",
              note="Standing on a semi-gloss floor: its shadow and a soft reflection, 135 mm.",
-             target=c + C.Vector((0, 0, -16)), az=0, el=2, f=135, fit=0.84),
+             target=c + C.Vector((0, 0, -6)), az=0, el=2, f=135, fit=0.62),
         dict(id="R6_tape_a", shot="R6", mood="tape_spill",
              note="Unspooled reel tape spilling across the floor and looping round the base.",
              target=c + C.Vector((0, -40, -34)), az=16, el=16, f=70, fit=0.62),
         dict(id="R6_tape_b", shot="R6", mood="tape_reel",
              note="A 7-inch reel out of focus behind, one strand running from it past the module to the foreground.",
-             target=c + C.Vector((10, 40, -8)), az=-14, el=6, f=85, fit=0.66, fstop=2.8,
+             target=c + C.Vector((10, 40, -8)), az=-14, el=6, f=85, fit=0.66, fstop=11,
              focus=C.Vector((0, -2, 70))),
         dict(id="R6_tape_c", shot="R6", mood="tape_cassette",
              note="A cassette on the floor with its tape pulled out in loops.",
@@ -156,21 +163,39 @@ def module_variants(ref):
 
 # ------------------------------------------------------------------ scenes
 
+DARK_RGB = (0.035, 0.033, 0.031)
+
 def build_tank(mood=None):
-    """mood: a chassis finish (galv, yellow, green, charcoal) or "wave"."""
+    """mood: a chassis finish (galv, yellow, green, charcoal), "wave"
+    (waveform springs), or "moody" (dark backdrop, low key, rims on the
+    springs and copper). The site's tank is charcoal (tank.DEFAULTS)."""
     C.reset_scene()
     params = {}
     if mood in ("galv", "yellow", "green", "charcoal"):
         params["finish"] = mood            # chassis finish
     elif mood == "wave":
         params["waveform"] = True          # "waveform springs"
-        params["finish"] = "charcoal"      # dark floor so the silver wave reads (galv blew out)
     ref = tank.build(params)
-    C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900, texture=True)
-    C.world(0.4)
-    L = C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
-    if mood == "wave":  # seen from high up, the strip light mirrored in the floor blew it out
-        L["streak"].data.energy *= 0.3
+    dark = mood == "moody"
+    C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900, texture=not dark,
+                rgb=DARK_RGB if dark else C.GROUND_RGB)
+    if dark:
+        C.world(0.003)
+        L = C.studio(ref["center"], ref["size"], key=0.05, fill=0.0, rim=1.4, streak=ref["streak"])
+        L["fill"].data.energy = 0.0
+        L["streak"].data.energy *= 0.12   # just a sliver along the coils
+        L["rim"].data.energy *= 0.6
+        # rims from behind each end, low, raking along the springs and the copper
+        for s in (-1, 1):
+            p = ref["transducer_out"].copy()
+            p.x *= s
+            C.area_light(f"rim_end{s}", p + C.Vector((s * 160, 140, 70)), p + C.Vector((-s * 20, 0, 8)),
+                         size=60, power=C.watts(C.KEY_W * 0.7) * (0.22) ** 2, spread=45)
+    else:
+        C.world(0.4)
+        L = C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
+    if mood == "wave":  # side-on and low: keep the strip light from blowing out the floor
+        L["streak"].data.energy *= 0.5
     return ref
 
 
@@ -178,7 +203,6 @@ def build_tank(mood=None):
 # "monolith" (dark backdrop, strong top/back light, face falls into shadow),
 # "dark" (only the top edge and the LEDs lit), "graze" (raking light down the
 # panel face), "cable" (studio + a patch cable in IN L).
-DARK_RGB = (0.035, 0.033, 0.031)
 
 
 def build_module(mood=None):
@@ -228,9 +252,12 @@ def build_module(mood=None):
     elif mood == "cables4":
         props.cables_all(ref)
     elif mood == "tape_spill":
-        props.tape_spill()
+        props.tape_spill_v2()
     elif mood == "tape_reel":
-        props.tape_reel_strand()
+        props.tape_reel_strand_v2()
+        # light the reel so its flanges, hub and tape pack read
+        C.area_light("reel_light", C.Vector((150, 120, 260)), C.Vector((-120, 300, 89)), size=180,
+                     power=C.watts(C.KEY_W * 1.2) * (0.38) ** 2)
     elif mood == "tape_cassette":
         props.cassette_with_loops()
     elif mood == "tape_drape":
@@ -286,9 +313,9 @@ SHOTS = {
 }
 
 
-def write_index(out_dir, variants):
+def write_index(out_dir, variants, title="Minisite renders — clay pass", ext="png"):
     groups = []
-    for shot, title in SHOTS.items():
+    for shot, shot_title in SHOTS.items():
         items = [v for v in variants if v["shot"] == shot]
         if not items:
             continue
@@ -297,7 +324,7 @@ def write_index(out_dir, variants):
 <img src="{v["id"]}.png" loading="lazy" alt="{v["id"]}"></a>
 <figcaption><b>{v["id"]}</b><span class="cam">{v["label"]}</span><span>{v["note"]}</span></figcaption></figure>'''
             for v in items)
-        groups.append(f"<section><h2>{title}</h2><div class=grid>{cards}</div></section>")
+        groups.append(f"<section><h2>{shot_title}</h2><div class=grid>{cards}</div></section>")
     html = f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>Clay renders</title>
@@ -316,7 +343,7 @@ figcaption b{{font-weight:500;color:var(--ink);font-family:ui-monospace,Menlo,mo
 #lb img{{max-width:96vw;max-height:88vh;width:auto;border-radius:0}} #lb div{{color:#eee;font:13px ui-monospace,Menlo,monospace}}
 #lb.on{{display:flex}}
 </style></head><body>
-<header><h1>Minisite renders — clay pass</h1>
+<header><h1>{title}</h1>
 <p>Composition review (PLAN A3 / S3). Grey matte clay with bare-steel metals (tank, springs, nuts, toggles), real lighting plus a strip light along the springs (soft key top-left, fill right, rim behind,
 warm-grey sweep), the panel print on as a decal, LEDs lit in signal red. Click a frame to enlarge; ← → to step.
 Camera: h = height above the ground, el = elevation, az = azimuth from the front towards the right, focal length
@@ -345,9 +372,16 @@ def main():
     ap.add_argument("--scale", type=int, default=100, help="resolution percentage (tests)")
     ap.add_argument("--samples", type=int, default=64)
     ap.add_argument("--out", default=DEFAULT_OUT)
+    ap.add_argument("--width", type=int, default=1920)
+    ap.add_argument("--height", type=int, default=1080)
+    ap.add_argument("--exact", action="store_true", help="--only lists exact ids, not prefixes")
+    ap.add_argument("--title", default="Minisite renders — clay pass")
     a = ap.parse_args(argv)
     only = [s for s in a.only.split(",") if s]
-    want = (lambda vid: any(vid.startswith(s) for s in only)) if only else (lambda vid: True)
+    if a.exact:
+        want = (lambda vid: vid in only)
+    else:
+        want = (lambda vid: any(vid.startswith(s) for s in only)) if only else (lambda vid: True)
 
     manifest_path = os.path.join(a.out, "variants.json")
     done = {}
@@ -364,7 +398,7 @@ def main():
                 moods.append(v.get("mood"))
         for mood in moods:
             ref = builder(mood)
-            C.setup_cycles(samples=a.samples)
+            C.setup_cycles(samples=a.samples, width=a.width, height=a.height)
             bpy.context.scene.render.resolution_percentage = a.scale
             for v in varfn(ref):
                 if not want(v["id"]) or v.get("mood") != mood:
@@ -378,7 +412,7 @@ def main():
     ordered = sorted(done.values(), key=lambda v: v["id"])
     with open(manifest_path, "w") as f:
         json.dump(ordered, f, indent=1, default=str)
-    write_index(a.out, ordered)
+    write_index(a.out, ordered, title=a.title)
     print(f"[clay] contact sheet: {os.path.join(a.out, 'index.html')}")
 
 
