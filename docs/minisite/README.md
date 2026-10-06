@@ -1,9 +1,13 @@
 # Resilio Versio minisite package
 
-Everything a website project needs to build the Resilio Versio minisite, without reading the Resilio source repository. Design is the website's job; this package supplies what the site must **say** and **do**, final copy and assets. Checked against the code of release **v2026.10.06-a6c70a4** (6 Oct 2026).
+Everything needed to build the Resilio Versio minisite: what it must **say** and **do**, final copy and assets, and (since 6 Oct, session 9) its **design system and plans** in `design/`. The site is now built **in this repo** (`site/`, Astro on Vercel), not in the owner's website repo, so `HANDOFF-PROMPT.md` and BRIEF's handoff section are superseded; BRIEF's audiences, content and must-nots still hold. Checked against the code of release **v2026.10.06-a6c70a4** (6 Oct 2026).
 
 | Path | What it is |
 |---|---|
+| `design/DESIGN.md` | Design decisions (Phonic, LED-red accent, tank + module renders, light only, motion rules) and blind spots |
+| `design/AUDIT.md` | Style audit of the reference (UDO Audio's DMNO page): type, colour, grid, linework, components, motion |
+| `design/tokens.css` | CSS custom properties + base components (grid, rules, buttons, pills, cards, spec table, A/B player, motion) |
+| `design/PLAN.md` | Design plan (style tile, wireframes, Blender renders) and build plan (Astro structure, Home section by section, releases, fonts, gates, launch order) |
 | `HANDOFF-PROMPT.md` | Paste into Claude in the website repo, with this folder copied in |
 | `BRIEF.md` | Purpose, audience, pages, hierarchy, tone, must-haves, must-nots, accessibility, downloads and the release update flow |
 | `content/*.md` | Final copy, one file per page, with front-matter (`title`, `description`, `slug`, `order`): `overview`, `manual`, `install`, `presets`, `changelog`, `faq`, `credits` |
