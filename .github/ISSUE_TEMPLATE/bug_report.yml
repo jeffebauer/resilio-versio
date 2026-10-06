@@ -1,0 +1,60 @@
+name: Bug report
+description: Something clicks, glitches, crashes or doesn't do what its name says.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The more exact the settings, the faster it can be heard and fixed.
+  - type: dropdown
+    id: host
+    attributes:
+      label: Where did it happen?
+      options:
+        - On the Versio module (firmware)
+        - In the plugin (VST3)
+        - In the plugin (Audio Unit)
+        - In the plugin (standalone app)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release tag (for example v2026.10.06-a6c70a4), from the release page or the read-me in the zip. For the plugin, your DAW and macOS version too.
+      placeholder: v2026.10.06-a6c70a4, Ableton Live 12, macOS 15
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings
+      description: In panel names. Knobs as clock positions (noon, 3 o'clock, fully right).
+      value: |
+        BLEND:
+        DECAY:
+        TONE:
+        SPLASH:
+        TENSION:
+        WOBBLE:
+        DRIVE:
+        TANK (1 / 2 / ECHO):
+        ATTITUDE (CLEAN / TAPE / VALVE):
+        THROW / TAP, gate or clock in use:
+        What you fed it (snare, skank, pad, a whole mix...):
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you heard or saw, and what you expected instead. If it happens every time, the steps to get there.
+    validations:
+      required: true
+  - type: textarea
+    id: recording
+    attributes:
+      label: A recording, if you can
+      description: Drag a short audio or video file here (zip a WAV first), or link to one. Even a phone recording helps.
+    validations:
+      required: false

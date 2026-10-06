@@ -6,7 +6,7 @@
 import json, math, os, subprocess, sys
 import numpy as np, soundfile as sf
 
-WT = '/Users/jesse/Documents/Sites/resilio-versio/.claude/worktrees/wf2'
+WT = str(__import__("pathlib").Path(__file__).resolve().parents[3]) + '/.claude/worktrees/wf2'
 sys.path.insert(0, os.path.join(WT, 'tools'))
 import sweep_ir  # noqa: E402
 

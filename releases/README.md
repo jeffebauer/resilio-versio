@@ -1,6 +1,9 @@
-RESILIO VERSIO {{VERSION}} — a dub spring reverb (test build)
+RESILIO VERSIO {{VERSION}} — a dub spring reverb
+By Jesse Bauer — https://jessebauer.xyz
 
-Hi! This is a spring reverb I'm building as firmware for the Noise Engineering Versio Eurorack module. The plugin is my desktop test bench: it runs the exact same sound engine as the module, laid out like its panel. It's a work in progress, so I'd love your honest ears on it.
+Resilio Versio is firmware for the Noise Engineering Versio. Not affiliated with or endorsed by Noise Engineering.
+
+Resilio is a spring reverb that runs as firmware on the Versio Eurorack module. The plugin is its desktop twin: the exact same sound engine as the module, laid out like its panel. It's a work in progress, so honest ears are very welcome.
 
 Think King Tubby / Lee Perry: a send effect you throw snares and skanks into, feed from a tape echo, and push into feedback.
 {{NOTES}}
@@ -8,11 +11,11 @@ Think King Tubby / Lee Perry: a send effect you throw snares and skanks into, fe
 
 INSTALL (Mac, macOS 12 or newer, Apple Silicon or Intel)
 
-1. Unzip. You get two files: "{{NAME}}.vst3" (VST3) and "{{NAME}}.component" (Audio Unit, for Logic or Ableton). Install whichever your DAW uses, or both.
+1. Unzip. The plugin is two files: "{{NAME}}.vst3" (VST3) and "{{NAME}}.component" (Audio Unit, for Logic or Ableton). Install whichever your DAW uses, or both. (LICENSE, NOTICE and the LICENSES folder are the licence texts; see LICENCE below.)
 2. In Finder, Go > Go to Folder... and paste:
      ~/Library/Audio/Plug-Ins/
    Drag "{{NAME}}.vst3" into the VST3 folder and "{{NAME}}.component" into the Components folder (create the folder if it's missing).
-3. It isn't signed by Apple (it's a test build), so macOS will block it at first. Open Terminal and paste these two lines (each one is a single line):
+3. It isn't signed by Apple, so macOS will block it at first. Open Terminal and paste these two lines (each one is a single line):
      xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"{{NAME}}.vst3"
      xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"{{NAME}}.component"
 4. Restart your DAW and rescan plug-ins. In Ableton: Settings > Plug-Ins, turn on the VST3 / Audio Units system folders, then hold Option and click Rescan. It shows up as "{{NAME}}".
@@ -59,13 +62,22 @@ THINGS TO TRY
 KNOWN ISSUES (already being fixed)
 
 - Held sounds (low pads, drones) are gently turned down going into the springs so they stay clean; with DRIVE well up on hot material the output limiter can still catch them (the output light goes red).
-- It's a test build: expect the sound to keep changing between versions.
+- Still in development: the sound may keep changing between versions.
 
 
-WHAT I'D LOVE TO HEAR FROM YOU
+FEEDBACK
 
+Bugs and sound ideas are welcome on GitHub Issues: https://github.com/jeffebauer/resilio-versio/issues
 - How it sounds next to spring reverbs you know (real tanks or plugins).
 - Any knob that feels dead, too touchy, or doesn't do what its name suggests.
 - Anything that clicks, glitches, or sounds broken, with the settings if you can.
+
+
+LICENCE
+
+Source: {{SOURCE}}
+Resilio's own code is MIT (LICENSE). The plugin is built with JUCE, used under the GNU AGPLv3, so the plugin binaries in this download are distributed under AGPLv3 (LICENSES/AGPL-3.0.txt); the link above is their source. The firmware uses libDaisy (MIT), the STM32 HAL (BSD-3-Clause) and CMSIS (Apache-2.0). Notices: NOTICE.
+
+Versio is a trademark of Noise Engineering. VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc.
 
 Thanks!

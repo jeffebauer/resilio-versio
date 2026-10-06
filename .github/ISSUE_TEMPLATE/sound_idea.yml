@@ -1,0 +1,25 @@
+name: Sound idea
+description: A sound, a move or a control you'd like Resilio to have, or one that could feel better.
+labels: ["sound idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: Describe it in musical terms. What would you play, and what should it sound or feel like?
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: A reference, if you have one
+      description: A record, an engineer's move, a tank or plugin you know, or a recording of your own.
+    validations:
+      required: false
+  - type: textarea
+    id: today
+    attributes:
+      label: How close does it get today?
+      description: The settings that come nearest, in panel names (BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE, TANK, ATTITUDE, THROW / TAP), and what's missing.
+    validations:
+      required: false

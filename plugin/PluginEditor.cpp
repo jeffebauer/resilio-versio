@@ -59,10 +59,16 @@ constexpr Toggle kToggles[] = {
     {ParamId::Attitude, {8.405f, 67.425f}}, // SW2
 };
 
-constexpr Part kButton{26.185f, 69.330f};
+// The button sits at the module's height (69.33 mm), nudged right of its
+// 26.185 mm centre and drawn wider than the 7 mm cap, so THROW reads in full
+// at 1x and still clears ATTITUDE's VALVE.
+constexpr Part kButton{28.0f, 69.330f};
 // GATE (the throw_gate param, ADR 0039): the gate jack's stand-in, not on
-// the printed panel. Right of the button, below DRIVE.
-constexpr Part kThrow{37.5f, 69.330f};
+// the printed panel. In the bottom row with SIZE (the plugin's own controls):
+// SIZE at the left margin, GATE at the right, on one centre line.
+constexpr float kBottomRowYMm = 121.0f;
+constexpr float kBottomRowHMm = 4.0f;
+constexpr float kThrowWMm     = 9.0f;
 
 // LED1..LED4, left to right: In L, In R, Out L, Out R (PanelLink::Meter order).
 constexpr Part kLeds[PanelLink::kNumMeters] = {
@@ -73,7 +79,8 @@ constexpr float kLedRadiusMm   = 1.8f;  // the hole is 3 mm
 constexpr float kSegmentWMm    = 6.8f;  // one toggle position (three side by side)
 constexpr float kSegmentHMm    = 4.5f;
 constexpr float kSegmentLeftMm = 1.5f;  // the three end left of the button
-constexpr float kButtonMm      = 7.0f;
+constexpr float kButtonWMm     = 10.5f;
+constexpr float kButtonHMm     = 7.0f;
 constexpr float kLabelHMm      = 2.6f;
 
 constexpr float px(float mm) { return mm * kPxPerMm; }
@@ -239,7 +246,7 @@ public:
         // release goes to the audio thread, which hands it to the Tank at
         // the start of its next block; the Tank does the rest.
         // Labelled THROW, and TAP while it taps (TANK ECHO; ADR 0044): the
-        // panel's THROW / TAP doesn't fit a 7 mm button.
+        // panel's THROW / TAP doesn't fit the button.
         button_.setButtonText("THROW");
         button_.onStateChange = [this] {
             const bool down = button_.isDown();
@@ -297,12 +304,17 @@ public:
                 toggles_[t][pos].setBounds(centred(c, kSegmentWMm, kSegmentHMm));
             }
 
-        button_.setBounds(centred(kButton, kButtonMm, kButtonMm));
-        throw_.setBounds(centred(kThrow, 9.0f, kSegmentHMm));
+        button_.setBounds(centred(kButton, kButtonWMm, kButtonHMm));
+        // The bottom row: SIZE left-aligned with TANK and ATTITUDE, GATE
+        // right-aligned at the same margin.
+        throw_.setBounds(centred({kPanelW - kSegmentLeftMm - kThrowWMm * 0.5f, kBottomRowYMm}, kThrowWMm, kBottomRowHMm));
 
+        // Start on TANK's rounded left edge (7.5 px rounds to 8) so the three
+        // 35 px segments land on whole pixels and butt together.
         constexpr float sizeW = 7.0f;
+        const float sizeLeftMm = float(juce::roundToInt(px(kSegmentLeftMm))) / kPxPerMm;
         for (size_t i = 0; i < sizes_.size(); ++i)
-            sizes_[i].setBounds(centred({kPanelW * 0.5f + sizeW * (float(i) - 1.0f), 121.0f}, sizeW, 4.0f));
+            sizes_[i].setBounds(centred({sizeLeftMm + sizeW * (float(i) + 0.5f), kBottomRowYMm}, sizeW, kBottomRowHMm));
     }
 
     void paint(juce::Graphics& g) override
@@ -342,7 +354,7 @@ public:
             text(spec(t.id).name, {kSegmentLeftMm + 7.0f, t.at.y - kSegmentHMm * 0.5f - 1.6f}, kLabelHMm, 11.0f,
                  kTextColour, juce::Justification::centredLeft, 14.0f);
 
-        text("SIZE", {kPanelW * 0.5f, 117.0f}, kLabelHMm, 9.0f, kDimTextColour);
+        text("SIZE", {kSegmentLeftMm + 7.0f, 117.0f}, kLabelHMm, 9.0f, kDimTextColour, juce::Justification::centredLeft, 14.0f);
 
         for (int m = 0; m < PanelLink::kNumMeters; ++m) {
             const auto  c = kLeds[m];

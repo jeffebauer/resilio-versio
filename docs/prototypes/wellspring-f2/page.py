@@ -14,7 +14,7 @@ import json, os, shutil, subprocess, sys, tempfile, filecmp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '../../..'))
-ROOT = '/Users/jesse/Documents/Sites/resilio-versio'  # the main checkout: pages are served from its renders/
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])  # the main checkout: pages are served from its renders/
 RENDER = os.environ.get('RV_RENDER', os.path.join(WT, 'build-r/rv_render'))
 NOON = dict(springs='2', attitude='CLEAN', decay=0.5, tension=0.5, tone=0.5, splash=0.3, drive=0.25, wobble=0.45, mix=1.0)
 STIMS = ['01_clicks', '02_hits', '04_skank', '10_pad_cminor']

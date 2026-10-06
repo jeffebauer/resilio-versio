@@ -24,7 +24,7 @@ import soundfile as sf
 from scipy.signal import butter, sosfiltfilt, find_peaks
 from scipy.signal.windows import tukey
 
-ROOT = "/Users/jesse/Documents/Sites/resilio-versio"
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])  # the repo root; run from the main checkout
 STIM = f"{ROOT}/test_audio/stimulus"
 REF = f"{ROOT}/test_audio/reference"
 SR = 48000

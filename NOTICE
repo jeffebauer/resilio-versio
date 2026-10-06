@@ -1,0 +1,111 @@
+Resilio Versio
+Copyright (c) 2026 Jesse Bauer (https://jessebauer.xyz)
+
+Resilio Versio is firmware for the Noise Engineering Versio. Not affiliated
+with or endorsed by Noise Engineering.
+
+Source: https://github.com/jeffebauer/resilio-versio
+
+
+WHAT LICENCE COVERS WHAT
+------------------------
+
+- Our own code, tools and docs (core/, firmware/, host/, plugin/, tools/,
+  docs/ and everything else written for this project): MIT. See LICENSE.
+
+- The Versio firmware (.bin) is built from our MIT code plus libDaisy, the
+  STM32H7 HAL and CMSIS (notices below). It contains no JUCE code and no
+  Noise Engineering code.
+
+- The plugin (VST3 / AU / standalone) is built with the JUCE framework, which
+  we use under the GNU Affero General Public License v3 (AGPLv3), not a paid
+  JUCE licence. The plugin binaries are therefore distributed under AGPLv3.
+  The full text is in LICENSES/AGPL-3.0.txt. The corresponding source for
+  each release is the repository at that release's tag:
+  https://github.com/jeffebauer/resilio-versio/tree/<tag>
+  Our own source files stay MIT; MIT code can be combined into an AGPLv3 work.
+
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+libDaisy (firmware)
+  https://github.com/electro-smith/libDaisy
+  Copyright (c) 2019 Electrosmith
+  Licence: MIT
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+STM32H7xx HAL driver (firmware, bundled in libDaisy)
+  Copyright 2017 STMicroelectronics. All rights reserved.
+  Licence: BSD-3-Clause
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met:
+
+    1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its
+    contributors may be used to endorse or promote products derived from
+    this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+    IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+    TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+    PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+    HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+    TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+CMSIS (firmware, bundled in libDaisy)
+  CMSIS Core: Copyright (c) 2009-2021 Arm Limited. All rights reserved.
+  CMSIS Device STM32H7xx: Copyright (c) 2017 STMicroelectronics.
+  Licence: Apache License 2.0
+  https://www.apache.org/licenses/LICENSE-2.0
+
+JUCE 9 (plugin only)
+  https://juce.com, https://github.com/juce-framework/JUCE
+  Copyright (c) Raw Material Software Limited
+  Licence: used under AGPLv3 (dual-licensed AGPLv3 / commercial JUCE 9 EULA).
+  Full text: LICENSES/AGPL-3.0.txt
+  JUCE's own third-party dependencies are listed in JUCE's SPDX bill of
+  materials (JUCE.spdx.json in the JUCE source).
+
+VST 3 SDK (plugin only, bundled in JUCE)
+  Copyright (c) 2025, Steinberg Media Technologies GmbH
+  Licence: MIT
+
+
+TRADEMARKS
+----------
+
+Versio is a trademark of Noise Engineering.
+VST is a registered trademark of Steinberg Media Technologies GmbH.
+Audio Units is a trademark of Apple Inc.

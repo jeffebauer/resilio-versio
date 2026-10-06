@@ -6,7 +6,7 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, sosfiltfilt, hilbert, stft
 
-ROOT = "/Users/jesse/Documents/Sites/resilio-versio"
+ROOT = str(__import__("pathlib").Path(__file__).resolve().parents[3])  # the repo root; run from the main checkout
 P = f"{ROOT}/renders/proto_diffuse_tank"
 STIM = f"{ROOT}/test_audio/stimulus"
 VERS = {"A today": "A_today", "F bright": "F_bright_tail", "W wellspring": "W_wellspring"}

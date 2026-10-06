@@ -4,8 +4,8 @@
 # read-me (releases/README.md), zipped into dist/release/<tag>/.
 #   tools/make_release.sh            build + package
 #   tools/make_release.sh --publish  also create a GitHub Release with the zip
-#                                    and the firmware attached (asks gh; the
-#                                    repo is private, so the release is too)
+#                                    and the firmware attached, marked Latest
+#   --dry-run (with --publish)       print the gh command instead of running it
 #   --notes <file> (any release)     "what's new" notes into the read-me, which
 #                                    is also the GitHub Release's notes
 #                                    (e.g. releases/whats-new-since-1-oct.md)
@@ -15,17 +15,24 @@
 #       and plugin code, so it installs next to the released plugin), no
 #       firmware (a candidate hasn't had its CPU run on the module), the
 #       read-me gets <file> as its "what's new" notes, and the GitHub Release
-#       is marked as a pre-release.
+#       is marked as a pre-release (never Latest).
+# Assets (ADR 0045): the dated ResilioVersio_<tag>.zip and
+# resilio_versio_firmware_<sha>.bin, plus, on full releases, the same files under
+# stable names (resilio-versio-plugin-macos.zip, resilio-versio-firmware.bin) so
+# .../releases/latest/download/<name> always works, and SHA256SUMS.txt. The zip
+# carries LICENSE, NOTICE, LICENSES/AGPL-3.0.txt (the plugin binaries are AGPLv3
+# because of JUCE) and the read-me with a link to the source at the tag.
 # The plugin installed in Ableton is separate: tools/install_plugin.sh <commit>.
 # Never touches build/ (uses its own worktree and build dir).
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-PUBLISH=0 REF="" LABEL="" NOTES=""
+PUBLISH=0 DRY=0 REF="" LABEL="" NOTES=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --publish) PUBLISH=1; shift ;;
+        --dry-run) DRY=1; shift ;;
         --candidate) REF="$2"; LABEL="$3"; shift 3 ;;
         --notes) NOTES="$2"; shift 2 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
@@ -48,6 +55,7 @@ else
     NAME="Resilio Versio" CODE="RsVs" BUNDLE="com.Resilio.ResilioVersio" TAG="v$(date +%Y.%m.%d)-$SHA"
 fi
 OUT="dist/release/$TAG"
+SOURCE_URL="https://github.com/jeffebauer/resilio-versio/tree/$TAG"
 mkdir -p "$OUT"
 
 WT=".claude/worktrees/share"
@@ -81,28 +89,46 @@ done
 
 echo "== Package"
 README="$OUT/READ ME - $NAME.txt"
-python3 - "$REPO/releases/README.md" "$README" "$TAG" "$NAME" "$(basename "${FW:-none}")" "${NOTES:-}" <<'EOF'
+python3 - "$REPO/releases/README.md" "$README" "$TAG" "$NAME" "$(basename "${FW:-none}")" "${NOTES:-}" "$SOURCE_URL" <<'EOF'
 import re, sys
-src, dst, tag, name, fw, notes = sys.argv[1:7]
+src, dst, tag, name, fw, notes, source = sys.argv[1:8]
 s = open(src).read()
 if fw == "none":
     s = re.sub(r"\{\{FIRMWARE_START\}\}\n.*?\{\{FIRMWARE_END\}\}\n", "", s, flags=re.S)
 else:
     s = s.replace("{{FIRMWARE_START}}\n", "").replace("{{FIRMWARE_END}}\n", "")
 s = s.replace("{{NOTES}}\n", ("\n" + open(notes).read().rstrip("\n") + "\n") if notes else "")
-s = s.replace("{{VERSION}}", tag).replace("{{NAME}}", name).replace("{{FIRMWARE}}", fw)
+s = s.replace("{{VERSION}}", tag).replace("{{NAME}}", name).replace("{{FIRMWARE}}", fw).replace("{{SOURCE}}", source)
 open(dst, "w").write(s)
 EOF
+# Licence files from the released commit (older refs fall back to this checkout's).
+LIC="$WT"; [ -f "$LIC/NOTICE" ] || LIC="$REPO"
+rm -rf "$OUT/LICENSES"; mkdir -p "$OUT/LICENSES"
+cp "$LIC/LICENSE" "$OUT/LICENSE"
+sed "s#tree/<tag>#tree/$TAG#" "$LIC/NOTICE" > "$OUT/NOTICE"
+cp "$LIC/LICENSES/AGPL-3.0.txt" "$OUT/LICENSES/AGPL-3.0.txt"
 ZIP="ResilioVersio_$TAG.zip"
-FILES=("$NAME.vst3" "$NAME.component" "$(basename "$README")")
+FILES=("$NAME.vst3" "$NAME.component" "$(basename "$README")" LICENSE NOTICE LICENSES)
 [ -n "$FW" ] && FILES+=("$(basename "$FW")")
 (cd "$OUT" && rm -f "$ZIP" && zip -q -r "$ZIP" "${FILES[@]}")
 echo "Built $OUT/$ZIP"
 
+# Stable names for .../releases/latest/download/<name> (full releases only:
+# candidates are pre-releases, which /latest/ skips anyway).
+ASSETS=("$OUT/$ZIP"); [ -n "$FW" ] && ASSETS+=("$FW")
+if [ -z "$LABEL" ]; then
+    cp "$OUT/$ZIP" "$OUT/resilio-versio-plugin-macos.zip"
+    cp "$FW" "$OUT/resilio-versio-firmware.bin"
+    ASSETS+=("$OUT/resilio-versio-plugin-macos.zip" "$OUT/resilio-versio-firmware.bin")
+fi
+NAMES=(); for a in "${ASSETS[@]}"; do NAMES+=("$(basename "$a")"); done
+(cd "$OUT" && shasum -a 256 "${NAMES[@]}" > SHA256SUMS.txt)
+ASSETS+=("$OUT/SHA256SUMS.txt")
+
 if [ "$PUBLISH" = 1 ]; then
     echo "== GitHub Release $TAG"
-    ASSETS=("$OUT/$ZIP"); [ -n "$FW" ] && ASSETS+=("$FW")
-    PRE=(); [ -n "$LABEL" ] && PRE=(--prerelease)
-    gh release create "$TAG" "${ASSETS[@]}" --target "$(git rev-parse "$SHA")" ${PRE[@]+"${PRE[@]}"} \
-        --title "Resilio Versio $TAG" --notes-file "$README"
+    if [ -n "$LABEL" ]; then KIND=(--prerelease --latest=false); else KIND=(--latest); fi
+    CMD=(gh release create "$TAG" "${ASSETS[@]}" --target "$(git rev-parse "$SHA")" "${KIND[@]}"
+        --title "Resilio Versio $TAG" --notes-file "$README")
+    if [ "$DRY" = 1 ]; then printf 'Dry run, would run:'; printf ' %q' "${CMD[@]}"; echo; else "${CMD[@]}"; fi
 fi

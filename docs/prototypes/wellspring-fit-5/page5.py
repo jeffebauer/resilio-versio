@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-MAIN = Path("/Users/jesse/Documents/Sites/resilio-versio")
+MAIN = ROOT  # run from the main checkout (renders, recordings)
 RENDER = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "build-r" / "rv_render"
 PAGE = Path(sys.argv[2]) if len(sys.argv) > 2 else MAIN / "renders" / "fit_round5"
 STIM = ROOT / "test_audio" / "stimulus"

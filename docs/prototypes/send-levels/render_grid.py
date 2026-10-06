@@ -31,7 +31,7 @@ BASE = {"springs": "2", "mix": 1.0, "decay": 0.7, "tone": 0.5, "tension": 0.5, "
 
 
 def stim_dir():
-    for p in [Path("test_audio/stimulus"), Path("/Users/jesse/Documents/Sites/resilio-versio/test_audio/stimulus")]:
+    for p in [Path("test_audio/stimulus"), Path(__file__).resolve().parents[3] / "test_audio/stimulus"]:
         if (p / "02_hits.wav").exists():
             return p
     raise SystemExit("stimulus not found: run tools/make_stimulus.py")

@@ -3,9 +3,10 @@
 **Name:** Resilio Versio (Latin *resilio*, "I leap back, rebound"). Firmware target name `resilio_versio`.
 **Target:** Noise Engineering Versio platform (Electro-Smith Daisy Seed inside)
 **Goal:** Dub-flavoured spring reverb. Priority sound = splashy, drippy tank ring-out on a single snare/rim hit, including "kicked tank" chaos.
-**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0044). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
+**Status:** Spec **v1.0 (frozen)**, 27 Sep 2026. Vocabulary: `CONTEXT.md`. Decisions: `docs/adr/` (0001–0045). Changes after freeze: new ADR + changelog entry. Tuned numbers replace "starting guesses" as milestones confirm them.
 
 ### Changelog
+- v1.0.44 — ADR 0045 "Going public" (owner, 6 Oct 2026): licences (our code MIT; the plugin binaries AGPLv3 through JUCE; `NOTICE` for libDaisy, the STM32 HAL, CMSIS, JUCE, the VST3 SDK), the Noise Engineering disclaimer and trademark lines, feedback via GitHub Issues, stable release asset names. The unused DaisySP submodule is removed (§1). Plugin panel only: THROW reads in full, GATE and SIZE share a bottom row. Sound unchanged.
 - v1.0.43 — ADR 0044 "Panel names" (owner, 6 Oct 2026): the player-facing names change, the sound doesn't (bit for bit). **MIX → BLEND** (as on Noise Engineering's own Versio modules). **SPRINGS → TANK**, positions **1 · 2 · ECHO** (was 1 · 2 · 3: position 3 is echo mode, and "echo isn't a spring"). **ATTITUDE** keeps its name; its positions are named for their saturation: **CLEAN · TAPE · VALVE** (was CLEAN · DRIVEN · KICKED; VALVE rather than AMP, which in a modular reads as a VCA). **The button → THROW / TAP** (throw in TANK 1–2, tap tempo in TANK ECHO). ParamSpec keys (`mix`, `springs`, `attitude`) and switch positions are unchanged, so saved Ableton sets keep their values; the Renderer still reads the old labels (`springs=3`, `attitude=DRIVEN` / `KICKED`). Code identifiers (`ParamId::Mix`, `Springs`, `Attitude::Driven` / `Kicked`) stay. §3 throughout.
 - v1.0.42 — ADR 0041 amendment "The gate clock holds" (owner, 6 Oct 2026: "when the echo mode is clocked via CV and I stop the transport in Ableton, the delay time changed … it would stop the pitch shift on stop/start"): the gate clock's tempo **holds** when its pulses stop, like tap tempo; a lone pulse (no second within ~2 s) lets it go, back to free time. Was: lost after 2.25 beats (≤ 2.5 s), with a swoop back to free time and again on restart. §3 gate.
 - v1.0.41 — Tap tempo on the LEDs retuned (owner, 6 Oct 2026: "it could flash for longer to confirm the clock tempo"): the purple pulses after the last tap run **4 s** (was 2 s): 120 bpm → 8 pulses. `firmware/TapLed.h` `kTapShowSeconds`. Sound unchanged. §3 LEDs.
@@ -71,7 +72,7 @@
 | Audio | Stereo in / stereo out | NE Desmodus Versio manual |
 | CV | 0–5 V; pots act as offsets summed with CV → firmware reads a single 0–1 value per knob | NE Ampla/Electus manuals |
 
-HAL: `daisy::DaisyVersio` in libDaisy. DSP helpers: DaisySP.
+HAL: `daisy::DaisyVersio` in libDaisy. DSP helpers: our own (`core/dsp/`); DaisySP is not used (removed, ADR 0045).
 
 ---
 
