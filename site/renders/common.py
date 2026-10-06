@@ -308,7 +308,7 @@ def curve_obj(name, points, bevel_r, mat=None, resolution=3, spline="POLY", coll
 # ------------------------------------------------------------------- studio
 
 def cyclorama(width=3000, front=1500, back=900, height=1500, radius=500, rgb=GROUND_RGB,
-              center=(0, 0)):
+              center=(0, 0), texture=False):
     """Seamless sweep: flat floor running into a curved back wall (+Y side).
 
     The floor runs from y=-front to y=back, then bends up with `radius` into a
@@ -326,7 +326,52 @@ def cyclorama(width=3000, front=1500, back=900, height=1500, radius=500, rgb=GRO
     for i in range(len(prof) - 1):
         bm.faces.new((rows[0][i], rows[1][i], rows[1][i + 1], rows[0][i + 1]))
     ob = mesh_obj("cyclorama", bm, clay("ground", rgb=rgb, rough=0.85), smooth=True)
+    if texture:
+        _paper_texture(ob.data.materials[0])
     return ob
+
+
+def _paper_texture(m):
+    """Faint mottling + fibre in the sweep so it isn't CG-perfect (+-4 % value,
+    a little roughness variation)."""
+    nt = m.node_tree
+    p = nt.nodes["Principled BSDF"]
+    base = tuple(p.inputs["Base Color"].default_value)
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    big = nt.nodes.new("ShaderNodeTexNoise")
+    big.inputs["Scale"].default_value = 0.004   # ~250 mm blotches (object space, mm)
+    big.inputs["Detail"].default_value = 3
+    fine = nt.nodes.new("ShaderNodeTexNoise")
+    fine.inputs["Scale"].default_value = 0.6    # ~2 mm fibre
+    fine.inputs["Detail"].default_value = 6
+    for n in (big, fine):
+        nt.links.new(coord.outputs["Object"], n.inputs["Vector"])
+    mix = nt.nodes.new("ShaderNodeMath")
+    mix.operation = "MULTIPLY_ADD"
+    nt.links.new(big.outputs["Fac"], mix.inputs[0])
+    mix.inputs[1].default_value = 0.7
+    nt.links.new(fine.outputs["Fac"], mix.inputs[2])
+    rng = nt.nodes.new("ShaderNodeMapRange")
+    rng.inputs["From Min"].default_value = 0.6
+    rng.inputs["From Max"].default_value = 1.2
+    rng.inputs["To Min"].default_value = 0.92
+    rng.inputs["To Max"].default_value = 1.06
+    nt.links.new(mix.outputs[0], rng.inputs["Value"])
+    tint = nt.nodes.new("ShaderNodeMix")
+    tint.data_type = "RGBA"
+    tint.blend_type = "MULTIPLY"
+    tint.inputs["Factor"].default_value = 1.0
+    tint.inputs["A"].default_value = base
+    comb = nt.nodes.new("ShaderNodeCombineColor")
+    for k in range(3):
+        nt.links.new(rng.outputs[0], comb.inputs[k])
+    nt.links.new(comb.outputs[0], tint.inputs["B"])
+    nt.links.new(tint.outputs["Result"], p.inputs["Base Color"])
+    rr = nt.nodes.new("ShaderNodeMapRange")
+    rr.inputs["To Min"].default_value = 0.78
+    rr.inputs["To Max"].default_value = 0.92
+    nt.links.new(fine.outputs["Fac"], rr.inputs["Value"])
+    nt.links.new(rr.outputs[0], p.inputs["Roughness"])
 
 
 def area_light(name, loc, target, size, power, rgb=(1, 1, 1), size_y=None, spread=180):

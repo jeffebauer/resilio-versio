@@ -84,37 +84,126 @@ def module_variants(ref):
              target=(at("P1") + at("LED4")) / 2 + C.Vector((0, -6, 0)), az=-24, el=26, f=100, dist=170, fstop=5.6,
              focus=at("LED2", -1)),
     ]
+    PH = module.PH
+    v += [
+        dict(id="R6_front_a", shot="R6", note="Front-on, 200 mm: flat, almost orthographic product view.",
+             target=c, az=0, el=1, f=200, fit=1.08),
+        dict(id="R6_front_b", shot="R6", note="Front-on with a 7° turn, 135 mm: just enough depth to show the knobs and stack.",
+             target=c, az=7, el=3, f=135, fit=1.04),
+        dict(id="R6_front_c", shot="R6", mood="gloss",
+             note="Standing on a semi-gloss floor: its shadow and a soft reflection, 135 mm.",
+             target=c + C.Vector((0, 0, -16)), az=0, el=2, f=135, fit=0.84),
+        dict(id="R7_monolith_a", shot="R7", mood="monolith",
+             note="Monolith, dead centre: camera on the floor, 24 mm looking up; top edge glows, LEDs are the focus.",
+             loc=(0, -170, 6), target=(0, 0, 66), f=24),
+        dict(id="R7_monolith_b", shot="R7", mood="monolith",
+             note="Monolith, off-axis: 24 mm, closer and turned 25°, stronger convergence.",
+             loc=(60, -140, 5), target=(0, 6, 62), f=24),
+        dict(id="R7_monolith_c", shot="R7", mood="monolith",
+             note="Monolith, 35 mm from further back: calmer verticals, more dark floor.",
+             loc=(-20, -230, 8), target=(0, 0, 60), f=35),
+        dict(id="R8_graze", shot="R8", mood="graze",
+             note="Raking light down the panel face, near side-on 100 mm: the print and knob shadows rake.",
+             target=at("P6") + C.Vector((4, -2, 4)), az=50, el=24, f=100, dist=200, fstop=11,
+             focus=at("P6", -2)),
+        dict(id="R8_emerge", shot="R8", mood="dark",
+             note="Half out of the dark: only the top edge and the four LEDs lit, 85 mm.",
+             target=c + C.Vector((0, 0, 20)), az=22, el=10, f=85, fit=1.0),
+        dict(id="R8_cable", shot="R8", mood="cable",
+             note="A patch cable in IN L, its cord leaving frame: the module in use, 70 mm.",
+             target=c + C.Vector((0, -10, -25)), az=30, el=14, f=70, fit=1.12),
+    ]
     return v
 
 
 # ------------------------------------------------------------------ scenes
 
-def build_tank():
+def build_tank(mood=None):
     C.reset_scene()
-    ref = tank.build()
-    C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900)
+    ref = tank.build(dict(finish=mood) if mood else None)
+    C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900, texture=True)
     C.world(0.4)
     C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
     return ref
 
 
-def build_module():
+# Module moods: "studio" (default), "gloss" (semi-gloss floor for a reflection),
+# "monolith" (dark backdrop, strong top/back light, face falls into shadow),
+# "dark" (only the top edge and the LEDs lit), "graze" (raking light down the
+# panel face), "cable" (studio + a patch cable in IN L).
+DARK_RGB = (0.035, 0.033, 0.031)
+
+
+def build_module(mood=None):
+    mood = mood or "studio"
     C.reset_scene()
     ref = module.build()
-    C.cyclorama(width=2400, front=1200, back=260, height=1600, radius=380)
-    C.world(0.32)
-    C.studio(ref["center"], ref["size"] * 1.6, key=1.0, fill=0.25, rim=0.6)
+    dark = mood in ("monolith", "dark")
+    cyc = C.cyclorama(width=2400 if not dark else 6000, front=1200 if not dark else 3000, back=260,
+                      height=1600, radius=380, rgb=DARK_RGB if dark else C.GROUND_RGB)
+    c = ref["center"]
+    if mood == "gloss":
+        p = cyc.data.materials[0].node_tree.nodes["Principled BSDF"]
+        p.inputs["Roughness"].default_value = 0.22
+    if mood in ("studio", "gloss", "cable"):
+        C.world(0.32)
+        C.studio(c, ref["size"] * 1.6, key=1.0, fill=0.25, rim=0.6)
+    elif mood == "monolith":
+        C.world(0.012)
+        L = C.studio(c, ref["size"] * 1.6, key=0.10, fill=0.02, rim=1.6)
+        # the top/back light: just behind and above the top edge, raking forward
+        top = C.Vector((0, 60, module.PH + 120))
+        C.area_light("top", top, C.Vector((0, 0, module.PH - 10)), size=120,
+                     power=C.watts(C.KEY_W * 8.0) * (0.15) ** 2)
+        # a faint fill from high in front so the face falls off towards the bottom
+        L["key"].location = C.Vector((-60, -260, 420))
+        C.aim(L["key"], c + C.Vector((0, 0, 50)))
+    elif mood == "dark":
+        C.world(0.003)
+        top = C.Vector((0, 35, module.PH + 70))
+        C.area_light("top", top, C.Vector((0, 4, module.PH)), size=30,
+                     power=C.watts(C.KEY_W * 1.5) * (0.08) ** 2, spread=40)
+    elif mood == "graze":
+        C.world(0.08)
+        # a long strip just in front of the panel, above it, shining down the face
+        C.area_light("graze", C.Vector((0, -14, module.PH + 160)), C.Vector((0, -6, 40)),
+                     size=80, size_y=8, power=C.watts(C.KEY_W * 1.2) * (0.17) ** 2, spread=25)
+        C.studio(c, ref["size"] * 1.6, key=0.0, fill=0.06, rim=0.3)
+    if mood == "cable":
+        module.patch_cable(ref, "J9")
     return ref
 
 
 def camera_for(v, ref):
+    if v.get("loc") is not None:
+        return _camera_at(v)
     dist = v.get("dist") or C.fit_distance(ref["radius"], v["f"], v["fit"], by=v.get("by", "height"))
     cam = C.camera(v["id"], v["target"], v["az"], v["el"], v["f"], dist,
-                   fstop=v.get("fstop"), focus=v.get("focus"))
+                   fstop=v.get("fstop"), focus=v.get("focus"), shift=v.get("shift", (0.0, 0.0)))
     v["dist_mm"] = round(dist)
     v["height_mm"] = round(cam.location.z)
     v["label"] = (f"h {v['height_mm']} mm · el {v['el']}° · az {v['az']}° · {v['f']} mm"
                   + (f" · f/{v['fstop']}" if v.get("fstop") else "") + f" · {v['dist_mm']} mm away")
+    return cam
+
+
+def _camera_at(v):
+    """Camera at an explicit position (floor-level shots), aimed at target."""
+    loc, tgt = C.Vector(v["loc"]), C.Vector(v["target"])
+    d = tgt - loc
+    tilt = math.degrees(math.atan2(d.z, math.hypot(d.x, d.y)))
+    az = math.degrees(math.atan2(loc.x - tgt.x, tgt.y - loc.y))  # from the front, towards +X
+    cam = C.camera(v["id"], tgt, 0, 0, v["f"], 1.0, fstop=v.get("fstop"), focus=v.get("focus"),
+                   shift=v.get("shift", (0.0, 0.0)))
+    cam.location = loc
+    C.aim(cam, tgt)
+    if v.get("fstop"):
+        cam.data.dof.focus_distance = ((C.Vector(v["focus"]) if v.get("focus") is not None else tgt) - loc).length
+    v["az"], v["el"] = round(az), round(tilt)
+    v["dist_mm"] = round(d.length)
+    v["height_mm"] = round(loc.z)
+    v["label"] = (f"h {v['height_mm']} mm · tilt up {round(tilt)}° · az {round(az)}° · {v['f']} mm"
+                  + (f" · f/{v['fstop']}" if v.get("fstop") else "") + f" · {v['dist_mm']} mm to target")
     return cam
 
 
@@ -126,6 +215,9 @@ SHOTS = {
     "R3": "R3 Module, three-quarter",
     "R4": "R4 Module turn (key frames)",
     "R5": "R5 Panel macros",
+    "R6": "R6 Module, front-on",
+    "R7": "R7 Module, monolith (from the floor)",
+    "R8": "R8 Module, hero ideas",
 }
 
 
@@ -200,22 +292,24 @@ def main():
 
     os.makedirs(a.out, exist_ok=True)
     for builder, varfn in ((build_tank, tank_variants), (build_module, module_variants)):
-        # skip building a scene none of whose variants are wanted
-        probe = [v["id"] for v in varfn(_probe_ref(builder))]
-        if not any(want(vid) for vid in probe):
-            continue
-        ref = builder()
-        C.setup_cycles(samples=a.samples)
-        bpy.context.scene.render.resolution_percentage = a.scale
-        for v in varfn(ref):
-            if not want(v["id"]):
-                continue
-            cam = camera_for(v, ref)
-            t0 = time.time()
-            C.render(cam, os.path.join(a.out, v["id"] + ".png"))
-            v["render_s"] = round(time.time() - t0, 1)
-            print(f"[clay] {v['id']}: {v['render_s']} s  ({v['label']})")
-            done[v["id"]] = {k: (list(x) if hasattr(x, "to_tuple") else x) for k, x in v.items()}
+        probe = [v for v in varfn(_probe_ref(builder)) if want(v["id"])]
+        moods = []
+        for v in probe:  # one scene build per mood, in first-seen order
+            if v.get("mood") not in moods:
+                moods.append(v.get("mood"))
+        for mood in moods:
+            ref = builder(mood)
+            C.setup_cycles(samples=a.samples)
+            bpy.context.scene.render.resolution_percentage = a.scale
+            for v in varfn(ref):
+                if not want(v["id"]) or v.get("mood") != mood:
+                    continue
+                cam = camera_for(v, ref)
+                t0 = time.time()
+                C.render(cam, os.path.join(a.out, v["id"] + ".png"))
+                v["render_s"] = round(time.time() - t0, 1)
+                print(f"[clay] {v['id']}: {v['render_s']} s  ({v['label']})")
+                done[v["id"]] = {k: (list(x) if hasattr(x, "to_tuple") else x) for k, x in v.items()}
     ordered = sorted(done.values(), key=lambda v: v["id"])
     with open(manifest_path, "w") as f:
         json.dump(ordered, f, indent=1, default=str)

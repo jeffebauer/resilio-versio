@@ -277,3 +277,20 @@ def build(params=None):
         at=at,
         params=p,
     )
+
+
+def patch_cable(ref, hid="J9"):
+    """A 3.5 mm TS patch cable plugged into jack `hid`: nickel collar, black
+    moulded plug body, strain relief, and a cord that droops to the floor and
+    leaves the frame to the front-left."""
+    h = ref["holes"][hid]
+    x, z = h["x"], h["z"]
+    nickel = bpy.data.materials["mod_nickel"]
+    black = C.clay("cable_black", 0.025, 0.45)
+    C.cylinder("plug_tip", 1.75, 6.0, (x, 1.0, z), nickel, axis="X", segs=32)
+    C.cylinder("plug_collar", 2.6, 2.0, (x, -3.0, z), nickel, axis="X", segs=48, bevel=0.3)
+    C.cylinder("plug_body", 3.4, 16.0, (x, -12.0, z), black, axis="X", segs=48, r2=3.0, bevel=0.8)
+    C.cylinder("plug_relief", 2.2, 8.0, (x, -24.0, z), black, axis="X", segs=32, r2=1.8, bevel=0.4)
+    pts = [(x, -27.5, z), (x, -38, z - 2), (x - 6, -60, z - 9), (x - 22, -95, 2.0),
+           (x - 70, -150, 1.6), (x - 160, -230, 1.6), (x - 320, -330, 1.6), (x - 600, -480, 1.6)]
+    C.curve_obj("cord", pts, 1.6, black, resolution=4, spline="NURBS")
