@@ -26,6 +26,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3a. The tap tempo light on the module (≈5 min)
 - [ ] Flash `dist/resilio_versio_release_3b70fba.bin` (adds the purple tap light; sound identical to `9ba726f`). In SPRINGS 3 tap the button: a purple flash on each tap, then purple pulses on your beat until 2 s after the last tap. Does it read as purple (not blue or pink), clearly unlike amber and red? Is a quick tap's flash easy to see? Pulses in time? A lone tap: one flash. Flip SPRINGS off 3: it stops. A quick click check while you're there (flip SPRINGS 3 ↔ 1/2 under load)
 
+### 3c. Listen: echo with less spring (≈20 min)
+- [ ] Page: `renders/echo_springs_blend/index.html` (echo mode; columns CLEAN / DRIVEN / KICKED). Switch: **A** today (all through the springs); **B / C / D** = 50 / 25 / 0 % springs, the rest the tape's repeats heard directly, **wide** (each repeat centred, two "heads" 8 ms apart); **E / F / G** = the same blends, **ping-pong** (repeats alternate left, right…). MIX 0.6 everywhere, levels matched. Listen for: do the repeats stay distinct hits as the springs come out, especially on the fast-echo rim? Is ¼ springs still "the unit" or a plain delay? Less spring also means less splash on the hit itself (none in D / G): loss, or cleaner? Wide or ping-pong for the skank? Pick per row and ATTITUDE if they differ
+- Costs to know: wide is free. **Ping-pong** would take echo mode to ~78–81 % on the chip (ceiling 80 %) and needs a second tape's worth of memory the chip doesn't have spare (it would mean a shorter longest echo or slower memory). The direct echo also runs ~3 dB quieter than through the springs and would get a level boost in a real build
+
 ### 3b. Hear tape wear B in the plugin (≈10 min)
 - [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
 - [ ] TENSION in echo mode shows the note value (1/2 … 1/16, dotted) on the panel and in Ableton's device view (it may need a knob touch to refresh after flipping SPRINGS)
@@ -54,7 +58,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Echo with and without the springs** (your ask, 6 Oct): a page with A today (100 % through the springs), then 50 % / 25 % / 0 % springs with the direct echo in stereo, two flavours each: wide (repeats centred, like two tape heads) and ping-pong (repeats alternate left / right). Being built
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
