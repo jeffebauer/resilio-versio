@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, end of session 8. Released [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4): everything is merged, installed in Ableton (`c1d98ac`) and published. One small module check left (§1)
+**Last updated:** 6 Oct 2026, session 9 start. Your answers on In R, the VALVE lurch and the VALVE Howl recorded; three agents working (the first-chord fix, a lurch listening page, a stereo-in study). One small module check left (§1)
 
 | Milestone | State |
 |---|---|
@@ -22,16 +22,14 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
-- [ ] **What is In R for?** A duck key (patch your kick in so the hold ducks to it), a second send (e.g. just the snare into the springs), or plain stereo in? (SPEC §10)
-- [ ] **Big hits in KICKED:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. Keep, or lurch together?
-- [ ] **KICKED Howl on a tight tank** (SPRINGS 1–2, TENSION up, DECAY max) leans toward one pitch, like a siren. Still a rough roar, or too tonal? (At TONE right you said the pitch lean is fine)
+- [ ] **Big hits in VALVE:** the pitch lurch goes one way on one spring and the other way on the other, briefly spreading hard hits in stereo. You want to hear it: a listening page (today / lurch together / wider spread) is being built at `renders/valve_lurch_stereo/`
 
 ## Later
-- **Stereo in:** see "What is In R for?" above; options and costs in [SPEC §10](../SPEC.md)
+- **Stereo in:** In R is for the right channel of a stereo input (your call, 6 Oct). Claude is studying what it takes on the module (CPU, flash, mono patches unchanged); the options and your decisions come next
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
+- **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). An agent is fixing it now; everything else should stay bit-identical
 
 ## What to send Claude
 - **Recordings:** say they're done and where (the Ableton project). Claude copies, renames and analyses them; the WAVs stay on your Mac, never in git
@@ -50,6 +48,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Design answers:** In R is for stereo in (study under way); VALVE Howl on a tight tank is not too siren-like, keep it; the VALVE lurch spread: you want to hear it first (listening page coming)
 - 6 Oct 2026: **Friends' release published:** [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private): universal plugin (macOS 12+), firmware, read-me and what's-new since 1 Oct. README rewritten for visitors and pushed
 - 6 Oct 2026: **New panel names merged and installed** (`c1d98ac`, ADR 0044, SPEC v1.0.43): BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP; saved sets keep their values. Player docs checked against the code (manual refreshed: echo mode, the Hold, LEDs; two presets moved off the old 3 Springs to TANK 2; "Kicked tank drop" is now "Valve tank drop"). Rescan in Ableton; existing devices may show old names until a fresh instance
 - 6 Oct 2026: **The gate clock holds** (your ask: no swoop on Ableton's transport stop/start), merged and installed `7e73dfe` (ADR 0041 amendment, SPEC v1.0.42); a lone pulse lets it go (your pick). Release `7e73dfe` built
