@@ -8,7 +8,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 |---|---|
 | M2 plugin | Built, installed `9ba726f`. Your Ableton check is open (§5) |
 | M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. Flash: release 95.7 %, CPU-test build 97.2 % |
-| Real firmware on the Versio | `0267d0e` (flashed 5 Oct evening): everything merged. Click check under way, no clicks so far (§3) |
+| Real firmware on the Versio | `9ba726f` (flashed 6 Oct): everything merged, incl. tape wear B. Click check under way (§3) |
 | M8 sound | All merged, incl. tape wear B for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
@@ -25,7 +25,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 3. The new release on the module + click check (≈10 min)
 - [x] `0267d0e` flashed 5 Oct ("sounding fantastic"); no clicks so far on it
-- [ ] Flash `dist/resilio_versio_release_9ba726f.bin` (adds tape wear B). **Click check:** KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
+- [x] Flashed `dist/resilio_versio_release_9ba726f.bin` (6 Oct, adds tape wear B)
+- [ ] **Click check** (under way): KICKED, DRIVE and DECAY up, move knobs fast, throw with the button and with a gate, tap tempo in SPRINGS 3, and **flip SPRINGS between 3 and 1/2 while it plays hard** (the 77–80 % moment). Any click or dropout → tell Claude
 
 ### 3b. Hear tape wear B in the plugin (≈10 min)
 - [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
