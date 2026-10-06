@@ -21,9 +21,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 2. VALVE lurch across the stereo field (≈10 min, headphones)
-- [ ] Listen to [renders/valve_lurch_stereo/index.html](../renders/valve_lurch_stereo/index.html): A today (one ear dips, the other rises), B together (stays centred), C a little wider, D the obvious stereo throw. The chord stab shows it best; TANK 1 rows are a blind check (A = B = C there). Pick one, or say if you meant the lurch *travelling* left → right instead (not built yet). B and D would need a small follow-up to pass the stereo-safety tests
-
 ### 3. First chord after drums: one trade-off (Claude is re-running the tests)
 - [ ] The fix makes the first chord after a kick groove come in level with the chords after it (was up to +3.4 dB). Its price: **inside a groove, a snare or rim right after a kick comes in 1–2 dB quieter** than today (the kick's lows were lifting it). Should the snare after a kick come in as loud as today, or as loud as the same snare on its own? Claude can build an A/B page if you'd rather hear it
 
@@ -61,6 +58,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **VALVE lurch across the stereo field listened:** A (today) / B together / C wider / D wider and louder barely tell apart, so nothing changes: today's lurch stays. Page deleted; branch `proto/valve-lurch-stereo` kept for reference
 - 6 Oct 2026: **Going-public decisions** (ADR 0045): plugin under the AGPL (no paid JUCE licence), our code MIT, commit email and the Wellspring spectrograms OK to publish, credit Jesse Bauer → jessebauer.xyz, feedback via GitHub Issues, prune old branches and keep the friends' releases, keep the name Resilio Versio with a Noise Engineering disclaimer
 - 6 Oct 2026: **Design answers:** In R is for stereo in (study under way); VALVE Howl on a tight tank is not too siren-like, keep it; the VALVE lurch spread: you want to hear it first (listening page coming)
 - 6 Oct 2026: **Friends' release published:** [v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private): universal plugin (macOS 12+), firmware, read-me and what's-new since 1 Oct. README rewritten for visitors and pushed
