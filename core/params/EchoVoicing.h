@@ -154,45 +154,68 @@ constexpr int kTapeMargin = 1024;
 constexpr float kSpringsTension    = 0.5f;
 constexpr float kSpringsT60Seconds = 1.7f;
 
-// ---- Springs blend (PROTOTYPE, owner 6 Oct 2026) -----------------------------------------------
+// ---- Springs blend (owner's pick 6 Oct 2026: C, 25 % springs, wide) --------------------------
 // "The springs add diffusion which makes the individual repeats less
-// distinct." How much of the wet comes through the springs: the wet is a
-// crossfade s x (the springs' output) + (1 - s) x (the tape's repeats heard
-// directly, in stereo). The direct repeats are the tape's playback only (the
-// dry hit already reaches the output through MIX), joined at the springs'
-// output just before the output pickups (DriveOut), so they go through
-// everything after the tank as the springs' output does: DriveOut, the
-// shelf, the mu-law box, TONE's return, the limiter, the Hold's ducking, MIX.
-// They follow DRIVE's heard gain and kTrim like the springs' output. The
-// springs keep hearing the input plus the tape's (mono) repeats, as today.
-// Two flavours of stereo for the direct repeats (dsp/EchoDirect.h):
-//   Wide: two playback heads, R kWideMs behind L and a touch darker (a
-//         one-pole at kWideDarkHz), above kWideSplitHz only: the lows stay
-//         identical in L and R (centred, no comb in mono down there).
-//   Ping-pong: two tapes cross-fed inside the feedback, the input on L's:
-//         repeat 1 left, 2 right, 3 left ... Each repeat passes one tape's
-//         heads, wear and WOBBLE once per pass, as today; the springs hear
-//         L + R (each repeat once, as the mono tape gives it).
-// docs/prototypes/echo-springs-blend/README.md. Renderer key
-// echo_springs_voicing; the firmware builds only voicing 0 (no blend code).
+// distinct." The owner heard A (today: the whole wet through the springs),
+// 50 / 25 / 0 % through the springs with the rest heard directly, wide or
+// ping-pong (renders/echo_springs_blend, docs/prototypes/echo-springs-blend),
+// and picked C-wide on every row and ATTITUDE: a quarter of the wet through
+// the springs, three quarters the tape's repeats heard directly, wide.
+//
+// The wet is s x (the springs' output) + (1 - s) x (the direct repeats),
+// then x makeup (per ATTITUDE, blended with the Morph). The direct repeats
+// are the tape's playback only (the dry hit already reaches the output
+// through MIX), joined at the springs' output just before the output
+// pickups (DriveOut), so they go through everything after the tank as the
+// springs' output does: DriveOut, the shelf, the mu-law box, TONE's return,
+// the limiter, the Hold's ducking, MIX. They follow DRIVE's heard gain and
+// kTrim like the springs' output. The springs keep hearing the input plus
+// the tape's (mono) repeats, as before.
+//
+// makeup: the owner judged the versions level-matched, so the shipped one
+// is as loud as A was (test_echo_mode "level", "blendlevel"): with only a
+// quarter of the springs the wet loses their splash of each hit and their
+// ring, ~10-12 dB. It goes on the whole blended wet, after the output
+// pickups (DriveOut), so the springs : direct balance and the pickups'
+// colour stay as the owner heard them; only the wet's level moves.
+//
+// Wide (dsp/EchoDirect.h): two playback heads, the image centred. Above
+// kWideSplitHz L plays the repeats a touch darker (kWideDarkHz) and R plays
+// them kWideMs later, at full brightness x kWideRTrim (L and R equally loud
+// on average); below it L and R are the same. In mono the 8 ms between them
+// is a fine comb on the repeats' highs (notches every 125 Hz): the price of
+// the width. Ping-pong (Renderer only): two tapes cross-fed inside the
+// feedback, repeat 1 left, 2 right ...
+// Renderer key echo_springs_voicing; the firmware builds only the default.
 enum class DirectStyle { None, Wide, PingPong };
 struct SpringsBlendVoicing {
-    float       springs; // s: the springs' share of the wet
+    float       springs;   // s: the springs' share of the wet
     DirectStyle style;
+    float       makeup[3];  // the wet x this at DECAY noon, CLEAN / DRIVEN / KICKED (linear)
+    float       makeupFbDb; // ... changed by this many dB per unit of feedback above noon's (kFeedbackNoon)
 };
 constexpr int kNumSpringsBlendVoicings = 7;
 constexpr SpringsBlendVoicing kSpringsBlend[kNumSpringsBlendVoicings] = {
-    {1.0f, DirectStyle::None},      // 0 A today: all through the springs
-    {0.5f, DirectStyle::Wide},      // 1 B-wide: half through the springs, half direct (wide)
-    {0.25f, DirectStyle::Wide},     // 2 C-wide: a quarter through the springs
-    {0.0f, DirectStyle::Wide},      // 3 D-wide: the tape echo alone, no springs
-    {0.5f, DirectStyle::PingPong},  // 4 B-pp: half through the springs, half direct (ping-pong)
-    {0.25f, DirectStyle::PingPong}, // 5 C-pp
-    {0.0f, DirectStyle::PingPong},  // 6 D-pp
+    {1.0f, DirectStyle::None, {1.0f, 1.0f, 1.0f}, 0.0f},           // 0 A: the whole wet through the springs (until 6 Oct 2026)
+    {0.5f, DirectStyle::Wide, {1.0f, 1.0f, 1.0f}, 0.0f},           // 1 B-wide: half through the springs, half direct (prototype)
+    {0.25f, DirectStyle::Wide, {3.33f, 3.39f, 3.30f}, -8.0f},// 2 C-wide: a quarter through the springs (the owner's pick, the default)
+    {0.0f, DirectStyle::Wide, {1.0f, 1.0f, 1.0f}, 0.0f},           // 3 D-wide: the tape echo alone, no springs (prototype)
+    {0.5f, DirectStyle::PingPong, {1.0f, 1.0f, 1.0f}, 0.0f},       // 4 B-pp (prototype; Renderer only)
+    {0.25f, DirectStyle::PingPong, {1.0f, 1.0f, 1.0f}, 0.0f},      // 5 C-pp
+    {0.0f, DirectStyle::PingPong, {1.0f, 1.0f, 1.0f}, 0.0f},       // 6 D-pp
 };
+#ifdef RV_ECHO_SPRINGS_DEFAULT
+constexpr int kSpringsBlendDefault = RV_ECHO_SPRINGS_DEFAULT;
+#else
+constexpr int kSpringsBlendDefault = 2; // owner's pick, 6 Oct 2026 (renders/echo_springs_blend C, every row and ATTITUDE)
+#endif
+#if defined(RV_FIXED_VOICINGS)
+static_assert(kSpringsBlend[kSpringsBlendDefault].style != DirectStyle::PingPong, "the firmware has no second tape");
+#endif
 constexpr float kWideMs      = 8.0f;    // R's head behind L's (Haas range: one wide repeat, not two)
-constexpr float kWideDarkHz  = 6000.0f; // R's head a touch darker
+constexpr float kWideDarkHz  = 6000.0f; // L's head a touch darker
 constexpr float kWideSplitHz = 250.0f;  // below this L and R are the same (one-pole split)
+constexpr float kWideRTrim   = 0.93f; // R's highs: L and R equally loud on average
 
 // ---- Diffuse repeats (PROTOTYPE, owner 4 Oct 2026) -------------------------------------------
 // "Repeats become slightly diffuse as they repeat, so there's a feeling of

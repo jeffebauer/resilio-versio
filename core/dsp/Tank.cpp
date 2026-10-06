@@ -239,9 +239,7 @@ RV_SIZE_OPT void Tank::prepare(float sampleRate, int maxBlockSize, float* pool, 
     // gives the fixed springs their T60 (Mappings.h decayT60Seconds inverted).
     static_assert(dsp::TapeEcho::kGrid == kControlInterval, "the echo steps on the Tank's control grid");
     echo_.prepare(sampleRate, kEchoSeed, tape, tapeFloats);
-#ifndef RV_FIXED_VOICINGS
-    direct_.prepare(sampleRate, kEchoSeed); // PROTOTYPE springs blend: ping-pong's second tape, the wide heads
-#endif
+    direct_.prepare(sampleRate, kEchoSeed); // the springs blend: the wide heads (and, Renderer only, ping-pong's second tape)
     clock_.prepare(sampleRate);
     tapClock_.prepare(sampleRate);
     springsDecay_ = std::log(echo::kSpringsT60Seconds / map::kT60MinSeconds)
@@ -585,9 +583,7 @@ RV_SIZE_OPT void Tank::reset()
     for (auto& w : wobble_) w.reset();
     transport_.reset();
     echo_.reset();
-#ifndef RV_FIXED_VOICINGS
     direct_.reset();
-#endif
     clock_.reset();
     tapClock_.reset();
     tapWins_ = false;
@@ -850,9 +846,7 @@ RV_SIZE_OPT void Tank::controlTick(bool snap)
         const float target  = echoPos ? 1.0f : 0.0f;
         echoFresh = target > 0.0f && echoW_ <= 0.0f;
         if (echoFresh) echo_.clearTape();
-#ifndef RV_FIXED_VOICINGS
         if (echoFresh) direct_.clearTape();
-#endif
         echoWFrom_ = snap ? target : echoW_;
         echoW_     = snap ? target : (target > echoW_ ? std::min(target, echoW_ + s3Step_) : std::max(target, echoW_ - s3Step_));
         if (echoPos) mode = 1;
@@ -2079,13 +2073,14 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         // input and its own playback x the feedback (series: the feedback
         // stays on the tape).
         const bool echoRun = echoW_ > 0.0f || echoWFrom_ > 0.0f;
-#ifndef RV_FIXED_VOICINGS
-        // PROTOTYPE springs blend (EchoVoicing.h kSpringsBlend): the direct
-        // repeats, L and R. Ping-pong: echo_ is the left tape, direct_.tapeR the
-        // right; each records the other's playback x the feedback.
+        // The springs blend (EchoVoicing.h kSpringsBlend): the repeats heard
+        // directly, L and R. Ping-pong (Renderer only): echo_ is the left tape,
+        // direct_.tapeR the right; each records the other's playback x the feedback.
         const bool directOn = echoRun && direct_.active();
         const bool pp       = directOn && direct_.pingPong();
-        float      dirL[kControlInterval], dirR[kControlInterval], fbsR[kControlInterval];
+        float      dirL[kControlInterval], dirR[kControlInterval];
+#ifndef RV_FIXED_VOICINGS
+        float fbsR[kControlInterval];
 #endif
         if (echoRun) {
             echo_.play(echoPlay, n);
@@ -2125,7 +2120,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 echoRec[i]    = w * xs[i] + fbs[i];
                 echoPlay[i] *= w;
             }
-#ifndef RV_FIXED_VOICINGS
             if (pp)
                 for (int i = 0; i < n; ++i) {
                     dirL[i] = echoPlay[i];
@@ -2134,7 +2128,6 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
                 }
             else if (directOn)
                 direct_.widen(echoPlay, dirL, dirR, n);
-#endif
             prof::mark(prof::kSpringC); // echo mode: the echo's share (Spring C doesn't run)
         }
 
@@ -2348,6 +2341,12 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
         constexpr float outTrim = 1.0f;
 #endif
         float wetL[kControlInterval], wetR[kControlInterval]; // the wet up to the mu-law box (ADR 0042 amendment)
+        // The springs blend (EchoVoicing.h kSpringsBlend): the wet's make-up for
+        // this ATTITUDE (with the Morph), and the direct repeats' own trim with
+        // the feedback (on the repeats only: DECAY never moves the hit's splash).
+        const float blendMakeup =
+            directOn ? attW_[0] * direct_.makeup(0) + attW_[1] * direct_.makeup(1) + attW_[2] * direct_.makeup(2) : 1.0f;
+        const float directFb = directOn ? drive::dbToGain(direct_.makeupFbDb() * (fbTo_ - echo::kFeedbackNoon)) : 1.0f;
         for (int i = 0; i < n; ++i) {
             // DRIVE's heard share (ADR 0033): the tail comes back louder by
             // G^kInputHeard. Here, on the Springs' output, rather than into
@@ -2415,14 +2414,12 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #endif
             // Output pickup (DriveOut), one per channel.
             float inl = mid + sd + d, inr = mid - sd - d;
-#ifndef RV_FIXED_VOICINGS
-            if (directOn) { // PROTOTYPE springs blend: s x the springs + (1 - s) x the direct repeats (at the springs' level)
+            if (directOn) { // the springs blend: s x the springs + (1 - s) x the direct repeats (at the springs' level)
                 const float s = 1.0f - echoGain[i] * (1.0f - direct_.springs());
-                const float g = (1.0f - s) * heard * trem[i] * (1.0f + echoGain[i] * (echo::kTrim - 1.0f));
+                const float g = (1.0f - s) * directFb * heard * trem[i] * (1.0f + echoGain[i] * (echo::kTrim - 1.0f));
                 inl = s * inl + g * dirL[i];
                 inr = s * inr + g * dirR[i];
             }
-#endif
 #if RV_TANKV_BUILT >= 5
             if (tankv::hasTransducers(tankVoicing_)) { // voicing 5+: the output pickup's treble loss
                 inl = tdOut_[0].process(inl);
@@ -2431,6 +2428,11 @@ RV_NO_UNSWITCH void Tank::process(const float* inL, const float* inR, float* out
 #endif
             float wl = outTrim * driveOut_[0].process(inl);
             float wr = outTrim * driveOut_[1].process(inr);
+            if (directOn) { // the blend's make-up, after the pickups (EchoVoicing.h kSpringsBlend), with the glide
+                const float mk = 1.0f + echoGain[i] * (blendMakeup - 1.0f);
+                wl *= mk;
+                wr *= mk;
+            }
 
             // Gentle high-shelf cut: keep the part below kShelfHz, scale the rest.
             const float ll = shelfSplit_[0].process(wl), lr = shelfSplit_[1].process(wr);

@@ -1,8 +1,20 @@
-# Echo springs blend (prototype 6 Oct 2026)
+# Echo springs blend (prototype 6 Oct 2026; C shipped 6 Oct 2026)
+
+**Outcome (owner, 6 Oct 2026):** C-wide (a quarter of the wet through the springs, three quarters the tape's repeats heard directly, wide) was picked on every row and in every ATTITUDE. It is now the default (`kSpringsBlendDefault = 2`; ADR 0041 amendment "Springs blend", SPEC v1.0.40) and the firmware builds it. Three things changed from the page's C on the way in:
+
+- **Level.** The owner listened level-matched, so the shipped C carries its own make-up and is as loud as A was: ×3.33 / ×3.39 / ×3.30 (+10.4 / +10.6 / +10.4 dB) on the whole wet in CLEAN / DRIVEN / KICKED, after the output pickups, so the springs : direct balance and the pickups' colour stay as heard. The direct repeats also get −8 dB per unit of feedback around noon's, because with longer feedback they piled up where the springs used to smear them. Measured C − A over MIX, DECAY, TENSION and DRIVE on hits, stabs and a held pad: mean within 0.12 dB in every ATTITUDE. Hits come out ~1–2 dB under A, a held pad ~1–3 dB over (`test_echo_mode` "blendlevel").
+- **Image centred.** On the page R was both later and darker, so the wide repeats leaned ~1.6 dB left. Now L is the darker head and R the later one (× 0.93 on its highs): L − R of the heads alone +0.27 / +0.85 / −0.92 dB on hits / stabs / pad, mean +0.07. The bass is still identical in L and R.
+- **Ping-pong** stays Renderer-only. Its second tape is allocated only when a ping-pong voicing is chosen, never in the Plugin or the firmware.
+
+The mono comb stays: in mono the 8 ms between the heads is a fine comb on the repeats' highs (notches every 125 Hz). It is the price of the width.
+
+A check page with the shipped C against A, **not** level-matched (C should sound as loud as A on its own): `renders/echo_springs_c_check/index.html`.
 
 Branch `proto/echo-springs-blend`. The owner's brief: "I'd like to hear a comparison of the echo mode with and without passing through the springs. The springs add diffusion which makes the individual repeats less distinct. Create a comparison page with the echo as it is today, the echo through the spring at 50%, 25%, and 0%." A follow-up the same day: the direct echo should be stereo, in two flavours, "wide but centred" and ping-pong.
 
-Hidden Renderer key: `echo_springs_voicing` (0-6). The numbers are in `core/params/EchoVoicing.h` under "Springs blend", and the code is in `core/dsp/EchoDirect.h` plus the echo path in `core/dsp/Tank.cpp`. The firmware builds only voicing 0, with no blend code compiled in. Sizes are unchanged: release 125,492 B, profile 127,336 B, m0test 82,320 B.
+Hidden Renderer key: `echo_springs_voicing` (0-6). The numbers are in `core/params/EchoVoicing.h` under "Springs blend", and the code is in `core/dsp/EchoDirect.h` plus the echo path in `core/dsp/Tank.cpp`. While the prototype was open the firmware built only voicing 0 (sizes unchanged). With C as the default: release 126,372 B (+520), profile 127,512 B (+192), m0test 82,320 B.
+
+The rest of this page describes the prototype as the owner heard it (before the make-up and the image fix).
 
 Page: `tools/echo_springs_blend_page.sh` writes `renders/echo_springs_blend/index.html` (about 0.43 GB). It has CLEAN / DRIVEN / KICKED columns. The rows are:
 
