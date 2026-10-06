@@ -23,6 +23,7 @@ import bmesh
 from mathutils import Vector
 
 import common as C
+import tank_materials as TM
 
 DEFAULTS = dict(
     length=425.0,
@@ -39,7 +40,13 @@ DEFAULTS = dict(
              (28.0, 2.3, 0.55, 2.6)],
     pts_per_turn=20,
     transducer_inset=20.0,  # transducer centre from each end wall
+    finish="galv",          # chassis: "galv" (bright galvanised) or "yellow" (yellow-chromate zinc)
+    wires=dict(in_=("red", "black"), out=("white", "yellow")),
+    label=True,
 )
+
+FONT_PRINT = "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"
+FONT_HAND = "/System/Library/Fonts/Supplemental/Bradley Hand Bold.ttf"
 
 
 def _pan(p, mats):
@@ -97,7 +104,7 @@ def _transducer(p, mats, side):
     for i in range(n_lam):
         z = plate_z + 0.5 + lam_t / 2 + i * (lam_t + 0.04)
         inset = 0.15 if i % 2 else 0.0
-        C.box("lamination", (24 - inset, 74 - inset, lam_t), (xc + side * 1, 0, z), mats["core"])
+        C.box("lamination", (24 - inset, 74 - inset, lam_t), (xc + side * 1, 0, z), mats["iron"])
     core_top = plate_z + 0.5 + n_lam * (lam_t + 0.04)
     # coil on the outboard leg of the core, axis along Y, between two bobbin cheeks
     coil_x = xc + side * 7
@@ -108,18 +115,30 @@ def _transducer(p, mats, side):
     tips = []
     for (y, *_rest) in p["springs"]:
         pole_x = xc - side * 7
-        C.box("pole", (5, 6, zc + 2 - core_top), (pole_x, y, (core_top + zc + 2) / 2), mats["core"], bevel=0.3)
+        C.box("pole", (5, 6, zc + 2 - core_top), (pole_x, y, (core_top + zc + 2) / 2), mats["iron"], bevel=0.3)
         mag_x = pole_x - side * 5.5
         C.cylinder("magnet", 1.4, 6, (mag_x, y, zc), mats["magnet"], axis="Y", segs=24, bevel=0.2)
         tips.append(Vector((mag_x - side * 3.0, y, zc)))
-    # solder tags + wires to the RCA jack on this end
+    # solder tags, coloured hook-up wire to the RCA jack, solder blobs, a cable tie
     rca = Vector((side * (L / 2 + 0.4), -30.0, 15.0))
+    colours = p["wires"]["in_" if side < 0 else "out"]
+    ends = []
     for k, dy in enumerate((-2.0, 2.0)):
         tag = Vector((coil_x + side * 2, -20 + dy, core_top + 2))
         C.box("tag", (2.5, 1.2, 5), tag, mats["metal_light"])
-        mid = (tag + rca) / 2 + Vector((0, 0, 6 + 3 * k))
-        C.curve_obj("wire", [tag + Vector((0, 0, 2)), mid, rca + Vector((-side * 4, dy * 0.5, 0))],
-                    0.45, mats["wire"], spline="NURBS")
+        C.sphere("solder", 1.0, tag + Vector((0, 0, 2.2)), mats["solder"])
+        end = rca + Vector((-side * 4, dy * 0.5, -3 + 3 * k))
+        slack = 9.0 if (k == 1 and side > 0) else 4.0   # one wire with a little slack
+        mid = (tag + end) / 2 + Vector((0, -2 * k, slack))
+        C.curve_obj(f"wire_{colours[k]}", [tag + Vector((0, 0, 2.6)), mid, end], 0.5,
+                    TM.wire(colours[k]), resolution=3, spline="NURBS")
+        C.sphere("solder", 1.1, end, mats["solder"])
+        ends.append((tag, mid, end))
+    # cable tie round the pair, a third of the way from the tags
+    a = ends[0][0].lerp(ends[0][2], 0.33) + Vector((0, 0, 3.5))
+    tie = C.torus("cable_tie", 1.5, 0.3, a + Vector((0, 0.5, 0)), mats["nylon"], axis="Y", major=24, minor=6)
+    tie.scale = (1.0, 1.0, 1.0)
+    C.box("cable_tie_head", (1.6, 1.2, 1.4), a + Vector((0, 0.5, 1.8)), mats["nylon"], bevel=0.2)
     return tips
 
 
@@ -131,7 +150,7 @@ def _rca(p, mats, side):
     C.cylinder("rca_flange", 6.0, 1.2, (x0 + side * 0.6, y, z), mats["metal_light"], axis=ax, segs=6, bevel=0.2, smooth=False)
     C.cylinder("rca_nut", 4.6, 2.0, (x0 + side * 2.2, y, z), mats["metal_light"], axis=ax, segs=6, bevel=0.25, smooth=False)
     C.cylinder("rca_shell", 4.1, 8.0, (x0 + side * 7.0, y, z), mats["metal_light"], axis=ax, segs=48, bevel=0.2)
-    C.cylinder("rca_insul", 3.2, 8.2, (x0 + side * 7.1, y, z), mats["rubber"], axis=ax, segs=48)
+    C.cylinder("rca_insul", 3.2, 8.2, (x0 + side * 7.1, y, z), mats["phenolic"], axis=ax, segs=48)
     C.cylinder("rca_pin", 0.9, 9.0, (x0 + side * 7.4, y, z), mats["metal_light"], axis=ax, segs=24)
     # a second, ground lug tab next to it
     C.box("rca_lug", (0.6, 5, 9), (x0 - side * 0.8, y, z - 6), mats["metal_light"])
@@ -160,26 +179,80 @@ def _spring(p, mats, idx, y, R, wr, pitch, a, b):
     return turns
 
 
+def _spot_welds(p, mats):
+    """A few resistance spot-weld marks where the end walls meet the channel."""
+    L, W, H = p["length"], p["width"], p["height"]
+    for s in (-1, 1):
+        for z in (8.0, 20.0):
+            C.cylinder("weld", 2.0, 0.1, (s * (L / 2 - 0.5), -W / 2 - 0.06, z), mats["weld"], axis="X", segs=24)
+            C.cylinder("weld", 2.0, 0.1, (s * (L / 2 - 0.5), W / 2 + 0.06, z), mats["weld"], axis="X", segs=24)
+
+
+def _text(body, font, size, loc, rot, mat, align="LEFT"):
+    import bpy
+    cu = bpy.data.curves.new("label_text", "FONT")
+    cu.body = body
+    try:
+        cu.font = bpy.data.fonts.load(font, check_existing=True)
+    except Exception:
+        pass
+    cu.size = size
+    cu.align_x = align
+    ob = bpy.data.objects.new("label_text", cu)
+    C.link(ob)
+    ob.location = loc
+    ob.rotation_euler = (0, 0, rot)
+    cu.materials.append(mat)
+    return ob
+
+
+def _label(p, mats):
+    """A small printed paper sticker on the chassis floor, our own generic text
+    plus a hand-written date and batch code. No real brand names."""
+    rot = math.radians(2.5)
+    cx, cy, z = -70.0, 14.0, 1.0 + p["sheet"] + 0.08  # behind the middle spring: the front wall hides y < ~-6
+    C.box("label", (56, 17, 0.12), (cx, cy, z), TM.paper(), rot=(0, 0, rot))
+    ink = mats["ink"]
+    zt = z + 0.07
+    ca, sa = math.cos(rot), math.sin(rot)
+
+    def at(dx, dy):
+        return (cx + dx * ca - dy * sa, cy + dx * sa + dy * ca, zt)
+    _text("SPRING REVERB · TYPE 4", FONT_PRINT, 3.6, at(-26, 3.2), rot, ink)
+    _text("IN 8Ω   OUT 2.5kΩ   DECAY LONG", FONT_PRINT, 2.4, at(-26, -0.6), rot, ink)
+    _text("RESILIO", FONT_PRINT, 2.4, at(-26, -4.6), rot, ink)
+    _text("07.10.26  B-17", FONT_HAND, 2.8, at(4, -5.6), rot + math.radians(-3), mats["pen"])
+
+
 def build(params=None):
     p = dict(DEFAULTS)
     p.update(params or {})
     mats = dict(
-        steel=C.steel("tank_steel", 0.55, 0.32, aniso=0.6),   # brushed chassis
-        rubber=C.clay("tank_rubber", 0.10, 0.8),
-        core=C.steel("tank_core", 0.45, 0.3, aniso=0.4),      # transducer frames
-        coil=C.clay("tank_coil", 0.40, 0.4),
-        bobbin=C.clay("tank_bobbin", 0.22, 0.6),
-        magnet=C.clay("tank_magnet", 0.30, 0.35),
-        spring=C.steel("tank_spring", 0.75, 0.18),            # polished spring wire
-        metal_light=C.steel("tank_metal_light", 0.7, 0.2),
-        metal_dark=C.clay("tank_metal_dark", 0.25, 0.4),
-        wire=C.clay("tank_wire", 0.15, 0.6),
+        steel=TM.zinc(p["finish"]),                                 # zinc-plated chassis + brackets
+        rubber=TM.solid("tank_rubber", (0.02, 0.02, 0.02), 0.7),     # black grommets, feet
+        core=TM.zinc(p["finish"]),
+        iron=TM.iron(),                                             # laminations, pole pieces
+        coil=TM.copper_coil(),                                      # copper enamel winding
+        bobbin=TM.solid("tank_bobbin", (0.03, 0.03, 0.03), 0.45),    # black phenolic cheeks
+        magnet=TM.solid("tank_magnet", (0.07, 0.07, 0.075), 0.5, metallic=0.4),
+        spring=TM.spring_steel(),                                   # oiled spring steel, heat tint
+        metal_light=TM.solid("nickel", (0.85, 0.84, 0.80), 0.12, metallic=1.0),
+        metal_dark=TM.solid("tank_screw", (0.30, 0.30, 0.30), 0.35, metallic=1.0),
+        solder=TM.solid("solder", (0.80, 0.80, 0.78), 0.08, metallic=1.0),
+        nylon=TM.solid("nylon", (0.82, 0.80, 0.74), 0.45),
+        phenolic=TM.solid("phenolic_cream", (0.72, 0.62, 0.42), 0.4, coat=0.2),
+        weld=TM.solid("weld", (0.30, 0.27, 0.24), 0.6, metallic=0.6),
+        ink=TM.solid("label_ink", (0.03, 0.03, 0.035), 0.6),
+        pen=TM.solid("label_pen", (0.03, 0.05, 0.22), 0.5),
     )
     _pan(p, mats)
     tips_in = _transducer(p, mats, -1)
     tips_out = _transducer(p, mats, +1)
     _rca(p, mats, -1)
     _rca(p, mats, +1)
+    _spot_welds(p, mats)
+    if p["label"]:
+        _label(p, mats)
     turns = []
     for i, ((y, R, wr, pitch), a, b) in enumerate(zip(p["springs"], tips_in, tips_out)):
         turns.append(_spring(p, mats, i, y, R, wr, pitch, a, b))

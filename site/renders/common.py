@@ -223,6 +223,14 @@ def cylinder(name, r, depth, loc, mat=None, axis="Z", segs=48, r2=None, bevel=0.
     return ob
 
 
+def sphere(name, r, loc, mat=None, collection=None):
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=r)
+    ob = mesh_obj(name, bm, mat, smooth=True, collection=collection)
+    ob.location = loc
+    return ob
+
+
 def torus(name, R, r, loc, mat=None, axis="Z", major=48, minor=16, collection=None):
     bm = bmesh.new()
     for i in range(major):

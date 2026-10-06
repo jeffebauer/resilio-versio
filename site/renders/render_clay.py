@@ -43,7 +43,10 @@ def tank_variants(ref):
     c = ref["center"]
     R = ref["radius"]
     return [
-        dict(id="R1_tank_a", shot="R1", note="Three-quarter from above, whole tank: the reference hero.",
+        dict(id="R1_tank_a", shot="R1", note="Three-quarter from above, whole tank: the reference hero (bright galvanised chassis).",
+             target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+        dict(id="R1_tank_a_yellow", shot="R1", mood="yellow",
+             note="R1a in the other chassis finish: yellow-chromate zinc (pale gold, faint iridescence).",
              target=c, az=26, el=34, f=70, fit=0.86, by="width"),
         dict(id="R1_tank_b", shot="R1", note="High and steep, looking down into the springs.",
              target=c, az=14, el=58, f=85, fit=0.88, by="width"),
@@ -120,7 +123,7 @@ def module_variants(ref):
 
 def build_tank(mood=None):
     C.reset_scene()
-    ref = tank.build(dict(finish=mood) if mood else None)
+    ref = tank.build(dict(finish=mood) if mood else None)  # mood = chassis finish
     C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900, texture=True)
     C.world(0.4)
     C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
