@@ -1,0 +1,62 @@
+{
+ "01-dry-then-wet": {
+  "source_lufs": -22.6,
+  "gain_db": 2.6,
+  "lufs": -20.5,
+  "true_peak_dbfs": -3.4
+ },
+ "02-tank-1-then-2": {
+  "source_lufs": -20.5,
+  "gain_db": 0.5,
+  "lufs": -20.6,
+  "true_peak_dbfs": -5.5
+ },
+ "03-clean-tape-valve": {
+  "source_lufs": -17.5,
+  "gain_db": -2.5,
+  "lufs": -20.5,
+  "true_peak_dbfs": -7.5
+ },
+ "04-throw": {
+  "source_lufs": -22.2,
+  "gain_db": 2.2,
+  "lufs": -20.7,
+  "true_peak_dbfs": -2.4
+ },
+ "05-splash": {
+  "source_lufs": -22.0,
+  "gain_db": 2.0,
+  "lufs": -20.5,
+  "true_peak_dbfs": -2.6
+ },
+ "06-big-knob": {
+  "source_lufs": -20.2,
+  "gain_db": 0.2,
+  "lufs": -20.4,
+  "true_peak_dbfs": -4.9
+ },
+ "07-wobble": {
+  "source_lufs": -17.1,
+  "gain_db": -2.9,
+  "lufs": -20.5,
+  "true_peak_dbfs": -9.3
+ },
+ "08-echo-skank": {
+  "source_lufs": -25.8,
+  "gain_db": 5.8,
+  "lufs": -20.4,
+  "true_peak_dbfs": -2.7
+ },
+ "09-valve-howl": {
+  "source_lufs": -14.0,
+  "gain_db": -6.0,
+  "lufs": -20.5,
+  "true_peak_dbfs": -8.4
+ },
+ "10-hold": {
+  "source_lufs": -13.7,
+  "gain_db": -6.3,
+  "lufs": -20.4,
+  "true_peak_dbfs": -11.2
+ }
+}

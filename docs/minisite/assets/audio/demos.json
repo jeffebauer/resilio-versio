@@ -1,0 +1,88 @@
+{
+  "about": "Resilio Versio demo clips. Every clip is Resilio itself, rendered offline by the project's Renderer (release sound of v2026.10.06-a6c70a4) from synthetic test signals the project generated (snare and rim one-shots, an Am-D offbeat skank at 75 bpm, a C minor pad). No recordings of other instruments or reverbs. MP3, 160 kbps, 48 kHz stereo, loudness-matched to about -20.5 LUFS integrated (EBU R128), peaks at or below -1 dBTP. Settings use panel names; knob values are 0 (fully left, 7 o'clock) to 1 (fully right, 5 o'clock), with approximate clock positions.",
+  "version": "v2026.10.06-a6c70a4",
+  "clips": [
+    {
+      "file": "01-dry-then-wet.mp3",
+      "title": "Dry, then wet",
+      "caption": "A one-drop groove: two bars dry, then two bars through the Tubby snare splash starting point.",
+      "transcript": "A snare on beat three with rim clicks around it, at 75 bpm. For two bars it is dry and close. Then the reverb comes in: each snare gets a bright crack and a loose, dripping spring tail with a little tape grit, ringing out after the last hit.",
+      "duration_s": 18.2,
+      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0 for bars 1-2, then 0.45 (11:30)", "DECAY": "0.6 (1)", "TONE": "0.65 (1:30)", "TENSION": "0.35 (10:30)", "SPLASH": "0.7 (2)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)" }
+    },
+    {
+      "file": "02-tank-1-then-2.mp3",
+      "title": "TANK 1, then TANK 2",
+      "caption": "One snare into one spring (sparse, the most splashy), then the same snare into two springs (the classic tank).",
+      "transcript": "A single snare hit, twice. First with one spring: a splashy, sparse tail where you can hear the individual boings. Then with two springs: a denser, smoother tail of the same length.",
+      "duration_s": 11.0,
+      "settings": { "TANK": "1, then 2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.5 (12)", "TONE": "0.5 (12)", "TENSION": "0.5 (12)", "SPLASH": "0.5 (12)", "DRIVE": "0.4 (11)", "WOBBLE": "0.45 (11:30)" },
+      "note": "Two renders joined back to back."
+    },
+    {
+      "file": "03-clean-tape-valve.mp3",
+      "title": "CLEAN, TAPE, VALVE",
+      "caption": "The same snare through each ATTITUDE, with DRIVE at 1:30: polite, then tape-saturated, then a cranked valve stage.",
+      "transcript": "A single snare hit, three times. CLEAN: a clear, polite spring tail. TAPE: warmer, slightly saturated, with a fine grain. VALVE: harder and rougher, a rattle on the hit and a gritty tail.",
+      "duration_s": 15.0,
+      "settings": { "TANK": "2", "ATTITUDE": "CLEAN, then TAPE, then VALVE", "BLEND": "0.5 (12)", "DECAY": "0.55 (12:30)", "TONE": "0.5 (12)", "TENSION": "0.45 (11:30)", "SPLASH": "0.6 (1)", "DRIVE": "0.65 (1:30)", "WOBBLE": "0.45 (11:30)" },
+      "note": "Three renders joined back to back."
+    },
+    {
+      "file": "04-throw.mp3",
+      "title": "The throw",
+      "caption": "Only the snares on bars 2 and 4 go into the springs (THROW held for each); everything else stays dry, and each tail rings on.",
+      "transcript": "The one-drop groove, mostly dry. On the second bar's snare the springs open for that one hit, and a long tail rings on under the following bar. The same happens on the fourth bar's snare, and its tail rings out at the end.",
+      "duration_s": 18.2,
+      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.7 (2)", "TONE": "0.55 (12:30)", "TENSION": "0.35 (10:30)", "SPLASH": "0.6 (1)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)", "THROW / TAP": "pressed once at the start (throw mode on), then held for the snares of bars 2 and 4" }
+    },
+    {
+      "file": "05-splash.mp3",
+      "title": "SPLASH",
+      "caption": "SPLASH fully down for two bars, then at 4 o'clock: the same hits ring the springs much harder.",
+      "transcript": "The one-drop groove through the reverb. For two bars the tail is smooth and even. Then the hits clang into the springs: a brighter, harder crash on each snare and rim, while the quiet ghost notes stay quiet.",
+      "duration_s": 18.2,
+      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.5 (12)", "TONE": "0.5 (12)", "TENSION": "0.45 (11:30)", "SPLASH": "0 for bars 1-2, then 0.9 (4)", "DRIVE": "0.4 (11)", "WOBBLE": "0.45 (11:30)" }
+    },
+    {
+      "file": "06-big-knob.mp3",
+      "title": "King Tubby's Big Knob",
+      "caption": "TONE ridden from noon to fully right and back while the groove plays: the tail thins to a telephone splash, then the warmth returns.",
+      "transcript": "The one-drop groove with a long tail. TONE sweeps up: the reverb loses its low end and turns thin, bright and telephone-like, with a nasal ring on the snare. It holds there for a few seconds, then sweeps back and the body returns.",
+      "duration_s": 18.2,
+      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.6 (1)", "DECAY": "0.75 (2:30)", "TONE": "0.5 (12) to 1 (5) from 2.6 s to 7 s, held, back to 0.5 by 13.5 s", "TENSION": "0.4 (11)", "SPLASH": "0.6 (1)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)" }
+    },
+    {
+      "file": "07-wobble.mp3",
+      "title": "WOBBLE: drift, then warble",
+      "caption": "A held pad: WOBBLE left of noon drifts like worn tape, then right of noon becomes a steady warble.",
+      "transcript": "A soft C minor pad chord in a mostly wet spring. For the first half the reverb's pitch drifts slowly and unevenly, like old tape. Then it changes to a regular, even vibrato until the chord fades.",
+      "duration_s": 15.0,
+      "settings": { "TANK": "2", "ATTITUDE": "CLEAN", "BLEND": "0.7 (2)", "DECAY": "0.6 (1)", "TONE": "0.45 (11:30)", "TENSION": "0.5 (12)", "SPLASH": "0.2 (9)", "DRIVE": "0.25 (9:30)", "WOBBLE": "0.1 (8) until 6.8 s, then 0.9 (4)" }
+    },
+    {
+      "file": "08-echo-skank.mp3",
+      "title": "Skank into echo",
+      "caption": "TANK ECHO clocked at 75 bpm, TENSION on dotted 1/8: offbeat chords into a worn tape echo feeding the springs.",
+      "transcript": "Offbeat A minor and D chord stabs at 75 bpm. Each stab is answered by tape repeats on a dotted eighth, getting darker each time, each with a short spring halo. After the chords stop, the repeats fade out.",
+      "duration_s": 17.6,
+      "settings": { "TANK": "ECHO", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.6 (1)", "TONE": "0.5 (12)", "TENSION": "0.5 (12) = dotted 1/8 with a clock", "SPLASH": "0.3 (10)", "DRIVE": "0.35 (10:30)", "WOBBLE": "0.45 (11:30)", "Gate": "a 75 bpm clock" }
+    },
+    {
+      "file": "09-valve-howl.mp3",
+      "title": "VALVE Howl",
+      "caption": "The Drowned Howl starting point: one snare tips the tank into its own feedback; at 10 seconds DECAY comes back down and it falls away.",
+      "transcript": "One snare hit, then a rough, moving roar that keeps going on its own: the springs feeding back, shifting in pitch and texture, never a pure tone. After about ten seconds it falls quickly into a normal tail and fades to silence.",
+      "duration_s": 18.0,
+      "settings": { "TANK": "2", "ATTITUDE": "VALVE", "BLEND": "0.8 (3)", "DECAY": "0.95 (4:30), down to 0.6 (1) between 10 and 11 s", "TONE": "0.35 (10:30)", "TENSION": "0.3 (10)", "SPLASH": "0.5 (12)", "DRIVE": "0.6 (1)", "WOBBLE": "0.41 (11)" }
+    },
+    {
+      "file": "10-hold.mp3",
+      "title": "The Hold",
+      "caption": "CLEAN with DECAY fully up: a pad blooms into a held bed that keeps ringing after the chord stops at 8 seconds.",
+      "transcript": "A C minor pad fades in and blooms into a wide, still wash. At eight seconds the chord itself stops, but the wash carries on, held and slowly fading, to the end of the clip.",
+      "duration_s": 20.0,
+      "settings": { "TANK": "2", "ATTITUDE": "CLEAN", "BLEND": "0.6 (1)", "DECAY": "1 (5), from noon at the start", "TONE": "0.45 (11:30)", "TENSION": "0.5 (12)", "SPLASH": "0.2 (9)", "DRIVE": "0.25 (9:30)", "WOBBLE": "0.43 (11:15)" }
+    }
+  ]
+}
