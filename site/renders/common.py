@@ -76,7 +76,7 @@ def setup_cycles(samples=64, width=1920, height=1080, denoise=True):
     sc.render.image_settings.compression = 40
     sc.view_settings.view_transform = "AgX"
     try:
-        sc.view_settings.look = "AgX - Base Contrast"
+        sc.view_settings.look = "AgX - Medium High Contrast"  # deep blacks, no lifted-black look
     except TypeError:
         pass
     print(f"[common] Cycles on {device}, {samples} spp, {width}x{height}")
@@ -130,17 +130,19 @@ def emissive(name, rgb_hex="#EE5641", strength=12.0, base=0.6):
     return m
 
 
-def decal_material(name, image_path, base_value=0.06, ink_scale=0.85, rough=0.5):
-    """Panel base colour with the print (RGBA PNG) laid over it by alpha.
+def decal_material(name, image_path, base_value=0.025, ink_scale=0.92, rough=0.5, ink_rough=0.36,
+                   bump=0.15):
+    """Satin black paint with the silkscreen print (RGBA PNG) laid over it by alpha.
 
-    base_value: the panel's clay grey (the real panel is black anodised; a dark
-    clay keeps the clay pass honest while the white labels still read).
-    ink_scale: dims the print a touch so white ink isn't brighter than clay."""
+    base_value: the paint colour (linear). The real Versio panel is satin black
+    paint, ~0.02-0.03; v1-v4 used 0.05-0.06, which read as grey.
+    ink_scale: print brightness (white silkscreen ~0.92 linear).
+    rough / ink_rough: paint is satin (~0.5), the ink a touch smoother.
+    bump: the print stands very slightly proud of the paint."""
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
     p = nt.nodes["Principled BSDF"]
-    p.inputs["Roughness"].default_value = rough
     img = bpy.data.images.load(image_path, check_existing=True)
     tex = nt.nodes.new("ShaderNodeTexImage")
     tex.image = img
@@ -159,6 +161,18 @@ def decal_material(name, image_path, base_value=0.06, ink_scale=0.85, rough=0.5)
     nt.links.new(tex.outputs["Alpha"], mix.inputs["Factor"])
     nt.links.new(ink.outputs["Result"], mix.inputs["B"])
     nt.links.new(mix.outputs["Result"], p.inputs["Base Color"])
+    r = nt.nodes.new("ShaderNodeMix")
+    r.data_type = "FLOAT"
+    nt.links.new(tex.outputs["Alpha"], r.inputs["Factor"])
+    r.inputs["A"].default_value = rough
+    r.inputs["B"].default_value = ink_rough
+    nt.links.new(r.outputs["Result"], p.inputs["Roughness"])
+    if bump:
+        b = nt.nodes.new("ShaderNodeBump")
+        b.inputs["Strength"].default_value = bump
+        b.inputs["Distance"].default_value = 0.02
+        nt.links.new(tex.outputs["Alpha"], b.inputs["Height"])
+        nt.links.new(b.outputs["Normal"], p.inputs["Normal"])
     return m
 
 

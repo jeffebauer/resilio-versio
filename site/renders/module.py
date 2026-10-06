@@ -50,7 +50,7 @@ DEFAULTS = dict(
     toggles=dict(SW1=1, SW2=0),
     leds_lit=dict(LED1=1.0, LED2=1.0, LED3=1.0, LED4=1.0),
     led_strength=14.0,
-    panel_value=0.05,   # clay value of the panel base (real one: black anodised)
+    panel_value=0.025,  # satin black paint (linear); v1-v4 0.05 read grey
 )
 
 
@@ -232,8 +232,8 @@ def build(params=None):
     p = dict(DEFAULTS)
     p.update(params or {})
     mats = dict(
-        knob=C.clay("mod_knob", 0.035, 0.45),       # dark grey caps (owner's art)
-        ink=C.clay("mod_ink", 0.85, 0.5),           # white indicator lines
+        knob=C.clay("mod_knob", 0.012, 0.42),       # deep black satin plastic caps
+        ink=C.clay("mod_ink", 0.9, 0.35),           # white indicator lines
         metal=C.steel("mod_metal", 0.8, 0.28),      # toggles, bushings, screws
         nickel=C.steel("mod_nickel", 0.88, 0.12),   # polished nickel jack nuts
         potnut=C.clay("mod_potnut", 0.03, 0.5),     # flat pot nut under each cap

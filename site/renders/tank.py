@@ -43,6 +43,8 @@ DEFAULTS = dict(
     finish="galv",          # chassis: "galv" (bright galvanised) or "yellow" (yellow-chromate zinc)
     wires=dict(in_=("red", "black"), out=("white", "yellow")),
     label=True,
+    waveform=False,         # "waveform springs": the helix centre line traces a decaying wave
+    wave=dict(amp=13.0, cycles=5.0, decay=1.6, portion=0.75),
 )
 
 FONT_PRINT = "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf"
@@ -69,7 +71,7 @@ def _pan(p, mats):
     # end walls (lower than the sides, as on real tanks), set just inside the channel
     for s in (-1, 1):
         C.box(f"pan_end{s}", (t, W - 2 * t, H * 0.72), (s * (L / 2 - t / 2), 0, z0 + t + H * 0.36),
-              mats["steel"], bevel=0.3)
+              mats["accent"] or mats["steel"], bevel=0.3)
     # mounting holes in the lips, 12 mm from each end
     holes = []
     for sx in (-1, 1):
@@ -156,25 +158,52 @@ def _rca(p, mats, side):
     C.box("rca_lug", (0.6, 5, 9), (x0 - side * 0.8, y, z - 6), mats["metal_light"])
 
 
+def _wave_offset(p, t):
+    """Lateral (Y) offset of the spring's centre line at t in [0, 1] along it,
+    for "waveform springs": a decaying sine over the first `portion`, eased
+    to zero so the last quarter is a plain straight spring."""
+    if not p["waveform"]:
+        return 0.0
+    w = p["wave"]
+    u = t / w["portion"]
+    if u >= 1.0:
+        return 0.0
+    ease = (1 - u) ** 2 * (1 + 2 * u)   # smoothstep down: zero value and slope at u = 1
+    return w["amp"] * math.exp(-w["decay"] * u) * math.sin(2 * math.pi * w["cycles"] * u) * ease
+
+
 def _spring(p, mats, idx, y, R, wr, pitch, a, b):
-    """A real helix of wire from point a to b (along X), with straight legs and
-    hooks at both ends."""
-    pts = []
+    """A helix of wire from point a to b (along X), with straight legs and
+    hooks at both ends. With p["waveform"], the helix follows a curved centre
+    line (sampled densely, turns spaced by arc length)."""
     x0, x1 = a.x + (8 if b.x > a.x else -8), b.x - (8 if b.x > a.x else -8)
-    length = abs(x1 - x0)
-    turns = int(length / pitch)
-    n = turns * p["pts_per_turn"]
     zc = a.z
     phase = idx * 1.3
+    ns = 2000
+    cl = [Vector((x0 + (x1 - x0) * i / ns, y + _wave_offset(p, i / ns), zc)) for i in range(ns + 1)]
+    arc = [0.0]
+    for i in range(1, ns + 1):
+        arc.append(arc[-1] + (cl[i] - cl[i - 1]).length)
+    total = arc[-1]
+    turns = int(total / pitch)
+    n = turns * p["pts_per_turn"]
+    pts = []
+    j = 0
     for i in range(n + 1):
-        t = i / n
-        ang = phase + 2 * math.pi * turns * t
-        pts.append((x0 + (x1 - x0) * t, y + R * math.cos(ang), zc + R * math.sin(ang)))
+        s = total * i / n
+        while j < ns - 1 and arc[j + 1] < s:
+            j += 1
+        f = (s - arc[j]) / max(arc[j + 1] - arc[j], 1e-9)
+        c = cl[j].lerp(cl[j + 1], f)
+        tan = (cl[j + 1] - cl[j]).normalized()
+        n1 = Vector((-tan.y, tan.x, 0.0)).normalized()   # in the floor plane
+        n2 = Vector((0, 0, 1))
+        ang = phase + 2 * math.pi * turns * i / n
+        pts.append(tuple(c + R * (math.cos(ang) * n1 + math.sin(ang) * n2)))
     C.curve_obj(f"spring{idx}", pts, wr, mats["spring"], resolution=2)
     # legs: from the helix end, a straight run on the axis to a hook on the magnet
-    for end, tip in ((Vector(pts[0]), a), (Vector(pts[-1]), b)):
-        on_axis = Vector((end.x, y, zc))
-        C.curve_obj(f"spring{idx}_leg", [end, on_axis, tip], wr * 1.1, mats["spring"], resolution=2)
+    for end, tip, axis_pt in ((Vector(pts[0]), a, cl[0]), (Vector(pts[-1]), b, cl[-1])):
+        C.curve_obj(f"spring{idx}_leg", [end, axis_pt, tip], wr * 1.1, mats["spring"], resolution=2)
         C.torus(f"spring{idx}_hook", 1.0, wr * 1.1, tip, mats["spring"], axis="X", major=24, minor=8)
     return turns
 
@@ -224,13 +253,31 @@ def _label(p, mats):
     _text("07.10.26  B-17", FONT_HAND, 2.8, at(4, -5.6), rot + math.radians(-3), mats["pen"])
 
 
+def _front_sticker(p, mats):
+    """Painted versions get a cream sticker on the outside of the front wall,
+    in the manner of classic tape-echo nameplates (our own words, no marks)."""
+    L, W = p["length"], p["width"]
+    y = -W / 2 - 0.08
+    C.box("front_sticker", (92, 0.12, 15), (-L / 2 + 70, y, 17.5), TM.paper())
+    ink = mats["ink"]
+
+    def txt(body, font, size, dx, dz):
+        o = _text(body, font, size, (-L / 2 + 70 + dx, y - 0.08, 17.5 + dz), 0.0, ink)
+        o.rotation_euler = (1.5707963, 0, 0)
+    txt("RESILIO  SPRING LINE", FONT_PRINT, 9.0, -43, -0.5)
+    txt("TYPE 4 · 3 SPRINGS · LONG DECAY", FONT_PRINT, 4.6, -43, -6.0)
+
+
 def build(params=None):
     p = dict(DEFAULTS)
     p.update(params or {})
     mats = dict(
-        steel=TM.zinc(p["finish"]),                                 # zinc-plated chassis + brackets
+        steel=(TM.enamel(f"paint_{p['finish']}", TM.PAINTS[p["finish"]][0]) if p["finish"] in TM.PAINTS
+               else TM.zinc(p["finish"])),                         # chassis: zinc plate or enamel
         rubber=TM.solid("tank_rubber", (0.02, 0.02, 0.02), 0.7),     # black grommets, feet
-        core=TM.zinc(p["finish"]),
+        core=TM.zinc("galv" if p["finish"] in TM.PAINTS else p["finish"]),
+        accent=(TM.enamel(f"accent_{p['finish']}", TM.PAINTS[p["finish"]][1], hammer=False)
+                if p["finish"] in TM.PAINTS else None),
         iron=TM.iron(),                                             # laminations, pole pieces
         coil=TM.copper_coil(),                                      # copper enamel winding
         bobbin=TM.solid("tank_bobbin", (0.03, 0.03, 0.03), 0.45),    # black phenolic cheeks
@@ -253,6 +300,8 @@ def build(params=None):
     _spot_welds(p, mats)
     if p["label"]:
         _label(p, mats)
+    if p["finish"] in TM.PAINTS:
+        _front_sticker(p, mats)
     turns = []
     for i, ((y, R, wr, pitch), a, b) in enumerate(zip(p["springs"], tips_in, tips_out)):
         turns.append(_spring(p, mats, i, y, R, wr, pitch, a, b))

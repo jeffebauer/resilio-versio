@@ -229,3 +229,68 @@ def paper():
     p.inputs["Base Color"].default_value = (0.78, 0.74, 0.64, 1)
     p.inputs["Roughness"].default_value = 0.85
     return m
+
+
+PAINTS = {
+    # name: (body enamel, accent enamel)
+    "green": ((0.022, 0.060, 0.040), (0.70, 0.63, 0.48)),      # deep green + cream
+    "charcoal": ((0.030, 0.031, 0.033), (0.42, 0.42, 0.43)),   # charcoal + silver-grey
+}
+
+
+def enamel(name, rgb, hammer=True, chips=True):
+    """Hammertone (or plain) enamel over steel, chipped at the edges.
+
+    Hammertone: a cellular bump with slightly varying sheen. Chips: where the
+    Bevel node's rounded normal departs from the true normal (an edge) and a
+    noise says so, the paint is gone and bare steel shows."""
+    m, nt, p = _new(name)
+    coord = nt.nodes.new("ShaderNodeTexCoord").outputs["Object"]
+    p.inputs["Roughness"].default_value = 0.32
+    p.inputs["Coat Weight"].default_value = 0.1
+    rough = None
+    if hammer:
+        vor = _node(nt, "ShaderNodeTexVoronoi", Scale=0.55)
+        vor.feature = "SMOOTH_F1"
+        nt.links.new(coord, vor.inputs["Vector"])
+        bump = _node(nt, "ShaderNodeBump", Strength=0.25, Distance=0.15)
+        nt.links.new(vor.outputs["Distance"], bump.inputs["Height"])
+        nt.links.new(bump.outputs["Normal"], p.inputs["Normal"])
+        rough = _maprange(nt, vor.outputs["Distance"], 0.0, 1.0, 0.34, 0.50)
+    col = _mixcol(nt, 0.0, rgb, rgb)
+    if chips:
+        bev = nt.nodes.new("ShaderNodeBevel")
+        bev.samples = 8
+        bev.inputs["Radius"].default_value = 0.8
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        dot = nt.nodes.new("ShaderNodeVectorMath")
+        dot.operation = "DOT_PRODUCT"
+        nt.links.new(bev.outputs[0], dot.inputs[0])
+        nt.links.new(geo.outputs["Normal"], dot.inputs[1])
+        edge = _maprange(nt, dot.outputs["Value"], 0.985, 0.90, 0.0, 1.0)
+        n = _node(nt, "ShaderNodeTexNoise", Scale=0.35, Detail=8.0, Roughness=0.7)
+        nt.links.new(coord, n.inputs["Vector"])
+        mul = nt.nodes.new("ShaderNodeMath")
+        mul.operation = "MULTIPLY"
+        nt.links.new(edge, mul.inputs[0])
+        nt.links.new(n.outputs["Fac"], mul.inputs[1])
+        chip = _maprange(nt, mul.outputs[0], 0.40, 0.46, 0.0, 1.0)
+        col = _mixcol(nt, chip, col, (0.55, 0.55, 0.56))
+        nt.links.new(chip, p.inputs["Metallic"])
+        if rough is not None:
+            r = nt.nodes.new("ShaderNodeMix")
+            r.data_type = "FLOAT"
+            nt.links.new(chip, r.inputs["Factor"])
+            nt.links.new(rough, r.inputs["A"])
+            r.inputs["B"].default_value = 0.35
+            rough = r.outputs["Result"]
+    col2, rough2, _ = _dust(nt, col, rough if rough is not None else _value(nt, 0.32))
+    nt.links.new(col2, p.inputs["Base Color"])
+    nt.links.new(rough2, p.inputs["Roughness"])
+    return m
+
+
+def _value(nt, v):
+    n = nt.nodes.new("ShaderNodeValue")
+    n.outputs[0].default_value = v
+    return n.outputs[0]

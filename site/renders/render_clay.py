@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import common as C  # noqa: E402
 import module  # noqa: E402
+import props  # noqa: E402
 import tank  # noqa: E402
 
 MAIN_CHECKOUT = "/Users/jesse/Documents/Sites/resilio-versio"
@@ -48,6 +49,24 @@ def tank_variants(ref):
         dict(id="R1_tank_a_yellow", shot="R1", mood="yellow",
              note="R1a in the other chassis finish: yellow-chromate zinc (pale gold, faint iridescence).",
              target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+        dict(id="R1_tank_a_green", shot="R1", mood="green",
+             note="Painted chassis, colourway 1: deep green hammertone, cream end walls, chipped edges (a nod to classic tape echoes).",
+             target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+        dict(id="R1_tank_c_green", shot="R1", mood="green",
+             note="Painted green, from the output end.",
+             target=c + C.Vector((70, 0, 0)), az=74, el=22, f=50, fit=1.35, by="width"),
+        dict(id="R1_tank_a_charcoal", shot="R1", mood="charcoal",
+             note="Painted chassis, colourway 2: charcoal hammertone, silver-grey end walls, chipped edges.",
+             target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+        dict(id="R1_tank_c_charcoal", shot="R1", mood="charcoal",
+             note="Painted charcoal, from the output end.",
+             target=c + C.Vector((70, 0, 0)), az=74, el=22, f=50, fit=1.35, by="width"),
+        dict(id="R9_wave_a", shot="R9", mood="wave",
+             note="Waveform springs on the R1a camera (charcoal chassis): each spring traces a decaying wave, the last quarter plain.",
+             target=c, az=26, el=34, f=70, fit=0.86, by="width"),
+        dict(id="R9_wave_b", shot="R9", mood="wave",
+             note="Waveform springs from high above the input end, where the wave is biggest.",
+             target=C.Vector((-75, 0, 18)), az=12, el=62, f=85, fit=1.55, by="width"),
         dict(id="R1_tank_b", shot="R1", note="High and steep, looking down into the springs.",
              target=c, az=14, el=58, f=85, fit=0.88, by="width"),
         dict(id="R1_tank_c", shot="R1", note="Low from the output end, wide lens: the springs run away down the tank.",
@@ -96,6 +115,22 @@ def module_variants(ref):
         dict(id="R6_front_c", shot="R6", mood="gloss",
              note="Standing on a semi-gloss floor: its shadow and a soft reflection, 135 mm.",
              target=c + C.Vector((0, 0, -16)), az=0, el=2, f=135, fit=0.84),
+        dict(id="R6_tape_a", shot="R6", mood="tape_spill",
+             note="Unspooled reel tape spilling across the floor and looping round the base.",
+             target=c + C.Vector((0, -40, -34)), az=16, el=16, f=70, fit=0.62),
+        dict(id="R6_tape_b", shot="R6", mood="tape_reel",
+             note="A 7-inch reel out of focus behind, one strand running from it past the module to the foreground.",
+             target=c + C.Vector((10, 40, -8)), az=-14, el=6, f=85, fit=0.66, fstop=2.8,
+             focus=C.Vector((0, -2, 70))),
+        dict(id="R6_tape_c", shot="R6", mood="tape_cassette",
+             note="A cassette on the floor with its tape pulled out in loops.",
+             target=c + C.Vector((20, -50, -36)), az=18, el=18, f=70, fit=0.64),
+        dict(id="R6_tape_d", shot="R6", mood="tape_drape",
+             note="Tape thrown over the top-right corner like a cable, pooling on the floor.",
+             target=c + C.Vector((15, -25, -20)), az=22, el=10, f=85, fit=0.8),
+        dict(id="R8_cables_all", shot="R8", mood="cables4",
+             note="All four audio jacks patched (IN L/R, OUT L/R), three colours, cords leaving frame both sides.",
+             target=c + C.Vector((0, -30, -30)), az=20, el=16, f=60, fit=0.95),
         dict(id="R7_monolith_a", shot="R7", mood="monolith",
              note="Monolith, dead centre: camera on the floor, 24 mm looking up; top edge glows, LEDs are the focus.",
              loc=(0, -170, 6), target=(0, 0, 66), f=24),
@@ -122,11 +157,20 @@ def module_variants(ref):
 # ------------------------------------------------------------------ scenes
 
 def build_tank(mood=None):
+    """mood: a chassis finish (galv, yellow, green, charcoal) or "wave"."""
     C.reset_scene()
-    ref = tank.build(dict(finish=mood) if mood else None)  # mood = chassis finish
+    params = {}
+    if mood in ("galv", "yellow", "green", "charcoal"):
+        params["finish"] = mood            # chassis finish
+    elif mood == "wave":
+        params["waveform"] = True          # "waveform springs"
+        params["finish"] = "charcoal"      # dark floor so the silver wave reads (galv blew out)
+    ref = tank.build(params)
     C.cyclorama(width=5000, front=2500, back=700, height=3000, radius=900, texture=True)
     C.world(0.4)
-    C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
+    L = C.studio(ref["center"], ref["size"], key=1.0, fill=0.22, rim=0.55, streak=ref["streak"])
+    if mood == "wave":  # seen from high up, the strip light mirrored in the floor blew it out
+        L["streak"].data.energy *= 0.3
     return ref
 
 
@@ -148,7 +192,7 @@ def build_module(mood=None):
     if mood == "gloss":
         p = cyc.data.materials[0].node_tree.nodes["Principled BSDF"]
         p.inputs["Roughness"].default_value = 0.22
-    if mood in ("studio", "gloss", "cable"):
+    if mood in ("studio", "gloss", "cable", "cables4") or mood.startswith("tape"):
         C.world(0.32)
         C.studio(c, ref["size"] * 1.6, key=1.0, fill=0.25, rim=0.6)
     elif mood == "monolith":
@@ -161,6 +205,13 @@ def build_module(mood=None):
         # a faint fill from high in front so the face falls off towards the bottom
         L["key"].location = C.Vector((-60, -260, 420))
         C.aim(L["key"], c + C.Vector((0, 0, 50)))
+        # v2: a big soft fill low in front (just above the floor, behind the
+        # camera) so every label and knob reads; the backdrop stays dark
+        # because the fill is aimed at the panel and spread-limited.
+        # it sits well off to the left so its reflection in the satin paint
+        # misses the camera (head-on it turned the black panel grey)
+        C.area_light("front_fill", C.Vector((-330, -300, 25)), c + C.Vector((0, 0, -10)), size=200,
+                     power=C.watts(C.KEY_W * 0.16) * (0.45) ** 2, spread=45)
     elif mood == "dark":
         C.world(0.003)
         top = C.Vector((0, 35, module.PH + 70))
@@ -174,6 +225,16 @@ def build_module(mood=None):
         C.studio(c, ref["size"] * 1.6, key=0.0, fill=0.06, rim=0.3)
     if mood == "cable":
         module.patch_cable(ref, "J9")
+    elif mood == "cables4":
+        props.cables_all(ref)
+    elif mood == "tape_spill":
+        props.tape_spill()
+    elif mood == "tape_reel":
+        props.tape_reel_strand()
+    elif mood == "tape_cassette":
+        props.cassette_with_loops()
+    elif mood == "tape_drape":
+        props.tape_drape()
     return ref
 
 
@@ -221,6 +282,7 @@ SHOTS = {
     "R6": "R6 Module, front-on",
     "R7": "R7 Module, monolith (from the floor)",
     "R8": "R8 Module, hero ideas",
+    "R9": "R9 Tank, waveform springs",
 }
 
 
