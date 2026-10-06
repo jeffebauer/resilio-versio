@@ -13,7 +13,7 @@ Everything needed to build the Resilio Versio minisite: what it must **say** and
 | `content/*.md` | Final copy, one file per page, with front-matter (`title`, `description`, `slug`, `order`): `overview`, `manual`, `install`, `presets`, `changelog`, `faq`, `credits` |
 | `assets/audio/*.mp3` + `demos.json` | Ten demo clips (11–20 s, MP3 160 kbps, loudness-matched ~−20.5 LUFS) with title, caption, transcript, duration and settings in panel names |
 | `assets/panel/resilio-versio-panel.svg` | Panel diagram, to scale, panel names only, themeable |
-| `assets/screenshots/plugin-panel.png` | The plugin's panel at 2x (506 × 1286), default settings. **Draft: see "Before launch"** |
+| `assets/screenshots/plugin-panel.png` | The plugin's panel at 2x (506 × 1286), default settings, with the fixed layout (THROW in full; SIZE and GATE on the bottom row; 7 Oct 2026) |
 | `tools/` | How the assets were made: `make_site_panel_svg.py` (run from the Resilio repo root) and `demos/` (stimulus, render and encode scripts, loudness report). Not needed by the website |
 
 Markers in the copy: `<!-- DEMOS -->`, `<!-- DOWNLOADS -->`, `<!-- PANEL -->`, `<!-- SCREENSHOT -->`, `<!-- LATEST -->` say where a component goes. `<!-- OWNER: … -->` marks a question for the owner: never publish it, never invent the answer.
@@ -27,12 +27,12 @@ Markers in the copy: `<!-- DEMOS -->`, `<!-- DOWNLOADS -->`, `<!-- PANEL -->`, `
 ## Before launch (for the owner)
 
 1. **Listen to the ten demos** and approve them (or say which to cut or redo). They were rendered and loudness-checked by machine but not yet heard by you, and their transcripts describe the intended sound.
-2. **Plugin screenshot.** In the snapshot the GATE switch overlaps DRIVE's label and the button reads "THR…". Check whether the plugin looks the same in Ableton. If it does, it's a small layout fix in the plugin before a screenshot goes public; if it doesn't, take a screenshot from Ableton instead.
-3. **Licence.** None chosen yet; the plugin builds on JUCE (AGPLv3 or JUCE's licences). Needed before the repo and downloads go public (`content/credits.md`).
+2. ~~**Plugin screenshot.**~~ Done (7 Oct 2026): the plugin layout was fixed (ADR 0045) and the screenshot replaced.
+3. ~~**Licence.**~~ Decided (ADR 0045): our code MIT, the plugin binaries AGPLv3 (JUCE); see `LICENSE` and `NOTICE`.
 4. **Your credit** (name or handle, link) in `content/credits.md`.
 5. **Feedback channel** (GitHub issues, email, form) in `content/overview.md` and `content/faq.md`.
 6. **Which Versio module(s)** it has been played on, for the FAQ.
-7. **Stable download names** (BRIEF §9): agree to the release script also uploading `resilio-versio-firmware.bin` and `resilio-versio-plugin-macos.zip` (and optionally `latest.json`), so the site's "latest" links never change.
+7. ~~**Stable download names.**~~ Done (ADR 0045): `tools/make_release.sh` uploads `resilio-versio-firmware.bin`, `resilio-versio-plugin-macos.zip` and `SHA256SUMS.txt` on full releases.
 8. **Go-public switch.** Download links and the source link are live only once the repository is public.
 
 ## Sizes

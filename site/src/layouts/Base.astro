@@ -94,7 +94,16 @@ const onVercel = Boolean(process.env.VERCEL);
     <script>
       // The wordmark gets the same blurred pill as the nav once the page scrolls.
       const header = document.querySelector('[data-header]');
-      const onScroll = () => header?.classList.toggle('is-scrolled', window.scrollY > 8);
+      // Over a dark band (.on-ink), the header's pills turn to dark glass with light text.
+      const inkBands = [...document.querySelectorAll<HTMLElement>('.on-ink')];
+      const onScroll = () => {
+        header?.classList.toggle('is-scrolled', window.scrollY > 8);
+        const y = (header?.getBoundingClientRect().height ?? 76) / 2;
+        header?.classList.toggle('is-over-ink', inkBands.some((b) => {
+          const r = b.getBoundingClientRect();
+          return r.top <= y && r.bottom >= y;
+        }));
+      };
       addEventListener('scroll', onScroll, { passive: true });
       onScroll();
       // Close the compact menu after choosing a link (same-page anchors don't reload).

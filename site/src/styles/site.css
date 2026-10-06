@@ -72,6 +72,19 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
   .menu { display: block; }
 }
 
+/* Over a dark band: dark glass pills, light text, the Download button inverts. */
+.site-header { transition: color var(--dur-2) var(--ease-out); }
+.is-over-ink { color: var(--paper); }
+.is-over-ink .wordmark,
+.is-over-ink .nav-pill,
+.is-over-ink .menu summary { background: rgb(38 38 38 / 0.6); color: var(--paper); }
+.is-over-ink .nav-pill a:hover { background: rgb(255 255 255 / 0.12); }
+.is-over-ink .nav-pill a[aria-current="page"] { background: rgb(255 255 255 / 0.18); }
+.is-over-ink .btn-dark { background: var(--paper); color: var(--ink); }
+.is-over-ink .menu[open] summary { background: var(--white); color: var(--ink); }
+.is-over-ink .menu ul { color: var(--ink); }
+.is-over-ink :focus-visible { outline-color: var(--signal); }
+
 /* ---- Sections ------------------------------------------------------------ */
 .section { padding-bottom: var(--section-y); }
 .section-head { row-gap: var(--stack-1); align-items: baseline; }
@@ -379,3 +392,6 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .switch { justify-self: start; width: max-content; }
 .tile-row .player { justify-self: start; }
 @media (max-width: 47.99rem) { .doc-body .index-nav .sub-item { display: none; } }
+
+/* The plugin screenshot in the manual: shown near its real 2x size, not stretched to the column. */
+.manual-screenshot { max-width: 20rem; margin-block: var(--stack-4); }

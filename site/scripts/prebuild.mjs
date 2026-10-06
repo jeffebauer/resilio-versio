@@ -1,5 +1,5 @@
 // Runs before `astro dev` and `astro build` (npm's pre-scripts).
-// 1. Copies the demo audio and the panel art from docs/minisite/assets into public/
+// 1. Copies the demo audio, the panel art and the plugin screenshot from docs/minisite/assets into public/
 //    (one source of truth: the site never keeps its own copy in git).
 // 2. Fetches the licensed Phonic webfonts into public/fonts/ (git-ignored):
 //    - FONTS_DIR=/path/to/woff2s       copy from a local folder, or
@@ -67,5 +67,6 @@ async function fonts() {
 
 const audio = await copyDir(join(minisite, 'assets', 'audio'), join(pub, 'audio'), (f) => f.endsWith('.mp3'));
 const panel = await copyDir(join(minisite, 'assets', 'panel'), join(pub, 'panel'), (f) => f.endsWith('-art.svg'));
-console.log(`prebuild: ${audio} demo clip(s), ${panel} panel art file(s) copied`);
+const shots = await copyDir(join(minisite, 'assets', 'screenshots'), join(pub, 'screenshots'), (f) => f.endsWith('.png'));
+console.log(`prebuild: ${audio} demo clip(s), ${panel} panel art file(s), ${shots} screenshot(s) copied`);
 console.log(`prebuild: ${await fonts()}`);

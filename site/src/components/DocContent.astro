@@ -2,6 +2,7 @@
 // Renders a page's Markdown with its slot markers swapped for components.
 import PanelDiagram from './PanelDiagram.astro';
 import DownloadBlock from './DownloadBlock.astro';
+import MediaCard from './MediaCard.astro';
 import type { Part } from '../lib/content';
 
 interface Props { parts: Part[] }
@@ -14,6 +15,15 @@ const { parts } = Astro.props;
     <div class="slot manual-panel">
       <PanelDiagram prefix="manual-panel" />
       <p class="small panel-note">Resilio’s controls on the Versio panel, drawn to scale from Noise Engineering’s panel template. Your module’s printed labels will differ: the table below maps them.</p>
+    </div>
+  ) : p.slot === 'screenshot' ? (
+    <div class="slot manual-screenshot">
+      <MediaCard
+        caption="The plugin: the same panel layout, plus SIZE and the GATE (the gate jack's stand-in) on the bottom row"
+        src="/screenshots/plugin-panel.png"
+        alt="The Resilio Versio plugin window: seven knobs (BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE), the TANK and ATTITUDE switches, the THROW button, input and output meters, and a bottom row with SIZE 1x, 1.5x, 2x and a GATE button."
+        ratio="253:643"
+      />
     </div>
   ) : p.slot === 'downloads' || p.slot === 'latest' ? (
     <div class="slot"><DownloadBlock compact idPrefix={`dl-${p.slot}`} /></div>

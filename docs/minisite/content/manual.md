@@ -184,4 +184,4 @@ The plugin (AU and VST3, macOS) has the same panel, the same sound and the same 
 - **SIZE** (1x, 1.5x, 2x) scales the panel.
 - Use it on a return track with BLEND fully right, or as an insert with BLEND to taste.
 
-<!-- SCREENSHOT: assets/screenshots/plugin-panel.png (see the package README before using it) -->
+<!-- SCREENSHOT: assets/screenshots/plugin-panel.png -->
