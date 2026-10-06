@@ -47,7 +47,7 @@
 // head loses the top (kRecLpHz) and saturates (softClip, kTapeDrive) what goes on the tape (input +
 // feedback), so repeats grit up as they build and can never exceed
 // 1 / kTapeDrive. A time change (TENSION, a new division, a new clock tempo,
-// the clock lost) swoops like tape: the tape speed follows over
+// the clock let go) swoops like tape: the tape speed follows over
 // kTimeGlideSeconds, at most kMaxSlew samples of delay per sample, so the
 // repeats bend in pitch (a Space Echo's rate knob) and never click.
 
@@ -81,8 +81,11 @@ constexpr float kDivisionHysteresis = 0.15f;
 constexpr float kClockMinBpm = 30.0f;
 constexpr float kClockMaxBpm = 300.0f;
 constexpr float kClockJitter = 0.02f;
-// Lost after kClockLostBeats beats without a pulse, at most kClockLostSeconds:
-// the echo glides back to free time (a swoop, as any time change).
+// Unused by the Tank since v1.0.42 (ADR 0041 amendment "The gate clock
+// holds"): both the gate clock and tap tempo hold their tempo when the pulses
+// stop, and a lone pulse or tap (none within kClockMinBpm's interval) lets it
+// go, back to free time. Kept for EchoClock::update(now) without the hold:
+// lost after kClockLostBeats beats without a pulse, at most kClockLostSeconds.
 constexpr float kClockLostBeats   = 2.25f;
 constexpr float kClockLostSeconds = 2.5f;
 
