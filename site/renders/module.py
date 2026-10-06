@@ -99,16 +99,13 @@ def _knurled(name, r_out, r_in, depth, loc, mat, teeth=48):
     return ob
 
 
-KNOB_H = 6.5      # panel face to top of cap (v1: 12.4)
-KNOB_SKIRT = 1.6  # knurled skirt height
+KNOB_H = 13.0     # panel face to top of cap (v1 12.4, v2 6.5 with a skirt)
 
 
 def _knob(name, x, z, angle, mats):
-    # knurled skirt + 9 mm cap (diameter from the owner's art), 6.5 mm tall in all
-    _knurled(f"{name}_skirt", 4.8, 4.55, KNOB_SKIRT, (x, -KNOB_SKIRT / 2, z), mats["knob"])
-    body_h = KNOB_H - KNOB_SKIRT
-    body = C.cylinder(f"{name}_cap", 4.5, body_h, (x, -KNOB_SKIRT - body_h / 2, z), mats["knob"], axis="X",
-                      segs=64, r2=4.3, bevel=0.5)
+    # plain 9 mm cylinder cap (diameter from the owner's art), slight taper, no skirt
+    body = C.cylinder(f"{name}_cap", 4.5, KNOB_H, (x, -KNOB_H / 2, z), mats["knob"], axis="X",
+                      segs=64, r2=4.35, bevel=0.5)
     # cylinder(axis X) points its +Z (r2 end) towards -Y: the top face is at y = -KNOB_H
     top_y = -KNOB_H
     a = math.radians(angle)
@@ -133,33 +130,48 @@ def _tube(name, r_out, r_in, depth, y_center, x, z, mat, segs=48, bevel=0.15):
 
 
 def _jack(name, x, z, mats):
-    """Thonkiconn-style 3.5 mm jack seen from the front (v1 was a solid black
-    cylinder standing 3.2 mm proud). Panel hole 6.8 mm:
-      hex nut, 8 mm across flats, 1.6 mm thick;
-      threaded bushing (6 mm, hollow) only 0.4 mm proud of the nut;
-      a lighter plastic insert ring 0.6 mm inside the bushing mouth;
+    """Thonkiconn-style 3.5 mm jack seen from the front (owner's reference photo):
+      round nickel nut, 8 mm across, straight-knurled edge (40 ridges), 1.4 mm thick;
+      a smooth raised collar on top (6.6 mm, 0.6 mm proud) with a 5.2 mm mouth;
+      a darker plastic insert ring recessed inside;
       a 3.5 mm bore going dark into the body."""
-    af = 8.0
-    _tube(f"{name}_nut", af / math.sqrt(3), 3.02, 1.6, -0.8, x, z, mats["metal"], segs=6, bevel=0.3)
-    _tube(f"{name}_bushing", 3.0, 2.55, 2.0 + PT, (-2.0 + PT) / 2, x, z, mats["metal"])
-    _tube(f"{name}_insert", 2.56, 1.75, 3.0, -1.4 + 1.5, x, z, mats["insert"], bevel=0.1)
+    nut = _knurled(f"{name}_nut", 4.0, 3.8, 1.4, (x, -0.7, z), mats["nickel"], teeth=40)
+    C.boolean_cut(nut, [C.cylinder("bore", 3.0, 6, (x, -0.7, z), axis="X", segs=48)])
+    _tube(f"{name}_collar", 3.3, 2.6, 0.6, -1.7, x, z, mats["nickel"], bevel=0.2)
+    _tube(f"{name}_insert", 3.0, 1.75, 2.0, -0.4, x, z, mats["insert"], bevel=0.1)
     C.cylinder(f"{name}_bore_floor", 1.8, 0.2, (x, PT + 3.0, z), mats["void"], axis="X", segs=32)
     body = C.box(f"{name}_body", (9.0, 10.5, 10.5), (x, PT + 5.25, z - 0.6), mats["black"], bevel=0.3)
     C.boolean_cut(body, [C.cylinder("bore", 1.75, 6.0, (x, PT, z), axis="X", segs=32)])
 
 
 def _toggle(name, x, z, pos, mats):
-    C.cylinder(f"{name}_nut", 4.4, 1.6, (x, -0.8, z), mats["metal"], axis="X", segs=6, bevel=0.3, smooth=False)
-    C.cylinder(f"{name}_bushing", 2.45, 4.2, (x, -2.1, z), mats["metal"], axis="X", segs=32, bevel=0.2)
-    # bat lever: pivots in the bushing, tilts up/down 18 degrees
+    """Sub-mini toggle in the 5.08 mm hole: 6.4 mm hex nut (1.2 mm), a 5 mm
+    threaded bushing 1.3 mm proud of the nut with its mouth carved out (dark
+    recess 1.2 mm deep), a ball pivot in the recess and a thin bat lever
+    (1.6 -> 1.3 mm, 6.5 mm long) tilted 18 degrees per position."""
+    _tube(f"{name}_nut", 6.4 / math.sqrt(3), 2.5, 1.2, -0.6, x, z, mats["metal"], segs=6, bevel=0.2)
+    bush_front = -2.5
+    bush = C.cylinder(f"{name}_bushing", 2.45, 2.5 + PT, (x, (bush_front + PT) / 2, z), mats["metal"],
+                      axis="X", segs=48, bevel=0.15)
+    C.boolean_cut(bush, [C.cylinder("mouth", 1.7, 2.4, (x, bush_front, z), axis="X", segs=48)])
+    C.cylinder(f"{name}_recess", 1.72, 0.1, (x, bush_front + 1.15, z), mats["void"], axis="X", segs=32)
+    pivot = Vector((x, bush_front + 0.7, z))
+    _ball(f"{name}_ball", 1.05, pivot, mats["metal"])
     tilt = math.radians(18 * pos)
-    length = 9.5
-    base = Vector((x, -4.0, z))
-    tip = base + Vector((0, -math.cos(tilt), math.sin(tilt))) * length
-    lever = C.cylinder(f"{name}_lever", 1.0, length, (base + tip) / 2, mats["metal"], axis="X",
-                       segs=32, r2=1.3, bevel=0.3)  # bat lever, wider at the tip
+    length = 6.5
+    tip = pivot + Vector((0, -math.cos(tilt), math.sin(tilt))) * length
+    lever = C.cylinder(f"{name}_lever", 0.8, length, (pivot + tip) / 2, mats["metal"], axis="X",
+                       segs=32, r2=0.65, bevel=0.25)
     lever.rotation_euler = (math.pi / 2 - tilt, 0, 0)
-    C.box(f"{name}_body", (8.0, 10.5, 13.0), (x, PT + 5.25, z), mats["black"], bevel=0.3)
+    C.box(f"{name}_body", (7.0, 10.5, 10.0), (x, PT + 5.25, z), mats["black"], bevel=0.3)
+
+
+def _ball(name, r, loc, mat):
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=r)
+    ob = C.mesh_obj(name, bm, mat, smooth=True)
+    ob.location = loc
+    return ob
 
 
 def _button(name, x, z, mats):
@@ -215,9 +227,10 @@ def build(params=None):
     mats = dict(
         knob=C.clay("mod_knob", 0.035, 0.45),       # dark grey caps (owner's art)
         ink=C.clay("mod_ink", 0.85, 0.5),           # white indicator lines
-        metal=C.steel("mod_metal", 0.8, 0.28),      # silver nuts, bushings, toggles, screws
+        metal=C.steel("mod_metal", 0.8, 0.28),      # toggles, bushings, screws
+        nickel=C.steel("mod_nickel", 0.88, 0.12),   # polished nickel jack nuts
         black=C.clay("mod_black", 0.04, 0.55),      # jack/switch bodies, headers
-        insert=C.clay("mod_insert", 0.22, 0.5),     # jack's plastic insert ring
+        insert=C.clay("mod_insert", 0.07, 0.5),     # jack plastic insert ring (dark, so the socket reads hollow)
         void=C.clay("mod_void", 0.005, 0.9),        # inside the jack bore
         pot=C.clay("mod_pot", 0.18, 0.6),
         pcb=C.clay("mod_pcb", 0.30, 0.45),
