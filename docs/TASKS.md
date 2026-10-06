@@ -51,6 +51,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
+- **Echo with and without the springs** (your ask, 6 Oct): a page with A today (100 % through the springs), B 50 %, C 25 %, D 0 % (the tape echo alone). Being built
 - **Tap tempo light** (your ask, 6 Oct): in echo mode all four LEDs flash purple on each tap, then keep pulsing purple on the tapped beat for 2 s after the last tap. Module and plugin. Being built; sound unchanged
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
