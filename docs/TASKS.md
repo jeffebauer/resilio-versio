@@ -52,7 +52,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Waiting on Claude (no action needed)
 - **Echo with and without the springs** (your ask, 6 Oct): a page with A today (100 % through the springs), then 50 % / 25 % / 0 % springs with the direct echo in stereo, two flavours each: wide (repeats centred, like two tape heads) and ping-pong (repeats alternate left / right). Being built
-- **Tap tempo light** (your ask, 6 Oct): in echo mode all four LEDs flash purple on each tap, then keep pulsing purple on the tapped beat for 2 s after the last tap. Module and plugin. Being built; sound unchanged
+- **Tap tempo light** (your ask, 6 Oct): built and tested (branch `feat/tap-led`), sound unchanged; merges on your OK, then a new release + plugin install
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
