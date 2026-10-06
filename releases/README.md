@@ -1,4 +1,4 @@
-RESILIO VERSIO {{VERSION}} — a dub spring reverb (test build)
+RESILIO VERSIO {{VERSION}} — a dub spring reverb
 By Jesse Bauer — https://jessebauer.xyz
 
 Resilio Versio is firmware for the Noise Engineering Versio. Not affiliated with or endorsed by Noise Engineering.
@@ -15,7 +15,7 @@ INSTALL (Mac, macOS 12 or newer, Apple Silicon or Intel)
 2. In Finder, Go > Go to Folder... and paste:
      ~/Library/Audio/Plug-Ins/
    Drag "{{NAME}}.vst3" into the VST3 folder and "{{NAME}}.component" into the Components folder (create the folder if it's missing).
-3. It isn't signed by Apple (it's a test build), so macOS will block it at first. Open Terminal and paste these two lines (each one is a single line):
+3. It isn't signed by Apple, so macOS will block it at first. Open Terminal and paste these two lines (each one is a single line):
      xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"{{NAME}}.vst3"
      xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"{{NAME}}.component"
 4. Restart your DAW and rescan plug-ins. In Ableton: Settings > Plug-Ins, turn on the VST3 / Audio Units system folders, then hold Option and click Rescan. It shows up as "{{NAME}}".
@@ -62,7 +62,7 @@ THINGS TO TRY
 KNOWN ISSUES (already being fixed)
 
 - Held sounds (low pads, drones) are gently turned down going into the springs so they stay clean; with DRIVE well up on hot material the output limiter can still catch them (the output light goes red).
-- It's a test build: expect the sound to keep changing between versions.
+- Still in development: the sound may keep changing between versions.
 
 
 FEEDBACK
