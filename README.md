@@ -1,112 +1,96 @@
 # Resilio Versio
 
-A dub spring reverb firmware for the **Noise Engineering Versio** Eurorack platform (Electro-Smith Daisy Seed inside).
+**A dub spring reverb for the Noise Engineering Versio.** A simulated spring tank you can throw snares into, splash, drive, filter like King Tubby, hold forever, push into a howl, or feed from a worn tape echo.
 
 *Resilio*: Latin, "I leap back, rebound".
 
-The goal is the splashy, drippy ring-out of a spring tank on a single snare or rim hit, including the "kicked tank" crash of dub. It's modelled on a physical spring rather than a room reverb, with a wide sweet spot: every knob position should be usable, with no dead zones and no cliff edge into runaway feedback.
+Resilio is alternative firmware for the [Versio](https://noiseengineering.us/products/versio), Noise Engineering's open Eurorack platform (an Electro-Smith Daisy Seed behind seven knobs, two switches, a button and a gate). It replaces the module's firmware entirely and goes back just as easily. The same sound also runs as an AU/VST3 plugin, so a patch on the desk can be sketched in a DAW first.
 
-> **Status:** in development, not yet released. The spec is frozen at v1.0 (changes via ADRs). M0–M7 are built and **the release firmware runs on the owner's Versio**, sounding the same as the desktop renders (within ~1 dB). CPU is within budget (63 % peak; target ≤ 70 %). Now in the M8 tuning pass, benchmarked against a real Wellspring spring tank: SPLASH is being rebuilt to come from the hits themselves, DRIVE is becoming an INPUT knob, and the tank's echoes are being reshaped toward the Wellspring's smoother, wider sound.
+> **Status:** working firmware, played on real hardware; shared with friends as pre-release builds. Not affiliated with or endorsed by Noise Engineering.
+
+## What it sounds like
+
+A spring tank, not a room. Every hit lands in the springs as its own **splash**: a bright clang on the attack, then echoes that sweep upward (the highs arrive after the lows, the "boing" of a real spring), then a tail that darkens and blurs into a wash instead of ticking like a delay.
+
+- **Warm at rest, splashy when pushed.** Gentle highs from the first moment, repeats that darken as they go, the bass centred and the width growing as the tail rings on.
+- **Every knob position usable.** No dead zones, no cliff edge into runaway feedback; the tail always fades unless you ask it not to.
+- **Grit you choose.** CLEAN is a polite, linear tank. DRIVEN adds tape saturation and a subtle 12-bit grain. KICKED drives the tank hard from the inside: chaotic, 10-bit, and allowed to howl. The dry signal stays clean in every mode.
+- **Nothing added to your playing.** SPLASH makes your hits hit harder (their own highs, their own transients); it doesn't layer samples or bursts on top. Ghost notes in a groove stay quiet.
+
+## Roots
+
+Dub treats the mixing desk as an instrument played live. The reverb isn't a background room: it's thrown at single hits, ridden, filtered and muted, then left to ring on its own, and every pass comes out different. Resilio is built around those moves.
+
+- **The throw.** The classic dub send move (Tubby, Dennis Bovell, Adrian Sherwood): open the springs for one snare, close them, and let the tail ring on. On Resilio the button and the gate input both throw.
+- **King Tubby's "Big Knob".** The right half of TONE is modelled on the stepped high-pass on Tubby's MCI desk (an Altec 9069B): a steep low cut sweeping up to 800 Hz, with the filter's nasal ring on sharp hits. It sits on the spring return, the way Black Ark's low cut did, so sweeping it thins the tail you're hearing straight away.
+- **Tape echo into springs.** Nearly every dub rig paired a spring with tape echo: Tubby's homemade delay, Lee "Scratch" Perry's Space Echo, Sherwood, later Pole and Echospace. SPRINGS position 3 is that pairing.
+- **Dub techno's held bed.** At the top of DECAY (in CLEAN and DRIVEN) the tail holds as a near-infinite bed that ducks under kick and bass only, like a reverb sidechained to the kick in Basic Channel-style dub techno.
+- **The kicked tank.** KICKED's Howl is the rideable spring feedback of a tank pushed too far: pull DECAY back and it falls into a normal tail.
+
+## How it was shaped
+
+Resilio was designed by ear. Its owner, a designer and dub enthusiast, brought the musical goals and made every sonic decision; Claude (Anthropic's AI) was the engineering partner, writing the DSP, the firmware and the tooling, and turning each technical question into a musical one.
+
+- **Modelled on physics.** The springs follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (JAES, 2010): each spring is a feedback loop around a chain of "stretched" allpass filters that spread each echo in time by frequency, which is what makes the chirp. On top: up to three detuned springs spread across the stereo field, a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and a layered defence against single-tone ringing.
+- **Fitted to a real tank.** The tank was tuned, round after round, against recordings of the owner's Teaching Machines Wellspring (a desktop BBD delay and stereo spring reverb): its softer hit, its warmer main ring, where its width sits. A Strymon Magneto was a second reference.
+- **Every change heard before it shipped.** Each candidate sound became a level-matched listening page (A against B, in every ATTITUDE, on rim hits, a reggae skank and a held pad), and the owner picked. Over forty decisions are recorded, with their reasons, in [`docs/adr/`](docs/adr/).
+- **Desktop first, hardware for the feel.** Sound work happens in an offline renderer and the plugin; the module is where CPU is measured and the final feel is judged. The firmware runs inside 128 KB of flash and under 80 % of the chip at its busiest moment.
 
 ## The instrument
 
+Resilio runs behind the stock Versio panel, so the printed labels don't match yet. Pots are numbered in reading order, top to bottom, left to right. Every knob has a CV input (0–5 V, added to the knob).
+
 | Control | What it does |
 |---|---|
-| **P1 MIX** | Dry/wet, equal power. Fully clockwise = 100% wet for send/return |
-| **P2 DECAY** | Tail length only (0.4–9 s). Always fades; doesn't change the tank or bend pitch |
-| **P3 TONE** | The hero tilt: warm dub dark ↔ splashy bright, never harsh |
-| **P4 SPLASH** | How hard hits make the tank clatter and lurch (being rebuilt: the splash will come from the hits themselves, ADR pending) |
-| **P5 TENSION** | Which tank is fitted: up = tight (short, quick repeats, small bright chirp), down = loose (long, big darker boing). Always a spring |
-| **P6 WOBBLE** | Drift in the lower half, worn-tape warble at the top (a bipolar version is planned: random wow and flutter left of noon, LFO right) |
-| **P7 DRIVE** | Transducer and tape colour, level-compensated: changes colour, not volume (becoming the INPUT: how hard the signal hits the tank, a little louder when pushed) |
-| **SPRINGS** switch | 1 (sparse, drippy) / 2 (classic) / 3 (dense, lush) |
-| **ATTITUDE** switch | CLEAN / DRIVEN (tape dub) / KICKED (hard drive, chaos, may Howl) |
-| Button | **Throw** by hand in SPRINGS 1–2 (held = the springs hear the input; tap, tap and hold 2 s = back to always-on); **tap tempo** for the echo in SPRINGS 3 (ADR 0043; was the Kick) |
-| Gate in | **Throw** in SPRINGS 1–2 (high = the springs hear the input), the echo's **clock** in SPRINGS 3 |
+| **P1 MIX** | Dry ↔ wet. Fully right is 100 % wet, for a send/return. Fully left is a clean passthrough |
+| **P2 DECAY** | How long the tail rings, from a slap (~0.4 s) to a long wash (~9 s). The top of the knob: the **Hold** in CLEAN and DRIVEN (a held bed that ducks under kick and bass), the **Howl** in KICKED |
+| **P3 TONE** | Left: warm, dark dub. Noon: the Wellspring-fit sound. Right: King Tubby's Big Knob, thinner and more telephone-like the further you go |
+| **P4 SPLASH** | How hard hits hit the springs: a bright clang from the hit's own highs, and in DRIVEN/KICKED a harder bite on drums. Works at any DRIVE, so a quiet mixer send still splashes |
+| **P5 TENSION** | Which tank is fitted. Right: tight, quick repeats, a small bright chirp. Left: loose, slow repeats, a big dark boing. Turning it while the tail rings bends the pitch, like tightening a string |
+| **P6 WOBBLE** | Pitch movement both ways from a still noon. Left: tape-like drift, a random wow with flutter on top. Right: a steady warble |
+| **P7 DRIVE** | The tank's input: up to +24 dB, so a quiet send drives it like a hot one. Colour and grit build as you turn it up; the tail never gets shorter |
+| **SPRINGS** switch | **1**: one spring, sparse and the most splashy. **2**: two springs, the classic tank. **3**: echo mode (below) |
+| **ATTITUDE** switch | **CLEAN** / **DRIVEN** (tape) / **KICKED** (chaos, Howl). Flipping it reshapes the tail already ringing |
+| **Button** | SPRINGS 1–2: a **throw** by hand (held = the springs hear the input). SPRINGS 3: **tap tempo** |
+| **Gate in** | SPRINGS 1–2: **throw** from a sequencer. SPRINGS 3: the echo's **clock** |
+| **LEDs** | In L, In R, Out L, Out R level meters (green → amber, red on input clipping or when the output limiter works). White when throw mode goes off; purple on tap tempo |
 
-All seven knobs are CV-controllable (0–5 V). P1–P7 are the pots in reading order on the stock Versio panel (ADR 0028). The four LEDs meter In L, In R, Out L, Out R: green → amber with level, red when the input nears clipping or the output limiter works (ADR 0031). Full panel map: [SPEC.md §3](SPEC.md); player's guide: [docs/manual.md](docs/manual.md).
+**Echo mode (SPRINGS 3).** A worn tape echo feeding the two-spring tank. A quarter of each repeat goes through the springs and the rest comes straight off the tape, wide like two playback heads, so every repeat stays a distinct hit with a spring halo. The repeats wear like old tape: loud, bright ones come back thicker and duller, each pass a little darker, with no digital fizz.
+- **DECAY** is the feedback: from one repeat to long builds, and at the very top a steady, saturated loop that never runs away.
+- **TENSION** is the echo time: 2 s to 80 ms free, or 1/2 down to 1/16 (dotted values included) of a clock, a tapped tempo or the DAW's tempo. Moving it bends the repeats like a Space Echo's rate knob.
+- **WOBBLE** moves the tape too, so each repeat wavers a little more than the one before.
+- A clock's tempo **holds** when its pulses stop, so stopping and starting a sequencer doesn't bend the echo.
 
-## How it's built
+Full player's guide: [`docs/manual.md`](docs/manual.md). Dub starting points: [`docs/presets.md`](docs/presets.md).
 
-One DSP core, three hosts. Every host passes the same 0–1 parameter values, so a setting in the plugin sounds identical on the module.
+## A few dub moves
 
-```
-                 core/  (DSP + ParamSpec table; no platform code)
-                   │
-     ┌─────────────┼──────────────────┐
-host/render     plugin/            firmware/
-offline CLI     JUCE AU + VST3     Versio (libDaisy)
-WAV → WAV,      test bench         real knobs, CV,
-sweeps,         in Ableton         gate, LEDs
-metrics
-```
+- **Throw the snare.** SPRINGS 2, DRIVEN, MIX fully right on a send. Hold the button on the beats you want drenched; let go and the tail rings on.
+- **Big Knob sweep.** Ride TONE from noon to fully right as a tail rings: it thins to a telephone splash. Back down for the warmth.
+- **Skank into echo.** SPRINGS 3, clocked from your sequencer, TENSION on dotted 1/8. DECAY around 2 o'clock for a trail of repeats, each one splashing into the springs.
+- **Hold the bed.** CLEAN, DECAY fully up. Play a chord, let it bloom into a held wash, and keep playing: the bed ducks under your kick and bass.
+- **Kick the tank.** KICKED, DRIVE past 3 o'clock, DECAY into the top: ride the Howl, then pull DECAY back and let it fall away.
 
-The DSP follows Välimäki, Parker & Abel, *Parametric Spring Reverberation Effect* (JAES, 2010): each simulated spring is a feedback loop around a chain of "stretched" allpass filters, which spread each echo in time by frequency: the highs arrive after the lows, so each echo sweeps up, as in real tanks (ADR 0024). On top of that: 1–3 detuned springs spread across the stereo field (A left, B right, C centre), a drive chain (transducer → tape → loop saturation → pickup), transient-driven Splash and Kick, and a layered defence against single-tone ringing. Details: [SPEC.md §4](SPEC.md).
+## Getting it
 
-## Building
+**On the Versio:** download the firmware (`.bin`) from this repository's Releases and install it with Noise Engineering's [Firmware Swap](https://noiseengineering.us/portal/firmware) web app (Chrome): *Select Custom File*, *Connect*, *Change Firmware*. Use USB power only: **never connect USB and Eurorack power at the same time.** To go back, run the same app and pick any Noise Engineering firmware; Resilio changes nothing else on the module. Step by step: [`docs/manual.md`](docs/manual.md#installing-noise-engineering-firmware-swap).
 
-Requirements: macOS (Apple Silicon tested), CMake + Ninja, Command Line Tools (full Xcode not needed), and the Arm GNU Toolchain for firmware.
+**In a DAW:** the AU/VST3 plugin (macOS) has the same panel, the same sound and the same LEDs. It follows the DAW's tempo in echo mode, and held MIDI notes act as the gate.
 
-```bash
-git clone --recursive https://github.com/jeffebauer/resilio-versio.git
-cd resilio-versio
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build          # Core, Renderer, tests, AU + VST3 plugin
-ctest --test-dir build       # 16 test suites (log to a file and check the summary line)
-make -C libs/libDaisy -j8 && make -C firmware all-variants
-```
+## For builders
 
-Full setup, including the Arm toolchain and the firmware variants: [docs/building.md](docs/building.md). Flashing uses Noise Engineering's Firmware Swap web app → *Select Custom File* ([ADR 0011](docs/adr/0011-flash-via-ne-app-internal-flash.md)). The firmware must fit the 128 KB internal flash.
+One DSP core with no platform code, three hosts: an offline renderer (WAV in, WAV out, parameter sweeps and measurements), the JUCE plugin, and the Versio firmware (libDaisy). Every host reads the same parameter table, so a setting in the plugin sounds identical on the module.
 
-## Repository layout
-
-| Path | Contents |
-|---|---|
-| `core/` | Platform-independent DSP (`dsp/`) and the parameter table + mappings (`params/`) |
-| `host/render/` | `rv_render`: offline renderer with presets, automation, sweep grids, analysis |
-| `host/common/` | Desktop helpers: WAV, JSON, FFT, metrics, spectrogram sidecars |
-| `host/tests/` | Core and host test suites (ctest) |
-| `plugin/` | JUCE AU/VST3 test-bench plugin + a host test that loads it like a DAW |
-| `firmware/` | Versio firmware: `release`, `m0test`, `profile` variants ([README](firmware/README.md)) |
-| `tools/` | Stimulus generator, listening-page generator (`tools/review/`), reference-recording ingest, IR and sweet-spot analysis |
-| `presets/` | Parameter presets and sweep definitions (JSON) |
-| `docs/` | Decisions (ADRs), milestone contracts, recording recipes, checklists, tuning backlog, prototypes (`docs/prototypes/`) |
-| `libs/` | Submodules: libDaisy, DaisySP, JUCE |
-
-## Documentation
-
-- **[SPEC.md](SPEC.md)**: the full specification: hardware facts, sound target, DSP design, architecture, milestones with acceptance criteria.
-- **[CONTEXT.md](CONTEXT.md)**: the glossary. The code, docs and conversations all use these terms.
-- **[docs/adr/](docs/adr/)**: architecture decision records, one per decision (0001–0031).
-- **[docs/TASKS.md](docs/TASKS.md)**: the owner's running to-do list (listening pages, hardware checks, design questions).
-- **[docs/m8-tuning-backlog.md](docs/m8-tuning-backlog.md)**: the tuning findings, measurements and decisions, newest at the end.
-- **[docs/dub-spring-reference.md](docs/dub-spring-reference.md)**: how dub engineers used spring reverb, and what that means for Resilio.
-- **[docs/manual.md](docs/manual.md)** and **[docs/presets.md](docs/presets.md)**: the player's guide and dub starting points (drafts).
-- Reference recordings: [Wellspring recipe](docs/recording-recipe.md), [Magneto recipe](docs/recording-recipe-magneto.md), [Ableton setup](docs/ableton-setup.md).
-- Checks: [M0 hardware](docs/m0-hardware-check.md), [M2 Ableton](docs/m2-ableton-check.md). Hardware recordings and how they compare: `test_audio/hardware/NOTES.md`.
-
-## Milestones
-
-| # | Milestone | State |
-|---|---|---|
-| 0 | Toolchains + hardware check | Passed on the owner's Versio |
-| 1 | One spring (CLEAN) + Renderer | Built; Wellspring A/B listening check pending |
-| 2 | JUCE plugin shell | Built + automated tests pass; Ableton check pending |
-| 3 | Hardware profiling | Done: worst case 61 % average, 63 % peak (target ≤ 70 %, ADR 0030) |
-| 4 | Multi-spring, stereo, tank coupling | Built |
-| 5 | Drive chain + TONE tilt | Built |
-| 6 | Anti-resonance | Built |
-| 7 | SPLASH, KICK, WOBBLE, MIX | Built |
-| 8 | Tuning pass | In progress. Done: TENSION, knob layout, earlier first echo, output polarity/level fix. Now: SPLASH from the hit + DRIVE as INPUT (building), the tank's echo shape vs the Wellspring (prototyping), bipolar WOBBLE (planned) |
-| 9 | Polish (LEDs, panel overlay, manual, release) | LED meters built and smooth (DMA-driven dimming, ADR 0031); manual and preset notes drafted; panel overlay and release to come |
-
-Acceptance criteria per milestone: [SPEC.md §7](SPEC.md).
+- Building and flashing your own: [`docs/building.md`](docs/building.md)
+- The specification: [`SPEC.md`](SPEC.md); vocabulary: [`CONTEXT.md`](CONTEXT.md); decisions: [`docs/adr/`](docs/adr/)
+- Firmware variants, CPU runs and flash budget: [`firmware/README.md`](firmware/README.md)
 
 ## Licence
 
-No licence has been chosen yet. Note that the plugin builds on [JUCE](https://juce.com), which is dual-licensed (AGPLv3 or JUCE's commercial licences), so distributing plugin builds brings those terms into play. The firmware and Core don't depend on JUCE.
+No licence has been chosen yet. The plugin builds on [JUCE](https://juce.com), which is dual-licensed (AGPLv3 or JUCE's commercial licences), so distributing plugin builds brings those terms into play. The firmware and the DSP core don't depend on JUCE.
 
 ## Acknowledgements
 
-- Spring reverb modelling: V. Välimäki, J. Parker, J. S. Abel; J. Parker; S. Bilbao (full references in [SPEC.md §11](SPEC.md)).
+- Spring reverb modelling: V. Välimäki, J. Parker and J. S. Abel; J. Parker; S. Bilbao (full references in [`SPEC.md` §11](SPEC.md)).
 - [Electro-Smith](https://electro-smith.com) for libDaisy and DaisySP, and [Noise Engineering](https://noiseengineering.us) for the open Versio platform.
+- The engineers whose moves this is built around: King Tubby, Lee "Scratch" Perry, Scientist, Dennis Bovell, Adrian Sherwood, and the dub techno lineage after them.
