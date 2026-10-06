@@ -96,7 +96,7 @@ def world(strength=0.25, rgb=(0.52, 0.50, 0.47)):
 
 # ------------------------------------------------------------------- materials
 
-def clay(name, value=0.55, rough=0.55, rgb=None, metallic=0.0, coat=0.0):
+def clay(name, value=0.55, rough=0.55, rgb=None, metallic=0.0, coat=0.0, aniso=0.0):
     """Matte clay. `value` is linear grey; `rgb` overrides it."""
     m = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     m.use_nodes = True
@@ -106,7 +106,15 @@ def clay(name, value=0.55, rough=0.55, rgb=None, metallic=0.0, coat=0.0):
     p.inputs["Metallic"].default_value = metallic
     if coat:
         p.inputs["Coat Weight"].default_value = coat
+    if aniso:
+        p.inputs["Anisotropic"].default_value = aniso
     return m
+
+
+def steel(name, value=0.62, rough=0.22, aniso=0.0):
+    """Bare steel: metallic, so the lights streak across it. aniso > 0 for a
+    brushed finish (highlights stretch along the tangent)."""
+    return clay(name, value, rough, metallic=1.0, aniso=aniso)
 
 
 def emissive(name, rgb_hex="#EE5641", strength=12.0, base=0.6):
@@ -374,8 +382,8 @@ def studio(subject_center, subject_size, key=1.0, fill=0.25, rim=0.6, streak=Non
         mid = (a + b) / 2
         length = (b - a).length
         ob = area_light("streak", mid + Vector((0, 0.35 * s, 0.6 * s)), mid,
-                        size=length * 1.1, size_y=0.025 * s,
-                        power=watts(KEY_W * 0.3) * (0.7 * s / 1000) ** 2)
+                        size=length * 1.1, size_y=0.03 * s,
+                        power=watts(KEY_W * 2.5) * (0.7 * s / 1000) ** 2)
         lights["streak"] = ob
     return lights
 

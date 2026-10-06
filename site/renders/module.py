@@ -82,15 +82,37 @@ def _panel(holes, mats, p):
     return pan
 
 
+def _knurled(name, r_out, r_in, depth, loc, mat, teeth=48):
+    """A short cylinder with fine vertical ribs (knurled knob skirt), along Y."""
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=teeth * 2, radius1=r_out, radius2=r_out, depth=depth)
+    step = math.pi / teeth
+    for v in bm.verts:
+        k = round(math.atan2(v.co.y, v.co.x) / step)
+        if k % 2:
+            v.co.x *= r_in / r_out
+            v.co.y *= r_in / r_out
+    ob = C.mesh_obj(name, bm, mat, smooth=False)
+    ob.location = loc
+    ob.rotation_euler = (math.pi / 2, 0, 0)
+    C.add_bevel(ob, 0.15, 1)
+    return ob
+
+
+KNOB_H = 6.5      # panel face to top of cap (v1: 12.4)
+KNOB_SKIRT = 1.6  # knurled skirt height
+
+
 def _knob(name, x, z, angle, mats):
-    # skirt + body (a slightly tapered cylinder), as the owner's art draws them
-    C.cylinder(f"{name}_skirt", 5.0, 1.4, (x, -0.7, z), mats["knob"], axis="X", segs=64, bevel=0.3)
-    body = C.cylinder(f"{name}_cap", 4.6, 11.0, (x, -1.4 - 5.5, z), mats["knob"], axis="X",
-                      segs=64, r2=4.35, bevel=0.6)
-    # cylinder(axis X) points its +Z (r2 end) towards -Y: the top face is at y = -12.4
-    top_y = -12.4
+    # knurled skirt + 9 mm cap (diameter from the owner's art), 6.5 mm tall in all
+    _knurled(f"{name}_skirt", 4.8, 4.55, KNOB_SKIRT, (x, -KNOB_SKIRT / 2, z), mats["knob"])
+    body_h = KNOB_H - KNOB_SKIRT
+    body = C.cylinder(f"{name}_cap", 4.5, body_h, (x, -KNOB_SKIRT - body_h / 2, z), mats["knob"], axis="X",
+                      segs=64, r2=4.3, bevel=0.5)
+    # cylinder(axis X) points its +Z (r2 end) towards -Y: the top face is at y = -KNOB_H
+    top_y = -KNOB_H
     a = math.radians(angle)
-    r0, r1 = 1.2, 4.0
+    r0, r1 = 1.2, 3.9
     rm = (r0 + r1) / 2
     C.box(f"{name}_line", (0.45, 0.12, r1 - r0),
           (x + rm * math.sin(a), top_y - 0.02, z + rm * math.cos(a)), mats["ink"],
@@ -102,12 +124,28 @@ def _knob(name, x, z, angle, mats):
     return body
 
 
+def _tube(name, r_out, r_in, depth, y_center, x, z, mat, segs=48, bevel=0.15):
+    """A short tube along Y (a ring with a real hole through it). segs=6 = hex nut."""
+    t = C.cylinder(name, r_out, depth, (x, y_center, z), mat, axis="X", segs=segs, bevel=bevel,
+                   smooth=segs > 8)
+    C.boolean_cut(t, [C.cylinder("bore", r_in, depth * 3, (x, y_center, z), axis="X", segs=48)])
+    return t
+
+
 def _jack(name, x, z, mats):
-    C.cylinder(f"{name}_nut", 4.3, 2.0, (x, -1.0, z), mats["metal"], axis="X", segs=6, bevel=0.35, smooth=False)
-    bush = C.cylinder(f"{name}_insert", 3.05, 3.2, (x, -1.6, z), mats["black"], axis="X", segs=48, bevel=0.25)
-    hole = C.cylinder(f"{name}_hole", 1.8, 8.0, (x, -2.0, z), axis="X", segs=32)
-    C.boolean_cut(bush, [hole])
-    C.box(f"{name}_body", (9.0, 10.5, 10.5), (x, PT + 5.25, z - 0.6), mats["black"], bevel=0.3)
+    """Thonkiconn-style 3.5 mm jack seen from the front (v1 was a solid black
+    cylinder standing 3.2 mm proud). Panel hole 6.8 mm:
+      hex nut, 8 mm across flats, 1.6 mm thick;
+      threaded bushing (6 mm, hollow) only 0.4 mm proud of the nut;
+      a lighter plastic insert ring 0.6 mm inside the bushing mouth;
+      a 3.5 mm bore going dark into the body."""
+    af = 8.0
+    _tube(f"{name}_nut", af / math.sqrt(3), 3.02, 1.6, -0.8, x, z, mats["metal"], segs=6, bevel=0.3)
+    _tube(f"{name}_bushing", 3.0, 2.55, 2.0 + PT, (-2.0 + PT) / 2, x, z, mats["metal"])
+    _tube(f"{name}_insert", 2.56, 1.75, 3.0, -1.4 + 1.5, x, z, mats["insert"], bevel=0.1)
+    C.cylinder(f"{name}_bore_floor", 1.8, 0.2, (x, PT + 3.0, z), mats["void"], axis="X", segs=32)
+    body = C.box(f"{name}_body", (9.0, 10.5, 10.5), (x, PT + 5.25, z - 0.6), mats["black"], bevel=0.3)
+    C.boolean_cut(body, [C.cylinder("bore", 1.75, 6.0, (x, PT, z), axis="X", segs=32)])
 
 
 def _toggle(name, x, z, pos, mats):
@@ -125,8 +163,8 @@ def _toggle(name, x, z, pos, mats):
 
 
 def _button(name, x, z, mats):
-    C.cylinder(f"{name}_ring", 3.9, 1.4, (x, -0.7, z), mats["metal"], axis="X", segs=48, bevel=0.3)
-    C.cylinder(f"{name}_cap", 2.4, 3.6, (x, -1.8, z), mats["knob"], axis="X", segs=48, bevel=0.5)
+    # cap only, straight through the 5.33 mm hole: no bezel on the real module
+    C.cylinder(f"{name}_cap", 2.45, 5.0, (x, -1.0, z), mats["knob"], axis="X", segs=48, bevel=0.5)
     C.box(f"{name}_body", (7.0, 10.5, 7.0), (x, PT + 5.25, z), mats["black"], bevel=0.3)
 
 
@@ -177,8 +215,10 @@ def build(params=None):
     mats = dict(
         knob=C.clay("mod_knob", 0.035, 0.45),       # dark grey caps (owner's art)
         ink=C.clay("mod_ink", 0.85, 0.5),           # white indicator lines
-        metal=C.clay("mod_metal", 0.62, 0.3),       # nuts, bushings, screws
-        black=C.clay("mod_black", 0.04, 0.55),      # jack inserts, bodies, headers
+        metal=C.steel("mod_metal", 0.8, 0.28),      # silver nuts, bushings, toggles, screws
+        black=C.clay("mod_black", 0.04, 0.55),      # jack/switch bodies, headers
+        insert=C.clay("mod_insert", 0.22, 0.5),     # jack's plastic insert ring
+        void=C.clay("mod_void", 0.005, 0.9),        # inside the jack bore
         pot=C.clay("mod_pot", 0.18, 0.6),
         pcb=C.clay("mod_pcb", 0.30, 0.45),
         chip=C.clay("mod_chip", 0.05, 0.4),

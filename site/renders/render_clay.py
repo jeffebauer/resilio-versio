@@ -48,7 +48,7 @@ def tank_variants(ref):
         dict(id="R1_tank_b", shot="R1", note="High and steep, looking down into the springs.",
              target=c, az=14, el=58, f=85, fit=0.88, by="width"),
         dict(id="R1_tank_c", shot="R1", note="Low from the output end, wide lens: the springs run away down the tank.",
-             target=c + C.Vector((40, 0, 0)), az=74, el=22, f=50, fit=1.05, by="width"),
+             target=c + C.Vector((70, 0, 0)), az=74, el=22, f=50, fit=1.35, by="width"),
         dict(id="R1_tank_d", shot="R1", note="Tight 100 mm on the input end, tank runs out of frame.",
              target=C.Vector((-110, 0, 16)), az=24, el=42, f=100, fit=2.0, by="width"),
         dict(id="R2_tank_macro_a", shot="R2", note="Macro: coils catching the light, shallow depth.",
@@ -160,7 +160,7 @@ figcaption b{{font-weight:500;color:var(--ink);font-family:ui-monospace,Menlo,mo
 #lb.on{{display:flex}}
 </style></head><body>
 <header><h1>Minisite renders — clay pass</h1>
-<p>Composition review (PLAN A3 / S3). Grey matte clay, real lighting (soft key top-left, fill right, rim behind,
+<p>Composition review (PLAN A3 / S3). Grey matte clay with bare-steel metals (tank, springs, nuts, toggles), real lighting plus a strip light along the springs (soft key top-left, fill right, rim behind,
 warm-grey sweep), the panel print on as a decal, LEDs lit in signal red. Click a frame to enlarge; ← → to step.
 Camera: h = height above the ground, el = elevation, az = azimuth from the front towards the right, focal length
 full-frame equivalent. Generated {time.strftime('%Y-%m-%d %H:%M')} by site/renders/render_clay.py.</p></header>

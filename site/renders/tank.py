@@ -32,10 +32,12 @@ DEFAULTS = dict(
     lip=5.0,            # inward lip along the long sides
     spring_z=21.0,      # spring axis height above the ground (high, so they show over the walls)
     # one entry per spring: (y position, coil radius, wire radius, pitch)
-    springs=[(-28.0, 2.15, 0.20, 0.52),
-             (0.0, 2.35, 0.21, 0.55),
-             (28.0, 2.15, 0.20, 0.52)],
-    pts_per_turn=14,
+    # Stylised so the turns read at hero distance (v1 was 0.4 mm wire on a
+    # 0.52 mm pitch: true to life but a smooth rod on screen).
+    springs=[(-28.0, 2.3, 0.55, 2.6),
+             (0.0, 2.5, 0.6, 2.8),
+             (28.0, 2.3, 0.55, 2.6)],
+    pts_per_turn=20,
     transducer_inset=20.0,  # transducer centre from each end wall
 )
 
@@ -162,14 +164,14 @@ def build(params=None):
     p = dict(DEFAULTS)
     p.update(params or {})
     mats = dict(
-        steel=C.clay("tank_steel", 0.36, 0.45),
+        steel=C.steel("tank_steel", 0.55, 0.32, aniso=0.6),   # brushed chassis
         rubber=C.clay("tank_rubber", 0.10, 0.8),
-        core=C.clay("tank_core", 0.36, 0.5),
+        core=C.steel("tank_core", 0.45, 0.3, aniso=0.4),      # transducer frames
         coil=C.clay("tank_coil", 0.40, 0.4),
         bobbin=C.clay("tank_bobbin", 0.22, 0.6),
         magnet=C.clay("tank_magnet", 0.30, 0.35),
-        spring=C.clay("tank_spring", 0.62, 0.22),
-        metal_light=C.clay("tank_metal_light", 0.65, 0.35),
+        spring=C.steel("tank_spring", 0.75, 0.18),            # polished spring wire
+        metal_light=C.steel("tank_metal_light", 0.7, 0.2),
         metal_dark=C.clay("tank_metal_dark", 0.25, 0.4),
         wire=C.clay("tank_wire", 0.15, 0.6),
     )
