@@ -59,10 +59,13 @@ constexpr Toggle kToggles[] = {
     {ParamId::Attitude, {8.405f, 67.425f}}, // SW2
 };
 
-constexpr Part kButton{26.185f, 69.330f};
+// The button sits at the module's height (69.33 mm), nudged right of its
+// 26.185 mm centre and drawn wider than the 7 mm cap, so THROW reads in full
+// at 1x and still clears ATTITUDE's VALVE.
+constexpr Part kButton{28.0f, 69.330f};
 // GATE (the throw_gate param, ADR 0039): the gate jack's stand-in, not on
-// the printed panel. Right of the button, below DRIVE.
-constexpr Part kThrow{37.5f, 69.330f};
+// the printed panel. Under DRIVE, below its label.
+constexpr Part kThrow{43.330f, 74.0f};
 
 // LED1..LED4, left to right: In L, In R, Out L, Out R (PanelLink::Meter order).
 constexpr Part kLeds[PanelLink::kNumMeters] = {
@@ -73,7 +76,8 @@ constexpr float kLedRadiusMm   = 1.8f;  // the hole is 3 mm
 constexpr float kSegmentWMm    = 6.8f;  // one toggle position (three side by side)
 constexpr float kSegmentHMm    = 4.5f;
 constexpr float kSegmentLeftMm = 1.5f;  // the three end left of the button
-constexpr float kButtonMm      = 7.0f;
+constexpr float kButtonWMm     = 10.5f;
+constexpr float kButtonHMm     = 7.0f;
 constexpr float kLabelHMm      = 2.6f;
 
 constexpr float px(float mm) { return mm * kPxPerMm; }
@@ -239,7 +243,7 @@ public:
         // release goes to the audio thread, which hands it to the Tank at
         // the start of its next block; the Tank does the rest.
         // Labelled THROW, and TAP while it taps (TANK ECHO; ADR 0044): the
-        // panel's THROW / TAP doesn't fit a 7 mm button.
+        // panel's THROW / TAP doesn't fit the button.
         button_.setButtonText("THROW");
         button_.onStateChange = [this] {
             const bool down = button_.isDown();
@@ -297,7 +301,7 @@ public:
                 toggles_[t][pos].setBounds(centred(c, kSegmentWMm, kSegmentHMm));
             }
 
-        button_.setBounds(centred(kButton, kButtonMm, kButtonMm));
+        button_.setBounds(centred(kButton, kButtonWMm, kButtonHMm));
         throw_.setBounds(centred(kThrow, 9.0f, kSegmentHMm));
 
         constexpr float sizeW = 7.0f;
