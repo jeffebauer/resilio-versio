@@ -32,7 +32,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ### 5. Going public + the minisite (decisions before anything is published)
 - [ ] **Listen to the ten demo clips** in the minisite package (rendered, not yet heard by anyone) and approve, cut or redo
-- [ ] **Plugin layout check in Ableton:** does GATE sit on top of DRIVE's label and the button read "THR…"? (It does in a scratch build; fix before any public screenshot)
+- [ ] **Going-public prep is ready** (branch `chore/going-public`, all 24 test suites pass): licence files, README credit/disclaimer, issue forms, fixed download names, draft public release notes (`docs/release-notes-public.md`), and the plugin layout fix (THROW reads in full, GATE moves under DRIVE; the button sits 1.8 mm right of the module's spot). OK to merge? OK to delete the 15 old branches on GitHub? Want an About/credit line in the plugin panel?
 - Your going-public answers are recorded in ADR 0045 (AGPL plugin, MIT code, email and spectrograms fine, credit Jesse Bauer → jessebauer.xyz, GitHub Issues, prune branches and keep releases, keep the name with a disclaimer). Claude prepares it all on a branch; **the repo only goes public when you say "flip it"**
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
