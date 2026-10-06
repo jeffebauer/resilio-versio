@@ -97,6 +97,10 @@ public:
     // Counts every time the tempo was set or changed (the Tank's "most
     // recent clock wins" between the gate and the taps).
     uint32_t tempoSets() const { return tempoSets_; }
+    // The latest edge made an interval (it wasn't a first or lone edge after
+    // a long gap). A held tapped tempo with this false is about to go (a lone
+    // tap); the LEDs then show no tempo (firmware/TapLed.h).
+    bool counting() const { return n_ > 0; }
 
 private:
     float    iv_[3] = {0.0f, 0.0f, 0.0f};

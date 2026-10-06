@@ -690,6 +690,7 @@ void Tank::buttonEvent(bool down, uint32_t at, bool throwRole, float hs)
             latchThrow(hs);
         } else {
             exitArmed_ = btnHaveRelease_ = false;
+            ++taps_; // the LEDs' purple flash (firmware/TapLed.h)
             if (numTapQ_ < kMaxPendingClocks) tapQ_[size_t(numTapQ_++)] = at; // reaches the tap clock at the next tick (feedClocks)
         }
     } else {

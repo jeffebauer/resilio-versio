@@ -701,6 +701,7 @@ int main()
 // white for a moment when throw mode goes off (ADR 0039).
 
 #include "LedMeter.h"
+#include "TapLed.h"
 #include "PotEndStops.h"
 
 namespace {
@@ -790,6 +791,12 @@ constexpr size_t kMeterLed[kNumMeters] = {
 volatile float gPeak[kNumMeters] = {};
 volatile float gLimiterGain      = 1.0f; // lowest Tank::limiterGain() since last read
 volatile bool  gThrowExited      = false; // double tap + hold: throw mode was on and is now off (LED blink)
+// Tap tempo on the LEDs (TapLed.h): Tank::taps(), the tapped beat in
+// samples (0 = none) and whether the button taps (SPRINGS 3), as of the
+// last block.
+volatile uint32_t gTaps       = 0;
+volatile float    gTapBeat    = 0.0f;
+volatile bool     gTapping    = false;
 
 // ---- LED PWM by timer + DMA (30 Sep 2026 fix, "LEDs flicker rather than dim")
 // libDaisy's software PWM needs UpdateLeds() called at its sample rate
@@ -1030,6 +1037,9 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
         exitsSeen    = tank.throwExits();
         gThrowExited = true;
     }
+    gTaps      = tank.taps();
+    gTapBeat   = tank.tappedBeatSamples();
+    gTapping   = tank.tapping();
     float outL = 0.0f, outR = 0.0f;
     for (size_t i = 0; i < size; ++i) {
         out[0][i] *= kOutputTrim;
@@ -1063,6 +1073,7 @@ int main()
     bool ledDma = gLedPwm.start();
 
     rvled::LevelMeter meters[kNumMeters];
+    const float       usPerSample = 1.0e6f / hw.AudioSampleRate(); // the tapped beat -> us (TapLed.h)
     uint32_t          lastUs = System::GetUs();
     while (true) {
         const uint32_t nowUs = System::GetUs();
@@ -1093,7 +1104,9 @@ int main()
             ledDma = false;
         }
         // Throw mode off (ADR 0039): all four white for a moment, the one
-        // exception to the meters-only LEDs (ADR 0031).
+        // exception to the meters-only LEDs (ADR 0031). Tap tempo (ADR 0043,
+        // TapLed.h): all four purple on each tap and on the tapped beat for
+        // 2 s after the last; white wins if both are ever due.
         // Elapsed time by unsigned subtraction, so the microsecond clock's
         // wrap (~71.6 min) can't matter. (Was a signed compare against a
         // deadline that started at 0: after ~36 min of uptime it read as
@@ -1108,8 +1121,10 @@ int main()
         if (blinking && nowUs - blinkStartUs >= uint32_t(1.0e6f * rv::throwhold::kThrowExitBlinkSeconds))
             blinking = false;
         const bool blink = blinking;
+        static rvled::TapFlash tapFlash;
+        const bool purple = tapFlash.update(nowUs, gTaps, uint32_t(gTapBeat * usPerSample), gTapping);
         for (int m = 0; m < kNumMeters; ++m) {
-            const rvled::Rgb c = blink ? rvled::Rgb{1.0f, 1.0f, 1.0f} : meters[m].colour();
+            const rvled::Rgb c = rvled::shown(blink, purple, meters[m].colour());
             if (ledDma) gLedPwm.set(int(kMeterLed[m]), c);
             else hw.SetLed(kMeterLed[m], c.r, c.g, c.b);
         }
