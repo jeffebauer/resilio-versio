@@ -23,7 +23,7 @@ Blender 4.x (not installed yet: free from blender.org), scenes scripted in Pytho
 | **R4 Module turn** | Scroll-scrubbed sequence | R3's camera orbiting ~20°, 48 frames, AVIF |
 | **R5 Panel macro** | Manual header | Knobs + the TANK/ATTITUDE toggles, shallow depth |
 
-Inputs from the owner: the panel from Figma (file `RtGyUlerVn3LjGYbCOLj0D`, frame `75:1292`, `resilio-versio_panel`, black panel, white labels, red secondary labels) exported as **SVG** with guide layers hidden. Claude reads the layer positions (pots, jacks, LEDs, switches, button, mounting holes) through the Figma connection to place the 3D parts.
+Inputs from the owner: the panel art, now in `docs/minisite/assets/panel/resilio-versio-panel-art.svg` (190.87 × 485.67 pt = 50.5 × 128.5 mm, text outlined; it also draws the knobs and jacks, which the 3D scene replaces with models, so the texture uses only the flat print layers), exported from Figma (file `RtGyUlerVn3LjGYbCOLj0D`, frame `75:1292`, `resilio-versio_panel`, black panel, white labels, red secondary labels) exported as **SVG** with guide layers hidden. Claude reads the layer positions (pots, jacks, LEDs, switches, button, mounting holes) through the Figma connection to place the 3D parts.
 **Owner reviews:** clay renders (no materials) for composition first, then lit renders.
 
 ## A4. High-fidelity pages (third review)

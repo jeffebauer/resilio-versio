@@ -30,7 +30,7 @@
   /* The one accent: LED red / valve orange (D3). Two tones, one hue:
      --signal for marks, dots, LEDs, waveform playheads (never small text);
      --signal-ink for filled buttons with white text (5.1:1, AA). */
-  --signal:       #e8501c;
+  --signal:       #ee5641; /* the panel's own red (owner's panel art) */
   --signal-ink:   #c83d16;
   --signal-hover: #b23512;
   --on-signal:    #ffffff;
