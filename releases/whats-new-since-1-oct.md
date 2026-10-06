@@ -7,7 +7,7 @@ A new spring sound
 - Then a final fit from a second recording session: a softer hit up front, the main ring sitting lower and warmer, and Wellspring-like stereo (lows centred, the width growing as the tail goes on). The springs' level also sits more evenly across TONE and DRIVE.
 
 SPRINGS position 3 is now ECHO MODE: a tape echo feeding the springs
-- Every dub rig paired a spring with tape echo (King Tubby's homemade delay, Lee Perry's Space Echo, Adrian Sherwood, Pole). Each repeat now lands in the springs as its own splash, worn like old tape: loud, bright repeats come back thicker and duller, each pass a little darker and rounder, with no digital fizz.
+- Every dub rig paired a spring with tape echo (King Tubby's homemade delay, Lee Perry's Space Echo, Adrian Sherwood, Pole). A quarter of each repeat goes through the springs and the rest comes straight off the tape, wide like two playback heads, so every repeat stays a distinct hit with a spring halo. The repeats wear like old tape: loud, bright ones come back thicker and duller, each pass a little darker and rounder, with no digital fizz.
 - DECAY sets the echo's feedback. At the very top it holds a steady, saturated loop instead of running away.
 - TENSION sets the echo time; moving it bends the repeats' pitch like a Space Echo's rate knob.
 - Patch a clock into the gate, or tap the button (see below), and TENSION steps through 1/2 down to 1/16, dotted values included. The plugin follows the DAW's tempo, and its TENSION readout shows the note value.
@@ -20,7 +20,7 @@ THROW: the button and the gate (dub's classic send move)
 - Heads-up: the Kick is gone. The button is now a THROW button.
 - In SPRINGS 1–2, hold the button (or send a gate) and the springs' send opens only while it's held: drench one snare, leave the next dry, and the tail always rings on. It's the mixer move from Tubby, Dennis Bovell and Sherwood.
 - Throw mode switches on at the first press or gate, so the button works with nothing patched. To leave it: double-tap, then hold the button for 2 s (the four LEDs blink white). Single taps and holds of any length always throw.
-- In SPRINGS 3 (echo mode) the button taps the tempo instead, and the gate is the echo's clock. A tapped tempo holds after you stop; one lone tap goes back to TENSION's free time.
+- In SPRINGS 3 (echo mode) the button taps the tempo instead, and the gate is the echo's clock. A tapped tempo holds after you stop; one lone tap goes back to TENSION's free time. The LEDs flash purple on each tap, then pulse purple on your beat for 4 s to confirm it.
 - In the plugin: the KICK button is now THROW, and held MIDI notes act as the gate (a clip can sequence throws to the sample).
 
 HOLD at the top of DECAY (CLEAN and DRIVEN)

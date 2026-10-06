@@ -2,17 +2,17 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026. Merged and in Ableton (`9ba726f`): tape wear B in echo mode (held top locked) and TENSION's note-value readout, on top of 5 Oct's round 5, wet µ-law and the THROW button. Next for you: hear the echo in the plugin, then the new module builds (§2–3)
+**Last updated:** 6 Oct 2026, afternoon. Merged and in Ableton (`bdd3910`): echo mode with a quarter through the springs (the rest the tape's repeats heard directly, wide), tape wear B, TENSION's note values, the purple tap light (now 4 s). Next for you: CPU run 21 and the new release on the module (§2), then listen (§3)
 
 | Milestone | State |
 |---|---|
-| M2 plugin | Built, installed `3b70fba`. Your Ableton check is open (§5) |
-| M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. Flash: release 95.7 %, CPU-test build 97.2 % |
-| Real firmware on the Versio | `9ba726f` (flashed 6 Oct): everything merged, incl. tape wear B. **Click check passed** |
-| M8 sound | All merged, incl. tape wear B for echo mode (6 Oct) |
+| M2 plugin | Built, installed `bdd3910`. Your Ableton check is open (§5) |
+| M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (the springs blend) ready to flash (§2): desktop says ~+1.5 %, so echo mode ~77–78.5 %. Flash: release 96.4 %, CPU-test build 97.3 % |
+| Real firmware on the Versio | `3b70fba` (purple tap light; click check passed on `9ba726f`, same sound). Next: `bdd3910` (§2) |
+| M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points and share read-me are stale: refreshed after you've tested the new build. Friends' release notes are up to date |
 
-**Plugin in Ableton:** `3b70fba` (installed 6 Oct 12:36, AU validated): the purple tap light, tape wear B in echo mode, TENSION shows note values in echo mode, plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
+**Plugin in Ableton:** `bdd3910` (installed 6 Oct 14:25, AU validated): echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
 
 **Share package:** [GitHub Release v2026.10.01-1d18fce](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.01-1d18fce) (private) and the [candidate F pre-release](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.02-cef6a77-candidate-F): both predate this week; the next one follows your testing (Optional)
 
@@ -23,9 +23,12 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - [ ] **Round 5's side changes** you haven't heard: the wet 1 dB lower from TONE noon right; DRIVEN's grit holds up better along DRIVE; KICKED's SPLASH a bit stronger at low DRIVE and never weaker as DRIVE rises; the Hold no longer swells into kicks; WOBBLE's left side a little gentler at DECAY's very top
 - [ ] **Two calls the build made:** a tapped tempo **holds** after you stop tapping (one lone tap returns to free time after ~2 s). Say if you'd rather taps expire like the gate clock
 
-### 3a. The tap tempo light on the module (≈5 min)
-- [ ] Flash `dist/resilio_versio_release_3b70fba.bin` (adds the purple tap light; sound identical to `9ba726f`). In SPRINGS 3 tap the button: a purple flash on each tap, then purple pulses on your beat until 2 s after the last tap. Does it read as purple (not blue or pink), clearly unlike amber and red? Is a quick tap's flash easy to see? Pulses in time? A lone tap: one flash. Flip SPRINGS off 3: it stops. A quick click check while you're there (flip SPRINGS 3 ↔ 1/2 under load)
+### 2. CPU run 21, then the new release, on the module (≈20 min)
+- [ ] Flash `dist/resilio_versio_m3_profile_run21.bin` and leave it streaming in your terminal (Claude reads it there). Echo mode now runs the direct echo next to the springs: expected ~77–78.5 % peak, ceiling 80 %
+- [ ] Then flash `dist/resilio_versio_release_bdd3910.bin` and a **click check** (flip SPRINGS 3 ↔ 1/2 under load, knobs fast, throws, taps). The purple now pulses 4 s after the last tap: long enough?
 
+### 3. Hear the new echo (plugin, or `renders/echo_springs_c_check/`) (≈15 min)
+- [ ] **Echo mode is now a quarter through the springs** (your pick C): each repeat a distinct hit, wide but centred, as loud as before. The check page compares it with the old echo, **not** level-matched: same loudness? Centred, not leaning left? Does turning DECAY up keep it level with the old one? On a send (MIX fully wet) the first repeat comes out about as loud as the hit from DECAY ~3 o'clock up: you said that's fine
 ### 3b. Hear tape wear B in the plugin (≈10 min)
 - [ ] Echo mode (SPRINGS 3): repeats should wear warm and round, no fizz. **At DECAY's very top** the held repeats now settle and stay put (your call); it sits a few dB quieter than the old BBD top and "breathes" a little, like the BBD did. Fine, or want it louder / steadier?
 - [ ] TENSION in echo mode shows the note value (1/2 … 1/16, dotted) on the panel and in Ableton's device view (it may need a knob touch to refresh after flipping SPRINGS)
@@ -54,7 +57,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Echo mode: 25 % through the springs, wide** (your pick, C on every row, 6 Oct): becoming the default, as loud as today's echo, the stereo image centred; then merged and installed when every test passes (your OK), plus a new release and CPU run 21 for the module
 - **First chord after a run of drums** is still ~2.5 dB hot (the level trim's one-tick lag). Small; queued
 
 ## What to send Claude
@@ -74,6 +76,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 6 Oct 2026: **Merged and installed `bdd3910`:** echo mode's springs blend C (25 % springs, the rest the tape's repeats heard directly, wide; level-matched to the old echo, image centred; ADR 0041 amendment, SPEC v1.0.40) and the purple pulses for 4 s (SPEC v1.0.41). The first repeat on a send as loud as the hit: fine (your call). Release `bdd3910` + CPU run 21 built
+- 6 Oct 2026: **Purple tap light on the module:** works well; asked for longer pulses (now 4 s)
 - 6 Oct 2026: **Echo with less spring listened:** C (25 % springs, the rest the tape's repeats heard directly, wide) on every row and ATTITUDE
 - 6 Oct 2026: **Purple tap light merged and installed** (`3b70fba`, ADR 0043 amendment, SPEC v1.0.39): a purple flash on each tap in echo mode, then pulses on the tapped beat until 2 s after the last tap. Release `3b70fba` built
 - 6 Oct 2026: **Click check passed** on release `9ba726f` (tape wear B, the button, SPRINGS 3 ↔ 1/2 under load): no clicks
