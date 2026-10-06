@@ -13,7 +13,7 @@ SPRINGS position 3 is now ECHO MODE: a tape echo feeding the springs
 - Patch a clock into the gate, or tap the button (see below), and TENSION steps through 1/2 down to 1/16, dotted values included. The tempo holds when the clock stops, so stopping and starting your sequencer doesn't bend the echo; one lone pulse sends it back to free time. The plugin follows the DAW's tempo, and its TENSION readout shows the note value.
 
 TONE: King Tubby's "Big Knob"
-- The right half of TONE is modelled on the stepped high-pass on Tubby's MCI desk (an Altec 9069B): a steep 18 dB/oct low cut up to 800 Hz, with the filter's nasal bump on sharp hits.
+- The right half of TONE is modelled on the stepped high-pass on Tubby's MCI desk (an Altec 9069B): a steep 18 dB/oct low cut up to 800 Hz, with the filter's nasal bump on sharp hits. Unlike the Altec's fixed steps it sweeps smoothly, so you can ride it by hand or modulate it with CV.
 - It now sits after the springs, the way Black Ark's low cut sat on the spring return: sweep it and the tail you're hearing goes thin and telephone-like straight away.
 
 THROW: the button and the gate (dub's classic send move)
