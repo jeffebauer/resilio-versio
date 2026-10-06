@@ -1,9 +1,6 @@
 [submodule "libs/libDaisy"]
 	path = libs/libDaisy
 	url = https://github.com/electro-smith/libDaisy.git
-[submodule "libs/DaisySP"]
-	path = libs/DaisySP
-	url = https://github.com/electro-smith/DaisySP.git
 [submodule "libs/JUCE"]
 	path = libs/JUCE
 	url = https://github.com/juce-framework/JUCE.git

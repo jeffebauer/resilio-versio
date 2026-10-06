@@ -13,3 +13,4 @@ Backup/
 tools/__pycache__/
 .claude/worktrees/
 __pycache__/
+.idea/
