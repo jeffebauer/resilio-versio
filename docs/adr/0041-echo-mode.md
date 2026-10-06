@@ -352,3 +352,11 @@ The new-peak check below reads 36.7 dB and 35.9 dB for B and C, against 11.8 dB 
 **Firmware:** release 126,372 B (main 125,852: +520), profile 127,512 B (127,320: +192; 97.3 %, 3.5 KB left), m0test 82,320 B unchanged. The wide heads' 8 ms line is 4 KB of the Tank object (.bss, AXI SRAM).
 
 **CPU:** desktop, KICKED, DRIVE 1, DECAY 1, TENSION 0 (`test_echo_mode` "blend"): A 449–454 ns/sample, C 457–460 (+1.4–1.8 %); ping-pong +6.6–7.1 % (Renderer only). On the chip echo mode peaked at 75.8 % (run 20) of the 80 % ceiling: scaled, C is ~77 %, and since desktop estimates have run up to ~2× low, allow up to ~78.5 %. Only a chip run (profile build) is trustworthy.
+
+## Amendment: The gate clock holds (owner, 6 Oct 2026; branch `feat/gate-clock-holds`)
+
+**Context:** the owner clocked echo mode from Ableton by CV: "when I stop the transport in ableton, the delay time changed. Ideally, it would keep the clock speed as it was … it would stop the pitch shift on stop/start." The gate clock was lost 2.25 beats (≤ 2.5 s) after its last pulse, on the reading that a stopped sequencer means "no clock", so the tape glided to free time (a swoop) and back again when the transport restarted.
+
+**Decision:** the gate clock **holds** its tempo when the pulses stop, exactly as tap tempo does since ADR 0043 (`EchoClock::update(now, true)` for both). The way back to free time is the same as for taps (owner's pick): **one lone pulse**, a rising edge with no second one within the slowest interval (kClockMinBpm's, ~2 s). A transport restart is a steady run of pulses, so it never reads as lone; at the same tempo the echo time doesn't move at all (a restart's intervals are within kClockJitter). A new tempo still takes over as before; between the gate and the taps, the last to set a tempo still wins (now neither is ever "lost" by silence, so a tapped tempo no longer comes back when the gate stops: the gate's held tempo stays).
+
+**Testable:** `test_echo_mode` "Clock held when the pulses stop": 60 bpm, 10 s of silence: still locked, the echo time unchanged; a restart at the same tempo moves it 0.000000 s; a lone pulse: still held 1 s on, free time 3 s on. `test_button`: the gate stopping holds its 90 bpm (was: the tapped tempo returned). Sound otherwise unchanged (the hold only differs once pulses have stopped for 2.25 beats).
