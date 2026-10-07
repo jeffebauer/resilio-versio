@@ -636,15 +636,24 @@ ul > li::marker { color: var(--signal); }
 }
 
 /* ---- Shape it with us (feedback; owner, 8 Oct) -------------------------------------
-   The three steps as definition-list rows, the same label | description form as the panel
-   list (owner, 8 Oct: rows, not cards), then the two issue forms as buttons and the FAQ link. */
-.shape-steps { margin: var(--stack-4) auto 0; border-bottom: var(--hair) solid var(--line); }
-.shape-steps > div { display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
-.shape-steps dt { font-weight: var(--wt-display); white-space: nowrap; }   /* 11rem: the panel list's 9rem plus the step number */
-.shape-steps dd { margin: 0; }   /* primary text, as in the panel list */
-.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); margin-right: 0.6rem; vertical-align: 0.15em; }
+   The three steps on a rail (owner's pick, 8 Oct): a hairline with a red dot per step, in the
+   tiny diagrams' language. Across the column on wider screens, down the left edge on phones,
+   so the text keeps the full width. Then the two issue forms as buttons and the FAQ link. */
+.shape-steps { list-style: none; padding: 0; margin: var(--stack-4) auto 0; width: min(100% - 2 * var(--margin), 64rem); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); --dot: 0.625rem; }
+.shape-steps li { position: relative; padding-top: calc(var(--dot) + var(--stack-2)); display: grid; gap: 0.4rem; align-content: start; }
+.shape-steps li::before { content: ""; position: absolute; left: 0; top: 0; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--signal); }
+.shape-steps li:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) / 2); left: calc(var(--dot) + 0.5rem); right: calc(0.5rem - var(--gutter)); border-top: var(--hair) solid var(--line); }
+.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); }
+.shape-title { font-size: var(--fs-body); line-height: 1.2; }
+.shape-steps p { color: var(--ink-2); max-width: 22em; }
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
-@media (max-width: 47.99rem) { .shape-steps > div { grid-template-columns: minmax(0, 1fr); row-gap: 0.15rem; } }
+@media (max-width: 47.99rem) {
+  .shape-steps { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .shape-steps li { padding: 0 0 var(--stack-3) calc(var(--dot) + 1rem); }
+  .shape-steps li:last-child { padding-bottom: 0; }
+  .shape-steps li::before { top: 0.1rem; }
+  .shape-steps li:not(:last-child)::after { top: calc(0.1rem + var(--dot) + 0.4rem); bottom: 0.4rem; left: calc(var(--dot) / 2); right: auto; border-top: 0; border-left: var(--hair) solid var(--line); }
+}
 
 /* ---- Theme switch (footer; owner, 8 Oct) --------------------------------------------
    System · Light · Dark, a small segmented control like the player's A/B. */
