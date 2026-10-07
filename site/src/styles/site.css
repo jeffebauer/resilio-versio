@@ -56,12 +56,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .wordmark .logo-short { display: none; height: 0.875rem; aspect-ratio: 264 / 40; }
 
 .site-header .nav { position: relative; grid-column: 2 / 4; grid-row: 1; justify-self: start; }
-.site-header .nav ul { display: flex; gap: clamp(0.25rem, 0.1rem + 0.5vw, 0.75rem); list-style: none; margin: 0 0 0 -0.75rem; padding: 0; }   /* -0.75rem: the text stays where it was; the pill's padding hangs left */
+.site-header .nav ul { display: flex; gap: clamp(0.25rem, 0.1rem + 0.5vw, 0.75rem); list-style: none; margin: 0 0 0 calc(-0.75rem - 4px); padding: 0; }   /* the text stays where it was; the pill's padding hangs left */
 .site-header .nav a, .menu li a {
   font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
   text-decoration: none; text-underline-offset: 0.35em;
 }
-.site-header .nav a { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 0.75rem; }
+.site-header .nav a { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 calc(0.75rem + 4px); }
 /* Hover: a soft rounded pill that slides and resizes from link to link (owner, 7 Oct); it rests on
    the current page. Placed by the script in Base.astro; without JS, the current page gets it. */
 .site-header .nav .nav-pill {
@@ -138,16 +138,19 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .hero-title {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gutter); row-gap: 0.5rem;
   padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); align-items: end;
+  --tagline-fs: clamp(1.375rem, 1rem + 1.5vw, 2.25rem);
 }
 .hero-title h1 { grid-column: 1; }
 .hero-tagline {
   grid-column: 1; max-width: 26em; color: var(--ink-2);
-  font-weight: var(--wt-light); font-size: clamp(1.375rem, 1rem + 1.5vw, 2.25rem); line-height: 1.2; letter-spacing: -0.005em;
+  font-weight: var(--wt-light); font-size: var(--tagline-fs); line-height: 1.2; letter-spacing: -0.005em;
 }
-.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: center; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
+/* The buttons' bottom edge sits on the tagline's last baseline (owner, 7 Oct): MD UI's baseline
+   is 0.283 em above the bottom of a 1.2 line box. */
+.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: end; margin-bottom: calc(var(--tagline-fs) * 0.283); display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
 @media (max-width: 47.99rem) {
   .hero-title { grid-template-columns: minmax(0, 1fr); }
-  .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-1); }
+  .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-1); margin-bottom: 0; }
 }
 
 /* ---- Intro ---------------------------------------------------------------- */
@@ -333,6 +336,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .two-ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .way { display: flex; flex-direction: column; gap: var(--stack-3); align-items: flex-start; }
 .way .flow { color: var(--ink-2); }
+.way h3 + p { margin-top: calc(0.5rem - var(--stack-3)); }   /* the subtitle sits close under its title (owner, 7 Oct) */
 .way > :last-child { margin-top: auto; }  /* the buttons line up whatever the text length */
 .way > :last-child { margin-top: auto; }  /* buttons line up whatever the text length */
 @media (max-width: 47.99rem) { .two-ways { grid-template-columns: minmax(0, 1fr); } }

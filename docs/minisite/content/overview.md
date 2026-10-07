@@ -40,11 +40,12 @@ Resilio runs behind your Versio's printed panel, so the labels on your module wo
 
 <!-- PANEL: assets/panel/resilio-versio-panel.svg -->
 
-- **7 knobs** Each with a CV input: BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE
+- **4 LEDs** Meter the input and output
+- **7 knobs** BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE
 - **2 switches** TANK (1 · 2 · ECHO) and ATTITUDE (CLEAN · TAPE · VALVE)
 - **1 button** THROW / TAP
+- **7 CV inputs** One per knob, 0–5 V, added to the knob's position
 - **1 gate input** Throws, or clocks the echo
-- **4 LEDs** Meter the input and output
 
 ## Safe to try
 
