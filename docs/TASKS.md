@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, end of session 9. The minisite redesign (revision 2) with the hero film is on draft PR #2 and its Vercel preview; repo still private; first-chord fix merged on `main` (not yet in Ableton or on the module)
+**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app (merged to `main`; downloads still "coming soon" while the repo is private). Your review changes are on `feat/site-refine` (preview below). First-chord fix installed in Ableton
 
 | Milestone | State |
 |---|---|
@@ -12,7 +12,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points, share read-me and README refreshed and checked against the code (6 Oct); friends' release published. Left: a printed panel overlay with the new names |
 
-**Plugin in Ableton:** `c1d98ac` (installed 6 Oct 17:54, AU validated): the new panel names (BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP); the gate clock holds its tempo when the pulses stop; echo mode's springs blend C (25 % springs, wide), tape wear B, TENSION note values, the purple tap light (4 s), plus everything from 5 Oct. **Rescan:** hold ⌥, Rescan, then insert a fresh instance (old instances may still show the button's old KICK name)
+**Plugin in Ableton:** `1e02c96` (installed 7 Oct 14:53, AU validated): the first-chord fix (a new sound after drums is read on its own) and the plugin panel layout fix, plus everything in `c1d98ac` (new panel names, the gate clock hold, echo mode's springs blend C, tape wear B, TENSION note values, the purple tap light). **Rescan:** hold ⌥, Rescan, then insert a fresh instance
 
 **Share package:** [GitHub Release v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private, Latest): universal plugin, firmware, read-me with the what's-new notes
 
@@ -21,10 +21,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 2. The minisite, revision 2 (review on the preview)
-- [ ] Look through the redesign: locally at http://localhost:4322 (Claude starts it; real Phonic) or on the protected preview https://resilio-versio-git-feat-site-v2-jeffebauers-projects.vercel.app (Inter until the fonts are uploaded). PR #2 into `feat/site`. Say what to change, or OK it to merge into `feat/site`
+### 2. The minisite (live; refinements on a branch)
+- [ ] Look through your review changes on `feat/site-refine`: locally at http://localhost:4323 (Claude starts it; MD UI / MD IO fonts) or on the protected preview https://resilio-versio-git-feat-site-refine-jeffebauers-projects.vercel.app. The new wireframe panel (manual's panel map; each starting point drawn as a set panel), MD UI + MD IO, the hero edge, the download section. OK it and Claude merges it to `main` (live)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
-- [ ] **Fonts on Vercel** (≈10 min, Claude walks you through it): upload the 12 Phonic WOFF2 files (`dist/webfonts/phonic/`, never in git) to private storage and set `FONTS_URL` + `FONTS_TOKEN`, so previews show Phonic
+- [ ] **Fonts on Vercel** (≈10 min, Claude walks you through it): a private Vercel Blob store connected to the project, the two variable fonts (`MDUI-VF.woff2`, `MDIO-VF.woff2`, never in git) uploaded to it, and `FONTS_URL` set, so the live site shows MD UI / MD IO instead of Inter. Worth checking: your Future Fonts licence covers web use
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
@@ -38,7 +38,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord fix** (merged, SPEC v1.0.45, 24 of 24 suites): needs a CPU run on the chip and a plugin install (with the new panel layout) before it reaches you; Claude prepares both when you're at the rack / Ableton is closed. CPU-test firmware has ~2.2 KB of flash left
+- **First chord fix** (merged, SPEC v1.0.45; in Ableton since 7 Oct): needs a CPU run on the chip before the next release; Claude builds the CPU-test firmware when you're at the rack. CPU-test firmware has ~2.2 KB of flash left
 - **Render scripts** (`feat/site-renders`, Blender) merge into the site branch when the site merges
 
 ## What to send Claude
@@ -58,6 +58,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Site live** at https://resilio-versio.vercel.app (revision 2 and the render scripts merged to `main`, for friends' feedback). **Plugin `1e02c96` installed** (first-chord fix, AU validated). Fonts switched from Phonic to MD UI (text) + MD IO (mono), both variable
 - 7 Oct 2026: **Minisite:** Vercel project set up (protected previews); Blender installed; panel art v2 and the logos in; renders picked and placed; the hero film (rises from below, lands straight on) rendered; Inter as the fallback font; all 12 Phonic cuts converted to web fonts (kept out of git). **Redesign (revision 2)** decided with you (DESIGN-v2.md: a hybrid of TE, Mier, Bull 5 and Fors, retiring the UDO-specific elements) and built by a cloud session (PR #2), then your review changes (text-only callouts, diagrams instead of pictograms, denser tiles, the whole hero film)
 - 7 Oct 2026: **First chord after drums:** B everywhere on the A/B page; merged (SPEC v1.0.45)
 - 6 Oct 2026: **First chord after drums listened:** B (the fix) on every row of `renders/first_chord_fix_ab`, including the snare after a kick 1–2 dB quieter. Merged (ADR 0035 amendment, SPEC v1.0.45)
