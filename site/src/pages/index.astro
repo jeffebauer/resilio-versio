@@ -41,7 +41,6 @@ const plugin = section(sections, 'the-plugin');
 const status = section(sections, 'status');
 
 const soundIntro = paras(sound.html)[0] ?? '';
-const soundList = sound.html.match(/<ul>[\s\S]*?<\/ul>/)?.[0] ?? '';
 const movesIntro = paras(moves.html)[0] ?? '';
 const panelParas = paras(noSlots(panel.html));
 const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\/p>/, '');
@@ -89,7 +88,6 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="wide">
       <DemoList />
     </div>
-    <div class="wide sound-notes described" set:html={soundList} />
   </section>
 
   <!-- 4 The panel (white) -->
@@ -112,12 +110,10 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="column flow">
       <h2 class="h2" id="features-h">{moves.title}</h2>
       <div class="lede" set:html={inner(movesIntro)} />
+      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
     </div>
     <div class="wide">
       <FeatureTiles />
-    </div>
-    <div class="column">
-      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
     </div>
   </section>
 
@@ -126,13 +122,6 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="column">
       <h2 class="h2" id="two-ways-h">Two ways to play</h2>
     </div>
-    <figure class="wide" data-reveal>
-      <div class="card-media" style="aspect-ratio: 16 / 9">
-        <Picture src={patched} widths={widthsFor(patched)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
-          alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
-      </div>
-      <figcaption class="caption">Patched: both inputs and both outputs.</figcaption>
-    </figure>
     <div class="wide two-ways">
       <div class="tile way">
         <h3 class="h3">On the module</h3>
@@ -147,13 +136,20 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
         <Button href="/install/#in-a-daw-macos" variant="ghost" arrow>Install the plugin</Button>
       </div>
     </div>
+    <figure class="wide" data-reveal>
+      <div class="card-media" style="aspect-ratio: 16 / 9">
+        <Picture src={patched} widths={widthsFor(patched)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
+          alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
+      </div>
+      <figcaption class="caption">Patched: both inputs and both outputs.</figcaption>
+    </figure>
   </section>
 
   <!-- 7 Download (light grey band) -->
   <section class="section band-tile" id="download" aria-labelledby="download-h">
     <div class="wide download-grid">
+      <h2 class="h2 download-title" id="download-h">Download</h2>
       <div class="flow">
-        <h2 class="h2" id="download-h">Download</h2>
         <h3 class="small status-title">{status.title}</h3>
         <div class="flow small quiet" set:html={status.html} />
       </div>

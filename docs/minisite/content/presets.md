@@ -9,9 +9,11 @@ order: 4
 
 Six classic dub settings to start from, then move by ear. The Versio has no preset memory: set the knobs by hand (in the plugin, type the values or save them as your DAW's presets).
 
-**Reading the tables.** Knob values run from 0 (fully left, 7 o'clock) to 1 (fully right, 5 o'clock); noon is 0.5, and each hour is about 0.1. The clock positions are approximate, the numbers are exact. TANK and ATTITUDE: left, centre, right.
+**Reading the panels.** Each starting point shows the panel with its knobs and switches set, and the exact values underneath. Knob values run from 0 (fully left, 7 o'clock) to 1 (fully right, 5 o'clock); noon is 0.5, and each hour is about 0.1. The switches are drawn in their position: up, centre or down.
 
 WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Every starting point sits just left of noon for a little tape drift. TONE right of noon is the Big Knob low cut, so the starting points that sit there (Tubby snare splash, Tight slap) are slightly thinned.
+
+<!-- The settings: the site draws each row as a set panel (site/src/pages/presets.astro). -->
 
 | Starting point | TANK | ATTITUDE | BLEND | DECAY | TONE | TENSION | SPLASH | DRIVE | WOBBLE |
 |---|---|---|---|---|---|---|---|---|---|

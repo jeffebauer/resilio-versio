@@ -2,9 +2,11 @@
 // 1. Copies the demo audio, the panel art, the plugin screenshot and the renders (stills, and the
 //    hero reveal video when it exists) from docs/minisite/assets into public/
 //    (one source of truth: the site never keeps its own copy in git).
-// 2. Fetches the licensed Phonic webfonts into public/fonts/ (git-ignored):
+// 2. Fetches the licensed MD UI / MD IO variable webfonts into public/fonts/ (git-ignored):
 //    - FONTS_DIR=/path/to/woff2s       copy from a local folder, or
-//    - FONTS_URL=https://…/ + FONTS_TOKEN=…   download each file with a bearer token,
+//    - FONTS_URL=https://…/ + FONTS_TOKEN=…   download each file with a bearer token
+//      (FONTS_TOKEN defaults to BLOB_READ_WRITE_TOKEN, else to VERCEL_OIDC_TOKEN, which Vercel
+//      gives every build: a private Blob store connected to the project then needs only FONTS_URL),
 //    - neither: skip. The site builds and renders on the fallback stack in tokens.css.
 import { mkdir, copyFile, readdir, writeFile, access } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
@@ -14,16 +16,9 @@ const site = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const minisite = resolve(site, '..', 'docs', 'minisite');
 const pub = join(site, 'public');
 
-// The twelve Phonic cuts (DESIGN-v2 V3; the same list as src/lib/fonts.ts). Each one is
-// used when present; the site declares no @font-face for a missing file.
-const FONT_FILES = [
-  'Phonic-Light.woff2', 'Phonic-LightItalic.woff2',
-  'Phonic-Regular.woff2', 'Phonic-RegularItalic.woff2',
-  'Phonic-Medium.woff2', 'Phonic-MediumItalic.woff2',
-  'Phonic-Bold.woff2', 'Phonic-BoldItalic.woff2',
-  'PhonicMonospaced-Light.woff2', 'PhonicMonospaced-Regular.woff2',
-  'PhonicMonospaced-Medium.woff2', 'PhonicMonospaced-Bold.woff2',
-];
+// The two variable fonts (the same list as src/lib/fonts.ts). Each one is used when
+// present; the site declares no @font-face for a missing file.
+const FONT_FILES = ['MDUI-VF.woff2', 'MDIO-VF.woff2'];
 
 async function copyDir(from, to, filter) {
   await mkdir(to, { recursive: true });
@@ -38,11 +33,13 @@ async function exists(p) {
 
 async function fonts() {
   const dest = join(pub, 'fonts');
-  const { FONTS_DIR, FONTS_URL, FONTS_TOKEN } = process.env;
+  const { FONTS_DIR, FONTS_URL } = process.env;
+  const FONTS_TOKEN = process.env.FONTS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
+  if (FONTS_URL && !FONTS_TOKEN && !FONTS_DIR) console.warn('fonts: FONTS_URL is set but there is no token (FONTS_TOKEN, BLOB_READ_WRITE_TOKEN or VERCEL_OIDC_TOKEN)');
 
   if (FONTS_DIR) {
     const n = await copyDir(resolve(FONTS_DIR), dest, (f) => FONT_FILES.includes(f));
-    return `fonts: copied ${n}/${FONT_FILES.length} Phonic file(s) from FONTS_DIR`;
+    return `fonts: copied ${n}/${FONT_FILES.length} font file(s) from FONTS_DIR`;
   }
 
   if (FONTS_URL && FONTS_TOKEN) {

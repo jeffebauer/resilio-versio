@@ -1,13 +1,74 @@
 ---
 import Doc from '../layouts/Doc.astro';
-import DocContent from '../components/DocContent.astro';
-import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
+import PanelWire from '../components/PanelWire.astro';
+import { getPage, pageHtml, splitSections, stripTags, takeH1 } from '../lib/content';
+import { KNOBS, SWITCHES, type PanelSettings, type KnobKey } from '../lib/panel';
 
 const page = await getPage('presets');
 const { h1, rest } = takeH1(pageHtml(page));
-// The settings table is ten columns wide: keep its cells on one line, scroll on phones.
-const html = rest.replace('<table class="spec">', '<table class="spec wide">');
+
+// The settings table in the copy is the one source of the numbers. The page reads it and
+// draws each row as a set panel beside its starting point, instead of showing the table.
+const table = rest.match(/<table[\s\S]*?<\/table>/)?.[0] ?? '';
+const cells = (row: string) => [...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((m) => stripTags(m[1]));
+const [head, ...rows] = [...table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => cells(m[1]));
+if (!head || !rows.length) throw new Error('presets.md: the settings table is missing');
+const col = (name: string) => {
+  const i = head.findIndex((h) => h.toUpperCase() === name);
+  if (i < 0) throw new Error(`presets.md: no ${name} column`);
+  return i;
+};
+const settings = new Map<string, PanelSettings>();
+for (const r of rows) {
+  const s: Record<string, number | string> = {
+    tank: r[col('TANK')],
+    attitude: r[col('ATTITUDE')],
+  };
+  for (const k of KNOBS) s[k.key] = parseFloat(r[col(k.name)]);
+  settings.set(r[0], s as PanelSettings);
+}
+
+const { lead, sections } = splitSections(rest.replace(table, ''));
+const values = (s: PanelSettings) => [
+  ...SWITCHES.map((w) => [w.name, s[w.key]]),
+  ...KNOBS.map((k) => [k.name, String(s[k.key as KnobKey])]),
+];
 ---
 <Doc page={page} h1={h1} kicker="Resilio Versio · six dub settings">
-  <DocContent parts={splitSlots(html)} />
+  <Fragment set:html={lead} />
+  {sections.map((sec) => {
+    const s = settings.get(sec.title);
+    return (
+      <>
+        <h2 id={sec.id}>{sec.title}</h2>
+        {s ? (
+          <div class="preset">
+            <figure class="preset-panel">
+              <PanelWire settings={s} controls label={`${sec.title}: panel settings`} />
+              <figcaption>
+                <dl class="preset-values">
+                  {values(s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+                </dl>
+              </figcaption>
+            </figure>
+            <div class="preset-text" set:html={sec.html} />
+          </div>
+        ) : <Fragment set:html={sec.html} />}
+      </>
+    );
+  })}
 </Doc>
+
+<style>
+  .preset { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: var(--gutter); align-items: start; margin-block: var(--stack-2) var(--stack-4); }
+  .preset-panel { margin: 0; }
+  .preset-text > :first-child { margin-top: 0; }
+  .preset-values { display: grid; grid-template-columns: repeat(3, auto); gap: 0.35rem var(--stack-1); margin: var(--stack-1) 0 0; font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); }
+  .preset-values div { display: flex; flex-direction: column; }
+  .preset-values dt { color: var(--ink-2); font-size: 0.625rem; text-transform: uppercase; }
+  .preset-values dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+  @media (max-width: 39.99rem) {
+    .preset { grid-template-columns: minmax(0, 1fr); }
+    .preset-panel { max-width: 18rem; }
+  }
+</style>

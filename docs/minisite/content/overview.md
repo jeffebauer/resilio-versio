@@ -22,11 +22,6 @@ A simulated spring tank you can throw snares into, splash, drive, filter like Ki
 
 A spring tank, not a room. Every hit lands in the springs as its own **splash**: a bright clang on the attack, then echoes that sweep upward (the highs arrive after the lows: the "boing" of a real spring), then a tail that darkens and blurs into a wash instead of ticking like a delay.
 
-- **Warm at rest, splashy when pushed.** Gentle highs from the first moment, repeats that darken as they go, the bass centred and the width growing as the tail rings on.
-- **Every knob position usable.** No dead zones, no cliff edge into runaway feedback. The tail always fades unless you ask it not to.
-- **Grit you choose.** CLEAN is a polite, linear tank. TAPE adds tape saturation and a fine grain. VALVE is a spring in a cranked valve amp: hard, lopsided saturation inside the tank, rattle on hits, coarse grit, and allowed to howl. Your dry signal stays clean in every mode.
-- **Nothing added to your playing.** SPLASH makes your hits hit harder, with their own highs and their own attack. It doesn't layer samples on top. Ghost notes in a groove stay quiet.
-
 ## Built around the dub moves
 
 Dub treats the mixing desk as an instrument played live. The reverb isn't a background room: it's thrown at single hits, ridden, filtered and muted, then left to ring on its own, and every pass comes out different.

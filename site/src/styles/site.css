@@ -95,12 +95,14 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   .wordmark .logo-short { display: block; }
 }
 
-/* ---- Section headings (V5): big Phonic Bold, no numbers ------------------ */
+/* ---- Section headings (V5): big MD UI Bold, no numbers -------------------- */
 .section > .column + .wide, .section > .column + figure.wide { margin-top: var(--stack-5); }
 .section > .wide + .column { margin-top: var(--stack-5); }
 .section > .wide + .wide { margin-top: var(--gutter); }
 /* Two white sections in a row share one gap. */
-.section:not(.band-dark, .band-tile) + .section:not(.band-dark, .band-tile) { padding-top: 0; }
+/* Two white sections in a row: a full-width hairline between them (owner, 7 Oct). Where the
+   bands flip dark / light, the colour change is the boundary. */
+.section:not(.band-dark, .band-tile) + .section:not(.band-dark, .band-tile) { border-top: var(--hair) solid var(--line); }
 
 /* ---- Hero (dark) ----------------------------------------------------------- */
 .hero { padding-top: calc(var(--header-h) + var(--stack-2)); padding-bottom: clamp(3.5rem, 2rem + 5vw, 7rem); }
@@ -111,6 +113,9 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
 .hero-video { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
 .hero-frame.is-playing .hero-video { opacity: 1; }
+/* Once the film is in, hide the still under it: its lighter floor showed through the film's
+   anti-aliased right edge as a thin white line (owner, 7 Oct). */
+.hero-frame.is-playing .hero-still { visibility: hidden; transition: visibility 0s linear var(--dur-3); }
 .hero-pause {
   position: absolute; right: 0.75rem; bottom: 0.75rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center;
   border: 0; border-radius: var(--radius-ui); background: rgb(11 11 12 / 0.7); color: var(--on-dark); cursor: pointer;
@@ -170,14 +175,6 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .demo .spec { font-size: var(--fs-ui); }
 .demo .spec th, .demo .spec td { padding-block: 0.5rem; }
 .demo .spec th { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); width: 34%; }
-
-.sound-notes ul {
-  list-style: none; padding: 0; margin: 0;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--stack-3) var(--gutter);
-}
-@media (max-width: 63.99rem) { .sound-notes ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 39.99rem) { .sound-notes ul { grid-template-columns: minmax(0, 1fr); } }
-.sound-notes li { font-size: var(--fs-small); }
 .described { color: var(--ink-2); }
 .described strong, .described b { color: var(--ink); display: block; font-weight: var(--wt-display); margin-bottom: 0.25rem; }
 
@@ -304,20 +301,26 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .two-ways { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .way { display: flex; flex-direction: column; gap: var(--stack-3); align-items: flex-start; }
 .way .flow { color: var(--ink-2); }
+.way > :last-child { margin-top: auto; }  /* the buttons line up whatever the text length */
+.way > :last-child { margin-top: auto; }  /* buttons line up whatever the text length */
 @media (max-width: 47.99rem) { .two-ways { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Download (tile band) ---------------------------------------------------- */
-.download-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--stack-5) var(--gutter); align-items: start; }
-.status-title { font-weight: var(--wt-display); margin-top: var(--stack-4); }
+/* The title on its own row, so Status and the release line start level (owner, 7 Oct) */
+.download-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--stack-4) clamp(2rem, 1rem + 4vw, 6rem); align-items: start; }
+.download-title { grid-column: 1 / -1; }
+.status-title { font-weight: var(--wt-display); }
 @media (max-width: 63.99rem) { .download-grid { grid-template-columns: minmax(0, 1fr); } }
 .download { display: grid; gap: var(--stack-3); }
-.download .release-line { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; align-items: baseline; }
-.download .version { font: var(--wt-reg) var(--fs-lede) / 1.1 var(--font-mono); letter-spacing: -0.01em; }
+/* One size, one family: only the version is in ink (owner: the line had too many styles) */
+.download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
+.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; }
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
 .download .target h3 { font-size: var(--fs-h3); line-height: 1.05; }
 .download .target .btn { justify-self: start; }
-.download .target ul { list-style: none; padding: 0; color: var(--ink-2); }
+.download .target ul { list-style: disc; padding-left: 1.15em; color: var(--ink-2); }
+.download .target li::marker { color: var(--ink-2); }
 .download .target li + li { margin-top: 0.3rem; }
 .download .soon { display: inline-flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
 .download .btn[aria-disabled="true"] { background: var(--tile); color: var(--ink-2); cursor: not-allowed; }
@@ -327,6 +330,8 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 
 /* ---- Footer on a hairline ------------------------------------------------------ */
 .site-footer { border-top: var(--hair) solid var(--line); padding-block: var(--stack-4) var(--stack-5); font-size: var(--fs-small); }
+/* After a coloured band (Home's download section) the colour change is the edge: no hairline (owner, 7 Oct) */
+main:has(> .band-tile:last-child, > .band-dark:last-child) + .site-footer { border-top: 0; }
 .site-footer .wide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--stack-4) var(--gutter); }
 .site-footer .brand { font-weight: var(--wt-display); }
 .site-footer .lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--gutter); }
@@ -334,11 +339,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .site-footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.3rem; }
 .site-footer a { text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; text-decoration-thickness: var(--hair); }
-.site-footer .legal { grid-column: 2; color: var(--ink-2); display: grid; gap: var(--stack-1); max-width: 46em; }
-.site-footer .credit { color: var(--ink); }
+/* The legal lines: full width under a hairline that stops at the gutters (owner, 7 Oct) */
+.site-footer .legal { grid-column: 1 / -1; border-top: var(--hair) solid var(--line); padding-top: var(--stack-3); color: var(--ink-2); display: grid; gap: 0.35rem; font-size: var(--fs-micro); line-height: 1.5; }
+.site-footer .credit { color: var(--ink); font-weight: 600; }
+.site-footer .credit a { text-decoration: underline; text-decoration-thickness: var(--hair); text-underline-offset: 0.15em; }
 @media (max-width: 47.99rem) {
   .site-footer .wide { grid-template-columns: minmax(0, 1fr); }
-  .site-footer .legal { grid-column: 1; }
 }
 
 /* ---- Figures ------------------------------------------------------------------- */
@@ -433,9 +439,9 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 
 /* Slot components inside prose */
 .prose .slot { margin-block: var(--stack-4); }
-.manual-panel { display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr); gap: var(--gutter); align-items: start; }
+.manual-panel { display: grid; grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); gap: var(--gutter); align-items: start; }
 .manual-panel .panel-note { color: var(--ink-2); }
-@media (max-width: 30rem) { .manual-panel { grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); } }
+@media (max-width: 39.99rem) { .manual-panel { grid-template-columns: minmax(0, 1fr); } .manual-panel .panel-wire { max-width: 22rem; } }
 .manual-screenshot { max-width: 20rem; margin-block: var(--stack-4); }
 
 /* The panel map (line drawing) used in the manual */

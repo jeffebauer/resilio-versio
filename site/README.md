@@ -35,19 +35,19 @@ npm run check      # type and template check (astro check)
 
 If you change a Markdown plugin in `src/plugins/` and the output doesn't change, clear Astro's cache: `rm -rf node_modules/.astro`.
 
-## Fonts (Phonic is licensed: never commit it)
+## Fonts (MD UI and MD IO are licensed: never commit them)
 
-The repository is going public, so the Phonic WOFF2 files must never be in git. `site/public/fonts/` is git-ignored. Before each build, `scripts/prebuild.mjs` fetches them:
+The repository is going public, so the font files must never be in git. `site/public/fonts/` is git-ignored. Before each build, `scripts/prebuild.mjs` fetches them:
 
-- `FONTS_DIR=/path/to/folder` copies every `.woff2` from that folder (good for local work), or
-- `FONTS_URL=https://…/` + `FONTS_TOKEN=…` downloads the twelve files below with `Authorization: Bearer <token>` (for Vercel, from private storage), or
+- `FONTS_DIR=/path/to/folder` copies the two files below from that folder (good for local work), or
+- `FONTS_URL=https://…/` + `FONTS_TOKEN=…` downloads them with `Authorization: Bearer <token>` (for Vercel, from a private Blob store: connect the store to the project and `FONTS_TOKEN` defaults to `BLOB_READ_WRITE_TOKEN` or, for newer stores, the `VERCEL_OIDC_TOKEN` every Vercel build gets, so only `FONTS_URL` is needed, e.g. `https://<store-id>.private.blob.vercel-storage.com/fonts/`), or
 - neither: skips. The site still builds and looks right on Inter (and doesn't request the missing files).
 
-The twelve file names (`src/lib/fonts.ts`): `Phonic-Light`, `-LightItalic`, `-Regular`, `-RegularItalic`, `-Medium`, `-MediumItalic`, `-Bold`, `-BoldItalic`, and `PhonicMonospaced-Light`, `-Regular`, `-Medium`, `-Bold`, each `.woff2`.
+The two files (`src/lib/fonts.ts`), both variable fonts from Mass-Driver: `MDUI-VF.woff2` (text: optical size 6–48, weight 200–900, slant for italics) and `MDIO-VF.woff2` (mono: weight 200–900, italic).
 
-How they're used: the site writes one `@font-face` per file that is present. Phonic leads the text stack once its four upright weights (Light, Regular, Medium, Bold) are all there; Phonic Mono once its four cuts are. Italics are added when present. Anything missing is simply not declared, so the browser never asks for it, and Inter (300/400/500/700 + italics, from `@fontsource/inter`) takes over.
+How they're used: the site writes one `@font-face` per file that is present, covering every weight. The browser picks MD UI's optical size from the text size by itself. A missing file is simply not declared, so the browser never asks for it, and Inter (300/400/500/700 + italics, from `@fontsource/inter`) or the system mono takes over.
 
-Locally: `FONTS_DIR=~/Fonts/Phonic npm run dev`.
+Locally: `FONTS_DIR="~/Library/CloudStorage/Dropbox/Type/FontBase/Type/Mass-Driver/MD_IO-V2-FutureFonts/Fonts/Variable" npm run dev`.
 
 ## Vercel settings
 
@@ -66,7 +66,7 @@ Environment variables (all optional):
 
 | Name | What |
 |---|---|
-| `FONTS_URL`, `FONTS_TOKEN` | where to fetch the Phonic files (above) |
+| `FONTS_URL` (+ `FONTS_TOKEN`, optional with a connected Blob store) | where to fetch the font files (above) |
 | `GITHUB_TOKEN` | read-only token, so the build-time release lookup isn't rate-limited |
 | `DOWNLOADS_LIVE=1` | turns the download buttons on. Set it only once the repo is public: GitHub's download links 404 while it's private |
 | `SITE_URL` | the public address, once there's a domain (otherwise Vercel's production URL is used) |

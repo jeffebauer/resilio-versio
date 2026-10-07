@@ -1,6 +1,6 @@
 ---
 // Every page: <head> (SEO, OG, fonts), the header bar (DESIGN-v2 V4), the footer.
-// Inter (SIL OFL, self-hosted from @fontsource) is the fallback when the Phonic files
+// Inter (SIL OFL, self-hosted from @fontsource) is the fallback when the MD UI / MD IO files
 // aren't present. Latin only; the browser fetches a cut only when the page uses it.
 import '@fontsource/inter/latin-300.css';
 import '@fontsource/inter/latin-300-italic.css';
@@ -32,13 +32,13 @@ const og = new URL(ogImage, Astro.site);
 const path = Astro.url.pathname.replace(/\/?$/, '/');
 const current = (href: string) => (!href.includes('#') && path === href ? 'page' : undefined);
 
-// Fonts: one @font-face per Phonic file that's present (src/lib/fonts.ts). When a family
+// Fonts: one @font-face per font file that's present (src/lib/fonts.ts). When a family
 // isn't complete, it leaves the stack (html:root outranks the tokens' :root), so the
 // browser never asks for a file that isn't there, and Inter leads.
 const fonts = fontPlan();
 const fontCss = [
   fonts.css,
-  !fonts.sans && 'html:root{--font-sans:"Inter","Phonic Fallback","Helvetica Neue",Arial,sans-serif}',
+  !fonts.sans && 'html:root{--font-sans:"Inter","MD UI Fallback","Helvetica Neue",Arial,sans-serif}',
   !fonts.mono && 'html:root{--font-mono:ui-monospace,"SF Mono",Menlo,monospace}',
 ].filter(Boolean).join('\n');
 const preload = fonts.sans ? PRELOAD.filter((f) => fonts.present.includes(f)) : [];

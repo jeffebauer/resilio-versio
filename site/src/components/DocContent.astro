@@ -1,6 +1,6 @@
 ---
 // Renders a page's Markdown with its slot markers swapped for components.
-import PanelDiagram from './PanelDiagram.astro';
+import PanelWire from './PanelWire.astro';
 import DownloadBlock from './DownloadBlock.astro';
 import MediaCard from './MediaCard.astro';
 import type { Part } from '../lib/content';
@@ -13,8 +13,8 @@ const { parts } = Astro.props;
     <Fragment set:html={p.html} />
   ) : p.slot === 'panel' ? (
     <div class="slot manual-panel">
-      <PanelDiagram prefix="manual-panel" />
-      <p class="small panel-note">Resilio’s controls on the Versio panel, drawn to scale from Noise Engineering’s panel template. Your module’s printed labels will differ: the table below maps them.</p>
+      <PanelWire />
+      <p class="small panel-note">Resilio’s panel, drawn to scale. Your Versio’s printed labels will differ: the table below maps them.</p>
     </div>
   ) : p.slot === 'screenshot' ? (
     <div class="slot manual-screenshot">
