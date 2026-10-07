@@ -7,7 +7,7 @@ order: 3
 
 # Install
 
-Two ways to play Resilio: as firmware on a Noise Engineering Versio, or as a plugin in a DAW on a Mac. They share one sound engine.
+You can play Resilio as firmware on a Noise Engineering Versio, or as a plugin in a DAW on a Mac. Both run the same sound engine.
 
 <!-- DOWNLOADS: the same two buttons as the overview, with version, date and size. -->
 
@@ -21,12 +21,12 @@ Two ways to play Resilio: as firmware on a Noise Engineering Versio, or as a plu
 
 **Plugin**
 - A Mac with **macOS 12 or newer**, Apple Silicon or Intel.
-- A DAW that loads **Audio Unit** or **VST3** plugins. (Used day to day in Ableton Live.)
-- No Windows or Linux version.
+- A DAW that loads **Audio Unit** or **VST3** plugins. (I use it day to day in Ableton Live.)
+- There's no Windows or Linux version.
 
 ## On the Versio
 
-Resilio replaces the module's firmware entirely. Nothing else on the module changes, and Noise Engineering's own firmware goes back on with the same app (below).
+Resilio replaces the module's firmware entirely. The rest of the module stays as it is, and you can put Noise Engineering's own firmware back on with the same app (below).
 
 > **Never connect USB and Eurorack power at the same time.** Power off, take the module out of the rack and unplug its Eurorack power cable before you plug in USB.
 
@@ -36,9 +36,9 @@ Resilio replaces the module's firmware entirely. Nothing else on the module chan
 4. Choose **Select Custom File** and pick the Resilio `.bin` file you downloaded.
 5. Click **Connect**, then **Change Firmware**. Wait until it reports that it's done.
 6. **Unplug USB**, put the module back in the case, and reconnect the Eurorack power.
-7. Power on. The four LEDs play a short colour sweep: Resilio has loaded. Then they meter the input and output.
+7. Power on. The four LEDs play a short colour sweep to show Resilio has loaded, then they meter the input and output.
 
-Your Versio's printed labels won't match Resilio's controls: keep the [panel map](/manual#panel-map) handy.
+Your Versio's printed labels won't match Resilio's controls, so keep the [panel map](/manual#panel-map) handy.
 
 ### Going back to Noise Engineering's firmware
 
@@ -46,7 +46,7 @@ Same app, same steps, USB only with the rack power unplugged. At step 4, instead
 
 ### Updating Resilio
 
-Download the new `.bin` and repeat the steps above. There are no settings to lose: the module's state is its knobs and switches.
+Download the new `.bin` and repeat the steps above. You won't lose any settings, because the module's state is just its knobs and switches.
 
 ## In a DAW (macOS)
 
@@ -65,7 +65,7 @@ The download is a zip with the plugin in both formats, a read-me, and the firmwa
    ```
    xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Resilio Versio.component"
    ```
-   These remove the "downloaded from the internet" flag from those two files only. Nothing else changes.
+   These remove the "downloaded from the internet" flag from those two files and leave everything else alone.
 4. **Restart your DAW and rescan plugins.** In Ableton Live: Settings → Plug-Ins, turn on the VST3 and/or Audio Units system folders, then hold Option and click **Rescan**. It shows up as **Resilio Versio**.
 
 Use it on a return track with BLEND fully right, or as an insert with BLEND to taste.
@@ -74,7 +74,7 @@ Use it on a return track with BLEND fully right, or as an insert with BLEND to t
 
 Quit your DAW, replace the two files with the new ones, run the two Terminal lines again, and rescan. Saved sets keep their settings across versions.
 
-If a set made with an older version still shows old control names (MIX, SPRINGS, DRIVEN, KICKED), that's the DAW's cached copy: rescan the plugin or load a fresh instance. The settings are the same.
+If a set made with an older version still shows old control names (MIX, SPRINGS, DRIVEN, KICKED), that's the DAW's cached copy. Rescan the plugin or load a fresh instance. The settings themselves are the same.
 
 ### Uninstalling
 
