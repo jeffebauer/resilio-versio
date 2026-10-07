@@ -199,12 +199,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .disclosure { border-top: var(--hair) solid var(--line); }
 .disclosure summary {
   cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;
-  min-height: 2.75rem; font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink-2);
+  min-height: 2.75rem; font: var(--wt-medium) var(--fs-small) / 1 var(--font-sans); color: inherit;   /* Medium sans, full colour: distinct from the mono labels inside (owner, 7 Oct) */
 }
 .disclosure summary::-webkit-details-marker { display: none; }
 .disclosure summary::after { content: "+"; font-size: 1rem; line-height: 1; }
 .disclosure[open] summary::after { content: "−"; }
-.disclosure summary:hover { color: inherit; }
+.disclosure summary:hover { color: var(--ink-2); }
 .disclosure > :not(summary) { padding-bottom: var(--stack-2); }
 .disclosure .small { color: var(--ink-2); }
 

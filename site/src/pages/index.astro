@@ -8,7 +8,6 @@ import Button from '../components/Button.astro';
 import MediaCard from '../components/MediaCard.astro';
 import SpecTable from '../components/SpecTable.astro';
 import FeatureStack from '../components/FeatureStack.astro';
-import PanelDiagram from '../components/PanelDiagram.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
 import ScrubSequence from '../components/ScrubSequence.astro';
@@ -115,20 +114,14 @@ const INDEX = [
             <ScrubSequence />
             <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
           </figure>
-          <figure class="figure">
-            <figcaption class="caption"><span class="num">Fig. 03</span>The panel, and the map</figcaption>
-            <div class="panel-card">
-              <figure>
-                <img src="/panel/resilio-versio-panel-art.svg" width="191" height="486" loading="lazy" decoding="async"
-                  alt="Resilio Versio panel art: black panel, white control names, red secondary labels." />
-                <figcaption class="micro">Panel art</figcaption>
-              </figure>
-              <figure>
-                <PanelDiagram prefix="home-panel" draw class="on-dark" />
-                <figcaption class="micro">Panel map</figcaption>
-              </figure>
-            </div>
-          </figure>
+          <MediaCard
+            fig="03"
+            caption="The panel, front on"
+            src="/renders/front-on.jpg"
+            ratio="4:5"
+            alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks."
+            class="panel-front"
+          />
         </div>
       </div>
       <div class="main flow">

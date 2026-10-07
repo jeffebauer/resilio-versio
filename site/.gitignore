@@ -6,5 +6,6 @@ dist/
 public/audio/
 public/panel/
 public/screenshots/
+public/renders/
 # Licensed fonts: never committed (see README "Fonts")
 public/fonts/
