@@ -252,11 +252,11 @@ def build_module(mood=None):
     elif mood == "cables4":
         props.cables_all(ref)
     elif mood == "tape_spill":
-        props.tape_spill_v2()
+        props.tape_spill_v3()
     elif mood == "tape_reel":
-        props.tape_reel_strand_v2()
+        rc = props.tape_reel_strand_v3()
         # light the reel so its flanges, hub and tape pack read
-        C.area_light("reel_light", C.Vector((150, 120, 260)), C.Vector((-120, 300, 89)), size=180,
+        C.area_light("reel_light", rc + C.Vector((260, -200, 200)), rc, size=180,
                      power=C.watts(C.KEY_W * 1.2) * (0.38) ** 2)
     elif mood == "tape_cassette":
         props.cassette_with_loops()

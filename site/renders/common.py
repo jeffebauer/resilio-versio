@@ -61,10 +61,10 @@ def setup_cycles(samples=64, width=1920, height=1080, denoise=True):
     cy.adaptive_threshold = 0.02
     cy.use_denoising = denoise
     cy.denoiser = "OPENIMAGEDENOISE"
-    cy.max_bounces = 6
+    cy.max_bounces = 10
     cy.diffuse_bounces = 3
     cy.glossy_bounces = 3
-    cy.transmission_bounces = 2
+    cy.transmission_bounces = 8  # clear reel flanges: two plastic layers + windows
     cy.caustics_reflective = False
     cy.caustics_refractive = False
     sc.render.resolution_x = width

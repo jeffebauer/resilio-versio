@@ -185,7 +185,8 @@ def _ball(name, r, loc, mat):
 
 def _button(name, x, z, mats):
     # cap only, straight through the 5.33 mm hole: no bezel on the real module
-    C.cylinder(f"{name}_cap", 2.45, 5.0, (x, -1.0, z), mats["knob"], axis="X", segs=48, bevel=0.5)
+    # proud of the panel by 1.75 mm (owner: half of v1-v3's 3.5 mm)
+    C.cylinder(f"{name}_cap", 2.45, 3.25, (x, -0.125, z), mats["knob"], axis="X", segs=48, bevel=0.45)
     C.box(f"{name}_body", (7.0, 10.5, 7.0), (x, PT + 5.25, z), mats["black"], bevel=0.3)
 
 

@@ -320,3 +320,110 @@ def tape_reel_strand_v2(reel_center=(-120, 300, 89)):
          (-40, -55, 0, 60), (-58, -82, 0, 90), (-86, -68, 0, 90), (-80, -40, 0, 90), (-54, -60, 0, 50),
          (-20, -110, 0, 0), (40, -170, 0, 30), (140, -250, 0, 0), (320, -370, 0, 0)]
     ribbon("tape_reel_strand", K)
+
+
+# ------------------------------------------------------------------ v3 (owner round 8)
+
+def tape_spill_v3():
+    """More tape round the base: long flat runs with twists, stretches on
+    edge, ONE loop to the left, no loop in front of the module."""
+    K = [(-460, -300, 0, 0), (-330, -240, 0, 15), (-230, -185, 0, 75), (-170, -140, 0, 90),
+         # the one loop, to the left, standing on edge
+         (-125, -110, 0, 90), (-100, -128, 0, 90), (-112, -155, 0, 90), (-140, -150, 0, 88),
+         (-140, -122, 0, 70), (-100, -90, 0, 30),
+         # flat and twisting round the left of the base, on edge behind it
+         (-60, -45, 0, 0), (-44, -5, 0, 0), (-38, 34, 0, 35), (-10, 52, 0, 90), (28, 48, 0, 90),
+         (46, 22, 0, 60), (52, -12, 0, 10),
+         # out to the right and back across the front, wide of the panel
+         (80, -50, 0, 0), (130, -70, 0, 50), (170, -60, 0, 90), (190, -95, 0, 70), (150, -130, 0, 10),
+         (80, -150, 0, 0), (10, -175, 0, 40), (-60, -210, 0, 90), (-90, -260, 0, 30),
+         (-30, -330, 0, 0), (120, -380, 0, 0), (320, -430, 0, 0)]
+    ribbon("tape_spill", K)
+    K2 = [(-260, 60, 0, 0), (-180, 40, 0, 20), (-120, 60, 0, 85), (-80, 95, 0, 90), (-20, 110, 0, 40),
+          (60, 100, 0, 0), (130, 70, 0, 30), (200, 20, 0, 90), (240, -30, 0, 60), (300, -80, 0, 0),
+          (420, -120, 0, 0)]
+    ribbon("tape_spill2", K2)
+    K3 = [(220, -200, 0, 0), (170, -230, 0, 40), (110, -250, 0, 90), (60, -290, 0, 60),
+          (90, -340, 0, 0), (200, -400, 0, 20), (380, -470, 0, 0)]
+    ribbon("tape_spill3", K3)
+
+
+def _window_cutter(r_in, r_out, a0, a1, depth, n=24):
+    """A rounded sector (reel window) as a closed prism along X."""
+    bm = bmesh.new()
+    pts = []
+    for k in range(n + 1):
+        a = a0 + (a1 - a0) * k / n
+        pts.append((r_out * math.cos(a), r_out * math.sin(a)))
+    for k in range(n, -1, -1):
+        a = a0 + (a1 - a0) * k / n
+        pts.append((r_in * math.cos(a), r_in * math.sin(a)))
+    vs = [bm.verts.new((-depth / 2, y, z)) for y, z in pts]
+    f = bm.faces.new(vs)
+    ext = bmesh.ops.extrude_face_region(bm, geom=[f])
+    bmesh.ops.translate(bm, vec=Vector((depth, 0, 0)),
+                        verts=[e for e in ext["geom"] if isinstance(e, bmesh.types.BMVert)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return C.mesh_obj("window_cutter", bm)
+
+
+def plastic_material():
+    m = bpy.data.materials.get("reel_plastic")
+    if m:
+        return m
+    m = bpy.data.materials.new("reel_plastic")
+    m.use_nodes = True
+    p = m.node_tree.nodes["Principled BSDF"]
+    p.inputs["Base Color"].default_value = (0.80, 0.86, 0.90, 1)   # faint blue-grey tint
+    p.inputs["Transmission Weight"].default_value = 1.0
+    p.inputs["Roughness"].default_value = 0.04
+    p.inputs["IOR"].default_value = 1.49
+    return m
+
+
+def reel_v3(center, radius=89.0, pack_r=58.0, hub_r=27.0, axis_angle=0.0):
+    """A 7-inch reel standing on its rim: two thin clear plastic flanges
+    (1.0 mm) with three classic rounded windows, a white hub with a
+    three-slot centre, and the brown-black tape pack between them, clearly
+    visible through the plastic. Returns the pack's bottom-rear point."""
+    hubm = _mat("reel_hub_white", (0.75, 0.74, 0.70), 0.35)
+    gap = TAPE_W + 1.2
+    root = bpy.data.objects.new("reel", None)
+    C.link(root)
+    for s in (-1, 1):
+        fl = C.cylinder("flange", radius, 1.0, (s * gap / 2, 0, 0), plastic_material(), axis="Y", segs=160,
+                        bevel=0.25)
+        cuts = []
+        for k in range(3):
+            a = 2 * math.pi * k / 3 + math.pi / 2
+            w = _window_cutter(hub_r + 9, radius - 11, a - 0.62, a + 0.62, 8)
+            w.location = (s * gap / 2, 0, 0)
+            cuts.append(w)
+        cuts.append(C.cylinder("bore", 4.0, 8, (s * gap / 2, 0, 0), axis="Y", segs=32))
+        C.boolean_cut(fl, cuts)
+        fl.parent = root
+    hub = C.cylinder("hub", hub_r, gap + 2.0, (0, 0, 0), hubm, axis="Y", segs=96, bevel=0.4)
+    slots = [C.box("slot", (gap + 6, 2.2, 7), (0, 6 * math.cos(a), 6 * math.sin(a)),
+                   rot=(a, 0, 0)) for a in (0.0, 2.094, 4.189)]
+    slots.append(C.cylinder("spindle", 3.9, gap + 6, (0, 0, 0), axis="Y", segs=32))
+    C.boolean_cut(hub, slots)
+    hub.parent = root
+    pack = C.cylinder("pack", pack_r, TAPE_W, (0, 0, 0), tape_material(), axis="Y", segs=160)
+    pack.parent = root
+    root.location = center
+    root.rotation_euler = (0, 0, axis_angle)
+    return Vector(center) + Vector((0, 0, -pack_r))
+
+
+def tape_reel_strand_v3(reel_center=(-70, 230, 89.6)):
+    """The reel has rolled in from the right and stopped behind the module,
+    leaving its tape unspooled behind it: the strand drops from the bottom of
+    the pack to the floor and runs away to the right, out of frame."""
+    bottom = reel_v3(reel_center, axis_angle=math.radians(96))
+    b = bottom
+    K = [(b.x, b.y + 1, b.z + 0.5, 0), (b.x + 3, b.y + 8, b.z - 14, 0), (b.x + 10, b.y + 16, 4, 30),
+         (b.x + 30, b.y + 22, 0, 70), (b.x + 70, b.y + 10, 0, 90), (b.x + 120, b.y - 10, 0, 60),
+         (b.x + 170, b.y - 6, 0, 10), (b.x + 230, b.y + 10, 0, 0), (b.x + 290, b.y + 4, 0, 50),
+         (b.x + 340, b.y - 20, 0, 90), (b.x + 400, b.y - 30, 0, 20), (b.x + 520, b.y - 40, 0, 0)]
+    ribbon("tape_reel_strand", K)
+    return Vector(reel_center)

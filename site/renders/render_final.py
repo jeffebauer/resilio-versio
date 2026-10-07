@@ -24,7 +24,6 @@ FINAL_IDS = [
     "R6_tape_a", "R6_tape_b",                           # ribbon tape v2; deep focus on the reel
     "R7_monolith_a", "R7_monolith_b", "R7_monolith_c",
     "R8_cables_all",                                    # black/red L+R pairs
-    "R9_wave_a", "R9_wave_b",                           # song-waveform springs, vertical
 ]
 
 
