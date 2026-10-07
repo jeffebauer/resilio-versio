@@ -1,6 +1,6 @@
 ---
 title: "Resilio Versio: a dub spring reverb for the Noise Engineering Versio"
-description: "Free alternative firmware that turns the Noise Engineering Versio into a dub spring reverb: throw snares into it, ride King Tubby's Big Knob, feed it from a worn tape echo, hold it forever or push it into a howl. Also as an AU/VST3 plugin for macOS."
+description: "Free alternative firmware that turns the Noise Engineering Versio into a dub spring reverb: throw snares into it, ride King Tubby's “Big Knob”, feed it from a worn tape echo, hold it forever or push it into a howl. Also as an AU/VST3 plugin for macOS."
 slug: ""
 order: 1
 ---
@@ -22,12 +22,22 @@ A simulated spring tank you can throw snares into, splash, drive, filter like Ki
 
 A spring tank, not a room. Every hit lands in the springs as its own **splash**: a bright clang on the attack, then echoes that sweep upward (the highs arrive after the lows: the "boing" of a real spring), then a tail that darkens and blurs into a wash instead of ticking like a delay.
 
+## King Tubby's “Big Knob”
+
+An Altec filter created the sweep that became a dub move.
+
+In 1972 King Tubby bought an older MCI mixing desk from Dynamic Sounds, Byron Lee's studio in Kingston. Fitted to it was an Altec 9069B: a passive high-pass filter, two capacitors and a coil, built for cutting rumble in broadcast and film work. On the desk it was a large red knob marked HI PASS FILTER. Tubby called it the “Big Knob”.
+
+It cuts the lows at 18 dB per octave, in fixed steps from 70 Hz up to 7.5 kHz. Tubby switched it on the reverb and echo sends and returns as the track played: each click thins the sound further, until a snare is a telephone ring, then a squeak, and the steps themselves are part of the sound.
+
+**Resilio's TONE, right of noon, is modelled on it:** the same steep slope on the spring return, up to 800 Hz, swept smoothly instead of in steps so you can ride it by hand or with CV.
+
 ## Built around dub performance moves
 
 Dub treats the mixing desk as an instrument played live. The reverb isn't a background room: it's thrown at single hits, ridden, filtered and muted, then left to ring on its own, and every pass comes out different.
 
 - **The throw.** The classic send move of King Tubby, Dennis Bovell and Adrian Sherwood: open the springs for one snare, close them, let the tail ring on. The THROW / TAP button and the gate input both throw.
-- **King Tubby's Big Knob.** The right half of TONE is modelled on the stepped high-pass filter on Tubby's MCI desk: a steep low cut up to 800 Hz, with the filter's nasal ring on sharp hits. It sweeps smoothly rather than in steps, so you can ride it by hand or with CV, and it sits on the spring return, so sweeping it thins the tail you're hearing straight away.
+- **King Tubby's “Big Knob”.** The right half of TONE is modelled on the stepped high-pass filter on Tubby's MCI desk: a steep low cut up to 800 Hz, with the filter's nasal ring on sharp hits. It sweeps smoothly rather than in steps, so you can ride it by hand or with CV, and it sits on the spring return, so sweeping it thins the tail you're hearing straight away.
 - **Tape echo into springs.** Nearly every dub rig paired a spring with tape echo, from Tubby's homemade delay to Lee "Scratch" Perry's Space Echo. TANK ECHO is that pairing: a worn tape echo feeding the springs, clockable from your sequencer or tapped in on the button.
 - **The held bed.** At the top of DECAY (in CLEAN and TAPE) the tail holds as a near-endless bed that dips under your kick and bass only, like a reverb sidechained to the kick in Basic Channel-style dub techno.
 - **The kicked tank.** In VALVE the top of DECAY lets the tank howl: rideable spring feedback, rough and moving, never a clean tone. Pull DECAY back and it falls into a normal tail.

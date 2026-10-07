@@ -5,12 +5,11 @@
 // Rule 2: transform and opacity only.
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { SplitText } from 'gsap/SplitText';
 
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 if (!reduce) {
-  gsap.registerPlugin(ScrollTrigger, SplitText);
+  gsap.registerPlugin(ScrollTrigger);
   document.documentElement.classList.add('js-motion');
   heroPushIn();
   revealCards();
@@ -43,21 +42,12 @@ function revealCards() {
   });
 }
 
-/** The intro statement reveals line by line. */
+/** The intro statement rises in as one block (owner, 7 Oct: per-line masks clipped its glow). */
 function introLines() {
-  document.querySelectorAll<HTMLElement>('[data-split]').forEach((el) => {
-    SplitText.create(el, {
-      type: 'lines',
-      mask: 'lines',
-      linesClass: 'line',
-      aria: 'none', // the text stays in the DOM, only wrapped in line spans: screen readers read it as is
-      autoSplit: true,
-      onSplit(self) {
-        return gsap.from(self.lines, {
-          yPercent: 100, opacity: 0, duration: 0.9, stagger: 0.09, ease: 'power3.out',
-          scrollTrigger: { trigger: el, start: 'top 85%', once: true },
-        });
-      },
+  document.querySelectorAll<HTMLElement>('[data-rise]').forEach((el) => {
+    gsap.from(el, {
+      y: 24, opacity: 0, duration: 0.9, ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 85%', once: true },
     });
   });
 }

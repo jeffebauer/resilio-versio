@@ -60,6 +60,7 @@ const alt = 'The Resilio Versio module seen from the floor, towering against a d
     const showStill = () => document.documentElement.classList.remove('hero-film');
     if (reveal && hold && pause && frame && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
       let active = reveal;
+      let userPaused = false;
       reveal.preload = 'auto';
       reveal.addEventListener('playing', () => {
         frame.classList.add('is-playing');
@@ -74,8 +75,14 @@ const alt = 'The Resilio Versio module seen from the floor, towering against a d
         }).catch(() => {});              // if the loop can't play, the reveal's last frame stays
       }, { once: true });
       reveal.play().catch(showStill);    // autoplay blocked: the still, not a black frame
+      // Chrome pauses muted autoplay when the film scrolls offscreen and doesn't resume a
+      // script-started one: carry on when the hero is back in view, unless the visitor paused.
+      new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting && !userPaused && active.paused && !active.ended) active.play().catch(() => {});
+      }, { threshold: 0.25 }).observe(frame);
       pause.addEventListener('click', () => {
         const paused = !active.paused;
+        userPaused = paused;
         if (paused) active.pause(); else active.play().catch(() => {});
         pause.classList.toggle('is-paused', paused);
         pause.querySelector('.visually-hidden')!.textContent = paused ? 'Play the film' : 'Pause the film';

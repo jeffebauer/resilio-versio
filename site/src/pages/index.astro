@@ -16,6 +16,11 @@ import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH
 const page = await getPage('overview');
 const tank = mustRender('tank-macro.jpg');
 const patched = mustRender('patched.jpg');
+const bkBanner = mustRender('bigknob-area.jpg');
+const bkGallery = [
+  { img: mustRender('desk-front.jpg'), alt: 'A rendered recreation of King Tubby\'s MCI mixing desk from the front: six backlit VU meters, twelve channel strips with red EQ knobs and red-capped faders, and the red HI PASS FILTER knob at the top right.' },
+  { img: mustRender('bigknob-topdown.jpg'), alt: 'The red HI PASS FILTER knob seen from above on a dark charcoal panel, its spun aluminium cap catching the light, with the dial steps OFF, 70, 100, 150, 200, 500, 1K, 2K, 3K, 5K and 7.5K around it.' },
+];
 const wideSizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const { h1, rest } = takeH1(pageHtml(page));
 const { lead, sections } = splitSections(rest);
@@ -34,6 +39,7 @@ const ledeRest = cut > 0 ? lede.slice(cut + 1) : '';
 const etymology = leadParas[2] ?? '';
 
 const sound = section(sections, 'what-it-sounds-like');
+const bigKnob = section(sections, 'king-tubbys-big-knob');
 const moves = section(sections, 'built-around-dub-performance-moves');
 const panel = section(sections, 'the-panel');
 const safe = section(sections, 'safe-to-try');
@@ -42,6 +48,7 @@ const status = section(sections, 'status');
 
 const soundIntro = paras(sound.html)[0] ?? '';
 const movesIntro = paras(moves.html)[0] ?? '';
+const [bkLede = '', ...bkStory] = paras(bigKnob.html);
 const panelParas = paras(noSlots(panel.html));
 const panelList = noSlots(panel.html).match(/<ul>[\s\S]*?<\/ul>/)?.[0] ?? '';
 const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\/p>/, '');
@@ -72,7 +79,7 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
         <div class="intro-scrim" aria-hidden="true"></div>
         <div class="intro-note small quiet" set:html={etymology} />
         <div class="intro-copy flow">
-          <p class="statement" data-split set:html={statement} />
+          <p class="statement" data-rise set:html={statement} />
           {ledeRest && <p class="lede quiet" set:html={ledeRest} />}
         </div>
       </div>
@@ -88,6 +95,32 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="wide">
       <DemoList />
     </div>
+  </section>
+
+  <!-- 3b King Tubby's Big Knob (white): the history, in the intro's image-and-scrim form (owner, 7 Oct) -->
+  <section class="section bigknob" id="big-knob" aria-labelledby="bigknob-h">
+    <div class="wide bigknob-bento">
+      <figure class="intro-media bigknob-banner" data-reveal>
+        <div class="card-media intro-card">
+          <Picture class="intro-bg" src={bkBanner} widths={widthsFor(bkBanner)} sizes="(min-width: 64rem) 62vw, calc(100vw - 2rem)" formats={['avif', 'webp']} loading="lazy"
+            alt="The red HI PASS FILTER knob on the recreated MCI desk, with the MIC and EKO selector buttons and black knobs around it on the sprayed aluminium panel." />
+          <div class="intro-scrim" aria-hidden="true"></div>
+          <div class="intro-note small quiet">Altec 9069B · MCI desk · 1972</div>
+          <div class="intro-copy flow">
+            <h2 class="statement" id="bigknob-h">{bigKnob.title}</h2>
+            <div class="lede quiet" set:html={inner(bkLede)} />
+          </div>
+        </div>
+      </figure>
+      {bkGallery.map((g) => (
+        <figure class="bigknob-tile" data-reveal>
+          <div class="card-media" style="aspect-ratio: 16 / 9">
+            <Picture src={g.img} widths={widthsFor(g.img, [480, 800, 1200])} sizes="(min-width: 64rem) 30vw, calc(100vw - 2rem)" formats={['avif', 'webp']} loading="lazy" alt={g.alt} />
+          </div>
+        </figure>
+      ))}
+    </div>
+    <div class="column flow bigknob-story" set:html={bkStory.join('')} />
   </section>
 
   <!-- 4 The panel (white) -->

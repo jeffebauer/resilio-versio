@@ -10,7 +10,7 @@ export interface Control { name: string; anchor: string; line: string; at: [numb
 export const CONTROLS: Control[] = [
   { name: 'BLEND', anchor: 'blend', line: 'Dry ↔ wet. Fully right is 100 % wet, for a send/return.', at: [7.77, 18.53], side: 'l' },
   { name: 'DECAY', anchor: 'decay', line: 'How long the tail rings, from a quick slap to a long wash. The top holds (CLEAN, TAPE) or howls (VALVE).', at: [43.33, 18.53], side: 'r' },
-  { name: 'TONE', anchor: 'tone', line: 'Warm and dark on the left, neutral at noon, King Tubby’s Big Knob low cut on the right.', at: [25.169, 28.69], side: 'l' },
+  { name: 'TONE', anchor: 'tone', line: 'Warm and dark on the left, neutral at noon, King Tubby’s “Big Knob” low cut on the right.', at: [25.169, 28.69], side: 'l' },
   { name: 'SPLASH', anchor: 'splash', line: 'How hard your hits hit the springs.', at: [7.77, 39.485], side: 'l' },
   { name: 'TENSION', anchor: 'tension', line: 'Which tank is fitted: tight and quick on the right, loose with a big boing on the left.', at: [43.33, 39.485], side: 'r' },
   { name: 'WOBBLE', anchor: 'wobble', line: 'Pitch movement: tape drift left of noon, a steady warble right of noon.', at: [25.169, 49.328], side: 'l' },
@@ -35,6 +35,6 @@ export const FEATURE_TILES: FeatureTile[] = [
   { big: 'The throw', size: 'wide', diagram: 'throw', line: 'Open the springs for one snare, close them, let the tail ring on. The THROW / TAP button and the gate input both throw.' },
   { big: 'WOBBLE', diagram: 'wobble', line: 'Tape drift left of noon, a steady warble right of noon.' },
   { big: 'SPLASH', diagram: 'splash', line: 'Your hits, hitting harder. Nothing added; ghost notes stay quiet.' },
-  { big: 'The Big Knob', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.' },
+  { big: 'The “Big Knob”', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.' },
   { big: 'The howl', diagram: 'howl', line: 'In VALVE the top of DECAY lets the tank howl: rideable spring feedback. Pull DECAY back and it falls into a normal tail.' },
 ];
