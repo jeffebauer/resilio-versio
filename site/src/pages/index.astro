@@ -18,8 +18,8 @@ const tank = mustRender('tank-macro.jpg');
 const patched = mustRender('patched.jpg');
 const bkBanner = mustRender('bigknob-area.jpg');
 const bkGallery = [
-  { img: mustRender('desk-front.jpg'), caption: 'The MCI desk: 12 inputs, 4 outputs, the Big Knob top right.', alt: 'A rendered recreation of King Tubby\'s MCI mixing desk from the front: six backlit VU meters, twelve channel strips with red EQ knobs and red-capped faders, and the red HI PASS FILTER knob at the top right.' },
-  { img: mustRender('bigknob-macro.jpg'), caption: 'The Big Knob close up.', alt: 'Close-up of a glossy red knob with a spun aluminium cap on a dark panel, the legend HI PASS FILTER above it and steps from OFF to 7.5K around it.' },
+  { img: mustRender('desk-front.jpg'), alt: 'A rendered recreation of King Tubby\'s MCI mixing desk from the front: six backlit VU meters, twelve channel strips with red EQ knobs and red-capped faders, and the red HI PASS FILTER knob at the top right.' },
+  { img: mustRender('bigknob-macro.jpg'), alt: 'Close-up of a glossy red knob with a spun aluminium cap on a dark panel, the legend HI PASS FILTER above it and steps from OFF to 7.5K around it.' },
 ];
 const wideSizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const { h1, rest } = takeH1(pageHtml(page));
@@ -117,7 +117,6 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
           <div class="card-media" style="aspect-ratio: 16 / 9">
             <Picture src={g.img} widths={widthsFor(g.img, [480, 800, 1200])} sizes="(min-width: 64rem) 30vw, calc(100vw - 2rem)" formats={['avif', 'webp']} loading="lazy" alt={g.alt} />
           </div>
-          <figcaption class="caption">{g.caption}</figcaption>
         </figure>
       ))}
     </div>
