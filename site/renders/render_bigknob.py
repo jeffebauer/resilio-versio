@@ -110,15 +110,15 @@ def camera_for(shot, ref):
     if sid == "BK1_front":
         return C.camera(sid, V((0, 130, 320)), 0, 30, 50, 2650, shift=(0, -0.012))
     if sid == "BK1_front_plate":
-        tgt = f.world(475, 330, 0)
-        cam = C.camera(sid, tgt, 0, 90 - mci_desk.SLOPE, 50, 1750)
+        tgt = f.world(475, 300, 0)
+        cam = C.camera(sid, tgt, 0, 90 - mci_desk.SLOPE, 50, 1900)
         return cam
     if sid == "BK2_angled":
         tgt = f.world(690, 400, 30)
         return C.camera(sid, tgt, 36, 23, 35, 1280, shift=(-0.03, 0.005))
     if sid == "BK3_macro_knob":
-        tgt = f.world(828, 512, 12)
-        return C.camera(sid, tgt, -12, 44, 100, 300, fstop=11, focus=f.world(830, 512, 6))
+        tgt = f.world(828, 522, 10)
+        return C.camera(sid, tgt, -12, 44, 100, 400, fstop=11, focus=f.world(830, 515, 6))
     if sid == "BK4_macro_area":
         tgt = f.world(790, 420, 0)
         return C.camera(sid, tgt, -10, 42, 70, 950, fstop=8, focus=f.world(800, 450, 10))

@@ -175,7 +175,7 @@ def materials():
     M["red_skirt"] = _principled("knob_red_skirt", lin("#b03c2b"), rough=0.38, coat=0.2)
     M["black_knob"] = _principled("knob_black", (0.022, 0.021, 0.02), rough=0.38, coat=0.1)
     M["cap_grey"] = _principled("cap_grey", lin("#8d8c88"), rough=0.42, metallic=0.25)
-    M["cap_light"] = _principled("cap_light", lin("#9c9b96"), rough=0.4, metallic=0.3)
+    M["cap_light"] = _principled("cap_light", lin("#8e8d88"), rough=0.42, metallic=0.3)
     M["cap_silver"] = C.steel("cap_silver", 0.75, 0.18, aniso=0.5)
     M["dot"] = _principled("dot", (0.015, 0.015, 0.015), rough=0.6)
     M["ink"] = _principled("ink", lin(INK), rough=0.55)
@@ -404,7 +404,7 @@ def frame_wear_mask(res=1.0, seed=11):
     gate = (g(965, 560, 14, 25) * 1.1 + g(968, 440, 10, 60) * 0.8 + g(975, 200, 14, 20)
             + g(985, 80, 16, 50) * 0.8 + g(975, 20, 25, 18) * 0.9 + g(-25, 380, 8, 18) * 0.5)
     n = _fbm(h, w, 14 * res, rng, 5)
-    wear = _smooth(gate * 1.2 + (n - 0.5) * 1.2, 0.55, 0.65)
+    wear = _smooth(gate * 1.1 + (n - 0.5) * 1.2, 0.62, 0.7)
     return wear.astype(np.float32)
 
 
@@ -507,7 +507,7 @@ def surround_material(wear_img):
     col = nt.nodes.new("ShaderNodeMix")
     col.data_type = "RGBA"
     col.inputs["A"].default_value = (0.028, 0.027, 0.026, 1)
-    col.inputs["B"].default_value = (*C.hex_to_linear("#b9a585"), 1)
+    col.inputs["B"].default_value = (*C.hex_to_linear("#94866d"), 1)
     nt.links.new(tex.outputs["Color"], col.inputs["Factor"])
     nt.links.new(col.outputs["Result"], p.inputs["Base Color"])
     r = nt.nodes.new("ShaderNodeMapRange")
@@ -1137,7 +1137,8 @@ def build(params=None):
     sm = surround_material(wear)
     sw, sd = W + 2 * SURR["side"], D + SURR["front"] + SURR["back"]
     surr = C.box("surround", (sw, sd, 4.0), (0, 0, 0), sm)
-    frame.put(surr, W / 2, (D + SURR["back"] - SURR["front"]) / 2, -3.5)
+    # top at h = -1.0: clear of the cabinet's own sloped face (h = -1.5), no z-fighting
+    frame.put(surr, W / 2, (D + SURR["back"] - SURR["front"]) / 2, -3.0)
     bridge_face(M, cab)
     armrest(M, cab)
     bpy.context.view_layer.update()
