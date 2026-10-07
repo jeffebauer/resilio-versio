@@ -442,3 +442,10 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 /* Renders placed in the page (owner, 7 Oct). */
 .grid > .main.two-ways-media { grid-column: 2 / -2; margin-bottom: var(--stack-5); }
 @media (max-width: 63.99rem) { .grid > .main.two-ways-media { grid-column: 1 / -1; } }
+
+/* Hero: the monolith still (placeholder for the reveal video, owner 7 Oct). Dark frame, a little taller than
+   the title-first cap so the module isn't cut; the image covers, anchored low so the base stays in view. */
+.hero-image { background: #050505; }
+.hero-image .hero-zoom, .hero-image img { width: 100%; height: 100%; }
+.hero-image img { object-fit: cover; object-position: 50% 60%; }
+.hero-frame.hero-image { height: min(calc((100vw - 2 * var(--margin)) * 9 / 16), calc(100svh - var(--header-h) - 12rem)); }

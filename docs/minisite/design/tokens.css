@@ -38,7 +38,7 @@
   --focus:        #c83d16;
 
   /* ---- Type ------------------------------------------------------------ */
-  --font-sans: "Phonic", "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Phonic", "Inter", "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;   /* Inter: the open-source fallback (owner, 7 Oct) */
   --font-mono: "Phonic Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Fluid scale: UDO's sizes at 1440 px, but clamped and rem-based so

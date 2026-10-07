@@ -1,5 +1,10 @@
 ---
 // Every page: <head> (SEO, OG, fonts), the header with the nav pill, the footer.
+// Inter (SIL OFL, self-hosted from @fontsource): the fallback when the Phonic files
+// aren't present. Latin only; the browser fetches a cut only when it's used.
+import '@fontsource/inter/latin-300.css';
+import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-500.css';
 import Logo from '../components/Logo.astro';
 import '../../../docs/minisite/design/tokens.css';
 import '../styles/site.css';
@@ -30,7 +35,7 @@ const fonts = fontsPresent();
 const fallbackFaces = Object.values(fonts).every(Boolean)
   ? ''
   : `html:root {
-  --font-sans: "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }`;
 const onVercel = Boolean(process.env.VERCEL);
