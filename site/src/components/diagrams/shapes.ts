@@ -64,7 +64,7 @@ export function shape(kind: DiagramKind): Shape {
         return line(pts);
       };
       return {
-        label: 'The Big Knob: a steep low cut sweeping upward, with a small ring at the cut.',
+        label: 'The “Big Knob”: a steep low cut sweeping upward, with a small ring at the cut.',
         faint: [curve(30), curve(62)],
         hot: [curve(96)],
         ink: ['M34 6H96M90 2.5L96 6L90 9.5'],

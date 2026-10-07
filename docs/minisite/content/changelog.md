@@ -1,6 +1,6 @@
 ---
 title: "Changelog: Resilio Versio releases"
-description: "What changed in each Resilio Versio release, newest first: the Wellspring-fitted spring sound, TANK ECHO, King Tubby's Big Knob, the throw, the held bed and the new panel names."
+description: "What changed in each Resilio Versio release, newest first: the Wellspring-fitted spring sound, TANK ECHO, King Tubby's “Big Knob”, the throw, the held bed and the new panel names."
 slug: "changelog"
 order: 5
 ---
@@ -36,7 +36,7 @@ Same sound, same positions; saved sets keep their settings.
 - TENSION sets the echo time; moving it bends the repeats like a Space Echo's rate knob.
 - Patch a clock into the gate, or tap the button, and TENSION steps through 1/2 down to 1/16, dotted values included. The tempo holds when the clock stops, so stopping and starting your sequencer doesn't bend the echo; one lone pulse sends it back to free time. The plugin follows the DAW's tempo and shows the note value.
 
-### TONE: King Tubby's Big Knob
+### TONE: King Tubby's “Big Knob”
 - The right half of TONE is modelled on the stepped high-pass filter on Tubby's MCI desk: a steep low cut up to 800 Hz, with the filter's nasal bump on sharp hits. It sweeps smoothly, so you can ride it by hand or with CV.
 - It sits after the springs, the way Black Ark's low cut sat on the spring return: sweep it and the tail you're hearing goes thin straight away.
 
@@ -63,7 +63,7 @@ Same sound, same positions; saved sets keep their settings.
 
 <p class="release-version">v2026.10.02-cef6a77-candidate-F</p>
 
-A sound candidate, plugin only, named "Resilio Versio F" so it installed next to the 1 October build for side-by-side listening. Its changes (the Wellspring-fitted tank, the Big Knob, the stronger SPLASH) were refined and released in v2026.10.06. No firmware.
+A sound candidate, plugin only, named "Resilio Versio F" so it installed next to the 1 October build for side-by-side listening. Its changes (the Wellspring-fitted tank, the “Big Knob”, the stronger SPLASH) were refined and released in v2026.10.06. No firmware.
 
 ## 1 October 2026
 

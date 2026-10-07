@@ -63,7 +63,7 @@ Pull DECAY back and either one falls into a normal tail and fades. In TANK ECHO,
 
 - **Left:** warm, dark dub. The drips and the boing are still there.
 - **Noon:** neutral.
-- **Right:** King Tubby's **Big Knob**, a steep low cut on the reverb's return, sweeping up to 800 Hz fully right: the further right, the more telephone-like and splashy.
+- **Right:** King Tubby's **“Big Knob”**, a steep low cut on the reverb's return, sweeping up to 800 Hz fully right: the further right, the more telephone-like and splashy.
 
 Because it sits after the springs, turning TONE right thins the tail already ringing, at once, and turning back gives the body back. Sharp hits (snares, rimshots) also get a nasal "ring" just above the cut, like Tubby's desk filter; chords, pads and held sounds get the plain cut. The level stays about the same across the knob.
 
@@ -172,13 +172,13 @@ Every change of echo time swoops like tape (the repeats bend in pitch for a mome
 3. **BLEND** to about 2 o'clock so you clearly hear the tank. Bring it back once you've found the sound.
 4. **DECAY**: noon is about a 2-second tail. Turn it up for long dub throws.
 5. **Throw**: hold the button while the snare plays, let go, and hear the tail ring on. (The first press switches throw mode on; tap, then press and hold for 2 s to go back.)
-6. Then try **TENSION** left for a big boing, **SPLASH** up for a harder clang, **TONE** right to thin it out like Tubby's Big Knob, **ATTITUDE** right (VALVE) with DECAY past 4 o'clock for the howl.
+6. Then try **TENSION** left for a big boing, **SPLASH** up for a harder clang, **TONE** right to thin it out like Tubby's “Big Knob”, **ATTITUDE** right (VALVE) with DECAY past 4 o'clock for the howl.
 7. **Echo**: TANK right (ECHO), tap the button on the beat a few times, set TENSION to the division you want, and ride DECAY for longer builds.
 
 ## A few dub moves
 
 - **Throw the snare.** TANK 2, TAPE, BLEND fully right on a send. Hold the button on the beats you want drenched; let go and the tail rings on.
-- **Big Knob sweep.** Ride TONE from noon to fully right as a tail rings: it thins to a telephone splash. Back down for the warmth.
+- **“Big Knob” sweep.** Ride TONE from noon to fully right as a tail rings: it thins to a telephone splash. Back down for the warmth.
 - **Skank into echo.** TANK ECHO, clocked from your sequencer, TENSION on dotted 1/8 (just about noon). DECAY around 2 o'clock for a trail of repeats, each one splashing into the springs.
 - **Hold the bed.** CLEAN, DECAY fully up. Play a chord, let it bloom into a held wash, and keep playing: the bed ducks under your kick and bass.
 - **Kick the tank.** VALVE, DRIVE past 3 o'clock, DECAY into the top: ride the howl, then pull DECAY back and let it fall away.
