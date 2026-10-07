@@ -636,13 +636,15 @@ ul > li::marker { color: var(--signal); }
 }
 
 /* ---- Shape it with us (feedback; owner, 8 Oct) -------------------------------------
-   Three numbered steps as tiles, then the two issue forms as buttons and the FAQ link. */
-.shape-steps { list-style: none; padding: 0; margin-block: var(--stack-4) 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(0.625rem, 0.4rem + 0.6vw, 1rem); }
-.shape-step { display: flex; flex-direction: column; gap: 0.75rem; padding: clamp(1rem, 0.75rem + 0.6vw, 1.5rem); }
-.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); margin-bottom: var(--stack-3); }
-.shape-step .feature-big { padding-top: 0; }
+   The three steps as definition-list rows, the same label | description form as the panel
+   list (owner, 8 Oct: rows, not cards), then the two issue forms as buttons and the FAQ link. */
+.shape-steps { margin: var(--stack-4) auto 0; border-bottom: var(--hair) solid var(--line); }
+.shape-steps > div { display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
+.shape-steps dt { font-weight: var(--wt-display); white-space: nowrap; }   /* 11rem: the panel list's 9rem plus the step number */
+.shape-steps dd { margin: 0; }   /* primary text, as in the panel list */
+.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); margin-right: 0.6rem; vertical-align: 0.15em; }
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
-@media (max-width: 47.99rem) { .shape-steps { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 47.99rem) { .shape-steps > div { grid-template-columns: minmax(0, 1fr); row-gap: 0.15rem; } }
 
 /* ---- Theme switch (footer; owner, 8 Oct) --------------------------------------------
    System · Light · Dark, a small segmented control like the player's A/B. */

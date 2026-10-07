@@ -205,15 +205,14 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
       <h2 class="h2" id="shape-h">{shape.title}</h2>
       <div class="lede" set:html={inner(shapeIntro)} />
     </div>
-    <ol class="wide shape-steps">
+    <dl class="column shape-steps">
       {shapeSteps.map((s, i) => (
-        <li class="tile shape-step" data-reveal>
-          <span class="shape-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-          <h3 class="feature-big">{s.title}</h3>
-          <p class="small quiet" set:html={s.line} />
-        </li>
+        <div>
+          <dt><span class="shape-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>{s.title}</dt>
+          <dd set:html={s.line} />
+        </div>
       ))}
-    </ol>
+    </dl>
     <div class="column shape-actions">
       <Button href={LINKS.soundIdea} variant="primary" arrow>Suggest a sound</Button>
       <Button href={LINKS.bugReport} variant="ghost" arrow>Report a bug</Button>
