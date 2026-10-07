@@ -49,6 +49,10 @@ How they're used: the site writes one `@font-face` per file that is present, cov
 
 Locally: `FONTS_DIR="~/Library/CloudStorage/Dropbox/Type/FontBase/Type/Mass-Driver/MD_IO-V2-FutureFonts/Fonts/Variable" npm run dev`.
 
+## Mesurer (design polish overlay, dev only)
+
+[Mesurer](https://mesurer.dev) adds a toolbar to every page in `npm run dev` for measuring, inspecting and annotating the live page. It's injected by a small integration in `astro.config.mjs` only when `astro dev` runs (`src/scripts/mesurer-dev.ts`), so built pages never include it or React. Press **M** to show or hide it; **I** inspect, **X** x-ray, **R** rulers, **G** guides, hold **Alt** for distances, **Cmd+K** copies your comments for Claude. Works best in Chrome.
+
 ## Vercel settings
 
 | Setting | Value |
