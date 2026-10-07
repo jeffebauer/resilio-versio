@@ -6,6 +6,11 @@ import { DOCS, LINKS } from '../data/site';
     <div>
       <p class="brand">Resilio Versio</p>
       <p class="small quiet">A dub spring reverb for the Noise Engineering Versio.</p>
+      <div class="theme-switch" role="group" aria-label="Colour theme">
+        <button type="button" data-theme-pick="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-pick="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button>
+      </div>
     </div>
     <div class="lists">
       <nav aria-labelledby="f-docs">
@@ -35,3 +40,18 @@ import { DOCS, LINKS } from '../data/site';
     </div>
   </div>
 </footer>
+
+<script>
+  // The theme switch: System (no choice stored) follows the OS; Light or Dark is remembered
+  // in this browser only. The head script applies it before first paint.
+  const root = document.documentElement;
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-theme-pick]')];
+  const show = (pick: string) => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.themePick === pick)));
+  show(root.dataset.theme ?? 'system');
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    const pick = b.dataset.themePick ?? 'system';
+    if (pick === 'system') delete root.dataset.theme; else root.dataset.theme = pick;
+    try { if (pick === 'system') localStorage.removeItem('rv-theme'); else localStorage.setItem('rv-theme', pick); } catch {}
+    show(pick);
+  }));
+</script>

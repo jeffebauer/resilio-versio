@@ -293,7 +293,7 @@ html.hero-film .hero-still { visibility: hidden; }
   .ap-callout { position: absolute; top: var(--by); width: min(16rem, 30%); transform: translateY(-0.55rem); pointer-events: auto; }
   .ap-callout.side-l { right: calc(100% - var(--bx)); padding-right: 0.6rem; text-align: right; }
   .ap-callout.side-r { left: var(--bx); padding-left: 0.6rem; }
-  .ap-name { color: var(--ink); }
+  .ap-name { color: var(--on-render); }   /* on the light render in either theme */
   .ap-line { color: #302e2b; }
   .ap-num, .ap-marker { display: none; }
 }
@@ -365,9 +365,9 @@ html.hero-film .hero-still { visibility: hidden; }
 .download .release-title { font-size: var(--fs-h3); line-height: 1.05; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
 .download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
 .download .release-line > * { white-space: nowrap; }   /* each detail wraps whole, never mid-phrase */
-.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-ink); }   /* the accent (owner, 7 Oct); the AA-safe tone for text */
+.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-text); }   /* the accent (owner, 7 Oct); the AA-safe tone for text in either theme */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
-.download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
+.download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--raised); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
 .download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.1; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
 .download .target .btn { justify-self: start; }
 .download .target ul { list-style: disc; padding-left: 1.15em; color: var(--ink-2); }
@@ -448,7 +448,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
 .prose > h2:first-child { margin-top: 0; }
 /* Subheads in the accent, so they stand apart from bold body copy (owner, 7 Oct); the AA-safe tone. */
-.prose h3, .prose .subhead { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-ink); font-weight: var(--wt-display); line-height: var(--lh-snug); letter-spacing: -0.01em; }
+.prose h3, .prose .subhead { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-text); font-weight: var(--wt-display); line-height: var(--lh-snug); letter-spacing: -0.01em; }
 .prose .subhead + * { margin-top: var(--stack-1); }
 .prose h2 + .release-version { margin-top: var(--stack-1); font: var(--wt-reg) var(--fs-ui) / 1.3 var(--font-mono); color: var(--ink-2); }   /* the version under its release date */
 .prose h3 + * { margin-top: var(--stack-1); }
@@ -463,7 +463,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose ol > li::before {
   content: counter(step); position: absolute; left: 0; width: 1.25rem; text-align: right;
   top: 0; font-family: var(--font-mono); font-weight: var(--wt-reg); font-size: 0.85em;
-  line-height: calc(var(--lh-body) / 0.85 * 1em); color: var(--signal-ink);   /* the same line box as the text; accent numbers (owner, 7 Oct) */
+  line-height: calc(var(--lh-body) / 0.85 * 1em); color: var(--signal-text);   /* the same line box as the text; accent numbers (owner, 7 Oct) */
 }
 .prose ul > li::before {
   content: ""; position: absolute; left: calc(1.25rem - 6px); top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--signal);
@@ -623,7 +623,14 @@ ul > li::marker { color: var(--signal); }
    Three numbered steps as tiles, then the two issue forms as buttons and the FAQ link. */
 .shape-steps { list-style: none; padding: 0; margin-block: var(--stack-4) 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(0.625rem, 0.4rem + 0.6vw, 1rem); }
 .shape-step { display: flex; flex-direction: column; gap: 0.75rem; padding: clamp(1rem, 0.75rem + 0.6vw, 1.5rem); }
-.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-ink); margin-bottom: var(--stack-3); }
+.shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); margin-bottom: var(--stack-3); }
 .shape-step .feature-big { padding-top: 0; }
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
 @media (max-width: 47.99rem) { .shape-steps { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- Theme switch (footer; owner, 8 Oct) --------------------------------------------
+   System · Light · Dark, a small segmented control like the player's A/B. */
+.theme-switch { display: inline-flex; gap: 0.2rem; padding: 0.2rem; margin-top: var(--stack-2); border-radius: 999px; box-shadow: inset 0 0 0 var(--hair) var(--line); }
+.theme-switch button { border: 0; background: none; color: var(--ink-2); padding: 0.4rem 0.8rem; border-radius: 999px; font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; cursor: pointer; }
+.theme-switch button:hover { color: var(--ink); }
+.theme-switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
