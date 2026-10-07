@@ -191,10 +191,9 @@ html.hero-film .hero-still { visibility: hidden; }
   background: radial-gradient(closest-side, rgb(12 11 10 / 0.6), rgb(12 11 10 / 0.3) 60%, rgb(12 11 10 / 0));
 }
 .intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
-.intro-copy .statement { max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
+.intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
 .intro-copy .lede { max-width: 30em; }
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
-[data-split] .line-mask { padding-bottom: 0.08em; margin-bottom: -0.08em; }
 
 /* ---- The sound (dark) ------------------------------------------------------ */
 .demos {
