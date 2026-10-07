@@ -172,9 +172,9 @@ def _worn_ink(m, scale=1.2, lo=0.45):
 def materials():
     lin = C.hex_to_linear
     M = {}
-    M["red"] = _principled("knob_red", lin("#86392a"), rough=0.7, spec=0.3)
-    M["red_skirt"] = _principled("knob_red_skirt", lin("#8c3e2a"), rough=0.7, spec=0.3)
-    M["black_knob"] = _principled("knob_black", (0.016, 0.0155, 0.015), rough=0.62, spec=0.3)
+    M["red"] = _plastic("knob_red", lin("#a3241c"))
+    M["red_skirt"] = _plastic("knob_red_skirt", lin("#a8261d"))
+    M["black_knob"] = _plastic("knob_black", (0.010, 0.0098, 0.0095))
     M["cap_grey"] = _principled("cap_grey", lin("#6c6a64"), rough=0.58, metallic=0.4)
     M["cap_light"] = _principled("cap_light", lin("#73716a"), rough=0.52, metallic=0.5)
     M["cap_silver"] = C.steel("cap_silver", 0.75, 0.18, aniso=0.5)
@@ -186,15 +186,15 @@ def materials():
     M["brass"] = _principled("screw_brass", lin("#8f8466"), rough=0.35, metallic=1.0)
     M["slot"] = _principled("slot", (0.006, 0.006, 0.006), rough=0.7)
     M["key"] = _principled("keycap", (0.014, 0.014, 0.014), rough=0.45)
-    M["fader_red"] = _principled("fader_red", lin("#8e402d"), rough=0.68, spec=0.3)
-    M["fader_red_top"] = _principled("fader_red_top", lin("#a8604f"), rough=0.6)
+    M["fader_red"] = _plastic("fader_red", lin("#a52a1f"))
+    M["fader_red_top"] = _plastic("fader_red_top", lin("#b9473a"), rough=0.3)
     M["cabinet"] = _bump_noise(_principled("cabinet", (0.0055, 0.0053, 0.005), rough=0.7, spec=0.3), 0.9, 0.03)
     M["bridge"] = _bump_noise(_principled("bridge", (0.0055, 0.0053, 0.005), rough=0.75, spec=0.3), 1.2, 0.1)
     M["interior"] = _principled("interior", (0.015, 0.014, 0.013), rough=0.8)
-    M["bezel"] = _principled("bezel", (0.02, 0.02, 0.02), rough=0.45)
-    M["vu_face"] = _vu_face("vu_face", lin("#f2d6b6"))
-    M["vu_red"] = _principled("vu_red", lin("#c0503c"), rough=0.6)
-    M["vu_ink"] = _principled("vu_ink", lin("#3a302a"), rough=0.6)
+    M["bezel"] = _bump_noise(_principled("bezel", (0.012, 0.012, 0.012), rough=0.6), 1.5, 0.35, distance=0.08)
+    M["vu_face"] = _vu_face("vu_face")
+    M["vu_red"] = _principled("vu_red", lin("#d0201c"), rough=0.6)
+    M["vu_ink"] = _principled("vu_ink", (0.006, 0.005, 0.004), rough=0.6)
     M["needle"] = _principled("needle", (0.02, 0.02, 0.02), rough=0.5)
     M["glass"] = _glass("vu_glass")
     M["vinyl"] = _vinyl("armrest_vinyl")
@@ -210,35 +210,87 @@ def materials():
                    ("mf_white", "#e8e6df")):
         M[nm] = _principled(nm, lin(hx), rough=0.35, coat=0.3)
     M["label_plate"] = _principled("label_plate", (0.015, 0.015, 0.015), rough=0.35)
-    for k in ("red", "red_skirt", "black_knob", "cap_grey", "cap_light", "fader_red", "key", "housing",
-              "fader_red_top"):
+    M["cap_alu"] = _spun_alu("cap_alu")
+    for k in ("cap_grey", "cap_light", "key", "housing"):
         _weather(M[k])
+    for k in ("red", "red_skirt", "black_knob", "fader_red", "fader_red_top"):
+        # glossy moulded plastic: grime only deep in the grooves and at the skirt edge
+        _weather(M[k], ao_dist=0.8, ao_dark=0.45, amt=0.04, rough_amt=0.04)
     for k in ("ink", "ink_faint"):
         _worn_ink(M[k])
     return M
 
 
-def _vu_face(name, rgb, strength=2.4):
-    """Peach meter card, backlit: warm emission brightest near the top
-    centre (the lamps sit behind the top edge), falling off softly."""
-    m = _principled(name, rgb, rough=0.75)
+def _vu_face(name, strength=1.6):
+    """Backlit meter card, as an incandescent-lit VU: deep orange at the edges
+    and corners, a yellow-cream hotspot towards the upper centre. The same
+    ramp tints the card, so studio light can't wash it out to pale."""
+    m = _principled(name, (1, 1, 1), rough=0.8)
     nt = m.node_tree
     p = nt.nodes["Principled BSDF"]
     tc = nt.nodes.new("ShaderNodeTexCoord")
     mp = nt.nodes.new("ShaderNodeMapping")
-    # POINT mapping: out = in * scale + location; centre at y = +18 mm (top centre)
-    mp.inputs["Location"].default_value = (0, -0.3, 0)
-    mp.inputs["Scale"].default_value = (1 / 85.0, 1 / 60.0, 1)
+    # POINT mapping: out = in * scale + location; centre at y = +10 mm
+    mp.inputs["Location"].default_value = (0, -10.0 / 62.0, 0)
+    mp.inputs["Scale"].default_value = (1 / 82.0, 1 / 62.0, 1)
     nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
     gr = nt.nodes.new("ShaderNodeTexGradient")
     gr.gradient_type = "SPHERICAL"
     nt.links.new(mp.outputs["Vector"], gr.inputs["Vector"])
-    st = nt.nodes.new("ShaderNodeMath")
-    st.operation = "MULTIPLY"
-    st.inputs[1].default_value = strength
-    nt.links.new(gr.outputs["Fac"], st.inputs[0])
-    p.inputs["Emission Color"].default_value = (1.0, 0.62, 0.30, 1)
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    cr = ramp.color_ramp
+    cr.elements[0].position = 0.05
+    cr.elements[0].color = (0.62, 0.07, 0.004, 1)        # deep orange edges
+    cr.elements[1].position = 0.75
+    cr.elements[1].color = (1.0, 0.74, 0.26, 1)          # cream-yellow hotspot
+    mid = cr.elements.new(0.38)
+    mid.color = (1.0, 0.32, 0.03, 1)
+    nt.links.new(gr.outputs["Fac"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], p.inputs["Base Color"])
+    nt.links.new(ramp.outputs["Color"], p.inputs["Emission Color"])
+    st = nt.nodes.new("ShaderNodeMapRange")
+    st.inputs["To Min"].default_value = strength * 0.35
+    st.inputs["To Max"].default_value = strength
+    nt.links.new(gr.outputs["Fac"], st.inputs["Value"])
     nt.links.new(st.outputs[0], p.inputs["Emission Strength"])
+    return m
+
+
+def _plastic(name, rgb, rough=0.28):
+    """Glossy moulded plastic (Rogan-type knobs): saturated colour under a
+    tight highlight and a thin clearcoat."""
+    m = _principled(name, rgb, rough=rough, coat=0.18, spec=0.4)
+    p = m.node_tree.nodes["Principled BSDF"]
+    p.inputs["Coat Roughness"].default_value = 0.08
+    return m
+
+
+def _spun_alu(name):
+    """Spun aluminium: concentric machining rings (bump) and anisotropy
+    along circles round the knob axis, so the highlight streaks radially."""
+    m = C.steel(name, 0.48, 0.36, aniso=0.9)
+    nt = m.node_tree
+    p = nt.nodes["Principled BSDF"]
+    tan = nt.nodes.new("ShaderNodeTangent")
+    tan.direction_type = "RADIAL"
+    tan.axis = "Z"
+    nt.links.new(tan.outputs["Tangent"], p.inputs["Tangent"])
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    wv = nt.nodes.new("ShaderNodeTexWave")
+    wv.wave_type = "RINGS"
+    wv.rings_direction = "SPHERICAL"   # the insert is thin: spherical rings read as concentric
+    wv.inputs["Scale"].default_value = 6.0
+    wv.inputs["Distortion"].default_value = 1.5
+    wv.inputs["Detail"].default_value = 4
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (0.25, 0.25, 0.25)
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    nt.links.new(mp.outputs["Vector"], wv.inputs["Vector"])
+    b = nt.nodes.new("ShaderNodeBump")
+    b.inputs["Strength"].default_value = 0.08
+    b.inputs["Distance"].default_value = 0.01
+    nt.links.new(wv.outputs["Fac"], b.inputs["Height"])
+    nt.links.new(b.outputs["Normal"], p.inputs["Normal"])
     return m
 
 
@@ -698,6 +750,18 @@ def text(frame, body, u, v, size, mat, h=0.05, align="CENTER", rot=0.0, condense
 
 # ------------------------------------------------------------------ parts
 
+def _flare(r0, r1, z0, z1, n=10):
+    """Concave skirt flare from (r0, z0) out at the rim up to the body (r1, z1):
+    shallow near the rim, steepening towards the body (a moulded bell)."""
+    return [(r0 + (r1 - r0) * (i / n) ** 0.7, z0 + (z1 - z0) * (i / n) ** 2.2) for i in range(1, n + 1)]
+
+
+def alu_insert(name, r, z, mat):
+    """Spun-aluminium cap insert sitting inside the plastic rim lip."""
+    return lathe(name, [(0, z - 0.3), (r, z - 0.3), (r, z + 0.2), (r - 0.3, z + 0.25), (0, z + 0.25)],
+                 mat, segs=96)
+
+
 def knob(frame, M, u, v, kind, pointer=0.0, cap=None):
     """Knob families seen on the desk.
       big    the Big Knob: wide thin flat skirt, tall fluted body (~60 % of the
@@ -710,37 +774,39 @@ def knob(frame, M, u, v, kind, pointer=0.0, cap=None):
     pointer: indicator angle, degrees clockwise from noon (up the plate)."""
     parts = []
     if kind == "big":
-        sk = lathe("big_skirt", [(0, 0), (23.5, 0), (23.6, 1.6), (23.0, 2.4), (14.6, 2.6), (0, 2.6)],
-                   M["red_skirt"], segs=96)
-        body = lathe("big_body", [(0, 2.4), (14.2, 2.4), (14.2, 3.2), (14.0, 24.5), (13.4, 25.6), (0, 25.6)],
-                     M["red"], segs=40 * 6, flutes=40, fdepth=0.7, fz=(3.2, 24.5))
-        top = lathe("big_cap", [(0, 25.4), (12.9, 25.4), (12.9, 26.0), (12.4, 26.5), (0, 26.5)],
-                    cap or M["cap_light"], segs=96)
-        dot = C.cylinder("big_dot", 1.0, 0.4, (0, 9.8, 26.45), M["dot"], segs=16)
+        # flat disc skirt with a slight concave flare up into the body
+        sk = lathe("big_skirt", [(0, 0), (23.5, 0), (23.6, 1.3), (23.1, 1.9)]
+                   + _flare(22.6, 14.4, 1.9, 4.2) + [(0, 4.2)], M["red_skirt"], segs=128)
+        body = lathe("big_body", [(0, 2.4), (14.2, 2.4), (14.2, 3.4), (14.0, 24.6), (13.8, 25.9), (13.0, 26.0),
+                                  (12.9, 25.5), (0, 25.5)],
+                     M["red"], segs=56 * 8, flutes=56, fdepth=0.55, fz=(4.0, 24.6))
+        top = alu_insert("big_cap", 12.8, 25.5, M["cap_alu"])
+        dot = C.cylinder("big_dot", 1.0, 0.3, (0, 9.6, 25.75), M["dot"], segs=16)
         parts = [sk, body, top, dot]
-        top_h = 26.5
+        top_h = 26.0
     elif kind in ("red", "black"):
         skm = M["red_skirt"] if kind == "red" else M["black_knob"]
         bm_ = M["red"] if kind == "red" else M["black_knob"]
         rs = 18.0 if kind == "red" else 17.0
-        sk = lathe(kind + "_skirt", [(0, 0), (rs, 0), (rs, 1.0), (rs - 2.5, 2.4), (11.5, 5.5), (9.6, 7.0), (0, 7.0)],
-                   skm, segs=72)
-        body = lathe(kind + "_body", [(0, 6.5), (9.4, 6.5), (9.3, 17.5), (8.7, 18.4), (0, 18.4)],
-                     bm_, segs=20 * 8, flutes=20, fdepth=0.6, fz=(6.5, 17.5))
-        top = lathe(kind + "_cap", [(0, 18.2), (8.2, 18.2), (8.2, 18.8), (7.8, 19.2), (0, 19.2)],
-                    cap or M["cap_grey"], segs=48)
-        dot = C.cylinder(kind + "_dot", 0.8, 0.3, (0, 5.6, 19.2), M["dot"], segs=12)
+        sk = lathe(kind + "_skirt", [(0, 0), (rs, 0), (rs, 0.9), (rs - 0.4, 1.3)]
+                   + _flare(rs - 0.9, 9.3, 1.3, 7.0) + [(0, 7.0)], skm, segs=96)
+        body = lathe(kind + "_body", [(0, 6.5), (9.4, 6.5), (9.3, 17.6), (9.1, 18.7), (8.5, 18.8), (8.4, 18.3),
+                                      (0, 18.3)],
+                     bm_, segs=36 * 8, flutes=36, fdepth=0.42, fz=(7.2, 17.6))
+        top = alu_insert(kind + "_cap", 8.3, 18.3, cap or M["cap_alu"])
+        dot = C.cylinder(kind + "_dot", 0.75, 0.3, (0, 5.4, 18.55), M["dot"], segs=12)
         parts = [sk, body, top, dot]
-        top_h = 19.2
+        top_h = 18.8
     elif kind == "large":
-        sk = lathe("lg_skirt", [(0, 0), (22, 0), (22, 1.2), (19, 3), (14.5, 7), (0, 7)], M["black_knob"], segs=80)
-        body = lathe("lg_body", [(0, 6.5), (13.8, 6.5), (13.6, 19), (12.8, 20.2), (0, 20.2)],
-                     M["black_knob"], segs=28 * 6, flutes=28, fdepth=0.5, fz=(6.5, 19))
-        top = lathe("lg_cap", [(0, 20.0), (12.2, 20.0), (12.2, 20.6), (11.6, 21.1), (0, 21.1)],
-                    M["cap_grey"], segs=64)
-        dot = C.cylinder("lg_dot", 0.9, 0.3, (0, 8.5, 21.1), M["dot"], segs=12)
+        sk = lathe("lg_skirt", [(0, 0), (22, 0), (22, 1.0), (21.6, 1.4)] + _flare(21.0, 13.9, 1.4, 7.0)
+                   + [(0, 7)], M["black_knob"], segs=96)
+        body = lathe("lg_body", [(0, 6.5), (13.8, 6.5), (13.6, 19.2), (13.3, 20.4), (12.6, 20.5), (12.5, 20.0),
+                                 (0, 20.0)],
+                     M["black_knob"], segs=44 * 8, flutes=44, fdepth=0.42, fz=(7.2, 19.2))
+        top = alu_insert("lg_cap", 12.4, 20.0, M["cap_alu"])
+        dot = C.cylinder("lg_dot", 0.9, 0.3, (0, 8.5, 20.25), M["dot"], segs=12)
         parts = [sk, body, top, dot]
-        top_h = 21.1
+        top_h = 20.5
     elif kind in ("star", "ring"):
         sk = lathe("st_skirt", [(0, 0), (19, 0), (19, 1.2), (16, 3), (12, 6), (0, 6)], M["black_knob"], segs=72)
         body = lathe("st_body", [(0, 5.5), (13.5, 5.5), (13.5, 19), (12.5, 21), (0, 21)],
@@ -1016,55 +1082,80 @@ def vu_meter(frame, M, u, v, bw, bh, fw, fh, label, label_dv, size_lab=10.5, see
     face = C.box("vu_face", (fw + 2, fh + 2, 1), (0, 0, 0), M["vu_face"])
     frame.put(face, u, v, 3.5)
     zf = 4.05
+    # Layout after a classic backlit VU (owner's reference): a flat arc whose
+    # pivot sits just below the visible face; ticks with numerals above them,
+    # black -20..0, red +1..+3 over a thick red band; a % scale of dots
+    # inside it; "-" top left, red "+" top right, a big "vu" bottom right.
+    x0 = u - fw / 2
+    top = v + fh / 2
+    Rr = 0.57 * fw                       # scale radius
+    px = x0 + 0.525 * fw                 # pivot x
+    py = top - 0.20 * fh - Rr            # pivot (below the face bottom)
+    piv = (px, py)
     s = fh / 84.0
-    # one pivot near the bottom centre of the face, under a black cover
-    piv = (u, v - 0.5 * fh + 6.0 * s)
-    R = 0.74 * fh
+    # measured across the reference face (fraction of width) per VU mark
+    VU_FR = [(-20, .15), (-10, .22), (-7, .29), (-6, .315), (-5, .34), (-4, .39), (-3, .44), (-2, .50),
+             (-1, .56), (0, .64), (1, .72), (2, .81), (3, .90)]
+
+    def ang_of_frac(f):
+        return math.degrees(math.acos(max(-1, min(1, (x0 + f * fw - px) / Rr))))
+
+    def frac_of_vu(db):
+        for (d0, f0), (d1, f1) in zip(VU_FR, VU_FR[1:]):
+            if d0 <= db <= d1:
+                return f0 + (f1 - f0) * (db - d0) / (d1 - d0)
+        return VU_FR[0][1] if db < -20 else VU_FR[-1][1]
+
+    def pt(ang, r):
+        a_ = math.radians(ang)
+        return (px + r * math.cos(a_), py + r * math.sin(a_))
+
     ink = Print("vu_ink", M["vu_ink"], z=zf)
     red = Print("vu_red", M["vu_red"], z=zf + 0.01)
-    # angles (deg, 90 = straight up): -20 VU at 140, 0 VU at 62, +3 at 40
-    marks = [(-20, 140), (-10, 126), (-7, 116), (-5, 107), (-3, 95), (-2, 87), (-1, 76), (0, 62),
-             (1, 54), (2, 47), (3, 40)]
-    a_lo, a_zero, a_hi = 140.0, 62.0, 40.0
-    ink.arc(piv, R, a_zero, a_lo, 0.4 * s, n=64)
-    red.arc(piv, R + 1.0 * s, a_hi, a_zero, 2.2 * s, n=24)      # the red zone band
-    ink.arc(piv, R, a_hi, a_zero, 0.4 * s, n=24)
-    for val, ang in marks:
-        a = math.radians(ang)
-        major = val in (-20, -10, -7, -5, -3, 0, 3)
-        L = (5.0 if major else 3.5) * s
-        p0 = (piv[0] + R * math.cos(a), piv[1] + R * math.sin(a))
-        p1 = (piv[0] + (R + L) * math.cos(a), piv[1] + (R + L) * math.sin(a))
-        (red if val > 0 else ink).line(p0, p1, 0.55 * s)
-        lab = ("+" + str(val)) if val > 0 else str(abs(val))
-        q = (piv[0] + (R + L + 4.0 * s) * math.cos(a), piv[1] + (R + L + 4.0 * s) * math.sin(a))
-        text(frame, lab, q[0], q[1], 3.4 * s, M["vu_red"] if val > 0 else M["vu_ink"], h=zf + 0.02,
-             rot=ang - 90)
-    # second (percent) scale under the arc, 0 .. 100 with minor ticks
-    Rp = R - 1.2 * s
-    for k in range(21):
-        ang = a_lo - (a_lo - a_zero) * k / 20
-        a = math.radians(ang)
-        L = (3.6 if k % 5 == 0 else 2.0) * s
-        ink.line((piv[0] + Rp * math.cos(a), piv[1] + Rp * math.sin(a)),
-                 (piv[0] + (Rp - L) * math.cos(a), piv[1] + (Rp - L) * math.sin(a)), 0.35 * s)
-        if k % 5 == 0 and k:
-            q = (piv[0] + (Rp - 7.5 * s) * math.cos(a), piv[1] + (Rp - 7.5 * s) * math.sin(a))
-            text(frame, str(k * 5), q[0], q[1], 2.4 * s, M["vu_ink"], h=zf + 0.02, rot=ang - 90)
-    text(frame, "VU", u, piv[1] + 0.42 * R, 7.5 * s, M["vu_ink"], h=zf + 0.02, condense=1.0)
+    a0 = ang_of_frac(frac_of_vu(0))
+    a3 = ang_of_frac(frac_of_vu(3))
+    # thick red band from 0 to +3, at the tick base
+    red.arc(piv, Rr + 1.1 * s, a3, a0, 2.6 * s, n=32)
+    labels = {-20: "20", -10: "10", -7: "7", -5: "5", -3: "3", -2: "2", -1: "1", 0: "0", 1: "1", 2: "2", 3: "3"}
+    for db, f in VU_FR:
+        ang = ang_of_frac(f)
+        L = 6.0 * s
+        r_in = Rr + (2.4 * s if db > 0 else 0.0)
+        (red if db > 0 else ink).line(pt(ang, r_in), pt(ang, r_in + L), 0.75 * s)
+        if db in labels:
+            q = pt(ang, Rr + L + 6.5 * s + (2.4 * s if db > 0 else 0.0))
+            text(frame, labels[db], q[0], q[1], 7.0 * s, M["vu_red"] if db > 0 else M["vu_ink"],
+                 h=zf + 0.02, condense=0.9)
+    # percentage scale: dots (a small diamond at 0) and labels below them
+    Rp = Rr - 4.5 * s
+    for pc in range(0, 101, 10):
+        db = 20 * math.log10(pc / 100.0) if pc else -21.5
+        ang = ang_of_frac(frac_of_vu(max(db, -20)) - (0.02 if pc == 0 else 0.0))
+        c = pt(ang, Rp)
+        if pc == 0:
+            ink.quad([(c[0] - 1.1 * s, c[1]), (c[0], c[1] + 1.1 * s), (c[0] + 1.1 * s, c[1]),
+                      (c[0], c[1] - 1.1 * s)])
+        else:
+            ink.disc(c, 0.85 * s, 12)
+        if pc % 20 == 0:
+            q = pt(ang, Rp - 5.0 * s)
+            text(frame, str(pc), q[0], q[1], 3.6 * s, M["vu_ink"], h=zf + 0.02, condense=0.9)
+    ink.line((x0 + 0.10 * fw, top - 0.11 * fh), (x0 + 0.16 * fw, top - 0.11 * fh), 1.0 * s)   # "-"
+    pc_ = (x0 + 0.885 * fw, top - 0.13 * fh)                                                   # red "+"
+    red.line((pc_[0] - 3.2 * s, pc_[1]), (pc_[0] + 3.2 * s, pc_[1]), 1.0 * s)
+    red.line((pc_[0], pc_[1] - 3.2 * s), (pc_[0], pc_[1] + 3.2 * s), 1.0 * s)
+    vu = text(frame, "vu", x0 + 0.875 * fw, top - 0.80 * fh, 13.0 * s, M["vu_ink"], h=zf + 0.02, condense=1.0)
+    vu.data.offset = 0.035                                                                    # bold
     ink.finish(frame)
     red.finish(frame)
-    # pivot cover: a small black half-dome at the bottom centre
-    cov = C.sphere("vu_pivot_cover", 5.5 * s, (0, 0, 0), M["needle"])
-    cov.scale = (1.0, 1.0, 0.3)
-    frame.put(cov, piv[0], piv[1], zf)
-    # needle at rest, slightly left of -20, from the pivot
-    a = math.radians(a_lo + 4 + rng.uniform(-1, 1))
-    n0 = Vector(piv)
-    n1 = Vector((piv[0] + (R + 4.5 * s) * math.cos(a), piv[1] + (R + 4.5 * s) * math.sin(a)))
+    # thin black needle at rest (left), rising from below the face's bottom edge
+    rng_a = ang_of_frac(0.10) + rng.uniform(-1.5, 1.5)
+    ybot = v - fh / 2
+    tlo = (ybot - py) / math.sin(math.radians(rng_a))           # where it enters the face
+    n0 = pt(rng_a, tlo)
+    n1 = pt(rng_a, Rr + 6.0 * s)
     nb = Print("vu_needle", M["needle"], z=zf + 1.4)
-    nb.line(n0.xy, (n0 + (n1 - n0) * 0.3).xy, 0.9 * s)
-    nb.line((n0 + (n1 - n0) * 0.3).xy, n1.xy, 0.45 * s)
+    nb.line(n0, n1, 0.5 * s)
     nb.finish(frame)
     gl = C.box("vu_glass", (fw + 4, fh + 4, 0.8), (0, 0, 0), M["glass"])
     frame.put(gl, u, v, t - 3.6)
