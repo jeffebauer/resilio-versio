@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app (merged to `main`; downloads still "coming soon" while the repo is private). Your review changes are on `feat/site-refine` (preview below). First-chord fix installed in Ableton
+**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app with MD UI / MD IO, the wireframe panels and your review changes (downloads still "coming soon" while the repo is private). First-chord fix installed in Ableton
 
 | Milestone | State |
 |---|---|
@@ -21,8 +21,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 2. The minisite (live; refinements on a branch)
-- [ ] Look through your review changes on `feat/site-refine`: locally at http://localhost:4323 (Claude starts it; MD UI / MD IO fonts) or on the protected preview https://resilio-versio-git-feat-site-refine-jeffebauers-projects.vercel.app. The new wireframe panel (manual's panel map; each starting point drawn as a set panel), MD UI + MD IO, the hero edge, the download section. OK it and Claude merges it to `main` (live)
+### 2. The minisite (live)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
@@ -57,6 +56,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Site review changes live** (`feat/site-refine` merged): MD UI / MD IO fonts; a wireframe panel drawn from your art (the manual's panel map, each starting point as a set panel; switches up / centre / down); home: sound claims removed, patched still below the cards, card buttons bottom-aligned, hero edge fixed, download section realigned, dividers between white sections; footer: one legal paragraph, "Made with love by Jesse Bauer"
 - 7 Oct 2026: **Fonts on Vercel:** private Blob store connected, MD UI + MD IO uploaded, `FONTS_URL` set; the `feat/site-refine` preview builds with them (`downloaded 2/2`). The live site switches to them when the branch merges
 - 7 Oct 2026: **Site live** at https://resilio-versio.vercel.app (revision 2 and the render scripts merged to `main`, for friends' feedback). **Plugin `1e02c96` installed** (first-chord fix, AU validated). Fonts switched from Phonic to MD UI (text) + MD IO (mono), both variable
 - 7 Oct 2026: **Minisite:** Vercel project set up (protected previews); Blender installed; panel art v2 and the logos in; renders picked and placed; the hero film (rises from below, lands straight on) rendered; Inter as the fallback font; all 12 Phonic cuts converted to web fonts (kept out of git). **Redesign (revision 2)** decided with you (DESIGN-v2.md: a hybrid of TE, Mier, Bull 5 and Fors, retiring the UDO-specific elements) and built by a cloud session (PR #2), then your review changes (text-only callouts, diagrams instead of pictograms, denser tiles, the whole hero film)
