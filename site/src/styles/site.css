@@ -150,7 +150,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-title h1 { grid-column: 1 / span 9; }
 .hero-title h1 span { display: block; }
 .hero-title h1 > span:first-child { font-weight: var(--wt-medium); letter-spacing: -0.02em; }   /* the name in Medium, the tagline in Light (owner, 7 Oct) */
-.hero-title h1 > .quiet { font-weight: var(--wt-light); color: #888888; font-size: var(--fs-h2); line-height: var(--lh-snug); letter-spacing: -0.01em; margin-top: 0.35em; max-width: 18em; }   /* paler than --ink-2: 3.25:1 on paper, AA for display-size text (owner, 7 Oct) */
+.hero-title h1 > .quiet { font-weight: var(--wt-light); color: #888888; font-size: clamp(1.375rem, 1rem + 1.5vw, 2.25rem); line-height: 1.2; letter-spacing: -0.005em; margin-top: 0.2em; max-width: 24em; }   /* 22 -> 36 px, close under the name (owner, 7 Oct) */   /* paler than --ink-2: 3.25:1 on paper, AA for display-size text (owner, 7 Oct) */
 .hero-title .actions { grid-column: 10 / -1; justify-self: end; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
 @media (max-width: 47.99rem) {
   .hero-title h1, .hero-title .actions { grid-column: 1 / -1; justify-self: start; justify-content: start; }
