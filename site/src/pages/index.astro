@@ -16,11 +16,10 @@ import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH
 const page = await getPage('overview');
 const tank = mustRender('tank-macro.jpg');
 const patched = mustRender('patched.jpg');
-const bkMacro = mustRender('bigknob-macro.jpg');
+const bkBanner = mustRender('bigknob-area.jpg');
 const bkGallery = [
   { img: mustRender('desk-front.jpg'), caption: 'The MCI desk: 12 inputs, 4 outputs, the Big Knob top right.', alt: 'A rendered recreation of King Tubby\'s MCI mixing desk from the front: six backlit VU meters, twelve channel strips with red EQ knobs and red-capped faders, and the red HI PASS FILTER knob at the top right.' },
-  { img: mustRender('desk-angled.jpg'), caption: 'From the right: the master faders on their curve.', alt: 'The recreated MCI desk at a three-quarter angle, the red Big Knob in the near corner and the channel strips receding.' },
-  { img: mustRender('desk-eq-macro.jpg'), caption: 'The EQ section with every knob restored (the museum’s desk is missing some).', alt: 'Close-up of rows of glossy red EQ knobs with aluminium caps on the recreated desk.' },
+  { img: mustRender('bigknob-macro.jpg'), caption: 'The Big Knob close up.', alt: 'Close-up of a glossy red knob with a spun aluminium cap on a dark panel, the legend HI PASS FILTER above it and steps from OFF to 7.5K around it.' },
 ];
 const wideSizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const { h1, rest } = takeH1(pageHtml(page));
@@ -100,22 +99,21 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
 
   <!-- 3b King Tubby's Big Knob (white): the history, in the intro's image-and-scrim form (owner, 7 Oct) -->
   <section class="section bigknob" id="big-knob" aria-labelledby="bigknob-h">
-    <figure class="wide intro-media" data-reveal>
-      <div class="card-media intro-card">
-        <Picture class="intro-bg" src={bkMacro} widths={widthsFor(bkMacro)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
-          alt="Close-up of a red knob with a spun aluminium cap on a dark panel, the legend HI PASS FILTER above it and steps from OFF to 7.5K around it." />
-        <div class="intro-scrim" aria-hidden="true"></div>
-        <div class="intro-note small quiet">Altec 9069B · MCI desk · 1972</div>
-        <div class="intro-copy flow">
-          <h2 class="statement" id="bigknob-h">{bigKnob.title}</h2>
-          <div class="lede quiet" set:html={inner(bkLede)} />
+    <div class="wide bigknob-bento">
+      <figure class="intro-media bigknob-banner" data-reveal>
+        <div class="card-media intro-card">
+          <Picture class="intro-bg" src={bkBanner} widths={widthsFor(bkBanner)} sizes="(min-width: 64rem) 62vw, calc(100vw - 2rem)" formats={['avif', 'webp']} loading="lazy"
+            alt="The red HI PASS FILTER knob on the recreated MCI desk, with the MIC and EKO selector buttons and black knobs around it on the sprayed aluminium panel." />
+          <div class="intro-scrim" aria-hidden="true"></div>
+          <div class="intro-note small quiet">Altec 9069B · MCI desk · 1972</div>
+          <div class="intro-copy flow">
+            <h2 class="statement" id="bigknob-h">{bigKnob.title}</h2>
+            <div class="lede quiet" set:html={inner(bkLede)} />
+          </div>
         </div>
-      </div>
-    </figure>
-    <div class="column flow bigknob-story" set:html={bkStory.join('')} />
-    <div class="wide bigknob-gallery">
+      </figure>
       {bkGallery.map((g) => (
-        <figure data-reveal>
+        <figure class="bigknob-tile" data-reveal>
           <div class="card-media" style="aspect-ratio: 16 / 9">
             <Picture src={g.img} widths={widthsFor(g.img, [480, 800, 1200])} sizes="(min-width: 64rem) 30vw, calc(100vw - 2rem)" formats={['avif', 'webp']} loading="lazy" alt={g.alt} />
           </div>
@@ -123,7 +121,7 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
         </figure>
       ))}
     </div>
-    <p class="wide caption bigknob-note">Renders: our recreation of the desk, modelled from photographs of the original.</p>
+    <div class="column flow bigknob-story" set:html={bkStory.join('')} />
   </section>
 
   <!-- 4 The panel (white) -->

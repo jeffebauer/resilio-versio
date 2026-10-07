@@ -601,10 +601,15 @@ ul > li::marker { color: var(--signal); }
 }
 
 /* ---- King Tubby's Big Knob (history; owner, 7 Oct) --------------------------------
-   The intro's image-and-scrim card, then the story in the reading column, then three
-   renders of the recreated desk. */
+   A bento: the image-and-scrim banner on the left, two renders stacked on the right, then
+   the story in the reading column. */
+.bigknob .bigknob-bento { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: var(--gutter); }
+.bigknob .bigknob-banner { grid-row: 1 / 3; margin: 0; display: grid; }
+.bigknob .bigknob-banner .intro-card { min-height: 100%; }
+.bigknob .bigknob-tile { margin: 0; }
 .bigknob .bigknob-story { margin-top: var(--stack-5); }
-.bigknob .bigknob-gallery { margin-top: var(--stack-5); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); }
-.bigknob .bigknob-gallery figure { margin: 0; }
-.bigknob .bigknob-note { margin-top: var(--stack-3); padding-top: 0; }
-@media (max-width: 47.99rem) { .bigknob .bigknob-gallery { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 63.99rem) {
+  .bigknob .bigknob-bento { grid-template-columns: minmax(0, 1fr); }
+  .bigknob .bigknob-banner { grid-row: auto; }
+  .bigknob .bigknob-banner .intro-card { min-height: clamp(26rem, 60vw, 34rem); }
+}

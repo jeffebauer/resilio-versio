@@ -24,15 +24,13 @@ A spring tank, not a room. Every hit lands in the springs as its own **splash**:
 
 ## King Tubby's Big Knob
 
-An Altec filter on a second-hand desk, and the sweep that became a dub move.
+An Altec filter created the sweep that became a dub move.
 
 In 1972 King Tubby bought an older MCI mixing desk from Dynamic Sounds, Byron Lee's studio in Kingston. Fitted to it was an Altec 9069B: a passive high-pass filter, two capacitors and a coil, built for cutting rumble in broadcast and film work. On the desk it was a large red knob marked HI PASS FILTER. Tubby called it the Big Knob.
 
 It cuts the lows at 18 dB per octave, in fixed steps from 70 Hz up to 7.5 kHz. Tubby switched it on the reverb and echo sends and returns as the track played: each click thins the sound further, until a snare is a telephone ring, then a squeak, and the steps themselves are part of the sound.
 
-The desk, Big Knob still fitted, is now in the collection of the Museum of Pop Culture in Seattle.
-
-Resilio's TONE, right of noon, is modelled on it: the same steep slope on the spring return, up to 800 Hz, swept smoothly instead of in steps so you can ride it by hand or with CV.
+**Resilio's TONE, right of noon, is modelled on it:** the same steep slope on the spring return, up to 800 Hz, swept smoothly instead of in steps so you can ride it by hand or with CV.
 
 ## Built around dub performance moves
 
