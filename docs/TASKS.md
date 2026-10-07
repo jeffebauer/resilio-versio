@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app with MD UI / MD IO, the wireframe panels and your review changes (downloads still "coming soon" while the repo is private). First-chord fix installed in Ableton
+**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app with your full polish pass (home, manual, install, presets, changelog, FAQ) and the mobile hero fixes; downloads still "coming soon" while the repo is private. Big Knob desk renders done (not yet on the site)
 
 | Milestone | State |
 |---|---|
@@ -56,6 +56,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Site polish live** (your Mesurer rounds): sliding nav pill and pill buttons; intro on the tank image; centred section intros; one casing rule; panel list as label | description; manual terminology, panel table beside the drawing, orange subheads and list markers, reading-position contents; install without tabs; presets values under the text; changelog by date; a narrower reading column; hero film without flicker or white edges on mobile (check on your phone). Mesurer runs in `npm run dev` only
+- 7 Oct 2026: **King Tubby's MCI desk renders** (third pass, your notes): front, plate-on, ¾, Big Knob macros, the red EQ grid; in `renders/minisite_final/bigknob/` (scene scripts on the agent's branch, not merged)
 - 7 Oct 2026: **Site polish live:** warm-neutral greys (cohesive with the orange-red), round play/pause buttons, every image caption in small mono, "Built around dub performance moves", the clips note removed
 - 7 Oct 2026: **Site review changes live** (`feat/site-refine` merged): MD UI / MD IO fonts; a wireframe panel drawn from your art (the manual's panel map, each starting point as a set panel; switches up / centre / down); home: sound claims removed, patched still below the cards, card buttons bottom-aligned, hero edge fixed, download section realigned, dividers between white sections; footer: one legal paragraph, "Made with love by Jesse Bauer"
 - 7 Oct 2026: **Fonts on Vercel:** private Blob store connected, MD UI + MD IO uploaded, `FONTS_URL` set; the `feat/site-refine` preview builds with them (`downloaded 2/2`). The live site switches to them when the branch merges
