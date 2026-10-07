@@ -425,3 +425,6 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* The plugin screenshot in the manual: shown near its real 2x size, not stretched to the column. */
 .manual-screenshot { max-width: 20rem; margin-block: var(--stack-4); }
+
+/* "Built around the dub moves": a full-bleed rule above, like a section head (owner, 7 Oct). */
+.moves { border-top: var(--hair) solid var(--line); padding-top: var(--stack-3); }
