@@ -9,7 +9,7 @@ order: 2
 
 Resilio Versio is a dub spring reverb for the Noise Engineering Versio: a simulated spring tank you can drive, splash, throw into and push into feedback, with a tape echo in front of it on the TANK switch's third position. The plugin has the same panel and the same sound.
 
-**Terminology.**
+<p class="subhead">Terminology</p>
 
 <dl class="terms">
 <dt>Tank</dt><dd>The whole reverb, with one or two springs inside.</dd>
