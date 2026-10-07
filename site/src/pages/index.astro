@@ -10,7 +10,6 @@ import SpecTable from '../components/SpecTable.astro';
 import FeatureStack from '../components/FeatureStack.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
-import ScrubSequence from '../components/ScrubSequence.astro';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
 import { CONTROLS, FEATURES } from '../data/controls';
 
@@ -80,7 +79,8 @@ const INDEX = [
   </section>
 
   <div class="doc-media section" data-reveal>
-    <MediaCard fig="01" caption="The tank, springs close up" ratio="21:9" render={{ id: 'R2', name: 'Tank macro, spring coils' }} />
+    <MediaCard fig="01" caption="The tank: a transducer and its springs" ratio="21:9" src="/renders/tank-macro.jpg"
+      alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
   </div>
 
   <!-- 03 The sound -->
@@ -111,7 +111,8 @@ const INDEX = [
         <div class="panel-grid">
           <figure class="figure">
             <figcaption class="caption"><span class="num">Fig. 02</span>The module</figcaption>
-            <ScrubSequence />
+            <div class="card-media" style="aspect-ratio: 4 / 5"><img src="/renders/module-three-quarter.jpg" width="1120" height="1400" loading="lazy" decoding="async"
+              alt="The Versio module with the Resilio panel in three-quarter view: black panel, black knobs, toggles, the THROW button, red LEDs lit, and the jacks; the circuit boards show at the side." /></div>
             <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
           </figure>
           <MediaCard
@@ -151,6 +152,10 @@ const INDEX = [
   <section class="section" id="two-ways" aria-labelledby="two-ways-h">
     <SectionHead num="05" label="Two ways to play" id="two-ways-h" />
     <div class="section-body grid">
+      <div class="main two-ways-media">
+        <MediaCard fig="04" caption="Patched: both inputs and both outputs" ratio="16:9" src="/renders/patched.jpg"
+          alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
+      </div>
       <div class="main two-ways">
         <div>
           <h3>On the module</h3>
@@ -168,6 +173,14 @@ const INDEX = [
       </div>
     </div>
   </section>
+
+  <!-- Tape band -->
+  <div class="tape-band grid">
+    <div class="band">
+      <MediaCard fig="05" caption="Tape and springs: the echo before the tank" ratio="16:9" src="/renders/tape.jpg"
+        alt="The Resilio Versio module standing on a pale floor, loose brown recording tape twisting around its base." />
+    </div>
+  </div>
 
   <!-- 07 Download -->
   <section class="section on-cream" id="download" aria-labelledby="download-h">
