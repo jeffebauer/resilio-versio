@@ -61,6 +61,11 @@ def setup_cycles(samples=64, width=1920, height=1080, denoise=True):
     cy.adaptive_threshold = 0.02
     cy.use_denoising = denoise
     cy.denoiser = "OPENIMAGEDENOISE"
+    # keep fine print crisp: denoise with albedo + normal guides, prefiltered
+    cy.denoising_input_passes = "RGB_ALBEDO_NORMAL"
+    cy.denoising_prefilter = "ACCURATE"
+    cy.denoising_quality = "HIGH"
+    sc.render.filter_size = 1.0  # pixel filter (default 1.5 px) a touch tighter for crisp silkscreen
     cy.max_bounces = 10
     cy.diffuse_bounces = 3
     cy.glossy_bounces = 3
@@ -146,7 +151,7 @@ def decal_material(name, image_path, base_value=0.025, ink_scale=0.92, rough=0.5
     img = bpy.data.images.load(image_path, check_existing=True)
     tex = nt.nodes.new("ShaderNodeTexImage")
     tex.image = img
-    tex.interpolation = "Cubic"
+    tex.interpolation = "Linear"  # Blender's "Cubic" is a smoothing B-spline: it softened the print
     tex.extension = "CLIP"
     uv = nt.nodes.new("ShaderNodeUVMap")
     nt.links.new(uv.outputs["UV"], tex.inputs["Vector"])

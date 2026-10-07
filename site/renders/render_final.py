@@ -38,6 +38,21 @@ def main():
     sys.argv = [sys.argv[0], "--", "--exact", "--only", only, "--width", "2880", "--height", "1620",
                 "--samples", samples, "--out", FINAL_OUT, "--title", "Minisite renders — final stills"]
     render_clay.main()
+    sharpen([i for i in only.split(",") if i])
+
+
+def sharpen(ids):
+    """A light unsharp mask (luma only) on the finished PNGs: small white
+    silkscreen seen at a grazing angle is only ~15 px tall at 2880 wide, and
+    a touch of sharpening is what makes it read crisp (the softness is pixel
+    density, not focus or denoising: a 1500-spp undenoised render matched)."""
+    import subprocess
+    for i in ids:
+        p = os.path.join(FINAL_OUT, i + ".png")
+        tmp = p + ".sharp.png"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", p, "-vf", "unsharp=5:5:0.7:5:5:0",
+                        tmp], check=True)
+        os.replace(tmp, p)
 
 
 if __name__ == "__main__":

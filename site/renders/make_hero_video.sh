@@ -8,21 +8,24 @@
 # REVIEW_DIR (optional): a 640-px MP4 of the reveal + hold for a phone.
 set -e
 F="$1"; O="$2"; RV="$3"
+# light luma unsharp mask: the panel print is small at 1080p (see render_final.sharpen)
+SH="unsharp=5:5:0.6:5:5:0"
 mkdir -p "$O"
 enc() { # name start count
-  ffmpeg -y -loglevel error -framerate 30 -start_number "$2" -i "$F/f_%04d.jpg" -frames:v "$3" \
+  ffmpeg -y -loglevel error -framerate 30 -start_number "$2" -i "$F/f_%04d.jpg" -frames:v "$3" -vf "$SH" \
     -c:v libx264 -crf 20 -preset slow -pix_fmt yuv420p -movflags +faststart "$O/$1.mp4"
-  ffmpeg -y -loglevel error -framerate 30 -start_number "$2" -i "$F/f_%04d.jpg" -frames:v "$3" \
+  ffmpeg -y -loglevel error -framerate 30 -start_number "$2" -i "$F/f_%04d.jpg" -frames:v "$3" -vf "$SH" \
     -c:v libvpx-vp9 -crf 32 -b:v 0 -row-mt 1 -pix_fmt yuv420p "$O/$1.webm"
 }
 enc hero_reveal 1 210
 enc hero_hold_loop 211 96
-cp "$F/f_0001.jpg" "$O/hero_reveal_first.jpg"
-cp "$F/f_0210.jpg" "$O/hero_reveal_poster.jpg"
-cp "$F/f_0211.jpg" "$O/hero_hold_loop_poster.jpg"
+poster() { ffmpeg -y -loglevel error -i "$F/f_$1.jpg" -vf "$SH" -q:v 2 "$O/$2.jpg"; }
+poster 0001 hero_reveal_first
+poster 0210 hero_reveal_poster
+poster 0211 hero_hold_loop_poster
 if [ -n "$RV" ]; then
   mkdir -p "$RV"
   ffmpeg -y -loglevel error -framerate 30 -start_number 1 -i "$F/f_%04d.jpg" -frames:v 306 \
-    -vf scale=640:-2 -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart "$RV/hero_reveal_and_hold_640.mp4"
+    -vf "$SH,scale=640:-2" -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart "$RV/hero_reveal_and_hold_640.mp4"
 fi
 ls -la "$O"

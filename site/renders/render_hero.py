@@ -173,7 +173,7 @@ def build():
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     out = argv[argv.index("--frames") + 1]
-    samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 48
+    samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 64
     only = [int(x) for x in argv[argv.index("--only") + 1].split(",")] if "--only" in argv else None
     build()
     C.setup_cycles(samples=samples)
