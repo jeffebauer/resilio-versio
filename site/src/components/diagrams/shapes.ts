@@ -24,20 +24,21 @@ function ring(x0: number, x1: number, amp: number, cycles: number, fall = 3.2, y
   return line(pts);
 }
 
-/** µ-law (µ 255) rounding to `levels` steps a side: fine near silence, coarse near full scale. */
-const MU = 255;
-function muQuantise(v: number, levels: number): number {
-  const c = Math.sign(v) * Math.log1p(MU * Math.abs(v)) / Math.log1p(MU);
+/** µ-law rounding to `levels` steps a side: fine near silence, coarse near full scale. The
+ *  real box is µ 255 with 2,048 or 512 steps a side; a drawing has room for a handful, so the
+ *  bit-depth tiles use a gentler µ to keep the steps readable. */
+function muQuantise(v: number, levels: number, mu = 255): number {
+  const c = Math.sign(v) * Math.log1p(mu * Math.abs(v)) / Math.log1p(mu);
   const q = Math.round(c * levels) / levels;
-  return Math.sign(q) * (Math.pow(1 + MU, Math.abs(q)) - 1) / MU;
+  return Math.sign(q) * (Math.pow(1 + mu, Math.abs(q)) - 1) / mu;
 }
 
 /** A signal drawn as the converter's staircase: held flat between samples, jumping to each new step. */
-function stairs(fn: (u: number) => number, x0: number, x1: number, samples: number, levels: number, amp: number, y = MID): string {
+function stairs(fn: (u: number) => number, x0: number, x1: number, samples: number, levels: number, amp: number, mu = 255, y = MID): string {
   let d = '';
   for (let i = 0; i <= samples; i++) {
     const x = x0 + ((x1 - x0) * i) / samples;
-    const yy = y - amp * muQuantise(fn(i / samples), levels);
+    const yy = y - amp * muQuantise(fn(i / samples), levels, mu);
     d += i ? `H${f(x)}V${f(yy)}` : `M${f(x)} ${f(yy)}`;
   }
   return d + `H${f(x1)}`;
@@ -225,15 +226,15 @@ export function shape(kind: DiagramKind): Shape {
         label: 'µ-law: a fading tail drawn as the converter’s steps, coarse while loud, finer as it fades, then silence.',
         faint: [smooth(tail, 6, 154, 26)],
         ink: [],
-        hot: [stairs(tail, 6, 154, 74, 4, 26)],
+        hot: [stairs(tail, 6, 154, 90, 5, 26)],
       };
     }
     case 'bits12':
     case 'bits10': {
       // The same wave at two bit depths: TAPE's finer steps, VALVE's coarser ones.
       const fine = kind === 'bits12';
-      const wave = (u: number) => Math.sin(2 * Math.PI * 1.5 * u);
-      const st = stairs(wave, 6, 154, fine ? 54 : 30, fine ? 6 : 3, 24);
+      const wave = (u: number) => 0.92 * Math.sin(2 * Math.PI * 1.5 * u);
+      const st = stairs(wave, 6, 154, fine ? 72 : 36, fine ? 9 : 4, 24, 12);
       return {
         label: fine
           ? 'TAPE, 12-bit: the wave in fine steps, close to the smooth original.'
