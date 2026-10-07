@@ -1,10 +1,10 @@
 {
-  "_source": "Fallback for src/lib/release.ts while GitHub's API is unreachable (the repo is private). Version and date from docs/minisite/content/changelog.md; sizes from docs/minisite/BRIEF.md §9. Update by hand per release until the API is live.",
-  "version": "v2026.10.06-a6c70a4",
-  "date": "2026-10-06",
-  "html_url": "https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4",
+  "_source": "Fallback for src/lib/release.ts when GitHub's API can't be reached at build time (rate limit, network). Update per release: version, date and the stable-named asset sizes.",
+  "version": "v2026.10.07-0671d22",
+  "date": "2026-10-07",
+  "html_url": "https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22",
   "assets": {
-    "firmware": { "name": "resilio-versio-firmware.bin", "bytes": 126380 },
-    "plugin": { "name": "resilio-versio-plugin-macos.zip", "bytes": 7807928 }
+    "firmware": { "name": "resilio-versio-firmware.bin", "bytes": 127700 },
+    "plugin": { "name": "resilio-versio-plugin-macos.zip", "bytes": 7827908 }
   }
 }

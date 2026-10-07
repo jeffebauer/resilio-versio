@@ -1,7 +1,7 @@
 ---
 // The two downloads with version, date and size (PLAN §B5, BRIEF §6).
 // Links use the stable "latest" names, so they never change between releases.
-// While the repo is private (DOWNLOADS_LIVE false) the buttons show "coming soon".
+// With DOWNLOADS_LIVE off the buttons show "coming soon" (the state before the repo went public).
 import Button from './Button.astro';
 import { getRelease, fileSize, longDate } from '../lib/release';
 import { DOWNLOAD, DOWNLOADS_LIVE } from '../data/site';

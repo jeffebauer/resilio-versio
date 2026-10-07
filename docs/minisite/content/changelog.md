@@ -11,6 +11,16 @@ Newest first. Versions are named by date and build (`vYYYY.MM.DD-<build>`). Ever
 
 <!-- LATEST: show the current version, date and download buttons here, from the release data. -->
 
+## 7 October 2026
+
+<p class="release-version">v2026.10.07-0671d22</p>
+
+The first public release: the repository, the downloads and this site are open to everyone.
+
+- The first chord after a run of drums no longer comes in up to 3 dB louder than the chords after it: a new sound is read on its own.
+- The plugin's panel: THROW sits clear of DRIVE's label, and GATE and SIZE share the bottom row.
+- The download now carries the licence files (the plugin is AGPLv3 because it's built with JUCE; the code is MIT) and a link to the exact source.
+
 ## 6 October 2026
 
 <p class="release-version">v2026.10.06-a6c70a4</p>

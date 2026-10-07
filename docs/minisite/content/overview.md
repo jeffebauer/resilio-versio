@@ -69,7 +69,7 @@ The same sound engine runs as an Audio Unit and VST3 plugin for macOS, laid out 
 
 ## Status
 
-Pre-release: working firmware, played on real hardware. The sound may still change between versions. Feedback is welcome on [GitHub Issues](https://github.com/jeffebauer/resilio-versio/issues).
+The first public release: working firmware, played on real hardware. The sound may still change between versions. Feedback is welcome on [GitHub Issues](https://github.com/jeffebauer/resilio-versio/issues).
 
 Resilio is designed by ear: a designer and dub enthusiast made every sonic decision, with Claude (Anthropic's AI) as the engineering partner writing the DSP, the firmware and the tools. [Credits](/credits)
 
