@@ -339,7 +339,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .site-footer a:hover { text-decoration: underline; text-decoration-thickness: var(--hair); }
 /* The legal lines: full width under a hairline that stops at the gutters (owner, 7 Oct) */
 .site-footer .legal { grid-column: 1 / -1; border-top: var(--hair) solid var(--line); padding-top: var(--stack-3); color: var(--ink-2); display: grid; gap: 0.35rem; font-size: var(--fs-micro); line-height: 1.5; }
-.site-footer .credit { color: var(--ink); }
+.site-footer .credit { color: var(--ink); font-weight: 600; }
 .site-footer .credit a { text-decoration: underline; text-decoration-thickness: var(--hair); text-underline-offset: 0.15em; }
 @media (max-width: 47.99rem) {
   .site-footer .wide { grid-template-columns: minmax(0, 1fr); }
