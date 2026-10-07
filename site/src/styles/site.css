@@ -422,6 +422,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 
 .prose { font-size: var(--fs-body); overflow-wrap: break-word; }
 .prose a { overflow-wrap: anywhere; }
+.prose strong, .prose b { font-weight: 600; }   /* semibold in long-form text (owner, 7 Oct) */
 .prose > * + * { margin-top: var(--stack-3); }   /* roomier (owner, 7 Oct) */
 .prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
 .prose > h2:first-child, .prose > .tabs:first-child h2:first-child { margin-top: 0; }
@@ -473,15 +474,22 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose .slot { margin-block: var(--stack-4); }
 /* The panel map: the drawing with the table beside it on wide screens, reaching into the
    empty right-hand column; stacked below that (owner, 7 Oct). */
-.manual-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--stack-4) var(--gutter); align-items: start; }
+.manual-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--stack-4) 3.5rem; align-items: start; }
+.manual-panel .panel-table .table-scroll { margin: 0; }
 .manual-panel .panel-figure { margin: 0; max-width: 22rem; }
 .manual-panel .panel-note { color: var(--ink-2); margin-top: var(--stack-2); }
 .manual-panel .panel-table .spec th:first-child, .manual-panel .panel-table .spec td:first-child { white-space: nowrap; }
 @media (min-width: 90rem) {   /* from 1440 px, where the right-hand column has room for 15rem */
   .manual-panel { width: calc(100% + 15rem); grid-template-columns: 17rem minmax(0, 1fr); }
-  .manual-panel .panel-figure { position: sticky; top: calc(var(--header-h) + var(--stack-3)); }
 }
-.manual-screenshot { max-width: 20rem; margin-block: var(--stack-4); }
+.manual-screenshot { margin-block: var(--stack-4); }
+.manual-screenshot .figure { display: grid; grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); column-gap: 3.5rem; align-items: start; }
+.manual-screenshot .card-media { grid-column: 1; grid-row: 1; }
+.manual-screenshot .caption { grid-column: 2; grid-row: 1; border-top: var(--hair) solid var(--line); padding: 8px 0 0; }
+@media (max-width: 39.99rem) {
+  .manual-screenshot .figure { grid-template-columns: minmax(0, 20rem); row-gap: var(--stack-2); }
+  .manual-screenshot .caption { grid-column: 1; grid-row: 2; }
+}
 
 /* The panel map (line drawing) used in the manual */
 .panel-diagram { color: var(--ink); --rv-ink: currentColor; --rv-ink-soft: currentColor; --rv-font: var(--font-mono); }
@@ -538,9 +546,9 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 }
 .panel-list li:last-child { border-bottom: var(--hair) solid var(--line); }
 /* The manual's terminology: the same label | description form as the panel list (owner, 7 Oct). */
-.prose dl.terms { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); margin-block: var(--stack-2) 0; border-bottom: var(--hair) solid var(--line); }
+.prose dl.terms { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: 0; margin-block: var(--stack-2) 0; border-bottom: var(--hair) solid var(--line); }
 .prose dl.terms dt, .prose dl.terms dd { margin: 0; padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
-.prose dl.terms dt { font-weight: var(--wt-display); }
+.prose dl.terms dt { font-weight: 600; padding-right: var(--gutter); }   /* no column gap, so the hairlines run unbroken (owner, 7 Oct) */
 
 /* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */
 .download .needs { display: grid; gap: 0.4rem; }
@@ -552,9 +560,16 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 ul > li::marker { color: var(--signal); }
 
 /* ---- Doc contents: the section being read is selected (owner, 7 Oct) ---------- */
-.toc a { display: inline-block; padding: 0.2rem 0.6rem; margin-left: -0.6rem; border-radius: 999px; text-decoration: none; transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
-.toc a:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
-.toc a[aria-current="location"] { background: color-mix(in srgb, currentColor 9%, transparent); color: var(--ink); font-weight: var(--wt-medium); }
+.toc a { display: inline-flex; align-items: center; padding-block: 0.2rem; text-decoration: none; transition: color var(--dur-1) var(--ease-out); }
+.toc a::before {
+  content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--signal);
+  margin-right: -6px; transform: scale(0); opacity: 0;   /* takes no room until selected */
+  transition: margin-right var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out), opacity var(--dur-1) var(--ease-out);
+}
+.toc a:hover { color: var(--ink); }
+.toc a[aria-current="location"] { color: var(--ink); font-weight: var(--wt-medium); }
+.toc a[aria-current="location"]::before { margin-right: 0.5rem; transform: scale(1); opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toc a::before { transition: opacity var(--dur-1) linear; } }
 @media (max-width: 29.99rem) {
   .prose dl.terms { grid-template-columns: minmax(0, 1fr); }
   .prose dl.terms dd { border-top: 0; padding-top: 0; }
