@@ -1,17 +1,20 @@
 ---
-// Every page: <head> (SEO, OG, fonts), the header with the nav pill, the footer.
-// Inter (SIL OFL, self-hosted from @fontsource): the fallback when the Phonic files
-// aren't present. Latin only; the browser fetches a cut only when it's used.
+// Every page: <head> (SEO, OG, fonts), the header bar (DESIGN-v2 V4), the footer.
+// Inter (SIL OFL, self-hosted from @fontsource) is the fallback when the Phonic files
+// aren't present. Latin only; the browser fetches a cut only when the page uses it.
 import '@fontsource/inter/latin-300.css';
+import '@fontsource/inter/latin-300-italic.css';
 import '@fontsource/inter/latin-400.css';
+import '@fontsource/inter/latin-400-italic.css';
 import '@fontsource/inter/latin-500.css';
+import '@fontsource/inter/latin-700.css';
 import Logo from '../components/Logo.astro';
 import '../../../docs/minisite/design/tokens.css';
 import '../styles/site.css';
 import Analytics from '@vercel/analytics/astro';
 import Footer from '../components/Footer.astro';
 import { NAV } from '../data/site';
-import { FONT_FILES, fontsPresent } from '../lib/fonts';
+import { PRELOAD, fontPlan } from '../lib/fonts';
 
 interface Props {
   title: string;
@@ -19,27 +22,29 @@ interface Props {
   ogImage?: string;
   noindex?: boolean;
   bodyClass?: string;
+  /** The page opens on a dark band (Home's hero): the header starts light-on-dark. */
+  darkTop?: boolean;
 }
-const { title, description, ogImage = '/og/default.png', noindex = false, bodyClass } = Astro.props;
+const { title, description, ogImage = '/og/default.png', noindex = false, bodyClass, darkTop = false } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const og = new URL(ogImage, Astro.site);
 const path = Astro.url.pathname.replace(/\/?$/, '/');
-const current = (href: string) => (href !== '/#sound' && path === href ? 'page' : undefined);
+const current = (href: string) => (!href.includes('#') && path === href ? 'page' : undefined);
 
-// Fonts: preload the two most-used cuts when the licensed files are present
-// (scripts/prebuild.mjs). When they're absent, the fallback stack in tokens.css takes over.
-const fonts = fontsPresent();
-// When any file is missing, take Phonic out of the stacks (html:root outranks the
-// tokens' :root), so the browser never asks for a file that isn't there.
-const fallbackFaces = Object.values(fonts).every(Boolean)
-  ? ''
-  : `html:root {
-  --font-sans: "Inter", "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-}`;
+// Fonts: one @font-face per Phonic file that's present (src/lib/fonts.ts). When a family
+// isn't complete, it leaves the stack (html:root outranks the tokens' :root), so the
+// browser never asks for a file that isn't there, and Inter leads.
+const fonts = fontPlan();
+const fontCss = [
+  fonts.css,
+  !fonts.sans && 'html:root{--font-sans:"Inter","Phonic Fallback","Helvetica Neue",Arial,sans-serif}',
+  !fonts.mono && 'html:root{--font-mono:ui-monospace,"SF Mono",Menlo,monospace}',
+].filter(Boolean).join('\n');
+const preload = fonts.sans ? PRELOAD.filter((f) => fonts.present.includes(f)) : [];
 const onVercel = Boolean(process.env.VERCEL);
 ---
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -49,7 +54,7 @@ const onVercel = Boolean(process.env.VERCEL);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta name="theme-color" content="#f6f5f3" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="sitemap" href="/sitemap-index.xml" />
@@ -65,32 +70,28 @@ const onVercel = Boolean(process.env.VERCEL);
     <meta property="og:image:alt" content="Resilio Versio: a dub spring reverb for the Noise Engineering Versio" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    {fonts.light && <link rel="preload" href={`/fonts/${FONT_FILES.light}`} as="font" type="font/woff2" crossorigin />}
-    {fonts.mono && <link rel="preload" href={`/fonts/${FONT_FILES.mono}`} as="font" type="font/woff2" crossorigin />}
-    {fallbackFaces && <style is:inline set:html={fallbackFaces} />}
+    {preload.map((f) => <link rel="preload" href={`/fonts/${f}`} as="font" type="font/woff2" crossorigin />)}
+    {fontCss && <style is:inline set:html={fontCss} />}
     <slot name="head" />
   </head>
   <body class={bodyClass}>
     <a class="skip-link" href="#content">Skip to content</a>
-    <header class="site-header" data-header>
+    <header class:list={['site-header', darkTop && 'is-over-dark']} data-header>
       <a class="wordmark" href="/" aria-label="Resilio Versio, home"><Logo class="logo logo-full" /><Logo class="logo logo-short" short /></a>
-      <nav aria-label="Main">
-        <ul class="nav-pill">
+      <nav class="nav" aria-label="Main">
+        <ul>
           {NAV.map((n) => <li><a href={n.href} aria-current={current(n.href)}>{n.label}</a></li>)}
         </ul>
       </nav>
-      <div class="header-actions">
-        <details class="menu">
-          <summary>Menu</summary>
-          <nav aria-label="Main (compact)">
-            <ul>
-              {NAV.map((n) => <li><a href={n.href} aria-current={current(n.href)}>{n.label}</a></li>)}
-              <li><a href="/faq/" aria-current={current('/faq/')}>FAQ</a></li>
-            </ul>
-          </nav>
-        </details>
-        <a class="btn btn-dark" href="/#download">Download</a>
-      </div>
+      <a class="btn btn-dark btn-small header-cta" href="/#download">Download</a>
+      <details class="menu">
+        <summary><span>Menu</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5h12M2 11h12" stroke="currentColor" stroke-width="1.5" /></svg></summary>
+        <nav aria-label="Main (compact)">
+          <ul>
+            {NAV.map((n) => <li><a href={n.href} aria-current={current(n.href)}>{n.label}</a></li>)}
+          </ul>
+        </nav>
+      </details>
     </header>
     <main id="content" tabindex="-1">
       <slot />
@@ -98,21 +99,21 @@ const onVercel = Boolean(process.env.VERCEL);
     <Footer />
     {onVercel && <Analytics />}
     <script>
-      // The wordmark gets the same blurred pill as the nav once the page scrolls.
+      // The header is white on white pages and light-on-dark over a dark band (.band-dark):
+      // transparent at the top of the hero, solid dark once content scrolls under it.
       const header = document.querySelector('[data-header]');
-      // Over a dark band (.on-ink), the header's pills turn to dark glass with light text.
-      const inkBands = [...document.querySelectorAll<HTMLElement>('.on-ink')];
+      const darkBands = [...document.querySelectorAll<HTMLElement>('.band-dark')];
       const onScroll = () => {
         header?.classList.toggle('is-scrolled', window.scrollY > 8);
-        const y = (header?.getBoundingClientRect().height ?? 76) / 2;
-        header?.classList.toggle('is-over-ink', inkBands.some((b) => {
+        const y = (header?.getBoundingClientRect().height ?? 56) / 2;
+        header?.classList.toggle('is-over-dark', darkBands.some((b) => {
           const r = b.getBoundingClientRect();
           return r.top <= y && r.bottom >= y;
         }));
       };
       addEventListener('scroll', onScroll, { passive: true });
       onScroll();
-      // Close the compact menu after choosing a link (same-page anchors don't reload).
+      // Close the phone menu after choosing a link (same-page anchors don't reload).
       document.querySelectorAll<HTMLAnchorElement>('.menu a').forEach((a) =>
         a.addEventListener('click', () => a.closest('details')?.removeAttribute('open')),
       );

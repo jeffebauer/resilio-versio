@@ -1,0 +1,20 @@
+---
+// One pictogram by name (DESIGN-v2 V8). The glyphs live in ./icons/.
+import Springs from './icons/Springs.astro';
+import Splash from './icons/Splash.astro';
+import TapeEcho from './icons/TapeEcho.astro';
+import Wobble from './icons/Wobble.astro';
+import Throw from './icons/Throw.astro';
+import Valve from './icons/Valve.astro';
+import Tone from './icons/Tone.astro';
+import Cv from './icons/Cv.astro';
+import Decay from './icons/Decay.astro';
+import Knob from './icons/Knob.astro';
+import type { Pictogram } from '../data/controls';
+
+interface Props { name: Pictogram; title?: string; class?: string; decorative?: boolean }
+const { name, ...rest } = Astro.props;
+const GLYPHS = { springs: Springs, splash: Splash, tape: TapeEcho, wobble: Wobble, throw: Throw, valve: Valve, tone: Tone, cv: Cv, decay: Decay, knob: Knob };
+const Glyph = GLYPHS[name];
+---
+<Glyph {...rest} />

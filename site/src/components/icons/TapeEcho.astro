@@ -1,0 +1,7 @@
+---
+// Pictogram: two tape reels joined by the tape, over the head.
+import Glyph from './Glyph.astro';
+interface Props { title?: string; class?: string; decorative?: boolean }
+const { title = 'Tape echo', ...rest } = Astro.props;
+---
+<Glyph title={title} {...rest}><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M6.5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 3.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6ZM17.5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 3.2a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z" /><path d="M2.6 10.5 5 19h14l2.4-8.5" /><rect x="9.5" y="16.5" width="5" height="5" rx="1" fill="currentColor" stroke="none" /></Glyph>

@@ -1,0 +1,7 @@
+---
+// Pictogram: an envelope: a sharp hit, then a long fading tail.
+import Glyph from './Glyph.astro';
+interface Props { title?: string; class?: string; decorative?: boolean }
+const { title = 'Decay', ...rest } = Astro.props;
+---
+<Glyph title={title} {...rest}><path fill="currentColor" stroke="none" d="M2 21V4.5c0-1 1.4-1.2 1.8-.2C6.5 12 11 18.6 22 19.5V21Z" /></Glyph>

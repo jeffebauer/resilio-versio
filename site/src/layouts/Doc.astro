@@ -1,7 +1,7 @@
 ---
-// Doc pages (PLAN §B3): a sticky index column with the page's headings, numbered in
-// mono, and a prose column (max 38em). Cream for the reference pages (Manual, Presets),
-// paper for the rest. No scroll choreography here.
+// Doc pages (Manual, Install, Presets, Changelog, FAQ, Credits): a big bold title, a plain
+// table of contents (no numbers) and the prose in the centred reading column (DESIGN-v2 V5, V6).
+// White throughout; no scroll choreography here.
 import Base from './Base.astro';
 import IndexNav from '../components/IndexNav.astro';
 import { pageHeadings, type Page } from '../lib/content';
@@ -10,13 +10,12 @@ interface Props {
   page: Page;
   h1: string;
   kicker: string;
-  surface?: 'cream' | 'paper';
-  /** Include h3 headings under these h2 slugs in the index (e.g. the manual's controls). */
+  /** Include h3 headings under these h2 slugs in the contents (e.g. the manual's controls). */
   expand?: string[];
-  /** Headings to leave out of the index. */
+  /** Headings to leave out of the contents. */
   skip?: string[];
 }
-const { page, h1, kicker, surface = 'paper', expand = [], skip = [] } = Astro.props;
+const { page, h1, kicker, expand = [], skip = [] } = Astro.props;
 
 const items: { href: string; label: string; sub?: boolean }[] = [];
 let parent = '';
@@ -26,21 +25,19 @@ for (const h of pageHeadings(page)) {
   else if (h.depth === 3 && expand.includes(parent)) items.push({ href: `#${h.slug}`, label: h.text, sub: true });
 }
 ---
-<Base title={page.data.title} description={page.data.description} bodyClass={surface === 'cream' ? 'on-cream' : undefined}>
-  <div class="doc-hero grid">
-    <p class="kicker small">{kicker}</p>
+<Base title={page.data.title} description={page.data.description} bodyClass="doc">
+  <div class="doc-hero column">
+    <p class="kicker small quiet">{kicker}</p>
     <h1 class="display">{h1}</h1>
   </div>
   <slot name="media" />
-  <div class="doc-body grid ruled-top">
-    <div class="index">
+  <div class="doc-body wide">
+    <aside class="doc-toc">
       {items.length > 0 && <IndexNav items={items} label={`${h1}: contents`} />}
       <slot name="index" />
-    </div>
-    <div class="main">
-      <div class="prose" data-prose>
-        <slot />
-      </div>
+    </aside>
+    <div class="prose" data-prose>
+      <slot />
     </div>
   </div>
   <script>

@@ -6,8 +6,8 @@ import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
 const page = await getPage('manual');
 const { h1, rest } = takeH1(pageHtml(page));
 ---
-<Doc page={page} h1={h1} kicker="Resilio Versio · the player’s guide" surface="cream" expand={['controls']}>
-  <div class="doc-media" slot="media">
+<Doc page={page} h1={h1} kicker="Resilio Versio · the player’s guide" expand={['controls']}>
+  <div class="doc-media wide" slot="media">
     <div class="card-media" style="aspect-ratio: 2400 / 1028"><img src="/renders/panel-macro.jpg" width="2400" height="1028" decoding="async"
       alt="Close-up of the Resilio panel: the TANK and ATTITUDE toggles beside the WOBBLE knob, with SPLASH and TENSION at the edges." /></div>
   </div>

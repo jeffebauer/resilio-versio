@@ -22,6 +22,7 @@ export const NAV = [
   { href: '/install/', label: 'Install' },
   { href: '/presets/', label: 'Presets' },
   { href: '/changelog/', label: 'Changelog' },
+  { href: '/faq/', label: 'FAQ' },
 ];
 
 export const DOCS = [

@@ -1,0 +1,7 @@
+---
+// Pictogram: an impact burst: a solid core and rays of uneven length.
+import Glyph from './Glyph.astro';
+interface Props { title?: string; class?: string; decorative?: boolean }
+const { title = 'Splash', ...rest } = Astro.props;
+---
+<Glyph title={title} {...rest}><path fill="currentColor" stroke="currentColor" stroke-width="1" d="M12 1.4L13.49 8.4L17.8 6.2L15.6 10.51L22.2 12L15.6 13.49L17.37 17.37L13.49 15.6L12 22.8L10.51 15.6L6.34 17.66L8.4 13.49L2.4 12L8.4 10.51L6.06 6.06L10.51 8.4Z" /></Glyph>

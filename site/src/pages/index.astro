@@ -1,27 +1,31 @@
 ---
-// Home (PLAN §B2): the story, sections 00–08. Copy comes from
-// docs/minisite/content/overview.md, split at its headings and placed section by section.
+// Home (DESIGN-v2 "Home page, revised order"): hero (dark) → intro → the sound (dark) →
+// the panel → features → two ways to play → download (tile band) → footer.
+// Copy comes from docs/minisite/content/overview.md, split at its headings.
 import Base from '../layouts/Base.astro';
-import SectionHead from '../components/SectionHead.astro';
-import IndexNav from '../components/IndexNav.astro';
 import Button from '../components/Button.astro';
-import MediaCard from '../components/MediaCard.astro';
-import SpecTable from '../components/SpecTable.astro';
-import FeatureStack from '../components/FeatureStack.astro';
+import HeroMedia from '../components/HeroMedia.astro';
+import AnnotatedPanel from '../components/AnnotatedPanel.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
-import { CONTROLS, FEATURES } from '../data/controls';
 
 const page = await getPage('overview');
 const { h1, rest } = takeH1(pageHtml(page));
 const { lead, sections } = splitSections(rest);
 const noSlots = (html: string) => splitSlots(html).filter((p) => p.kind === 'html').map((p) => (p as { html: string }).html).join('');
+const paras = (html: string) => html.match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const inner = (p = '') => p.replace(/^<p>|<\/p>$/g, '');
 
 // Lead: the tagline (bold line), the lede, and the etymology note.
-const leadParas = noSlots(lead).match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const leadParas = paras(noSlots(lead));
 const tagline = stripTags(leadParas[0] ?? '');
-const lede = leadParas[1]?.replace(/^<p>|<\/p>$/g, '') ?? '';
+const lede = inner(leadParas[1]);
+// The intro's bold statement is the lede's first sentence; the rest follows as the paragraph.
+const cut = lede.indexOf('. ') + 1;
+const statement = cut > 0 ? lede.slice(0, cut) : lede;
+const ledeRest = cut > 0 ? lede.slice(cut + 1) : '';
 const etymology = leadParas[2] ?? '';
 
 const sound = section(sections, 'what-it-sounds-like');
@@ -31,150 +35,124 @@ const safe = section(sections, 'safe-to-try');
 const plugin = section(sections, 'the-plugin');
 const status = section(sections, 'status');
 
-const panelParas = noSlots(panel.html).match(/<p>[\s\S]*?<\/p>/g) ?? [];
-const movesHtml = moves.html.replace(/<p><a href="\/manual">Read the manual<\/a><\/p>/, '');
+const soundIntro = paras(sound.html)[0] ?? '';
+const soundList = sound.html.match(/<ul>[\s\S]*?<\/ul>/)?.[0] ?? '';
+const movesIntro = paras(moves.html)[0] ?? '';
+const panelParas = paras(noSlots(panel.html));
 const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\/p>/, '');
-
-const INDEX = [
-  { href: '#introduction', label: 'Introduction' },
-  { href: '#sound', label: 'The sound' },
-  { href: '#panel', label: 'The panel' },
-  { href: '#features', label: 'Features' },
-  { href: '#two-ways', label: 'Two ways to play' },
-  { href: '#download', label: 'Download' },
-];
 ---
-<Base title={page.data.title} description={page.data.description} bodyClass="home">
-  <!-- 01 Hero -->
-  <section class="hero" aria-labelledby="title">
-    <div class="hero-media">
-      <div class="card-media hero-frame hero-image on-ink">
-        <div class="hero-zoom" data-hero-zoom>
-          <img src="/renders/hero-monolith.jpg" width="2400" height="1350" fetchpriority="high" decoding="async"
-            alt="The Resilio Versio module seen from the floor, towering against a dark background, its four red LEDs lit." />
+<Base title={page.data.title} description={page.data.description} bodyClass="home" darkTop>
+  <!-- 1 Hero (dark) -->
+  <section class="hero band-dark" aria-labelledby="title">
+    <div class="wide">
+      <HeroMedia />
+      <div class="hero-title">
+        <h1 class="display" id="title">{h1}</h1>
+        <p class="hero-tagline">{tagline}</p>
+        <div class="actions">
+          <Button href="#sound" variant="ghost">Listen</Button>
+          <Button href="#download" variant="primary" arrow>Download</Button>
         </div>
       </div>
     </div>
-    <div class="hero-title grid">
-      <h1 class="display" id="title"><span>{h1}</span> <span class="quiet">{tagline}</span></h1>
-      <div class="actions">
-        <Button href="#sound" variant="ghost">Listen</Button>
-        <Button href="#download" variant="primary" arrow>Download</Button>
-      </div>
-    </div>
   </section>
 
-  <!-- 02 Introduction -->
-  <section class="section" aria-labelledby="introduction">
-    <SectionHead num="01" label="Introduction" id="introduction" />
-    <div class="section-body grid">
-      <div class="index">
-        <IndexNav items={INDEX} label="Sections" />
-      </div>
-      <div class="main flow">
-        <p class="lede" data-split set:html={lede} />
-        <div class="small quiet" set:html={etymology} />
-      </div>
+  <!-- 2 Intro (white) -->
+  <section class="section intro" aria-labelledby="intro-h">
+    <h2 id="intro-h" class="visually-hidden">Introduction</h2>
+    <div class="column flow">
+      <p class="statement" data-split set:html={statement} />
+      {ledeRest && <p class="lede" set:html={ledeRest} />}
+      <div class="small quiet" set:html={etymology} />
     </div>
+    <figure class="wide intro-media" data-reveal>
+      <div class="card-media" style="aspect-ratio: 2400 / 1028">
+        <img src="/renders/tank-macro.jpg" width="2400" height="1028" loading="lazy" decoding="async"
+          alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
+      </div>
+      <figcaption class="caption">The tank: a transducer and its springs.</figcaption>
+    </figure>
   </section>
 
-  <div class="doc-media section" data-reveal>
-    <MediaCard fig="01" caption="The tank: a transducer and its springs" ratio="21:9" src="/renders/tank-macro.jpg"
-      alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
-  </div>
-
-  <!-- 03 The sound -->
-  <section class="section on-ink" id="sound" aria-labelledby="sound-h">
-    <SectionHead num="02" label="The sound" id="sound-h" />
-    <div class="section-body grid">
-      <div class="index small quiet">
-        <p>Ten clips, each Resilio itself, rendered from test signals the project made. Loudness-matched. Headphones or monitors.</p>
-      </div>
-      <div class="main flow">
-        <h3 class="statement">{sound.title}</h3>
-        <div class="flow described" set:html={sound.html} />
-      </div>
-      <div class="main">
-        <DemoList />
-      </div>
+  <!-- 3 The sound (dark) -->
+  <section class="section band-dark sound" id="sound" aria-labelledby="sound-h">
+    <div class="column flow">
+      <h2 class="h2" id="sound-h">The sound</h2>
+      <div class="lede" set:html={inner(soundIntro)} />
+      <p class="small quiet">Ten clips, each Resilio itself, rendered from test signals the project made. Loudness-matched. Headphones or monitors.</p>
     </div>
+    <div class="wide">
+      <DemoList />
+    </div>
+    <div class="wide sound-notes described" set:html={soundList} />
   </section>
 
-  <!-- 04 The panel -->
+  <!-- 4 The panel (white) -->
   <section class="section" id="panel" aria-labelledby="panel-h">
-    <SectionHead num="03" label="The panel" id="panel-h" />
-    <div class="section-body grid">
-      <div class="index small">
-        <div set:html={panelParas[0] ?? ''} />
-      </div>
-      <div class="main">
-        <figure class="figure panel-front">
-          <figcaption class="caption"><span class="num">Fig. 02</span>The panel, front on</figcaption>
-          <div class="card-media" style="aspect-ratio: 16 / 9"><img src="/renders/front-on-wide.jpg" width="2116" height="1190" loading="lazy" decoding="async"
-            alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks." /></div>
-          <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
-        </figure>
-      </div>
-      <div class="main flow">
-        <div set:html={panelParas[1] ?? ''} />
-        <SpecTable caption="Resilio’s controls" rows={CONTROLS.map((c) => ({ name: c.name, value: c.line }))} />
-        <p><Button href="/manual/#controls" variant="ghost" arrow>Read the manual</Button></p>
-      </div>
+    <div class="column flow">
+      <h2 class="h2" id="panel-h">The panel</h2>
+      <div class="lede" set:html={inner(panelParas[0])} />
+    </div>
+    <div class="wide panel-wrap">
+      <AnnotatedPanel />
+    </div>
+    <div class="column flow">
+      <div set:html={panelParas[1] ?? ''} />
+      <p><Button href="/manual/#controls" variant="ghost" arrow>All the controls in the manual</Button></p>
     </div>
   </section>
 
-  <!-- 05 Features -->
-  <section class="section" id="features" aria-labelledby="features-h">
-    <SectionHead num="04" label="Features" id="features-h" />
-    <div class="features" data-features>
-      <FeatureStack items={FEATURES} />
+  <!-- 5 Features (white) -->
+  <section class="section features" id="features" aria-labelledby="features-h">
+    <div class="column flow">
+      <h2 class="h2" id="features-h">{moves.title}</h2>
+      <div class="lede" set:html={inner(movesIntro)} />
     </div>
-    <div class="grid moves">
-      <div class="index"><h3 class="small">{moves.title}</h3></div>
-      <div class="main flow">
-        <div class="flow described" set:html={movesHtml} />
-        <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
-      </div>
+    <div class="wide">
+      <FeatureTiles />
+    </div>
+    <div class="column">
+      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
     </div>
   </section>
 
-  <!-- 06 Two ways to play -->
-  <section class="section" id="two-ways" aria-labelledby="two-ways-h">
-    <SectionHead num="05" label="Two ways to play" id="two-ways-h" />
-    <div class="section-body grid">
-      <div class="main two-ways-media">
-        <MediaCard fig="03" caption="Patched: both inputs and both outputs" ratio="16:9" src="/renders/patched.jpg"
+  <!-- 6 Two ways to play (white) -->
+  <section class="section two-ways-section" id="two-ways" aria-labelledby="two-ways-h">
+    <div class="column">
+      <h2 class="h2" id="two-ways-h">Two ways to play</h2>
+    </div>
+    <figure class="wide" data-reveal>
+      <div class="card-media" style="aspect-ratio: 16 / 9">
+        <img src="/renders/patched.jpg" width="2400" height="1350" loading="lazy" decoding="async"
           alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
       </div>
-      <div class="main two-ways">
-        <div>
-          <h3>On the module</h3>
-          <p class="small quiet">Firmware for the Noise Engineering Versio</p>
-          <div class="flow" set:html={safeHtml} />
-          <Button href="/install/#on-the-versio" variant="ghost" arrow>How to install</Button>
-        </div>
-        <div class="v-rule" aria-hidden="true"></div>
-        <div>
-          <h3>In your DAW</h3>
-          <p class="small quiet">AU/VST3 plugin for macOS</p>
-          <div class="flow" set:html={plugin.html} />
-          <Button href="/install/#in-a-daw-macos" variant="ghost" arrow>Install the plugin</Button>
-        </div>
+      <figcaption class="caption">Patched: both inputs and both outputs.</figcaption>
+    </figure>
+    <div class="wide two-ways">
+      <div class="tile way">
+        <h3 class="h3">On the module</h3>
+        <p class="small quiet">Firmware for the Noise Engineering Versio</p>
+        <div class="flow" set:html={safeHtml} />
+        <Button href="/install/#on-the-versio" variant="ghost" arrow>How to install</Button>
+      </div>
+      <div class="tile way">
+        <h3 class="h3">In your DAW</h3>
+        <p class="small quiet">AU/VST3 plugin for macOS</p>
+        <div class="flow" set:html={plugin.html} />
+        <Button href="/install/#in-a-daw-macos" variant="ghost" arrow>Install the plugin</Button>
       </div>
     </div>
   </section>
 
-  <!-- 07 Download -->
-  <section class="section on-cream" id="download" aria-labelledby="download-h">
-    <SectionHead num="06" label="Download" id="download-h" />
-    <div class="section-body grid">
-      <div class="index small">
-        <h3 class="small">{status.title}</h3>
-        <div class="flow quiet" set:html={status.html} />
+  <!-- 7 Download (light grey band) -->
+  <section class="section band-tile" id="download" aria-labelledby="download-h">
+    <div class="wide download-grid">
+      <div class="flow">
+        <h2 class="h2" id="download-h">Download</h2>
+        <h3 class="small status-title">{status.title}</h3>
+        <div class="flow small quiet" set:html={status.html} />
       </div>
-      <div class="main">
-        <DownloadBlock />
-      </div>
+      <DownloadBlock />
     </div>
   </section>
 </Base>

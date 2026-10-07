@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { MPEGDecoder } from 'mpg123-decoder';
 import { MINISITE } from './paths';
+import type { DiagramKind } from '../components/diagrams/shapes';
 
 // docs/minisite/assets/audio/demos.json, as written by the demo tools.
 // A clip may later list a `dry` file (same length, loudness-matched): the A/B
@@ -64,3 +65,10 @@ export function clock(seconds: number): string {
   const s = Math.round(seconds);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+// The tiny diagram on each demo tile (DESIGN-v2 V11), by clip file number.
+const DIAGRAMS: Record<string, DiagramKind> = {
+  '01': 'drywet', '02': 'tanks', '03': 'attitude', '04': 'throw', '05': 'splash',
+  '06': 'bigknob', '07': 'wobble', '08': 'echo', '09': 'howl', '10': 'hold',
+};
+export const diagramFor = (file: string): DiagramKind | undefined => DIAGRAMS[file.slice(0, 2)];

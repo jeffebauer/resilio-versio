@@ -1,14 +1,15 @@
 ---
-// One demo clip: title, settings chips, caption, the player, settings and transcript.
+// One demo clip as a bento audio tile (DESIGN-v2 V11): a bold title, a tiny diagram of
+// what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
 // Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
 // The DRY / WET switch appears only when demos.json lists a `dry` file for the clip.
-import Chip from './Chip.astro';
+import Diagram from './diagrams/Diagram.astro';
 import SpecTable from './SpecTable.astro';
-import { audioUrl, clock, getPeaks, type Clip } from '../lib/demos';
+import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
 
-interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string }
-const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo' } = Astro.props;
+interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string; wide?: boolean }
+const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo', wide = false } = Astro.props;
 const id = `${idPrefix}-${String(n).padStart(2, '0')}`;
 const peaks = await getPeaks(clip.file);
 const W = peaks.length;
@@ -20,12 +21,14 @@ const d = peaks
   })
   .join('');
 const dur = clock(clip.duration_s);
-const chips = [clip.settings.TANK && `TANK ${clip.settings.TANK}`, clip.settings.ATTITUDE].filter(Boolean) as string[];
+const diagram = diagramFor(clip.file);
 const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value }));
 ---
-<li class="demo" data-reveal>
-  <H id={`${id}-title`}><span class="num">{String(n).padStart(2, '0')}</span>{clip.title}</H>
-  <div class="chips">{chips.map((c, i) => <Chip dot={i === 0}>{c}</Chip>)}</div>
+<li class:list={['demo', 'tile', wide && 'is-wide']} data-reveal>
+  <div class="demo-head">
+    <H id={`${id}-title`} class="demo-title">{clip.title}</H>
+    {diagram && <Diagram kind={diagram} class="demo-diagram" />}
+  </div>
   <p class="caption small" id={`${id}-caption`}>{clip.caption}</p>
   <div
     class="player"

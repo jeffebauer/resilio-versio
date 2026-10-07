@@ -8,6 +8,6 @@ const { h1, rest } = takeH1(pageHtml(page));
 // The settings table is ten columns wide: keep its cells on one line, scroll on phones.
 const html = rest.replace('<table class="spec">', '<table class="spec wide">');
 ---
-<Doc page={page} h1={h1} kicker="Resilio Versio · six dub settings" surface="cream">
+<Doc page={page} h1={h1} kicker="Resilio Versio · six dub settings">
   <DocContent parts={splitSlots(html)} />
 </Doc>

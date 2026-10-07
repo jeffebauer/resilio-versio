@@ -1,0 +1,77 @@
+---
+// The annotated panel (DESIGN-v2 V7): the front-on render with a callout box per control,
+// joined to it by a thin leader line. Everything is placed in percentages of the image,
+// so it scales. On narrower screens the render is cropped to the panel, the controls get
+// numbered markers, and the callouts become a numbered list beside or under it.
+// It is one ordered list either way, so it reads as a list to screen readers.
+import { CONTROLS } from '../data/controls';
+
+// The render (/renders/front-on-wide.jpg, 2116 × 1190 px) and where the 50.5 × 128.5 mm
+// panel sits in it, measured from the image and checked by eye against the knobs.
+const IMG = { w: 2116, h: 1190 };
+const PANEL = { x: 872, y: 121, w: 372, h: 950 };
+const MM = { w: 50.5, h: 128.5 };
+// The phone crop: the panel and a little of the ground around it.
+const CROP = { x: 800, y: 80, w: 516, h: 1032 };
+
+const px = (mm: number) => PANEL.x + (mm / MM.w) * PANEL.w;
+const py = (mm: number) => PANEL.y + (mm / MM.h) * PANEL.h;
+const pct = (v: number, of: number) => +((v / of) * 100).toFixed(3);
+
+// Callout boxes: a column each side of the panel, spread evenly around their controls.
+const BOX_EDGE = { l: 0.37 * IMG.w, r: 0.63 * IMG.w };
+const columns = { l: { top: 0.12, step: 0.115 }, r: { top: 0.17, step: 0.13 } };
+const order = { l: 0, r: 0 };
+const items = [...CONTROLS]
+  .map((c, i) => ({ ...c, n: i + 1 }))
+  .sort((a, b) => a.at[1] - b.at[1])
+  .map((c) => {
+    const col = columns[c.side];
+    const by = (col.top + col.step * order[c.side]++) * IMG.h;
+    const x = px(c.at[0]);
+    const y = py(c.at[1]);
+    return {
+      ...c,
+      x, y,
+      bx: BOX_EDGE[c.side], by,
+      style: [
+        `--x:${pct(x, IMG.w)}%`, `--y:${pct(y, IMG.h)}%`,
+        `--cx:${pct(x - CROP.x, CROP.w)}%`, `--cy:${pct(y - CROP.y, CROP.h)}%`,
+        `--bx:${pct(BOX_EDGE[c.side], IMG.w)}%`, `--by:${pct(by, IMG.h)}%`,
+      ].join(';'),
+    };
+  })
+  .sort((a, b) => a.n - b.n);
+
+const stage = [
+  `--img-w:${pct(IMG.w, CROP.w)}%`, `--img-x:${pct(-CROP.x, CROP.w)}%`, `--img-y:${pct(-CROP.y, CROP.h)}%`,
+  `--crop-ratio:${CROP.w} / ${CROP.h}`, `--full-ratio:${IMG.w} / ${IMG.h}`,
+].join(';');
+---
+<figure class="ap" style={stage}>
+  <div class="ap-stage">
+    <img src="/renders/front-on-wide.jpg" width={IMG.w} height={IMG.h} loading="lazy" decoding="async"
+      alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks." />
+    <svg class="ap-lines" viewBox={`0 0 ${IMG.w} ${IMG.h}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {items.map((c) => (
+        <g data-n={c.n}>
+          <path d={`M${c.bx.toFixed(1)} ${c.by.toFixed(1)}H${(c.bx + (c.side === 'l' ? 24 : -24)).toFixed(1)}L${c.x.toFixed(1)} ${c.y.toFixed(1)}`} />
+          <circle cx={c.x.toFixed(1)} cy={c.y.toFixed(1)} r="7" />
+        </g>
+      ))}
+    </svg>
+    {items.map((c) => <span class="ap-marker" style={c.style} aria-hidden="true">{c.n}</span>)}
+  </div>
+  <ol class="ap-list" aria-label="Resilio’s controls on the panel">
+    {items.map((c) => (
+      <li class={`ap-callout side-${c.side}`} style={c.style}>
+        <span class="ap-num" aria-hidden="true">{c.n}</span>
+        <span class="ap-text">
+          <a class="ap-name" href={`/manual/#${c.anchor}`}>{c.name}</a>
+          <span class="ap-line">{c.line}</span>
+        </span>
+      </li>
+    ))}
+  </ol>
+  <figcaption class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</figcaption>
+</figure>
