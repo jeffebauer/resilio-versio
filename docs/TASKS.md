@@ -2,13 +2,13 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, session 10. The site is live at https://resilio-versio.vercel.app with your full polish pass (home, manual, install, presets, changelog, FAQ) and the mobile hero fixes; downloads still "coming soon" while the repo is private. Big Knob desk renders done (not yet on the site)
+**Last updated:** 7 Oct 2026, end of session 10. The site is live at https://resilio-versio.vercel.app: your full polish pass, the “Big Knob” history section with the desk renders, MD UI / MD IO fonts; downloads still "coming soon" while the repo is private. Plugin `1e02c96` (first-chord fix) in Ableton
 
 | Milestone | State |
 |---|---|
 | M2 plugin | **Passed** (6 Oct): Ableton check and panel done; installed `c1d98ac` (new panel names) |
-| M3 CPU | **Run 20** (6 Oct, everything incl. tape wear B): 2 Springs 65.7 / 71.3 %, echo mode 69.0 / 75.8 %, SPRINGS switch 75.9 %, worst moment 77.7 % (run 18: 76.2 / 77.3 / 79.9). Under the 80 % ceiling everywhere. **Run 21** (6 Oct, the springs blend): echo mode 69.0 / 75.7 %, switch 76.0 %, worst moment 78.1 %: the blend costs nothing measurable. Flash: release 96.4 %, CPU-test build 97.3 % |
-| Real firmware on the Versio | `bdd3910` (6 Oct), click check passed. Next: the released `a6c70a4` (the gate clock holds; same sound, §1) |
+| M3 CPU | **Run 22** (7 Oct, the first-chord fix `1e02c96`): 2 Springs 64.8 / 71.0 %, echo mode 69.1 / 76.3 %, SPRINGS switch 76.2 %, worst moment (lap wrap) **78.8 %** (run 21: 78.1). Under the 80 % ceiling; 1.2 points of headroom. Flash: release 97 %, CPU-test build 98 % |
+| Real firmware on the Versio | `1e02c96` (7 Oct): the first-chord fix and the gate clock hold; **click check and clock-hold check passed** |
 | M8 sound | All merged, incl. tape wear B and the springs blend C for echo mode (6 Oct) |
 | M9 polish | Manual, starting points, share read-me and README refreshed and checked against the code (6 Oct); friends' release published. Left: a printed panel overlay with the new names |
 
@@ -18,10 +18,10 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (in this order)
 
-### 1. The gate clock holds (≈5 min)
-- [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
-
 ### 2. The minisite (live)
+- [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
+- [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
+- [ ] **PR #2** (`feat/site-v2` → `feat/site`) is still open on GitHub though its work is on `main`: close it (or tell Claude to)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
@@ -36,8 +36,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord fix** (merged, SPEC v1.0.45; in Ableton since 7 Oct): needs a CPU run on the chip before the next release; Claude builds the CPU-test firmware when you're at the rack. CPU-test firmware has ~2.2 KB of flash left
-- **Render scripts** (`feat/site-renders`, Blender) merge into the site branch when the site merges
+- **The first public release** (`1e02c96`, your hardware checks passed): being cut now, with the repo going public and the site's downloads switched on (ADR 0045)
+- **Site polish**: further rounds as you send Mesurer notes (run `npm run dev` in `.claude/worktrees/site-refine/site`, or ask Claude to start it: http://localhost:4323); each round goes live on "merge it"
 
 ## What to send Claude
 - **Recordings:** say they're done and where (the Ableton project). Claude copies, renames and analyses them; the WAVs stay on your Mac, never in git
@@ -56,6 +56,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Hardware checks passed** on `1e02c96` (`dist/resilio_versio_release_1e02c96.bin`): the click check, and the gate clock hold (echo time stays put through Ableton's transport stop/start)
+- 7 Oct 2026: **CPU run 22 on the chip** (the first-chord fix): echo mode 69.1 / 76.3 %, switch 76.2 %, worst moment 78.8 % (run 21: 78.1). Under the 80 % ceiling
 - 7 Oct 2026: **“Big Knob” section live** on the home page (history of Tubby's Altec 9069B with the desk renders, after The sound); “Big Knob” in quotes site-wide; the intro statement rises as one block; footer on the Download section's columns; the hero film resumes after scrolling away
 - 7 Oct 2026: **Site polish live** (your Mesurer rounds): sliding nav pill and pill buttons; intro on the tank image; centred section intros; one casing rule; panel list as label | description; manual terminology, panel table beside the drawing, orange subheads and list markers, reading-position contents; install without tabs; presets values under the text; changelog by date; a narrower reading column; hero film without flicker or white edges on mobile (check on your phone). Mesurer runs in `npm run dev` only
 - 7 Oct 2026: **King Tubby's MCI desk renders** (third pass, your notes): front, plate-on, ¾, Big Knob macros, the red EQ grid; in `renders/minisite_final/bigknob/` (scene scripts merged: `site/renders/mci_desk.py`, `render_bigknob.py`)

@@ -1063,6 +1063,7 @@ All merged and on the module (release published as `v2026.10.06-a6c70a4`):
 - **Tap tempo LEDs** purple, 70 ms per tap + pulses for 4 s (SPEC v1.0.39 / v1.0.41). **TENSION note values** in the plugin.
 - **Panel names** BLEND, TANK 1 · 2 · ECHO, ATTITUDE CLEAN · TAPE · VALVE, THROW / TAP (ADR 0044, SPEC v1.0.43); code identifiers and ParamSpec keys unchanged.
 - CPU run 21 on the chip: echo mode 69.0 / 75.7 %, switch 76.0, lap wrap 78.1 (ceiling 80). Click check passed on 9ba726f (same sound as later builds).
+- CPU run 22 on the chip (7 Oct, `1e02c96`, the first-chord fix): echo mode 69.1 / 76.3 %, switch 76.2, lap wrap 78.8 (ceiling 80): the fix costs ~0.6 points at the peaks. Binary `dist/resilio_versio_m3_profile_run22.bin`.
 
 ## Session 9 (6 Oct 2026)
 - **VALVE lurch across the stereo field** (`proto/valve-lurch-stereo`, not merged): A today `kJoltSpringScale` {1, −0.75, 0.9} / B together {1, 0.75, 0.9} / C {1, −1, 0.9} / D {1.5, −1.5, 1.35} on VALVE hits, SPLASH 1. The owner can barely tell them apart: keep today's. Measured: only the chord stab's early correlation moves (B 0.23 vs ~0 for the others); B costs test_tank's mono-notch margin (−4.8 dB), D the correlation margin (0.48).

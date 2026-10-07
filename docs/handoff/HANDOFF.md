@@ -1,6 +1,6 @@
 # Handoff
 
-**Written:** 7 Oct 2026, end of session 9 (6–7 Oct). Start the next session with `/resilio-start`. **Nothing running:** no agents in flight. Most of this session was the **minisite** (a public site for Resilio, in `site/`, on branches, not on `main`).
+**Written:** 7 Oct 2026, end of session 10. Start the next session with `/resilio-start`. **Nothing running:** no agents in flight. The session was almost all **minisite** work: merged and live, then ~15 owner review rounds (Mesurer notes), the King Tubby desk renders, and a new “Big Knob” history section. No DSP, firmware or plugin code changed.
 
 ## State
 
@@ -8,50 +8,52 @@
 |---|---|
 | M0 hardware | Passed |
 | M1, M4–M7 | Built |
-| M2 plugin | Passed. Installed `c1d98ac`; **not** yet the first-chord fix or the new plugin panel layout |
-| M3 CPU | Run 21 on the chip (`bdd3910`). **The first-chord fix (merged since) hasn't been timed on the chip**: run a CPU test before the next release |
-| M8 tuning | First chord after drums fixed and merged (`1e02c96`, SPEC v1.0.45, ADR 0035 amendment; owner picked B everywhere). VALVE lurch spread listened: no audible difference, today's kept (backlog "Session 9") |
-| M9 polish | Going-public prep merged (ADR 0045, SPEC v1.0.44): licences (MIT code, AGPLv3 plugin binaries), NOTICE, README credit/disclaimer, issue forms, stable release asset names, plugin panel layout fix. **Repo still private**. Minisite on branches (below) |
+| M2 plugin | Passed. **Installed `1e02c96`** (7 Oct 14:53, AU validated): the first-chord fix and the plugin panel layout fix |
+| M3 CPU | **Run 22** (`1e02c96`, the first-chord fix, 7 Oct): echo mode 69.1 / 76.3 %, switch 76.2 %, worst moment (lap wrap) **78.8 %** (run 21: 78.1). Under the 80 % ceiling, 1.2 points of headroom |
+| M8 tuning | First-chord fix merged (SPEC v1.0.45). Nothing new this session |
+| M9 polish | **Site live** at https://resilio-versio.vercel.app (public production from `main`; downloads show "coming soon" while the repo is private, `DOWNLOADS_LIVE` unset). **Repo still private** |
 
-- **`main` HEAD:** this handoff's commit (code last changed at `1e02c96`; since then `.gitignore` and the panel art only).
-- **Gates:** full ctest **100 % of 24** at `1e02c96` (no code changes since). Firmware at `1e02c96`: **release 127,700 B (97 %), profile 128,856 B (98 %, ~2.2 KB left), m0test 82,320 B (62 %)**.
-- **Plugin in Ableton:** `c1d98ac`. On the Versio: `bdd3910`. Release `a6c70a4` built and published privately (owner's clock-hold check pending, TASKS §1).
+- **`main` HEAD:** this handoff's commit. Code (core/firmware/plugin/host) last changed at `1e02c96`.
+- **Gates:** full ctest **100 % of 24** at wrap (7 Oct, `main` with code at `1e02c96`; 1,691 s). CPU run 22 on the chip (below).
+- **Firmware** (built at wrap, no firmware change): release **127,700 B (97 %)**, profile **128,856 B (98 %, ~2.2 KB left)**, m0test 82,320 B (62 %).
+- **Plugin in Ableton:** `1e02c96` = the last code commit. On the Versio: `bdd3910`. Latest release `a6c70a4` (private).
 
-## The minisite (where it lives)
+## The minisite (how it works now)
 
-- **Branches:** `feat/site` (first pass, PR #1 → `main`, draft) ← `feat/site-v2` (**revision 2**, PR #2 → `feat/site`, draft, HEAD `5f58135`) ← render scripts on `feat/site-renders` (Blender, `site/renders/*.py`, pushed, not merged).
-- **Design docs:** `docs/minisite/design/DESIGN.md` (rev 1), **`DESIGN-v2.md`** (rev 2 + the owner's amendments at the end), `AUDIT.md` (UDO audit), `PLAN.md`, `tokens.css`. Prompts used for cloud sessions: `docs/minisite/CLOUD-BUILD-PROMPT.md`, `CLOUD-BUILD-PROMPT-v2.md`.
-- **Vercel:** project `resilio-versio` (team `jeffebauers-projects`), Root Directory `site`, files outside root included, Analytics on, previews protected. Production = `main` (no `site/` there yet, so production builds fail harmlessly and nothing is public). Branch preview: `https://resilio-versio-git-feat-site-v2-jeffebauers-projects.vercel.app`. Shareable no-login links via the Vercel MCP `get_access_to_vercel_url` (23 h) or the dashboard Share button (no expiry).
-- **Fonts:** Phonic is licensed, **never committed**. All 12 cuts as WOFF2 in `dist/webfonts/phonic/` (git-ignored) and in the review worktree's `site/public/fonts/`. Vercel builds fall back to Inter (`@fontsource/inter`) until the files are uploaded to private storage with `FONTS_URL` + `FONTS_TOKEN` (prebuild fetches them).
-- **Renders:** finals in `renders/minisite_final/` (git-ignored): stills, `hero_reveal.*`, `hero_hold_loop.*`, `hero_still.png`. Web copies the site uses are committed in `docs/minisite/assets/renders/` (on the site branches).
-- **Local review:** worktree `.claude/worktrees/site-v2-review` (branch `feat/site-v2`), dev server config `site-v2` in `.claude/launch.json` (port 4322; also `site-review` → `.claude/worktrees/site-review`, port 4321). `.claude/launch.json` is modified locally on purpose (dev-server configs pointing at worktrees); not committed.
+- **Live** from `main` on Vercel project `resilio-versio` (team `jeffebauers-projects`, Root Directory `site`). Every push to `main` deploys production; branch pushes make protected previews (`resilio-versio-git-<branch>-jeffebauers-projects.vercel.app`).
+- **Working copy:** worktree `.claude/worktrees/site-refine` (branch `feat/site-refine`, fully merged into `main`). Dev server config `site-refine` in `.claude/launch.json` (port 4323; the file is local-only on purpose, never committed). Sync it with `git merge --ff-only main` before new work.
+- **Owner's review loop:** Mesurer (mesurer.dev) notes pasted into chat; fix on `feat/site-refine`, verify in the browser at 1448 × 1030, push; merge to `main` only on "merge it" (memory `site-review-mesurer`). Mesurer runs in `astro dev` only (an integration in `site/astro.config.mjs` injects `src/scripts/mesurer-dev.ts`); built pages contain no Mesurer or React (checked).
+- **Fonts:** MD UI (text) + MD IO (mono), variable WOFF2s, licensed, **never in git**. Vercel fetches them at build from a private Blob store (env `FONTS_URL` = `https://<store>.private.blob.vercel-storage.com/fonts/`; the prebuild falls back to the build's `VERCEL_OIDC_TOKEN`, newer stores inject no read-write token). Local copies: the worktree's ignored `site/public/fonts/`; originals in the owner's Dropbox (`…/Mass-Driver/MD_IO-V2-FutureFonts/Fonts/Variable/`).
+- **Design decisions this session:** `docs/minisite/design/DESIGN-v2.md` → "Amendments, session 10" (warm-neutral greys, pill buttons, casing rule, “Big Knob” in quotes, doc column 42rem, hero film mechanics…).
+- **Link preview:** `site/public/og/resilio-hero.jpg` (the hero still).
+- **“Big Knob” section** (home, after The sound): copy in `docs/minisite/content/overview.md` (facts only from `docs/research/big-knob.md`), images `docs/minisite/assets/renders/bigknob-area.jpg`, `bigknob-topdown.jpg`, `desk-front.jpg`.
+- **Desk renders:** scenes merged in `site/renders/mci_desk.py` + `render_bigknob.py` (Blender 5.2.2: `/Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup --python site/renders/render_bigknob.py`). Seven stills in `renders/minisite_final/bigknob/` (git-ignored). The MoPOP and Altec reference photos were only ever in a session scratchpad: **never commit them** (museum / listing photos).
 
 ## In flight
 Nothing running. Kept on purpose:
-- Worktrees: `site-review` (`feat/site`), `site-v2-review` (`feat/site-v2`, has the Phonic files in its ignored `public/fonts`), `agent-ae4c72fa…` (`feat/site-renders`, the Blender scripts), `agent-aa1f0b12…` (`proto/stereo-in-study`, the study doc), plus the old `agent-a5c8…`, `agent-adce…`, `share`, `nifty-shtern-b943cb`.
-- Unmerged reference branches: `proto/valve-lurch-stereo` (judged, kept for reference) and the older `proto/*` (kept public-safe per ADR 0045).
+- Worktree `site-refine` (above). `share`, `nifty-shtern-b943cb` (detached, older), and the agent worktrees `agent-a5c8…` (`proto/splash-round4`), `agent-aa1f…` (`proto/stereo-in-study`, the study doc), `agent-adce…` (`proto/diffuse-tank`).
+- Merged branches still present locally/remote: `feat/site`, `feat/site-v2`, `feat/site-renders`, `feat/site-refine`, `worktree-agent-af8f70117b76a1b09` (all in `main`). **PR #2** (`feat/site-v2` → `feat/site`) is still open on GitHub though its work is in `main` (owner task to close).
+- Unmerged reference branches: `proto/*` (kept public-safe per ADR 0045).
 
 ## Next steps
-1. **Owner reviews revision 2** (TASKS §2) on localhost:4322 or the preview; apply changes on `feat/site-v2`; when OK'd, merge PR #2 into `feat/site`, then merge `feat/site-renders` into `feat/site` (scripts only).
-2. **Fonts to Vercel:** walk the owner through private storage (Vercel Blob, private) for the 12 WOFF2 files; set `FONTS_URL`/`FONTS_TOKEN` in the project env (Preview + Production).
-3. **Demo clips:** the ten "The sound" clips have never been heard by anyone; owner listens and approves (TASKS §2). Dry/wet pairs would enable the A/B switch (PLAN §B6).
-4. **First-chord fix to the owner:** build the CPU-test firmware (`make -C firmware all-variants`) for a chip run; install the plugin with `tools/install_plugin.sh <commit>` when Ableton is closed (brings the new panel layout too); update TASKS' "Plugin installed" line.
-5. **Going public** (owner's "flip it" only): flip visibility → first public release with stable asset names → set `DOWNLOADS_LIVE=1` on Vercel → merge the site to `main` (production). Draft public notes: `docs/release-notes-public.md`.
-6. Stereo in: owner's answers (TASKS §3), then a plugin-only prototype in TANK 2 (study's recommendation).
+1. **Owner's open site checks** (TASKS §2): the hero film on iPhone (white edges, the reveal→loop handover, resume after scrolling away: none of these could be watched here), the “Big Knob” copy, the demo clips.
+2. **Next release** with the first-chord fix (CPU timed: run 22): `tools/make_release.sh`, then the owner's click check and the clock-hold check (TASKS §1).
+3. **Going public** (owner's "flip it" only): flip visibility → first public release → `DOWNLOADS_LIVE=1` on Vercel → redeploy. Draft notes: `docs/release-notes-public.md`.
+4. **Stereo in:** owner's answers (TASKS §3), then a plugin-only prototype in TANK 2.
+5. Housekeeping when convenient: delete the merged site branches (local + remote) once PR #2 is closed.
 
 ## Waiting on the owner (`docs/TASKS.md`)
-- §1 clock-hold check on the module. §2 revision-2 review, demo clips, fonts upload. §3 stereo-in questions. §4 "flip it".
+- §1 clock-hold check on the module. §2 iPhone hero check, “Big Knob” copy read, demo clips, close PR #2. §3 stereo-in questions. §4 "flip it".
 
 ## Will bite
-- **Fonts must never enter git** (public repo soon). `site/public/fonts/` is ignored in `site/.gitignore`; check `git status` before every commit in a site worktree.
-- **Flash:** CPU-test firmware at 98 % (~2.2 KB left). Anything compiled in needs a size check.
-- **CPU:** echo mode 75.7 %, lap wrap 78.1 % (run 21), before the first-chord fix. Re-time on the chip.
-- **The browser pane:** hidden pane = videos don't advance and `await` on `play()` hangs (use synchronous checks). Desktop-width screenshots come out tiny; send 375-px or 1024-px shots to the owner (memory `owner-reviews-on-phone`).
-- **Astro dev** converts images on first request: the first screenshot after a restart can show empty frames.
-- **Vercel preview URL** for any branch: `resilio-versio-git-<branch>-jeffebauers-projects.vercel.app`. Previews need a Vercel login; production on `main` is public once the site merges.
-- **Blender** (5.2.2, `/Applications/Blender.app`): renders ~13–20 s/frame at 1080p; the hero took ~66 min. Print sharpness at grazing angles needs linear texture filtering + 1.0 px filter + guided denoise (in `site/renders/common.py`).
-- **References:** take principles, never signature layouts (memory `references-principles-not-layouts`).
+- **Production is public:** every push to `main` deploys the live site. Site work goes on `feat/site-refine` and merges only on "merge it".
+- **The browser pane:** when hidden, video won't autoplay (the page falls back to the still) and screenshots fail; time also stops. Ask the owner to show it (Cmd+Shift+B) to verify video. Chrome also pauses muted autoplay offscreen (handled: the hero resumes via an IntersectionObserver).
+- **Astro dev:** new files in `docs/minisite/assets/renders/` need a dev-server restart (eager image glob); the first request after a restart shows images still converting. `demos.json` is cached in memory: restart after editing it. Scoped `<style>` doesn't reach `set:html` content: use `:global(...)`.
+- **Fonts never enter git** (`site/public/fonts/` is ignored); check `git status` before site commits.
+- **The 200 vs 250 Hz step:** an original 9069-B photo reads 200 where our research (from clones/press) says 250 (`docs/research/big-knob.md`); the site avoids listing steps.
+- **Flash:** CPU-test firmware at 98 % (~2.2 KB). **CPU:** worst moment 78.8 % (run 22, the lap wrap): only 1.2 points under the 80 % ceiling, so any new per-sample DSP needs a chip run before it ships.
+- **Disk:** ~20 GB free (96 % full). Blender renders and render grids eat it; delete judged pages.
 - GitHub pushes sometimes drop on this network: retry.
 
 ## Where to look
-`docs/TASKS.md` · `docs/minisite/design/DESIGN-v2.md` · PR #2 description (`gh pr view 2`) · `site/README.md` · `docs/adr/0045-going-public.md` · `docs/research/stereo-input-study.md` (branch `proto/stereo-in-study`)
+`docs/TASKS.md` · `docs/minisite/design/DESIGN-v2.md` (session-10 amendments at the end) · `site/README.md` (fonts, Mesurer, Vercel) · `docs/research/big-knob.md` · `site/src/pages/index.astro` + `site/src/styles/site.css`
