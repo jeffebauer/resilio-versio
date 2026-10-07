@@ -41,17 +41,15 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
   background: rgb(246 245 243 / 0); transition: background-color var(--dur-2) var(--ease-out);
 }
 .wordmark { display: inline-flex; align-items: center; }
-.wordmark .logo { display: block; flex: none; height: 1rem; width: auto; max-width: none; aspect-ratio: 540 / 40; }   /* 16 px tall, 216 px wide */
-/* Phones: 10 px tall (135 px wide) with a trimmed pill, so it fits beside Menu and Download at 375 px without shrinking. */
+.wordmark .logo { display: block; flex: none; width: auto; max-width: none; }
+.wordmark .logo-full { height: 1rem; aspect-ratio: 540 / 40; }      /* 16 px tall, 216 px wide */
+.wordmark .logo-short { display: none; height: 0.875rem; aspect-ratio: 264 / 40; }  /* phones: "Resilio", 14 px tall, 92 px wide */
 @media (max-width: 47.99rem) {
   .wordmark { padding-inline: 0.5rem; margin-left: -0.5rem; }
-  .wordmark .logo { height: 0.625rem; }
+  .wordmark .logo-full { display: none; }
+  .wordmark .logo-short { display: block; }
 }
-/* The narrowest phones (under ~375 px): the logo scales down to the space left beside Menu and Download. */
-@media (max-width: 23.4rem) {
-  .wordmark { min-width: 0; }
-  .wordmark .logo { width: 100%; height: auto; }
-}
+@media (max-width: 23.4rem) { .header-actions { gap: 0.375rem; } .header-actions .btn { padding-inline: 1rem; } }  /* 320 px phones: no sideways scroll */
 .is-scrolled .wordmark { background: rgb(236 236 236 / 0.55); -webkit-backdrop-filter: blur(var(--blur-nav)); backdrop-filter: blur(var(--blur-nav)); }
 .site-header > nav { justify-self: center; }
 .site-header .nav-pill { margin: 0; list-style: none; }
@@ -188,7 +186,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 @supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
 .demo .disclosure + .disclosure { margin-top: calc(-1 * var(--stack-2)); }
 .demo h3 { font-size: var(--fs-lede); line-height: var(--lh-snug); display: flex; gap: 0.6em; align-items: baseline; }
-.demo h3 .num { font-size: var(--fs-micro); }
+.demo h3 .num { font-family: var(--font-sans); font-weight: var(--wt-light); font-size: 1em; letter-spacing: 0; margin-right: 0; color: var(--ink-2); }   /* number matches the title (owner, 7 Oct) */
 .demo .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .demo .caption { padding: 0; }
 .demo .player { align-self: end; }
