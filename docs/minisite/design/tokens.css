@@ -159,12 +159,12 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 }
 .nav-pill {
   display: flex; gap: 0.25rem; padding: 0.3rem;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;            /* the nav container stays a true pill (owner, 7 Oct) */
   background: rgb(228 228 228 / 0.55);
   -webkit-backdrop-filter: blur(var(--blur-nav)); backdrop-filter: blur(var(--blur-nav));
   font-size: var(--fs-ui); font-weight: var(--wt-reg); letter-spacing: var(--track-ui);
 }
-.nav-pill a { padding: 0.5rem 1rem; border-radius: var(--radius-inner); text-decoration: none; }
+.nav-pill a { padding: 0.5rem 1rem; border-radius: 999px; text-decoration: none; }
 .nav-pill a[aria-current="page"] { background: var(--white); }
 @supports not (backdrop-filter: blur(1px)) { .nav-pill { background: rgb(236 236 236 / 0.95); } }
 
@@ -173,7 +173,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
   display: inline-flex; align-items: center; gap: 0.6em;
   min-height: 2.75rem; padding: 0.75rem 1.4rem;           /* 44 px touch target */
   border: 0; border-radius: var(--radius-ui);
-  font: var(--wt-reg) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
+  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* button labels in Medium (owner, 7 Oct) */
   text-decoration: none; cursor: pointer;
   transition: background-color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }

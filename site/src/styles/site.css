@@ -61,7 +61,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
   list-style: none; cursor: pointer; min-height: 2.75rem; display: inline-flex; align-items: center;
   padding: 0 1.1rem; border-radius: var(--radius-pill);
   background: rgb(228 228 228 / 0.55); -webkit-backdrop-filter: blur(var(--blur-nav)); backdrop-filter: blur(var(--blur-nav));
-  font: var(--wt-reg) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
+  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
 }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--white); }
