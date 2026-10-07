@@ -412,23 +412,20 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* The table of contents: plain links, no numbers. */
 .toc .toc-title { margin-bottom: var(--stack-1); text-transform: uppercase; }
 .toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; font-size: var(--fs-small); }
-.toc a { display: inline-block; padding-block: 0.2rem; text-decoration: none; }
-.toc a:hover { text-decoration: underline; text-decoration-thickness: var(--hair); }
 .toc .sub-item { font-size: var(--fs-ui); padding-left: 1em; }
 .toc .sub-item a { color: var(--ink-2); }
 @media (max-width: 47.99rem) { .toc .sub-item { display: none; } }
 
 .prose { font-size: var(--fs-body); overflow-wrap: break-word; }
 .prose a { overflow-wrap: anywhere; }
-.prose > * + * { margin-top: var(--stack-2); }
-.prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: var(--stack-5); }
+.prose > * + * { margin-top: var(--stack-3); }   /* roomier (owner, 7 Oct) */
+.prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
 .prose > h2:first-child, .prose > .tabs:first-child h2:first-child { margin-top: 0; }
-.prose h3 { font-size: var(--fs-lede); margin-top: var(--stack-4); }
+.prose h3 { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-ink); }   /* accent, so headings stand apart from bold body copy (owner, 7 Oct); the AA-safe accent */
 .prose h3 + * { margin-top: var(--stack-1); }
 .prose h2 + * { margin-top: var(--stack-3); }
 .prose ul, .prose ol { padding-left: 1.2em; }
 .prose li + li { margin-top: 0.35em; }
-.prose li::marker { color: var(--ink-2); }
 .prose ol li::marker { font-family: var(--font-mono); font-size: 0.85em; }
 .prose blockquote {
   margin: var(--stack-4) 0; padding: var(--stack-3); border-radius: var(--radius-tile); background: var(--tile);
@@ -470,9 +467,16 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 
 /* Slot components inside prose */
 .prose .slot { margin-block: var(--stack-4); }
-.manual-panel { display: grid; grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); gap: var(--gutter); align-items: start; }
-.manual-panel .panel-note { color: var(--ink-2); }
-@media (max-width: 39.99rem) { .manual-panel { grid-template-columns: minmax(0, 1fr); } .manual-panel .panel-wire { max-width: 22rem; } }
+/* The panel map: the drawing with the table beside it on wide screens, reaching into the
+   empty right-hand column; stacked below that (owner, 7 Oct). */
+.manual-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--stack-4) var(--gutter); align-items: start; }
+.manual-panel .panel-figure { margin: 0; max-width: 22rem; }
+.manual-panel .panel-note { color: var(--ink-2); margin-top: var(--stack-2); }
+.manual-panel .panel-table .spec th:first-child, .manual-panel .panel-table .spec td:first-child { white-space: nowrap; }
+@media (min-width: 90rem) {   /* from 1440 px, where the right-hand column has room for 15rem */
+  .manual-panel { width: calc(100% + 15rem); grid-template-columns: 17rem minmax(0, 1fr); }
+  .manual-panel .panel-figure { position: sticky; top: calc(var(--header-h) + var(--stack-3)); }
+}
 .manual-screenshot { max-width: 20rem; margin-block: var(--stack-4); }
 
 /* The panel map (line drawing) used in the manual */
@@ -524,11 +528,30 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .panel-list ul { list-style: none; padding: 0; margin: 0; }
 .panel-list li { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
 .panel-list + p { margin-top: var(--stack-4); }
-@media (max-width: 29.99rem) { .panel-list li { grid-template-columns: minmax(0, 1fr); row-gap: 0.15rem; } }
+@media (max-width: 29.99rem) {
+  .panel-list li, .prose dl.terms { grid-template-columns: minmax(0, 1fr); row-gap: 0.15rem; }
+  .prose dl.terms dd { border-top: 0; padding-top: 0; }
+}
 .panel-list li:last-child { border-bottom: var(--hair) solid var(--line); }
+/* The manual's terminology: the same label | description form as the panel list (owner, 7 Oct). */
+.prose dl.terms { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); margin-block: var(--stack-2) 0; border-bottom: var(--hair) solid var(--line); }
+.prose dl.terms dt, .prose dl.terms dd { margin: 0; padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
+.prose dl.terms dt { font-weight: var(--wt-display); }
 
 /* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */
 .download .needs { display: grid; gap: 0.4rem; }
 .download .needs-title { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
 .download .release-line .whats-new { margin-left: auto; }
 .download .sep { margin-inline: 0.6em; }
+
+/* ---- Bullets in the accent, site-wide (owner, 7 Oct) ------------------------- */
+ul > li::marker { color: var(--signal); }
+
+/* ---- Doc contents: the section being read is selected (owner, 7 Oct) ---------- */
+.toc a { display: inline-block; padding: 0.2rem 0.6rem; margin-left: -0.6rem; border-radius: 999px; text-decoration: none; transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.toc a:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
+.toc a[aria-current="location"] { background: color-mix(in srgb, currentColor 9%, transparent); color: var(--ink); font-weight: var(--wt-medium); }
+@media (max-width: 29.99rem) {
+  .prose dl.terms { grid-template-columns: minmax(0, 1fr); }
+  .prose dl.terms dd { border-top: 0; padding-top: 0; }
+}

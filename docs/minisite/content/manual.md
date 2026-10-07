@@ -9,7 +9,16 @@ order: 2
 
 Resilio Versio is a dub spring reverb for the Noise Engineering Versio: a simulated spring tank you can drive, splash, throw into and push into feedback, with a tape echo in front of it on the TANK switch's third position. The plugin has the same panel and the same sound.
 
-**Words used here.** The **tank** is the whole reverb, with one or two **springs** inside. The **tail** is the sound ringing on after you stop. The **chirp** (or "boing") is the springy up-sweep on each echo. A **throw** opens the springs to the input for a moment (one snare, one stab) and lets the tail ring on. The **howl** is the tank feeding back on itself. The **hold** is the tail left hanging as a bed under what you play.
+**Terminology.**
+
+<dl class="terms">
+<dt>Tank</dt><dd>The whole reverb, with one or two springs inside.</dd>
+<dt>Tail</dt><dd>The sound ringing on after you stop.</dd>
+<dt>Chirp</dt><dd>The springy up-sweep (the "boing") on each echo.</dd>
+<dt>Throw</dt><dd>Opening the springs to the input for a moment (one snare, one stab) and letting the tail ring on.</dd>
+<dt>Howl</dt><dd>The tank feeding back on itself.</dd>
+<dt>Hold</dt><dd>The tail left hanging as a bed under what you play.</dd>
+</dl>
 
 ## Panel map
 
@@ -17,7 +26,7 @@ Resilio runs behind your Versio's printed panel, so the printed labels don't mat
 
 <!-- PANEL: assets/panel/resilio-versio-panel.svg -->
 
-| Position on the panel | Resilio control |
+| Panel location | Resilio control |
 |---|---|
 | Top left knob | **BLEND** |
 | Top right knob | **DECAY** |

@@ -6,15 +6,29 @@ import MediaCard from './MediaCard.astro';
 import type { Part } from '../lib/content';
 
 interface Props { parts: Part[] }
-const { parts } = Astro.props;
+const { parts: given } = Astro.props;
+// The panel map's table sits beside the drawing on wide screens (owner, 7 Oct): when the
+// panel slot is followed straight away by a table, it moves into the slot.
+const TABLE = /^\s*(<div class="table-scroll"[^>]*>\s*<table[\s\S]*?<\/table>\s*<\/div>)/;
+const parts = given.map((p) => ({ ...p })) as (Part & { table?: string })[];
+parts.forEach((p, i) => {
+  const next = parts[i + 1];
+  if (p.kind === 'slot' && p.slot === 'panel' && next?.kind === 'html') {
+    const m = next.html.match(TABLE);
+    if (m) { p.table = m[1]; next.html = next.html.slice(m[0].length); }
+  }
+});
 ---
 {parts.map((p) =>
   p.kind === 'html' ? (
     <Fragment set:html={p.html} />
   ) : p.slot === 'panel' ? (
     <div class="slot manual-panel">
-      <PanelWire />
-      <p class="small panel-note">Resilio’s panel, drawn to scale. Your Versio’s printed labels will differ: the table below maps them.</p>
+      <figure class="panel-figure">
+        <PanelWire />
+        <figcaption class="small panel-note">Resilio’s panel, drawn to scale. Your Versio’s printed labels will differ: the table maps them.</figcaption>
+      </figure>
+      {p.table && <div class="panel-table" set:html={p.table} />}
     </div>
   ) : p.slot === 'screenshot' ? (
     <div class="slot manual-screenshot">
