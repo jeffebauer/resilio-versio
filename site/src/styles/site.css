@@ -58,7 +58,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .site-header .nav { position: relative; grid-column: 2 / 4; grid-row: 1; justify-self: start; }
 .site-header .nav ul { display: flex; gap: clamp(0.25rem, 0.1rem + 0.5vw, 0.75rem); list-style: none; margin: 0 0 0 -0.75rem; padding: 0; }   /* -0.75rem: the text stays where it was; the pill's padding hangs left */
 .site-header .nav a, .menu li a {
-  font: var(--wt-reg) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
+  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
   text-decoration: none; text-underline-offset: 0.35em;
 }
 .site-header .nav a { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 0.75rem; }
@@ -66,19 +66,19 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
    the current page. Placed by the script in Base.astro; without JS, the current page gets it. */
 .site-header .nav .nav-pill {
   position: absolute; z-index: 0; top: 50%; left: 0; height: 2.25rem; width: 0; translate: 0 -50%;
-  border-radius: var(--radius-ui); background: color-mix(in srgb, currentColor 9%, transparent);
+  border-radius: 999px; background: color-mix(in srgb, currentColor 9%, transparent);
   opacity: 0; pointer-events: none;
   transition: left var(--dur-2) var(--ease-out), width var(--dur-2) var(--ease-out), opacity var(--dur-1) var(--ease-out);
 }
 .site-header .nav .nav-pill.is-on { opacity: 1; }
-.site-header .nav:not(.has-pill) a[aria-current="page"] { background: color-mix(in srgb, currentColor 9%, transparent); border-radius: var(--radius-ui); }
+.site-header .nav:not(.has-pill) a[aria-current="page"] { background: color-mix(in srgb, currentColor 9%, transparent); border-radius: 999px; }
 @media (prefers-reduced-motion: reduce) { .site-header .nav .nav-pill { transition: opacity var(--dur-1) linear; } }
 .header-cta { grid-column: 3; grid-row: 1; justify-self: end; }
 
 .menu { display: none; position: relative; grid-row: 1; grid-column: 3; justify-self: end; }
 .menu summary {
   list-style: none; cursor: pointer; min-height: 2.25rem; display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0 0.9rem; border-radius: var(--radius-ui);   /* the same size as the Download button beside it (.btn-small) */
+  padding: 0 0.9rem; border-radius: 999px;   /* the same size and shape as the Download button beside it */
   box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent);
   font: 600 var(--fs-ui) / 1 var(--font-sans);
 }
@@ -155,7 +155,9 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   font-size: clamp(1.75rem, 1.05rem + 2.6vw, 3.5rem); font-weight: var(--wt-display);
   line-height: 1.04; letter-spacing: var(--track-display);
 }
-/* The intro sits on the tank image under a dark scrim (owner, 7 Oct), centred. */
+/* The intro sits on the tank image under a dark scrim (owner, 7 Oct). Its section's top and
+   bottom space match the page margin left and right. */
+.section.intro { padding-block: var(--margin); }
 /* Height from the content, at least the image's own shape on wide screens (no aspect-ratio:
    with a min-height it would widen the card past the screen on phones). */
 .intro-card { position: relative; display: grid; align-items: end; justify-items: start; min-height: clamp(26rem, 42.8vw, 38rem); background: var(--dark); --intro-pad: clamp(1.25rem, 0.5rem + 3vw, 3.5rem); }
@@ -520,7 +522,9 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .centered { text-align: center; }
 .centered .lede { margin-inline: auto; }
 .panel-list ul { list-style: none; padding: 0; margin: 0; }
-.panel-list li { padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
+.panel-list li { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
+.panel-list + p { margin-top: var(--stack-4); }
+@media (max-width: 29.99rem) { .panel-list li { grid-template-columns: minmax(0, 1fr); row-gap: 0.15rem; } }
 .panel-list li:last-child { border-bottom: var(--hair) solid var(--line); }
 
 /* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */

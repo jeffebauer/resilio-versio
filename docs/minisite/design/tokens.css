@@ -133,7 +133,7 @@ strong, b { font-weight: var(--wt-display); }
 .btn {
   display: inline-flex; align-items: center; gap: 0.6em;
   min-height: 2.25rem; padding: 0.5rem 0.9rem;              /* the header's size everywhere (owner, 7 Oct) */
-  border: 0; border-radius: var(--radius-ui);
+  border: 0; border-radius: 999px;   /* pills (owner, 7 Oct) */
   font: 600 var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* semibold labels (owner, 7 Oct) */
   text-decoration: none; cursor: pointer;
   transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
