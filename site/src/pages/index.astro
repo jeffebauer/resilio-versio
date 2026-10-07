@@ -108,22 +108,12 @@ const INDEX = [
         <div set:html={panelParas[0] ?? ''} />
       </div>
       <div class="main">
-        <div class="panel-grid">
-          <figure class="figure">
-            <figcaption class="caption"><span class="num">Fig. 02</span>The module</figcaption>
-            <div class="card-media" style="aspect-ratio: 4 / 5"><img src="/renders/module-three-quarter.jpg" width="1120" height="1400" loading="lazy" decoding="async"
-              alt="The Versio module with the Resilio panel in three-quarter view: black panel, black knobs, toggles, the THROW button, red LEDs lit, and the jacks; the circuit boards show at the side." /></div>
-            <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
-          </figure>
-          <MediaCard
-            fig="03"
-            caption="The panel, front on"
-            src="/renders/front-on.jpg"
-            ratio="4:5"
-            alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks."
-            class="panel-front"
-          />
-        </div>
+        <figure class="figure panel-front">
+          <figcaption class="caption"><span class="num">Fig. 02</span>The panel, front on</figcaption>
+          <div class="card-media" style="aspect-ratio: 16 / 9"><img src="/renders/front-on-wide.jpg" width="2116" height="1190" loading="lazy" decoding="async"
+            alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks." /></div>
+          <p class="micro quiet">The Noise Engineering Versio with Resilio’s panel. Resilio Versio is not affiliated with or endorsed by Noise Engineering.</p>
+        </figure>
       </div>
       <div class="main flow">
         <div set:html={panelParas[1] ?? ''} />
@@ -153,7 +143,7 @@ const INDEX = [
     <SectionHead num="05" label="Two ways to play" id="two-ways-h" />
     <div class="section-body grid">
       <div class="main two-ways-media">
-        <MediaCard fig="04" caption="Patched: both inputs and both outputs" ratio="16:9" src="/renders/patched.jpg"
+        <MediaCard fig="03" caption="Patched: both inputs and both outputs" ratio="16:9" src="/renders/patched.jpg"
           alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
       </div>
       <div class="main two-ways">
@@ -173,14 +163,6 @@ const INDEX = [
       </div>
     </div>
   </section>
-
-  <!-- Tape band -->
-  <div class="tape-band grid">
-    <div class="band">
-      <MediaCard fig="05" caption="Tape and springs: the echo before the tank" ratio="16:9" src="/renders/tape.jpg"
-        alt="The Resilio Versio module standing on a pale floor, loose brown recording tape twisting around its base." />
-    </div>
-  </div>
 
   <!-- 07 Download -->
   <section class="section on-cream" id="download" aria-labelledby="download-h">

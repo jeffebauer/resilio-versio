@@ -442,5 +442,3 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 /* Renders placed in the page (owner, 7 Oct). */
 .grid > .main.two-ways-media { grid-column: 2 / -2; margin-bottom: var(--stack-5); }
 @media (max-width: 63.99rem) { .grid > .main.two-ways-media { grid-column: 1 / -1; } }
-.tape-band { padding-block: var(--section-y); }
-.tape-band > .band { grid-column: 1 / -1; }
