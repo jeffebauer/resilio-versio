@@ -1,0 +1,17 @@
+---
+// The Resilio Versio logo, inlined from docs/minisite/assets/logo/resilio-versio-logo.svg
+// (one source of truth). Its fills follow the text colour, so it turns light over dark bands.
+// Decorative here: the link around it carries the accessible name.
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { MINISITE } from '../lib/paths';
+
+interface Props { class?: string }
+const { class: cls = 'logo' } = Astro.props;
+const raw = await readFile(join(MINISITE, 'assets', 'logo', 'resilio-versio-logo.svg'), 'utf8');
+const svg = raw
+  .replace(/fill="(?:black|#000000|#000)"/g, 'fill="currentColor"')
+  .replace(/<svg\b([^>]*?)\swidth="[^"]*"\sheight="[^"]*"/, '<svg$1')
+  .replace('<svg', `<svg class="${cls}" aria-hidden="true" focusable="false"`);
+---
+<Fragment set:html={svg} />

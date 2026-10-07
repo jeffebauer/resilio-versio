@@ -40,6 +40,18 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
   padding: 0.6rem 0.9rem; margin-left: -0.9rem; border-radius: var(--radius-pill);
   background: rgb(246 245 243 / 0); transition: background-color var(--dur-2) var(--ease-out);
 }
+.wordmark { display: inline-flex; align-items: center; }
+.wordmark .logo { display: block; flex: none; height: 1rem; width: auto; max-width: none; aspect-ratio: 540 / 40; }   /* 16 px tall, 216 px wide */
+/* Phones: 10 px tall (135 px wide) with a trimmed pill, so it fits beside Menu and Download at 375 px without shrinking. */
+@media (max-width: 47.99rem) {
+  .wordmark { padding-inline: 0.5rem; margin-left: -0.5rem; }
+  .wordmark .logo { height: 0.625rem; }
+}
+/* The narrowest phones (under ~375 px): the logo scales down to the space left beside Menu and Download. */
+@media (max-width: 23.4rem) {
+  .wordmark { min-width: 0; }
+  .wordmark .logo { width: 100%; height: auto; }
+}
 .is-scrolled .wordmark { background: rgb(236 236 236 / 0.55); -webkit-backdrop-filter: blur(var(--blur-nav)); backdrop-filter: blur(var(--blur-nav)); }
 .site-header > nav { justify-self: center; }
 .site-header .nav-pill { margin: 0; list-style: none; }
@@ -140,7 +152,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-title h1 { grid-column: 1 / span 9; }
 .hero-title h1 span { display: block; }
 .hero-title h1 > span:first-child { font-weight: var(--wt-medium); letter-spacing: -0.02em; }   /* the name in Medium, the tagline in Light (owner, 7 Oct) */
-.hero-title h1 > .quiet { font-weight: var(--wt-light); color: #888888; }   /* paler than --ink-2: 3.25:1 on paper, AA for display-size text (owner, 7 Oct) */
+.hero-title h1 > .quiet { font-weight: var(--wt-light); color: #888888; font-size: var(--fs-h2); line-height: var(--lh-snug); letter-spacing: -0.01em; margin-top: 0.35em; max-width: 18em; }   /* paler than --ink-2: 3.25:1 on paper, AA for display-size text (owner, 7 Oct) */
 .hero-title .actions { grid-column: 10 / -1; justify-self: end; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
 @media (max-width: 47.99rem) {
   .hero-title h1, .hero-title .actions { grid-column: 1 / -1; justify-self: start; justify-content: start; }
