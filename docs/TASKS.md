@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 6 Oct 2026, session 9. Going-public prep merged (repo still private); the first-chord A/B page is being built (§3); the VALVE lurch stays as it is
+**Last updated:** 7 Oct 2026, end of session 9. The minisite redesign (revision 2) with the hero film is on draft PR #2 and its Vercel preview; repo still private; first-chord fix merged on `main` (not yet in Ableton or on the module)
 
 | Milestone | State |
 |---|---|
@@ -21,13 +21,16 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 1. The gate clock holds (≈5 min)
 - [ ] Flash the released firmware `dist/release/v2026.10.06-a6c70a4/resilio_versio_firmware_a6c70a4.bin` (same sound as the click-checked `9ba726f`/`bdd3910`, plus the clock hold). Clock echo mode by CV from Ableton, stop and start the transport: the echo time should stay put (no pitch swoop). A single lone pulse (no second within ~2 s) still takes it back to free time
 
-### 4. Stereo in: what it should sound like (answer whenever; study in `docs/research/stereo-input-study.md` once merged)
+### 2. The minisite, revision 2 (review on the preview)
+- [ ] Look through the redesign: locally at http://localhost:4322 (Claude starts it; real Phonic) or on the protected preview https://resilio-versio-git-feat-site-v2-jeffebauers-projects.vercel.app (Inter until the fonts are uploaded). PR #2 into `feat/site`. Say what to change, or OK it to merge into `feat/site`
+- [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
+- [ ] **Fonts on Vercel** (≈10 min, Claude walks you through it): upload the 12 Phonic WOFF2 files (`dist/webfonts/phonic/`, never in git) to private storage and set `FONTS_URL` + `FONTS_TOKEN`, so previews show Phonic
+
+### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
 
-### 5. Going public + the minisite (decisions before anything is published)
-- [ ] **Minisite:** package + design **merged** (6 Oct; `docs/minisite/`), your panel art in `docs/minisite/assets/panel/`. Still to do: install Blender (blender.org); send the Phonic WOFF2 files and their web licence terms (they stay out of the public repo). Optional: a second panel SVG export with the knob and jack layers hidden (the 3D scene models those)
-- [ ] **Listen to the ten demo clips** in the minisite package (rendered, not yet heard by anyone) and approve, cut or redo
-- Going-public prep **merged** (6 Oct, ADR 0045, SPEC v1.0.44): licences, README, issue forms, fixed download names, draft public release notes (`docs/release-notes-public.md`), the plugin panel layout (THROW in full; SIZE left and GATE right on the bottom row). Old branches kept, no credit line on the panel, no "test build" wording. **The repo only goes public when you say "flip it"**; the new panel reaches Ableton with the next install
+### 4. Going public (when the site is ready)
+- Going-public prep **merged** (ADR 0045, SPEC v1.0.44). **The repo only goes public when you say "flip it"**; then the first public release (`make_release.sh --publish`), then the site goes live (merge to `main`)
 
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 
@@ -35,8 +38,8 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **First chord fix merged** (SPEC v1.0.45): full tests and firmware sizes being re-run; needs a CPU run on the chip and a plugin install before it reaches you (costs 1.3 KB of flash; CPU-test build ~2.2 KB free)
-- **Minisite package** (`docs/minisite/` on its branch): merge when you're happy; README's "up to three springs" and the old names in the share read-me get fixed with it
+- **First chord fix** (merged, SPEC v1.0.45, 24 of 24 suites): needs a CPU run on the chip and a plugin install (with the new panel layout) before it reaches you; Claude prepares both when you're at the rack / Ableton is closed. CPU-test firmware has ~2.2 KB of flash left
+- **Render scripts** (`feat/site-renders`, Blender) merge into the site branch when the site merges
 
 ## What to send Claude
 - **Recordings:** say they're done and where (the Ableton project). Claude copies, renames and analyses them; the WAVs stay on your Mac, never in git
@@ -55,6 +58,8 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Minisite:** Vercel project set up (protected previews); Blender installed; panel art v2 and the logos in; renders picked and placed; the hero film (rises from below, lands straight on) rendered; Inter as the fallback font; all 12 Phonic cuts converted to web fonts (kept out of git). **Redesign (revision 2)** decided with you (DESIGN-v2.md: a hybrid of TE, Mier, Bull 5 and Fors, retiring the UDO-specific elements) and built by a cloud session (PR #2), then your review changes (text-only callouts, diagrams instead of pictograms, denser tiles, the whole hero film)
+- 7 Oct 2026: **First chord after drums:** B everywhere on the A/B page; merged (SPEC v1.0.45)
 - 6 Oct 2026: **First chord after drums listened:** B (the fix) on every row of `renders/first_chord_fix_ab`, including the snare after a kick 1–2 dB quieter. Merged (ADR 0035 amendment, SPEC v1.0.45)
 - 6 Oct 2026: **VALVE lurch across the stereo field listened:** A (today) / B together / C wider / D wider and louder barely tell apart, so nothing changes: today's lurch stays. Page deleted; branch `proto/valve-lurch-stereo` kept for reference
 - 6 Oct 2026: **Going-public decisions** (ADR 0045): plugin under the AGPL (no paid JUCE licence), our code MIT, commit email and the Wellspring spectrograms OK to publish, credit Jesse Bauer → jessebauer.xyz, feedback via GitHub Issues, prune old branches and keep the friends' releases, keep the name Resilio Versio with a Noise Engineering disclaimer
