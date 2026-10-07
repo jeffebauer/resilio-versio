@@ -428,3 +428,10 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* "Built around the dub moves": a full-bleed rule above, like a section head (owner, 7 Oct). */
 .moves { border-top: var(--hair) solid var(--line); padding-top: var(--stack-3); }
+
+/* Lead-in + description blocks: the description muted, the bold lead-in at full strength (owner, 7 Oct). */
+.described { color: var(--ink-2); }
+.described strong, .described b { color: var(--ink); }
+.on-ink .described strong, .on-ink .described b { color: var(--paper); }
+.described > ul { margin-top: var(--stack-4); }          /* more air between the description and the ruled list (owner, 7 Oct) */
+.described > ul > li { padding-block: var(--stack-3); }

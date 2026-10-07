@@ -92,7 +92,7 @@ const INDEX = [
       </div>
       <div class="main flow">
         <h3 class="statement">{sound.title}</h3>
-        <div class="flow" set:html={sound.html} />
+        <div class="flow described" set:html={sound.html} />
       </div>
       <div class="main">
         <DemoList />
@@ -126,7 +126,8 @@ const INDEX = [
       </div>
       <div class="main flow">
         <div set:html={panelParas[1] ?? ''} />
-        <SpecTable caption="Resilio’s controls" rows={CONTROLS.map((c) => ({ name: c.name, value: c.line, href: `/manual/#${c.anchor}` }))} />
+        <SpecTable caption="Resilio’s controls" rows={CONTROLS.map((c) => ({ name: c.name, value: c.line }))} />
+        <p><Button href="/manual/#controls" variant="ghost" arrow>Read the manual</Button></p>
       </div>
     </div>
   </section>
@@ -140,7 +141,7 @@ const INDEX = [
     <div class="grid moves">
       <div class="index"><h3 class="small">{moves.title}</h3></div>
       <div class="main flow">
-        <div class="flow" set:html={movesHtml} />
+        <div class="flow described" set:html={movesHtml} />
         <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
       </div>
     </div>
