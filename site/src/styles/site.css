@@ -80,7 +80,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   list-style: none; cursor: pointer; min-height: 2.25rem; display: inline-flex; align-items: center; gap: 0.5rem;
   padding: 0 0.9rem; border-radius: var(--radius-ui);   /* the same size as the Download button beside it (.btn-small) */
   box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent);
-  font: var(--wt-display) var(--fs-ui) / 1 var(--font-sans);
+  font: 600 var(--fs-ui) / 1 var(--font-sans);
 }
 .menu summary svg { width: 1rem; height: 1rem; }
 .menu summary::-webkit-details-marker { display: none; }
@@ -158,20 +158,24 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 /* The intro sits on the tank image under a dark scrim (owner, 7 Oct), centred. */
 /* Height from the content, at least the image's own shape on wide screens (no aspect-ratio:
    with a min-height it would widen the card past the screen on phones). */
-.intro-card { position: relative; display: grid; place-items: center; min-height: clamp(26rem, 42.8vw, 38rem); background: var(--dark); }
+.intro-card { position: relative; display: grid; align-items: end; justify-items: start; min-height: clamp(26rem, 42.8vw, 38rem); background: var(--dark); --intro-pad: clamp(1.25rem, 0.5rem + 3vw, 3.5rem); }
 .intro-card .intro-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .intro-scrim {
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 72% 80% at 50% 52%, rgb(12 11 10 / 0.8), rgb(12 11 10 / 0.55) 70%, rgb(12 11 10 / 0.4)),
-    linear-gradient(rgb(12 11 10 / 0.15), rgb(12 11 10 / 0.15));
+    linear-gradient(90deg, rgb(12 11 10 / 0.78), rgb(12 11 10 / 0.55) 35%, rgb(12 11 10 / 0) 65%),
+    linear-gradient(0deg, rgb(12 11 10 / 0.55), rgb(12 11 10 / 0) 45%),
+    linear-gradient(180deg, rgb(12 11 10 / 0.4), rgb(12 11 10 / 0) 22%);
 }
+/* Left-aligned, anchored bottom-left so the springs stay visible; the etymology note sits
+   top-left at the same offset (owner, 7 Oct). */
 .intro-copy {
-  position: relative; z-index: 1; max-width: 50rem; padding: clamp(2rem, 1rem + 4vw, 4.5rem) clamp(1.25rem, 0.5rem + 4vw, 4rem);
-  text-align: center; color: var(--on-dark); --ink-2: var(--on-dark-2);
+  position: relative; z-index: 1; max-width: 46rem; padding: calc(var(--intro-pad) * 2.5) var(--intro-pad) var(--intro-pad);
+  color: var(--on-dark); --ink-2: var(--on-dark-2);
 }
-.intro-copy .statement { max-width: 20em; margin-inline: auto; }
-.intro-copy .lede { max-width: 32em; margin-inline: auto; }
+.intro-copy .statement { max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
+.intro-copy .lede { max-width: 30em; }
+.intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
 [data-split] .line-mask { padding-bottom: 0.08em; margin-bottom: -0.08em; }
 
 /* ---- The sound (dark) ------------------------------------------------------ */
@@ -188,6 +192,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .demo {
   display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: var(--stack-2); align-content: start;
   padding: clamp(1.1rem, 0.8rem + 0.8vw, 1.5rem);
+  padding-bottom: 0.4rem;   /* the Settings row's own height is the bottom space (owner, 7 Oct) */
 }
 @supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
 .demo-head { display: grid; gap: var(--stack-2); align-content: start; }
@@ -197,7 +202,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .demo-caption { font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }   /* sans, not the mono image captions (owner, 7 Oct) */
 .demo .player { align-self: end; }
 .demo .spec { font-size: var(--fs-ui); }
-.demo .spec th, .demo .spec td { padding-block: 0.5rem; }
+.demo .spec th, .demo .spec td { padding-block: 0.5rem; vertical-align: middle; }
 .demo .spec th { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); width: 34%; }
 .described { color: var(--ink-2); }
 .described strong, .described b { color: var(--ink); display: block; font-weight: var(--wt-display); margin-bottom: 0.25rem; }
@@ -305,7 +310,6 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .feature { display: flex; flex-direction: column; gap: 0.75rem; min-height: clamp(11rem, 9rem + 4vw, 14rem); }
 .feature.is-wide { grid-column: span 2; }
 .feature.is-big { grid-column: span 2; grid-row: span 2; }
-.feature.is-full { grid-column: 1 / -1; }   /* closes the grid: 15 cells at three columns, 12 at two (the CV tile went, owner 7 Oct) */
 .feature-diagram { order: -1; width: 100%; max-width: 17rem; height: clamp(3.25rem, 2.6rem + 1.4vw, 4.5rem); margin-bottom: auto; color: var(--ink); }
 .feature.is-wide .feature-diagram { max-width: 18rem; }
 .feature.is-big .feature-diagram { max-width: 36rem; height: clamp(5rem, 1.5rem + 8vw, 13rem); }
@@ -318,7 +322,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 }
 @media (max-width: 39.99rem) {
   .bento { grid-template-columns: minmax(0, 1fr); }
-  .feature.is-wide, .feature.is-big, .feature.is-full { grid-column: auto; }
+  .feature.is-wide, .feature.is-big { grid-column: auto; }
   .feature { min-height: 0; }
   .feature.is-big .feature-diagram { height: 4.5rem; }
 }
@@ -515,7 +519,9 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* ---- Centred section intros (owner, 7 Oct) ---------------------------------------- */
 .centered { text-align: center; }
 .centered .lede { margin-inline: auto; }
-.panel-list ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+.panel-list ul { list-style: none; padding: 0; margin: 0; }
+.panel-list li { padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
+.panel-list li:last-child { border-bottom: var(--hair) solid var(--line); }
 
 /* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */
 .download .needs { display: grid; gap: 0.4rem; }

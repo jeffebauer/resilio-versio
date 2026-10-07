@@ -70,10 +70,10 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
         <Picture class="intro-bg" src={tank} widths={widthsFor(tank)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
           alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
         <div class="intro-scrim" aria-hidden="true"></div>
+        <div class="intro-note small quiet" set:html={etymology} />
         <div class="intro-copy flow">
           <p class="statement" data-split set:html={statement} />
           {ledeRest && <p class="lede quiet" set:html={ledeRest} />}
-          <div class="small quiet" set:html={etymology} />
         </div>
       </div>
       <figcaption class="caption">The tank: a transducer and its springs.</figcaption>
@@ -100,7 +100,7 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="wide panel-wrap">
       <AnnotatedPanel />
     </div>
-    <div class="column flow centered">
+    <div class="column flow">
       <div class="panel-list" set:html={panelList} />
       <p><Button href="/manual/#controls" variant="ghost" arrow>All the controls in the manual</Button></p>
     </div>

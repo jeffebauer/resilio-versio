@@ -26,15 +26,15 @@ export const CONTROLS: Control[] = [
 // from docs/minisite/content/overview.md and manual.md; a single "Read the manual" button
 // sits under the grid. The order matters: with three columns and dense packing it fills
 // five even rows (the big tile beside two small ones, then a wide and a small per row).
-export interface FeatureTile { big: string; line: string; diagram: DiagramKind; size?: 'big' | 'wide' | 'full' }
+export interface FeatureTile { big: string; line: string; diagram: DiagramKind; size?: 'big' | 'wide' }
 
 export const FEATURE_TILES: FeatureTile[] = [
   { big: '2 springs', size: 'big', diagram: 'tanks', line: 'TANK 1: one spring, sparse and the most splashy. TANK 2: two springs, the classic tank.' },
+  { big: 'Tape echo', diagram: 'echo', line: 'TANK ECHO: a worn tape echo feeding the springs, clocked from your sequencer or tapped in on the button.' },
   { big: '3 attitudes', diagram: 'attitude', line: 'CLEAN · TAPE · VALVE: the saturation inside the tank. Your dry signal stays clean.' },
   { big: 'The throw', size: 'wide', diagram: 'throw', line: 'Open the springs for one snare, close them, let the tail ring on. The THROW / TAP button and the gate input both throw.' },
   { big: 'WOBBLE', diagram: 'wobble', line: 'Tape drift left of noon, a steady warble right of noon.' },
   { big: 'SPLASH', diagram: 'splash', line: 'Your hits, hitting harder. Nothing added; ghost notes stay quiet.' },
-  { big: 'The Big Knob', size: 'wide', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.' },
-  { big: 'Tape echo', size: 'full', diagram: 'echo', line: 'TANK ECHO: a worn tape echo feeding the springs, clocked from your sequencer or tapped in on the button.' },
+  { big: 'The Big Knob', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.' },
   { big: 'The howl', diagram: 'howl', line: 'In VALVE the top of DECAY lets the tank howl: rideable spring feedback. Pull DECAY back and it falls into a normal tail.' },
 ];

@@ -119,7 +119,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .display { font-size: var(--fs-display); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h2      { font-size: var(--fs-h2); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.05; letter-spacing: -0.015em; }
-.lede    { font-size: var(--fs-lede); line-height: 1.45; }
+.lede    { font-size: var(--fs-lede); line-height: 1.45; text-wrap: balance; }
 .small   { font-size: var(--fs-small); }
 /* MD UI's italic axis tops out at 12°, which read far too slanted (owner, 7 Oct): a gentler oblique. */
 em, i, cite { font-style: oblique 7deg; }
@@ -132,9 +132,9 @@ strong, b { font-weight: var(--wt-display); }
 /* ---- Buttons: one rounded rectangle for every control -------------------- */
 .btn {
   display: inline-flex; align-items: center; gap: 0.6em;
-  min-height: 2.75rem; padding: 0.75rem 1.25rem;             /* 44 px touch target */
+  min-height: 2.25rem; padding: 0.5rem 0.9rem;              /* the header's size everywhere (owner, 7 Oct) */
   border: 0; border-radius: var(--radius-ui);
-  font: var(--wt-display) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* bold labels (owner, 7 Oct) */
+  font: 600 var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* semibold labels (owner, 7 Oct) */
   text-decoration: none; cursor: pointer;
   transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
@@ -144,7 +144,7 @@ strong, b { font-weight: var(--wt-display); }
 .btn-dark { background: var(--ink); color: var(--paper); }
 .btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent); }
 .btn-ghost:hover { box-shadow: inset 0 0 0 var(--hair) currentColor; }
-.btn-small { min-height: 2.25rem; padding: 0.5rem 0.9rem; }
+.btn-small { min-height: 2.25rem; padding: 0.5rem 0.9rem; }   /* now the same as .btn; kept for the markup */
 .btn .arrow { width: 0.75em; height: 0.75em; }
 
 .chip, .badge {

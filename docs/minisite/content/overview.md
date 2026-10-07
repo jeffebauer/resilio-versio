@@ -7,7 +7,7 @@ order: 1
 
 # Resilio Versio
 
-**A dub spring reverb for the Noise Engineering Versio.**
+**A dub-inspired spring reverb and tape echo for the Noise Engineering Versio platform.**
 
 A simulated spring tank you can throw snares into, splash, drive, filter like King Tubby, hold forever, push into a howl, or feed from a worn tape echo. Free firmware for the Versio Eurorack module, and the same sound as an AU/VST3 plugin for macOS.
 
