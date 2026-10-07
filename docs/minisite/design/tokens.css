@@ -132,7 +132,7 @@ strong, b { font-weight: var(--wt-display); }
 /* ---- Buttons: one rounded rectangle for every control -------------------- */
 .btn {
   display: inline-flex; align-items: center; gap: 0.6em;
-  min-height: 2.25rem; padding: 0.5rem 0.9rem;              /* the header's size everywhere (owner, 7 Oct) */
+  min-height: 2.25rem; padding: 0.5rem calc(0.9rem + 4px);   /* the header's size everywhere (owner, 7 Oct) */
   border: 0; border-radius: 999px;   /* pills (owner, 7 Oct) */
   font: 600 var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* semibold labels (owner, 7 Oct) */
   text-decoration: none; cursor: pointer;
@@ -144,7 +144,7 @@ strong, b { font-weight: var(--wt-display); }
 .btn-dark { background: var(--ink); color: var(--paper); }
 .btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent); }
 .btn-ghost:hover { box-shadow: inset 0 0 0 var(--hair) currentColor; }
-.btn-small { min-height: 2.25rem; padding: 0.5rem 0.9rem; }   /* now the same as .btn; kept for the markup */
+.btn-small { min-height: 2.25rem; padding: 0.5rem calc(0.9rem + 4px); }   /* now the same as .btn; kept for the markup */
 .btn .arrow { width: 0.75em; height: 0.75em; }
 
 .chip, .badge {

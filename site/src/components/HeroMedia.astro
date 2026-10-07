@@ -2,17 +2,20 @@
 // The hero frame (DESIGN-v2, Home 1). Ready for the reveal film: when the prebuild has
 // copied hero_reveal.(webm|mp4) and hero_hold_loop.(webm|mp4) into public/renders/, the
 // reveal plays once (muted, inline), then the hold loops, with a pause button.
-// The still (hero_still.jpg, or the monolith render until it exists) is the poster, what
-// shows without JavaScript, and all that reduced-motion users see.
+// The still (hero_still.jpg, or the monolith render until it exists) is what shows without
+// JavaScript, when autoplay is blocked (iOS Low Power Mode), and all reduced-motion users see.
+// Two stacked videos (owner, 7 Oct: flicker on mobile at the switch): the hold preloads
+// while the reveal plays and takes over on the reveal's last frame, which it matches, so
+// nothing reloads. When the film will play, the lit still is hidden from the first paint
+// (the reveal opens on black), so it never flashes lit → black → lit.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Picture, getImage } from 'astro:assets';
+import { Picture } from 'astro:assets';
 import { PUBLIC_DIR } from '../lib/paths';
 import { mustRender, render, widthsFor } from '../lib/renders';
 
 const has = (f: string) => existsSync(join(PUBLIC_DIR, 'renders', f));
 const stillImg = render('hero_still.jpg') ?? mustRender('hero-monolith.jpg');
-const poster = (await getImage({ src: stillImg, width: Math.min(1600, stillImg.width), format: 'webp' })).src;
 const sizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const sources = (name: string) =>
   (['webm', 'mp4'] as const)
@@ -23,21 +26,19 @@ const hold = sources('hero_hold_loop');
 const film = reveal.length > 0 && hold.length > 0;
 const alt = 'The Resilio Versio module seen from the floor, towering against a dark background, its four red LEDs lit.';
 ---
+<script is:inline>
+  // Before first paint: the film will play, so start on black, not on the lit still.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('hero-film');
+</script>
 <div class="hero-frame" data-hero>
   {film ? (
     <>
       <Picture class="hero-still" src={stillImg} widths={widthsFor(stillImg)} sizes={sizes} formats={['avif', 'webp']} fetchpriority="high" loading="eager" alt={alt} />
-      <video
-        class="hero-video"
-        muted
-        playsinline
-        preload="none"
-        poster={poster}
-        aria-hidden="true"
-        data-hero-video
-        data-hold={JSON.stringify(hold)}
-      >
+      <video class="hero-video" muted playsinline preload="none" aria-hidden="true" data-hero-video>
         {reveal.map((s) => <source src={s.src} type={s.type} />)}
+      </video>
+      <video class="hero-video hero-hold" muted playsinline loop preload="none" aria-hidden="true" data-hero-hold>
+        {hold.map((s) => <source src={s.src} type={s.type} />)}
       </video>
       <button class="hero-pause" type="button" data-hero-pause hidden>
         <span class="visually-hidden">Pause the film</span>
@@ -51,28 +52,36 @@ const alt = 'The Resilio Versio module seen from the floor, towering against a d
 </div>
 {film && (
   <script>
-    // Reveal once, then loop the hold. Nothing plays under reduced motion: the still stays.
-    const video = document.querySelector<HTMLVideoElement>('[data-hero-video]');
+    // Reveal once, then the hold loops in a second video. Nothing plays under reduced motion.
+    const reveal = document.querySelector<HTMLVideoElement>('[data-hero-video]');
+    const hold = document.querySelector<HTMLVideoElement>('[data-hero-hold]');
     const pause = document.querySelector<HTMLButtonElement>('[data-hero-pause]');
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (video && pause && !reduce.matches) {
-      const hold = JSON.parse(video.dataset.hold ?? '[]') as { src: string; type: string }[];
-      const frame = video.closest('[data-hero]');
-      video.preload = 'auto';
-      video.addEventListener('playing', () => frame?.classList.add('is-playing'), { once: true });
-      video.addEventListener('ended', () => {
-        video.replaceChildren(...hold.map((s) => Object.assign(document.createElement('source'), s)));
-        video.loop = true;
-        video.load();
-        video.play().catch(() => {});
+    const frame = document.querySelector<HTMLElement>('[data-hero]');
+    const showStill = () => document.documentElement.classList.remove('hero-film');
+    if (reveal && hold && pause && frame && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let active = reveal;
+      reveal.preload = 'auto';
+      reveal.addEventListener('playing', () => {
+        frame.classList.add('is-playing');
+        pause.hidden = false;
+        hold.preload = 'auto';
+        hold.load();
       }, { once: true });
-      video.play().then(() => { pause.hidden = false; }).catch(() => {});
+      reveal.addEventListener('ended', () => {
+        hold.play().then(() => {
+          hold.classList.add('is-on');   // shown only once it's actually playing
+          active = hold;
+        }).catch(() => {});              // if the loop can't play, the reveal's last frame stays
+      }, { once: true });
+      reveal.play().catch(showStill);    // autoplay blocked: the still, not a black frame
       pause.addEventListener('click', () => {
-        const paused = !video.paused;
-        if (paused) video.pause(); else video.play().catch(() => {});
+        const paused = !active.paused;
+        if (paused) active.pause(); else active.play().catch(() => {});
         pause.classList.toggle('is-paused', paused);
         pause.querySelector('.visually-hidden')!.textContent = paused ? 'Play the film' : 'Pause the film';
       });
+    } else {
+      showStill();
     }
   </script>
 )}

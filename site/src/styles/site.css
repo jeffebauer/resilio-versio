@@ -78,7 +78,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .menu { display: none; position: relative; grid-row: 1; grid-column: 3; justify-self: end; }
 .menu summary {
   list-style: none; cursor: pointer; min-height: 2.25rem; display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0 0.9rem; border-radius: 999px;   /* the same size and shape as the Download button beside it */
+  padding: 0 calc(0.9rem + 4px); border-radius: 999px;   /* the same size and shape as the Download button beside it */
   box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent);
   font: 600 var(--fs-ui) / 1 var(--font-sans);
 }
@@ -118,10 +118,18 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .hero-frame {
   position: relative; overflow: hidden; border-radius: var(--radius-tile); background: #060505;
   aspect-ratio: 16 / 9; width: 100%;   /* the whole film, uncropped; the title follows below (owner, 7 Oct) */
+  /* iOS Safari doesn't clip a video to rounded corners while it composites (the light floor
+     showed at the corners as white edges on load, owner 7 Oct): force the clip. */
+  isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 .hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
-.hero-video { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
-.hero-frame.is-playing .hero-video { opacity: 1; }
+.hero-video { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); border-radius: inherit; }
+.hero-frame.is-playing .hero-video:not(.hero-hold) { opacity: 1; }
+/* The hold sits on top and appears in one step, on the reveal's matching last frame. */
+.hero-hold { transition: none; }
+.hero-hold.is-on { opacity: 1; }
+/* The film will play (set before first paint): start on black, never on the lit still. */
+html.hero-film .hero-still { visibility: hidden; }
 /* Once the film is in, hide the still under it: its lighter floor showed through the film's
    anti-aliased right edge as a thin white line (owner, 7 Oct). */
 .hero-frame.is-playing .hero-still { visibility: hidden; transition: visibility 0s linear var(--dur-3); }
@@ -178,6 +186,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   position: relative; z-index: 1; max-width: 46rem; padding: calc(var(--intro-pad) * 2.5) var(--intro-pad) var(--intro-pad);
   color: var(--on-dark); --ink-2: var(--on-dark-2);
 }
+/* A soft dark glow behind the copy, for contrast where it crosses the bright springs (owner, 7 Oct). */
+.intro-copy::before {
+  content: ""; position: absolute; z-index: -1; inset: 10% -6% -4% -8%; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(12 11 10 / 0.6), rgb(12 11 10 / 0.3) 60%, rgb(12 11 10 / 0));
+}
+.intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
 .intro-copy .statement { max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
 .intro-copy .lede { max-width: 30em; }
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
