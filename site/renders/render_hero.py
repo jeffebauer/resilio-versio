@@ -36,6 +36,7 @@ import bpy
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import common as C  # noqa: E402
+import module  # noqa: E402
 import render_clay  # noqa: E402
 
 FPS = 30
@@ -150,10 +151,15 @@ def build():
             ld.keyframe_insert("color", frame=f)
             ld.keyframe_insert("energy", frame=f)
 
-    # camera: low and close looking steeply up -> R7a (front-on, floor level, 24 mm)
+    # camera: low and close looking steeply up -> level with the panel's centre,
+    # square to it (zero tilt, zero yaw: no keystoning), 100 mm lens, the panel
+    # ~72 % of the frame height. The camera dollies back and rises; the target
+    # slides down to the panel centre so the tilt reaches exactly 0 as it settles.
+    mid = module.PH / 2
+    end_dist = (module.PH / 0.72) * 100.0 / (36.0 / (16 / 9))   # 100 mm lens, 72 % of frame height
     start, start_t = C.Vector((0, -62, 2.5)), C.Vector((0, 0, 118))
-    end, end_t = C.Vector((0, -170, 6)), C.Vector((0, 0, 66))
-    lens0, lens1 = 20.0, 24.0
+    end, end_t = C.Vector((0, -end_dist, mid)), C.Vector((0, 0, mid))
+    lens0, lens1 = 20.0, 100.0
     tgt = bpy.data.objects.new("cam_target", None)
     C.link(tgt)
     cd = bpy.data.cameras.new("hero")
@@ -172,7 +178,12 @@ def build():
         k = _ease(f, *CAM_MOVE)
         cam.location = start.lerp(end, k)
         tgt.location = start_t.lerp(end_t, k)
-        cd.lens = lens0 + (lens1 - lens0) * k
+        # lens tracks the dolly so the module's apparent size shrinks steadily
+        # (a pure pull-back feel, no zoom-out-then-in): lens = lens1 x dist/end_dist,
+        # times an eased factor that is lens0's excess at the start and 1 at the end
+        dist = (end_t - cam.location).length
+        excess0 = lens0 / (lens1 * (start_t - start).length / (end_t - end).length)
+        cd.lens = lens1 * dist / (end_t - end).length * excess0 ** (1 - k)
         cd.dof.focus_distance = (C.Vector((0, 0, 64)) - cam.location).length
         cd.dof.keyframe_insert("focus_distance", frame=f)
         cam.keyframe_insert("location", frame=f)
@@ -198,6 +209,21 @@ def main():
     sc.render.image_settings.file_format = "JPEG"
     sc.render.image_settings.quality = 95
     os.makedirs(out, exist_ok=True)
+    if "--still" in argv:
+        # the site's hero still: the hold frame with the LEDs on the loud hit,
+        # 2880 x 1620, high samples, sharpened like the other finals
+        f, path = int(argv[argv.index("--still") + 1]), argv[argv.index("--still") + 2]
+        sc.render.resolution_x, sc.render.resolution_y = 2880, 1620
+        sc.render.image_settings.file_format = "PNG"
+        sc.frame_set(f)
+        sc.render.filepath = path
+        bpy.ops.render.render(write_still=True)
+        import subprocess
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", path, "-vf", "unsharp=5:5:0.7:5:5:0",
+                        path + ".s.png"], check=True)
+        os.replace(path + ".s.png", path)
+        print(f"[hero] still {path}")
+        return
     frames = only or range(sc.frame_start, sc.frame_end + 1)
     import time
     t0 = time.time()
