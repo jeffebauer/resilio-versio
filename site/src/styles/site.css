@@ -330,6 +330,8 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 
 /* ---- Footer on a hairline ------------------------------------------------------ */
 .site-footer { border-top: var(--hair) solid var(--line); padding-block: var(--stack-4) var(--stack-5); font-size: var(--fs-small); }
+/* After a coloured band (Home's download section) the colour change is the edge: no hairline (owner, 7 Oct) */
+main:has(> .band-tile:last-child, > .band-dark:last-child) + .site-footer { border-top: 0; }
 .site-footer .wide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--stack-4) var(--gutter); }
 .site-footer .brand { font-weight: var(--wt-display); }
 .site-footer .lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--gutter); }
