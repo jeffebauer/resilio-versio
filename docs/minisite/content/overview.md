@@ -7,7 +7,7 @@ order: 1
 
 # Resilio Versio
 
-**A dub spring reverb for the Noise Engineering Versio.**
+**A dub-inspired spring reverb and tape echo for the Noise Engineering Versio platform.**
 
 A simulated spring tank you can throw snares into, splash, drive, filter like King Tubby, hold forever, push into a howl, or feed from a worn tape echo. Free firmware for the Versio Eurorack module, and the same sound as an AU/VST3 plugin for macOS.
 
@@ -40,7 +40,12 @@ Resilio runs behind your Versio's printed panel, so the labels on your module wo
 
 <!-- PANEL: assets/panel/resilio-versio-panel.svg -->
 
-Seven knobs, each with a CV input: **BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE.** Two switches: **TANK** (1 · 2 · ECHO) and **ATTITUDE** (CLEAN · TAPE · VALVE). One button: **THROW / TAP.** A gate input that throws, or clocks the echo. Four LEDs that meter the input and output.
+- **4 LEDs** Meter the input and output
+- **7 knobs** BLEND, DECAY, TONE, SPLASH, TENSION, WOBBLE, DRIVE
+- **2 switches** TANK (1 · 2 · ECHO) and ATTITUDE (CLEAN · TAPE · VALVE)
+- **1 button** THROW / TAP
+- **7 CV inputs** One per knob, 0–5 V, added to the knob's position
+- **1 gate input** Throws, or clocks the echo
 
 ## Safe to try
 

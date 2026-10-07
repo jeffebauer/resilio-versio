@@ -20,11 +20,11 @@ WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Eve
 | Tubby snare splash | 2 | TAPE | 0.45 (11:30) | 0.6 (1) | 0.65 (1:30) | 0.35 (10:30) | 0.7 (2) | 0.5 (12) | 0.45 (11:30) |
 | Skank chord wash | 2 | CLEAN | 0.35 (10:30) | 0.7 (2) | 0.4 (11) | 0.5 (12) | 0.2 (9) | 0.25 (9:30) | 0.43 (11:15) |
 | Tight slap | 1 | CLEAN | 0.35 (10:30) | 0.05 (7:30) | 0.6 (1) | 0.9 (4) | 0.3 (10) | 0.2 (9) | 0.45 (11:30) |
-| Drowned Howl | 2 | VALVE | 0.8 (3) | 0.95 (4:30) | 0.35 (10:30) | 0.3 (10) | 0.5 (12) | 0.6 (1) | 0.41 (11) |
+| Drowned howl | 2 | VALVE | 0.8 (3) | 0.95 (4:30) | 0.35 (10:30) | 0.3 (10) | 0.5 (12) | 0.6 (1) | 0.41 (11) |
 | Valve tank drop | 1 | VALVE | 0.6 (1) | 0.7 (2) | 0.55 (12:30) | 0.2 (9) | 0.6 (1) | 0.55 (12:30) | 0.45 (11:30) |
 | Mix-bus spring | 2 | CLEAN | 0.15 (8:30) | 0.35 (10:30) | 0.45 (11:30) | 0.6 (1) | 0.1 (8) | 0.1 (8) | 0.45 (11:30) |
 
-On the hardest drum hits, Tubby snare splash, Drowned Howl and Valve tank drop can light the output LEDs red (the limiter catching peaks): that's normal there. Skanks and pads stay clear of it in every starting point.
+On the hardest drum hits, Tubby snare splash, Drowned howl and Valve tank drop can light the output LEDs red (the limiter catching peaks): that's normal there. Skanks and pads stay clear of it in every starting point.
 
 ## Tubby snare splash
 
@@ -50,13 +50,13 @@ On the hardest drum hits, Tubby snare splash, Drowned Howl and Valve tank drop c
 
 **Move next:** TENSION a little left if it's too metallic. BLEND up for an obvious slapback. TONE left to sit it behind the source.
 
-## Drowned Howl
+## Drowned howl
 
 **Sounds like:** the tank tipping into its own feedback: a rough, moving, siren-like roar that keeps going after the input stops. It never becomes a clean tone.
 
 **Play into it:** one hit or a dub-siren blip, then stop and ride the knobs.
 
-**Move next:** ride TONE and TENSION to steer the pitch and colour of the Howl. WOBBLE further left for more seasickness. Pull DECAY below about 4 o'clock to let it fall back into a normal tail (it fades in a second or two). Watch the output LEDs: red here means the limiter is holding it.
+**Move next:** ride TONE and TENSION to steer the pitch and colour of the howl. WOBBLE further left for more seasickness. Pull DECAY below about 4 o'clock to let it fall back into a normal tail (it fades in a second or two). Watch the output LEDs: red here means the limiter is holding it.
 
 ## Valve tank drop
 
@@ -64,7 +64,7 @@ On the hardest drum hits, Tubby snare splash, Drowned Howl and Valve tank drop c
 
 **Play into it:** throw the snare or rim on the drop, the one before the bass comes back in: hold the button (or send a gate) for that one hit.
 
-**Move next:** a gate sequence for rhythmic throws. DECAY past 4 o'clock and the crash can build into the Howl. ATTITUDE to TAPE or CLEAN for a softer knock.
+**Move next:** a gate sequence for rhythmic throws. DECAY past 4 o'clock and the crash can build into the howl. ATTITUDE to TAPE or CLEAN for a softer knock.
 
 ## Mix-bus spring
 

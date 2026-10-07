@@ -3,14 +3,11 @@ import Doc from '../layouts/Doc.astro';
 import DocContent from '../components/DocContent.astro';
 import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
 
+// Releases are headed by their date; the version follows as a quiet mono line (owner, 7 Oct),
+// so the contents list reads as dates.
 const page = await getPage('changelog');
 const { h1, rest } = takeH1(pageHtml(page));
-// Release headings "v2026.10.06-a6c70a4 — 6 October 2026": version in mono, date quiet.
-const html = rest.replace(
-  /<h2([^>]*)>(v[^\s<]+) — ([^<]+)<\/h2>/g,
-  '<h2$1 class="release-head"><span class="mono">$2</span> <span class="date">— $3</span></h2>',
-);
 ---
 <Doc page={page} h1={h1} kicker="Resilio Versio · releases, newest first">
-  <DocContent parts={splitSlots(html)} />
+  <DocContent parts={splitSlots(rest)} />
 </Doc>

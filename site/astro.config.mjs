@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
+import { fileURLToPath } from 'node:url';
 import { unified } from '@astrojs/markdown-remark';
 import { remarkSlots } from './src/plugins/remark-slots.mjs';
 import { rehypeDocs } from './src/plugins/rehype-docs.mjs';
@@ -13,6 +14,19 @@ const site =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : 'https://resilio-versio.vercel.app');
 
+// Mesurer, the measuring/annotation overlay, in `astro dev` only (src/scripts/mesurer-dev.ts).
+/** @type {import('astro').AstroIntegration} */
+const mesurerDev = {
+  name: 'mesurer-dev',
+  hooks: {
+    'astro:config:setup': ({ command, injectScript }) => {
+      if (command === 'dev') {
+        injectScript('page', `import ${JSON.stringify(fileURLToPath(new URL('./src/scripts/mesurer-dev.ts', import.meta.url)))};`);
+      }
+    },
+  },
+};
+
 export default defineConfig({
   site,
   output: 'static',
@@ -21,6 +35,7 @@ export default defineConfig({
   build: { format: 'directory', inlineStylesheets: 'always' },
   integrations: [
     sitemap({ filter: (page) => !page.includes('/style') }),
+    mesurerDev,
   ],
   markdown: {
     // remark/rehype, so the two small plugins can keep the copy untouched (src/plugins).

@@ -12,3 +12,31 @@ const { items, label = 'On this page', class: cls = '' } = Astro.props;
     ))}
   </ul>
 </nav>
+<script>
+  // Reading position: the contents link for the section being read is selected, and follows
+  // the scroll (owner, 7 Oct). A section counts once its heading passes a third of the way down.
+  document.querySelectorAll<HTMLElement>('nav.toc').forEach((toc) => {
+    const links = [...toc.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
+    const targets = links
+      .map((a) => ({ a, el: document.getElementById(decodeURIComponent(a.hash.slice(1))) }))
+      .filter((t): t is { a: HTMLAnchorElement; el: HTMLElement } => Boolean(t.el));
+    if (!targets.length) return;
+    let current: HTMLAnchorElement | null = null;
+    const update = () => {
+      const line = innerHeight / 3;
+      let pick: (typeof targets)[number] | null = null;
+      for (const t of targets) if (t.el.getBoundingClientRect().top <= line) pick = t;
+      // At the very bottom, the last section wins even if its heading can't reach the line.
+      if (innerHeight + scrollY >= document.documentElement.scrollHeight - 2) pick = targets[targets.length - 1];
+      const next = pick?.a ?? null;   // above the first section: nothing selected yet
+      if (next === current) return;
+      current?.removeAttribute('aria-current');
+      next?.setAttribute('aria-current', 'location');
+      current = next;
+    };
+    let queued = false;
+    addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; update(); }); } }, { passive: true });
+    addEventListener('resize', update);
+    update();
+  });
+</script>

@@ -42,7 +42,7 @@
   --fs-display: clamp(3rem, 1.6rem + 6vw, 7.5rem);         /* 48 -> 120: MD UI Bold, the title and big numbers */
   --fs-h2:      clamp(2.25rem, 1.3rem + 4vw, 5.5rem);      /* 36 -> 88: section headings, Bold */
   --fs-h3:      clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);     /* 24 -> 40: tile statements, Bold */
-  --fs-lede:    clamp(1.25rem, 0.95rem + 1.05vw, 1.875rem); /* 20 -> 30 */
+  --fs-lede:    clamp(1.125rem, 0.98rem + 0.55vw, 1.5rem);  /* 18 -> 24 (owner, 7 Oct: was 20 -> 30) */
   --fs-body:    clamp(1.0625rem, 0.9rem + 0.55vw, 1.375rem); /* 17 -> 22 */
   --fs-small:   clamp(0.9375rem, 0.85rem + 0.3vw, 1.125rem); /* 15 -> 18 */
   --fs-ui:      0.875rem;  /* 14: header links, buttons */
@@ -55,7 +55,7 @@
 
   --wt-light:   300;  /* reading text */
   --wt-reg:     400;  /* UI, anything under 15 px */
-  --wt-medium:  500;  /* button labels, strong in text */
+  --wt-medium:  500;  /* emphasis in UI text */
   --wt-display: 700;  /* MD UI Bold: headings, statements, big numbers */
 
   --track-display: -0.02em;
@@ -119,8 +119,12 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .display { font-size: var(--fs-display); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h2      { font-size: var(--fs-h2); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.05; letter-spacing: -0.015em; }
-.lede    { font-size: var(--fs-lede); line-height: var(--lh-snug); }
+.lede    { font-size: var(--fs-lede); line-height: 1.45; text-wrap: balance; }
 .small   { font-size: var(--fs-small); }
+/* MD UI's italic axis tops out at 12°, which read far too slanted (owner, 7 Oct): a gentler oblique. */
+em, i, cite { font-style: oblique 7deg; }
+/* One bold everywhere: bold terms in running text match the bold elsewhere (owner, 7 Oct). */
+strong, b { font-weight: var(--wt-display); }
 .quiet   { color: var(--ink-2); }
 .label, .chip, .badge, .mono { font-family: var(--font-mono); font-weight: var(--wt-reg); letter-spacing: 0; }
 .prose { max-width: var(--column); }
@@ -128,9 +132,9 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 /* ---- Buttons: one rounded rectangle for every control -------------------- */
 .btn {
   display: inline-flex; align-items: center; gap: 0.6em;
-  min-height: 2.75rem; padding: 0.75rem 1.25rem;             /* 44 px touch target */
-  border: 0; border-radius: var(--radius-ui);
-  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
+  min-height: 2.25rem; padding: 0.5rem calc(0.9rem + 4px);   /* the header's size everywhere (owner, 7 Oct) */
+  border: 0; border-radius: 999px;   /* pills (owner, 7 Oct) */
+  font: 600 var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);   /* semibold labels (owner, 7 Oct) */
   text-decoration: none; cursor: pointer;
   transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
@@ -140,7 +144,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .btn-dark { background: var(--ink); color: var(--paper); }
 .btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent); }
 .btn-ghost:hover { box-shadow: inset 0 0 0 var(--hair) currentColor; }
-.btn-small { min-height: 2.25rem; padding: 0.5rem 0.9rem; }
+.btn-small { min-height: 2.25rem; padding: 0.5rem calc(0.9rem + 4px); }   /* now the same as .btn; kept for the markup */
 .btn .arrow { width: 0.75em; height: 0.75em; }
 
 .chip, .badge {

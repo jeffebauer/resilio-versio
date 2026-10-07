@@ -17,7 +17,7 @@ export const DOWNLOAD = {
 };
 
 export const NAV = [
-  { href: '/#sound', label: 'Sound' },
+  { href: '/', label: 'Home' },   // pages only in the nav (owner, 7 Oct: was the #sound anchor)
   { href: '/manual/', label: 'Manual' },
   { href: '/install/', label: 'Install' },
   { href: '/presets/', label: 'Presets' },

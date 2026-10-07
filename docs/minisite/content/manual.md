@@ -9,7 +9,16 @@ order: 2
 
 Resilio Versio is a dub spring reverb for the Noise Engineering Versio: a simulated spring tank you can drive, splash, throw into and push into feedback, with a tape echo in front of it on the TANK switch's third position. The plugin has the same panel and the same sound.
 
-**Words used here.** The **tank** is the whole reverb, with one or two **springs** inside. The **tail** is the sound ringing on after you stop. The **chirp** (or "boing") is the springy up-sweep on each echo. A **throw** opens the springs to the input for a moment (one snare, one stab) and lets the tail ring on. The **Howl** is the tank feeding back on itself. The **Hold** is the tail left hanging as a bed under what you play.
+<p class="subhead">Terminology</p>
+
+<dl class="terms">
+<dt>Tank</dt><dd>The whole reverb, with one or two springs inside.</dd>
+<dt>Tail</dt><dd>The sound ringing on after you stop.</dd>
+<dt>Chirp</dt><dd>The springy up-sweep (the "boing") on each echo.</dd>
+<dt>Throw</dt><dd>Opening the springs to the input for a moment (one snare, one stab) and letting the tail ring on.</dd>
+<dt>Howl</dt><dd>The tank feeding back on itself.</dd>
+<dt>Hold</dt><dd>The tail left hanging as a bed under what you play.</dd>
+</dl>
 
 ## Panel map
 
@@ -17,7 +26,7 @@ Resilio runs behind your Versio's printed panel, so the printed labels don't mat
 
 <!-- PANEL: assets/panel/resilio-versio-panel.svg -->
 
-| Position on the panel | Resilio control |
+| Panel location | Resilio control |
 |---|---|
 | Top left knob | **BLEND** |
 | Top right knob | **DECAY** |
@@ -45,8 +54,8 @@ Dry ↔ wet. Fully right is 100 % wet, for a send/return: the classic dub way, t
 
 How long the tail rings: from a quick slap (about 0.4 s) to a long wash (about 9 s). It always fades out, except at the very top (past about 4 o'clock), which depends on ATTITUDE:
 
-- **CLEAN and TAPE: the Hold.** The tail stretches out toward minutes and sits as a bed under what you play, never louder than what went in. New sound still joins it, a little quieter, and the whole bed dips out of the way of your kick and bass (not snares, hats or chords).
-- **VALVE: the Howl.** The tank feeds back on itself: a rough, moving roar that keeps going after you stop. Never a clean tone.
+- **CLEAN and TAPE: the hold.** The tail stretches out toward minutes and sits as a bed under what you play, never louder than what went in. New sound still joins it, a little quieter, and the whole bed dips out of the way of your kick and bass (not snares, hats or chords).
+- **VALVE: the howl.** The tank feeds back on itself: a rough, moving roar that keeps going after you stop. Never a clean tone.
 
 Pull DECAY back and either one falls into a normal tail and fades. In TANK ECHO, DECAY is the echo's feedback instead (see Echo mode).
 
@@ -103,7 +112,7 @@ Named for the saturation.
 
 - **CLEAN** (left): a polite, linear tank.
 - **TAPE** (centre): tape saturation, the core dub colour, with a fine grain on the reverb.
-- **VALVE** (right): a spring in a cranked valve amp. Hard, lopsided saturation inside the tank, the growl of an overdriven valve stage, rattle and lurch on hits, coarse grit, and the Howl at the top of DECAY.
+- **VALVE** (right): a spring in a cranked valve amp. Hard, lopsided saturation inside the tank, the growl of an overdriven valve stage, rattle and lurch on hits, coarse grit, and the howl at the top of DECAY.
 
 Flipping it changes the tail already ringing. The dry signal is never coloured.
 
@@ -150,7 +159,7 @@ Every change of echo time swoops like tape (the repeats bend in pitch for a mome
 - **Left two: input level** (In L, In R). **Right two: output level** (Out L, Out R).
 - Green → amber → red as the level gets hot.
   - **Input red:** you're near clipping at the jack. Turn the source down.
-  - **Output red:** the safety limiter is catching peaks. Normal in a big Howl; if it's red all the time, lower DRIVE or DECAY.
+  - **Output red:** the safety limiter is catching peaks. Normal in a big howl; if it's red all the time, lower DRIVE or DECAY.
 - Held sounds (pads, drones, organ) rarely get there: the tank notices a sound being held and gently turns down what goes into the springs, so the wet stays clear of the limiter. Hits and stabs are never touched, and the tail after you stop still rings its full length.
 - **White blink** (all four, once): throw mode just went off.
 - **Purple** (all four): tap tempo in TANK ECHO. A flash on each tap, then a pulse on each beat for 4 seconds, then back to the meters.
@@ -163,7 +172,7 @@ Every change of echo time swoops like tape (the repeats bend in pitch for a mome
 3. **BLEND** to about 2 o'clock so you clearly hear the tank. Bring it back once you've found the sound.
 4. **DECAY**: noon is about a 2-second tail. Turn it up for long dub throws.
 5. **Throw**: hold the button while the snare plays, let go, and hear the tail ring on. (The first press switches throw mode on; tap, then press and hold for 2 s to go back.)
-6. Then try **TENSION** left for a big boing, **SPLASH** up for a harder clang, **TONE** right to thin it out like Tubby's Big Knob, **ATTITUDE** right (VALVE) with DECAY past 4 o'clock for the Howl.
+6. Then try **TENSION** left for a big boing, **SPLASH** up for a harder clang, **TONE** right to thin it out like Tubby's Big Knob, **ATTITUDE** right (VALVE) with DECAY past 4 o'clock for the howl.
 7. **Echo**: TANK right (ECHO), tap the button on the beat a few times, set TENSION to the division you want, and ride DECAY for longer builds.
 
 ## A few dub moves
@@ -172,7 +181,7 @@ Every change of echo time swoops like tape (the repeats bend in pitch for a mome
 - **Big Knob sweep.** Ride TONE from noon to fully right as a tail rings: it thins to a telephone splash. Back down for the warmth.
 - **Skank into echo.** TANK ECHO, clocked from your sequencer, TENSION on dotted 1/8 (just about noon). DECAY around 2 o'clock for a trail of repeats, each one splashing into the springs.
 - **Hold the bed.** CLEAN, DECAY fully up. Play a chord, let it bloom into a held wash, and keep playing: the bed ducks under your kick and bass.
-- **Kick the tank.** VALVE, DRIVE past 3 o'clock, DECAY into the top: ride the Howl, then pull DECAY back and let it fall away.
+- **Kick the tank.** VALVE, DRIVE past 3 o'clock, DECAY into the top: ride the howl, then pull DECAY back and let it fall away.
 
 ## In the plugin
 

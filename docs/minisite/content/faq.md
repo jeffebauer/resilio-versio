@@ -41,7 +41,7 @@ All seven knobs have CV inputs (0–5 V, added to the knob). The gate input thro
 No: the module's state is its knobs and switches. The [starting points](/presets) are written out so you can dial them in by hand.
 
 ### Can it run away into feedback?
-Only where you ask for it. Every knob position is usable, and the tail always fades, except at the very top of DECAY: the Hold in CLEAN and TAPE (a held bed, never louder than what went in) and the Howl in VALVE (rideable feedback, held back by an output limiter). Pull DECAY back and both fall into a normal tail.
+Only where you ask for it. Every knob position is usable, and the tail always fades, except at the very top of DECAY: the hold in CLEAN and TAPE (a held bed, never louder than what went in) and the howl in VALVE (rideable feedback, held back by an output limiter). Pull DECAY back and both fall into a normal tail.
 
 ### Is it a sample or an impulse response?
 Neither. It's a physical-style model of springs (feedback loops that smear each echo by frequency, which makes the chirp), shaped by ear against recordings of a real tank. Nothing is sampled, and SPLASH adds no samples to your hits.
