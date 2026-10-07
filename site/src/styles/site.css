@@ -606,6 +606,7 @@ ul > li::marker { color: var(--signal); }
 .bigknob .bigknob-banner { grid-row: 1 / 3; margin: 0; display: grid; }
 .bigknob .bigknob-banner .intro-card { min-height: 100%; }
 .bigknob .bigknob-tile { margin: 0; }
+.bigknob .intro-copy .statement + * { margin-top: 0.75rem; }   /* the lede sits close under the title (owner, 7 Oct) */
 .bigknob .bigknob-story { margin-top: var(--stack-5); }
 @media (max-width: 63.99rem) {
   .bigknob .bigknob-bento { grid-template-columns: minmax(0, 1fr); }
