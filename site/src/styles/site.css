@@ -86,6 +86,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .menu summary::-webkit-details-marker { display: none; }
 .menu ul {
   position: absolute; right: 0; top: calc(100% + 0.5rem); min-width: 13rem; margin: 0; padding: 0.4rem; list-style: none;
+  display: grid; gap: 4px;   /* hover and selected never abut (owner, 7 Oct) */
   border-radius: var(--radius-tile); background: var(--paper); color: var(--ink);
   box-shadow: 0 0 0 var(--hair) var(--line), 0 1.5rem 3rem -1.5rem rgb(0 0 0 / 0.3);
 }
@@ -94,7 +95,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .is-over-dark .menu li a:hover, .is-over-dark .menu li a[aria-current="page"] { background: var(--tile-dark); }
 
 @media (max-width: 63.99rem) {
-  .site-header { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .site-header { grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 0.5rem; }   /* Download and Menu sit close as a pair (owner, 7 Oct) */
   .site-header .nav { display: none; }
   .header-cta { grid-column: 2; }
   .menu { display: block; }
@@ -360,7 +361,10 @@ html.hero-film .hero-still { visibility: hidden; }
 @media (max-width: 63.99rem) { .download-grid { grid-template-columns: minmax(0, 1fr); } }
 .download { display: grid; gap: var(--stack-3); }
 /* One size, one family: only the version is in ink (owner: the line had too many styles) */
+.download .release-head { display: grid; gap: 0.4rem; }
+.download .release-title { font-size: var(--fs-h3); line-height: 1.05; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
 .download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
+.download .release-line > * { white-space: nowrap; }   /* each detail wraps whole, never mid-phrase */
 .download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-ink); }   /* the accent (owner, 7 Oct); the AA-safe tone for text */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
@@ -576,10 +580,9 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose dl.terms dt, .prose dl.terms dd { margin: 0; padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
 .prose dl.terms dt { font-weight: 600; padding-right: var(--gutter); }   /* no column gap, so the hairlines run unbroken (owner, 7 Oct) */
 
-/* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */
+/* ---- Download: "You'll need", a roomier middot ---------- */
 .download .needs { display: grid; gap: 0.4rem; }
 .download .needs-title { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
-.download .release-line .whats-new { margin-left: auto; }
 .download .sep { margin-inline: 0.6em; }
 
 /* ---- Bullets in the accent, site-wide (owner, 7 Oct) ------------------------- */

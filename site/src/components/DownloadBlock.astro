@@ -40,13 +40,17 @@ const targets = [
 ];
 ---
 <div class={`download ${compact ? 'compact' : ''}`.trim()}>
-  <p class="release-line">
-    <strong>Latest release</strong>
-    <span class="version">{r.version}</span>
-    <span class="quiet" aria-hidden="true">·</span>
-    <span class="quiet"><time datetime={r.date}>{longDate(r.date)}</time></span>
-    <a class="whats-new" href="/changelog/">What’s new</a>
-  </p>
+  <!-- "Latest release" as a heading over its details, so "What’s new" no longer wraps on its own (owner, 7 Oct). -->
+  <div class="release-head">
+    <H class="release-title">Latest release</H>
+    <p class="release-line">
+      <span class="version">{r.version}</span>
+      <span class="quiet" aria-hidden="true">·</span>
+      <span class="quiet"><time datetime={r.date}>{longDate(r.date)}</time></span>
+      <span class="quiet" aria-hidden="true">·</span>
+      <a class="whats-new" href="/changelog/">What’s new</a>
+    </p>
+  </div>
   <div class="targets">
     {targets.map((t) => (
       <section class="target" aria-labelledby={`${idPrefix}-${t.key}`}>

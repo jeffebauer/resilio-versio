@@ -3,7 +3,8 @@
 // box; `ink` paths take the text colour, `hot` paths the signal red (one highlight).
 export type DiagramKind =
   | 'decay' | 'throw' | 'echo' | 'bigknob' | 'wobble'
-  | 'tanks' | 'attitude' | 'splash' | 'hold' | 'howl' | 'drywet' | 'cv';
+  | 'tanks' | 'attitude' | 'splash' | 'hold' | 'howl' | 'drywet' | 'cv'
+  | 'mulaw' | 'bits12' | 'bits10' | 'rate' | 'wetonly';
 
 export interface Shape { ink: string[]; hot: string[]; faint?: string[]; label: string }
 
@@ -20,6 +21,33 @@ function ring(x0: number, x1: number, amp: number, cycles: number, fall = 3.2, y
     const u = i / n;
     pts.push([x0 + (x1 - x0) * u, y - amp * Math.exp(-fall * u) * Math.sin(2 * Math.PI * cycles * u)]);
   }
+  return line(pts);
+}
+
+/** µ-law rounding to `levels` steps a side: fine near silence, coarse near full scale. The
+ *  real box is µ 255 with 2,048 or 512 steps a side; a drawing has room for a handful, so the
+ *  bit-depth tiles use a gentler µ to keep the steps readable. */
+function muQuantise(v: number, levels: number, mu = 255): number {
+  const c = Math.sign(v) * Math.log1p(mu * Math.abs(v)) / Math.log1p(mu);
+  const q = Math.round(c * levels) / levels;
+  return Math.sign(q) * (Math.pow(1 + mu, Math.abs(q)) - 1) / mu;
+}
+
+/** A signal drawn as the converter's staircase: held flat between samples, jumping to each new step. */
+function stairs(fn: (u: number) => number, x0: number, x1: number, samples: number, levels: number, amp: number, mu = 255, y = MID): string {
+  let d = '';
+  for (let i = 0; i <= samples; i++) {
+    const x = x0 + ((x1 - x0) * i) / samples;
+    const yy = y - amp * muQuantise(fn(i / samples), levels, mu);
+    d += i ? `H${f(x)}V${f(yy)}` : `M${f(x)} ${f(yy)}`;
+  }
+  return d + `H${f(x1)}`;
+}
+
+/** The same signal, smooth (for the faint reference under a staircase). */
+function smooth(fn: (u: number) => number, x0: number, x1: number, amp: number, y = MID): string {
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= 120; i++) pts.push([x0 + ((x1 - x0) * i) / 120, y - amp * fn(i / 120)]);
   return line(pts);
 }
 
@@ -188,6 +216,52 @@ export function shape(kind: DiagramKind): Shape {
         ink: xs.map((x) => `M${x} ${MID - 18}V${MID + 18}`),
         hot: xs.slice(4).map((x) => ring(x, Math.min(x + 22, W - 2), 12, 4, 2.4)),
         faint: ['M77 4V60'],
+      };
+    }
+    case 'mulaw': {
+      // A fading tail through the µ-law box: big steps on the loud start, fine ones as it
+      // fades, then exact silence (under half a step is zero).
+      const tail = (u: number) => Math.exp(-3 * u) * Math.sin(2 * Math.PI * 4.5 * u);
+      return {
+        label: 'µ-law: a fading tail drawn as the converter’s steps, coarse while loud, finer as it fades, then silence.',
+        faint: [smooth(tail, 6, 154, 26)],
+        ink: [],
+        hot: [stairs(tail, 6, 154, 90, 5, 26)],
+      };
+    }
+    case 'bits12':
+    case 'bits10': {
+      // The same wave at two bit depths: TAPE's finer steps, VALVE's coarser ones.
+      const fine = kind === 'bits12';
+      const wave = (u: number) => 0.92 * Math.sin(2 * Math.PI * 1.5 * u);
+      const st = stairs(wave, 6, 154, fine ? 72 : 36, fine ? 9 : 4, 24, 12);
+      return {
+        label: fine
+          ? 'TAPE, 12-bit: the wave in fine steps, close to the smooth original.'
+          : 'VALVE, 10-bit: the same wave in coarse steps, clearly gritty.',
+        faint: [smooth(wave, 6, 154, 24)],
+        ink: fine ? [st] : [],
+        hot: fine ? [] : [st],
+      };
+    }
+    case 'rate': {
+      // A spectrum: flat, then a steep cut at about 11 kHz; the lost top octave faint.
+      return {
+        label: '24 kHz: the sound is flat up to about 11 kHz, then the top octave is cut cleanly, nothing folding back.',
+        faint: ['M118 18H156', 'M118 4V60'],
+        ink: ['M4 18H112C116 18 118 22 120 30C122 40 124 52 126 58'],
+        hot: ['M118 4V10'],
+      };
+    }
+    case 'wetonly': {
+      // Two lanes: the dry runs straight through; the wet goes through the µ-law box,
+      // then TONE (a knob), then out.
+      const tone = 'M110 46m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0M110 46L114.5 41.5';
+      return {
+        label: 'The dry runs straight through, untouched. The wet goes through the grit, then TONE, which can thin it.',
+        faint: [],
+        ink: ['M4 14H156', 'M4 46H48', 'M84 46H103', 'M117 46H156', tone],
+        hot: ['M48 36H84V56H48Z', 'M54 52H60V48H66V44H72V41H78'],
       };
     }
   }

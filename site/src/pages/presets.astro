@@ -29,35 +29,51 @@ for (const r of rows) {
 }
 
 const { lead, sections } = splitSections(rest.replace(table, ''));
+
+// A section is either one starting point (its h2 names a table row), or a group (the dub
+// and dub techno characters): its own copy, then h3 starting points that name table rows.
+type Block =
+  | { kind: 'html'; html: string }
+  | { kind: 'preset'; level: 'h2' | 'h3'; id: string; title: string; html: string; s: PanelSettings };
+const blocks: Block[] = [];
+for (const sec of sections) {
+  const s = settings.get(sec.title);
+  if (s) { blocks.push({ kind: 'preset', level: 'h2', id: sec.id, title: sec.title, html: sec.html, s }); continue; }
+  const [intro, ...subs] = sec.html.split(/(?=<h3[\s>])/);
+  blocks.push({ kind: 'html', html: `<h2 id="${sec.id}">${sec.title}</h2>${intro}` });
+  for (const sub of subs) {
+    const m = sub.match(/^<h3(?:\s+id="([^"]*)")?[^>]*>([\s\S]*?)<\/h3>/);
+    const title = stripTags(m?.[2] ?? '');
+    const ss = settings.get(title);
+    if (m && ss) blocks.push({ kind: 'preset', level: 'h3', id: m[1] ?? '', title, html: sub.slice(m[0].length), s: ss });
+    else blocks.push({ kind: 'html', html: sub });
+  }
+}
+const characters = sections.find((sec) => !settings.has(sec.title))?.id;
 const values = (s: PanelSettings) => [
   ...SWITCHES.map((w) => [w.name, s[w.key]]),
   ...KNOBS.map((k) => [k.name, String(s[k.key as KnobKey])]),
 ];
 ---
-<Doc page={page} h1={h1} kicker="Resilio Versio · six dub settings">
+<Doc page={page} h1={h1} kicker="Resilio Versio · dub and dub techno settings" expand={characters ? [characters] : []}>
   <Fragment set:html={lead} />
-  {sections.map((sec) => {
-    const s = settings.get(sec.title);
-    return (
-      <>
-        <h2 id={sec.id}>{sec.title}</h2>
-        {s ? (
-          <div class="preset">
-            <figure class="preset-panel">
-              <PanelWire settings={s} controls label={`${sec.title}: panel settings`} />
-            </figure>
-            <div class="preset-text">
-              <Fragment set:html={sec.html} />
-              <dl class="preset-values" aria-label={`${sec.title}: exact values`}>
-                {values(s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
-                {values(s).length % 2 === 1 && <div class="filler" aria-hidden="true" />}
-              </dl>
-            </div>
-          </div>
-        ) : <Fragment set:html={sec.html} />}
-      </>
-    );
-  })}
+  {blocks.map((b) => b.kind === 'html' ? <Fragment set:html={b.html} /> : (
+    <>
+      {b.level === 'h2' ? <h2 id={b.id}>{b.title}</h2> : <h3 id={b.id}>{b.title}</h3>}
+      <div class="preset">
+        <figure class="preset-panel">
+          <PanelWire settings={b.s} controls label={`${b.title}: panel settings`} />
+        </figure>
+        <div class="preset-text">
+          <Fragment set:html={b.html} />
+          <dl class="preset-values" aria-label={`${b.title}: exact values`}>
+            {values(b.s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+            {values(b.s).length % 2 === 1 && <div class="filler" aria-hidden="true" />}
+          </dl>
+        </div>
+      </div>
+    </>
+  ))}
 </Doc>
 
 <style>

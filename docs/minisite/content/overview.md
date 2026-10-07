@@ -44,6 +44,10 @@ Dub treats the mixing desk as an instrument played live. The reverb isn't a back
 
 [Read the manual](/manual)
 
+## Colour: saturation and grit
+
+The ATTITUDE switch sets the tank's colour. CLEAN keeps it polite, TAPE adds tape saturation and VALVE an overdriven valve stage. TAPE and VALVE also run the reverb through a bit-reduced µ-law converter, the grit of early digital delays and samplers. DRIVE sets how hard you push it.
+
 ## The panel
 
 Resilio runs behind your Versio's printed panel, so the labels on your module won't match. Here's the map.

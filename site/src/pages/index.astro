@@ -1,6 +1,6 @@
 ---
 // Home (DESIGN-v2 "Home page, revised order"): hero (dark) → intro → the sound (dark) →
-// the panel → features → two ways to play → download (tile band) → footer.
+// the panel → features → colour → two ways to play → download (tile band) → footer.
 // Copy comes from docs/minisite/content/overview.md, split at its headings.
 import Base from '../layouts/Base.astro';
 import Button from '../components/Button.astro';
@@ -9,6 +9,7 @@ import AnnotatedPanel from '../components/AnnotatedPanel.astro';
 import FeatureTiles from '../components/FeatureTiles.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
+import { COLOUR_TILES } from '../data/controls';
 import { Picture } from 'astro:assets';
 import { mustRender, widthsFor } from '../lib/renders';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
@@ -41,6 +42,7 @@ const etymology = leadParas[2] ?? '';
 const sound = section(sections, 'what-it-sounds-like');
 const bigKnob = section(sections, 'king-tubbys-big-knob');
 const moves = section(sections, 'built-around-dub-performance-moves');
+const colour = section(sections, 'colour-saturation-and-grit');
 const panel = section(sections, 'the-panel');
 const safe = section(sections, 'safe-to-try');
 const plugin = section(sections, 'the-plugin');
@@ -48,6 +50,7 @@ const status = section(sections, 'status');
 
 const soundIntro = paras(sound.html)[0] ?? '';
 const movesIntro = paras(moves.html)[0] ?? '';
+const colourIntro = paras(colour.html)[0] ?? '';
 const [bkLede = '', ...bkStory] = paras(bigKnob.html);
 const panelParas = paras(noSlots(panel.html));
 const panelList = noSlots(panel.html).match(/<ul>[\s\S]*?<\/ul>/)?.[0] ?? '';
@@ -147,6 +150,18 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     </div>
     <div class="wide">
       <FeatureTiles />
+    </div>
+  </section>
+
+  <!-- 5b Colour (white): ATTITUDE's saturation and the µ-law grit, as bento tiles like the features (owner, 7 Oct) -->
+  <section class="section features colour" id="colour" aria-labelledby="colour-h">
+    <div class="column flow centered">
+      <h2 class="h2" id="colour-h">{colour.title}</h2>
+      <div class="lede" set:html={inner(colourIntro)} />
+      <p><Button href="/manual/#attitude-bottom-switch" variant="ghost" arrow>ATTITUDE in the manual</Button></p>
+    </div>
+    <div class="wide">
+      <FeatureTiles tiles={COLOUR_TILES} label="Colour" />
     </div>
   </section>
 
