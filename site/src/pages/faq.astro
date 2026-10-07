@@ -1,0 +1,11 @@
+---
+import Doc from '../layouts/Doc.astro';
+import DocContent from '../components/DocContent.astro';
+import { getPage, pageHtml, splitSlots, takeH1 } from '../lib/content';
+
+const page = await getPage('faq');
+const { h1, rest } = takeH1(pageHtml(page));
+---
+<Doc page={page} h1={h1} kicker="Resilio Versio · short answers">
+  <DocContent parts={splitSlots(rest)} />
+</Doc>

@@ -1,0 +1,39 @@
+---
+import { DOCS, LINKS } from '../data/site';
+---
+<footer class="site-footer">
+  <div class="wide">
+    <div>
+      <p class="brand">Resilio Versio</p>
+      <p class="small quiet">A dub spring reverb for the Noise Engineering Versio.</p>
+    </div>
+    <div class="lists">
+      <nav aria-labelledby="f-docs">
+        <h2 id="f-docs">Docs</h2>
+        <ul>{DOCS.map((d) => <li><a href={d.href}>{d.label}</a></li>)}</ul>
+      </nav>
+      <div>
+        <h2 id="f-project">Project</h2>
+        <ul aria-labelledby="f-project">
+          <li><a href={LINKS.source}>Source on GitHub</a></li>
+          <li><a href={LINKS.issues}>GitHub Issues</a></li>
+          <li><a href="/#download">Download</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 id="f-licence">Licence</h2>
+        <ul aria-labelledby="f-licence">
+          <li><a href={LINKS.mit}>Code, tools, docs: MIT</a></li>
+          <li><a href={LINKS.agpl}>Plugin: AGPLv3</a></li>
+          <li><a href={LINKS.notice}>Third-party notices</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="legal small">
+      <p>Resilio Versio is firmware for the Noise Engineering Versio. Not affiliated with or endorsed by Noise Engineering.</p>
+      <p>Versio is a trademark of Noise Engineering. VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units is a trademark of Apple Inc.</p>
+      <p>Cookie-free analytics, no personal data.</p>
+      <p class="credit">Jesse Bauer → <a href={LINKS.author}>jessebauer.xyz</a></p>
+    </div>
+  </div>
+</footer>

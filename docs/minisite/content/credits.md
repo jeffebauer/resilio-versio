@@ -9,7 +9,7 @@ order: 7
 
 ## How it was shaped
 
-Resilio Versio was designed by ear. <!-- OWNER: your name or handle, and a link, as you'd like it credited --> a designer and dub enthusiast, brought the musical goals and made every sonic decision. Claude (Anthropic's AI) was the engineering partner: it wrote the DSP, the firmware and the tools, and turned each technical question into a musical one.
+Resilio Versio was designed by ear. [Jesse Bauer](https://jessebauer.xyz), a designer and dub enthusiast, brought the musical goals and made every sonic decision. Claude (Anthropic's AI) was the engineering partner: it wrote the DSP, the firmware and the tools, and turned each technical question into a musical one.
 
 - **Modelled on physics.** The springs follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (Journal of the Audio Engineering Society, 2010): each spring is a feedback loop around a chain of "stretched" allpass filters that spread each echo in time by frequency, which is what makes the chirp. On top: up to two detuned springs spread across the stereo field, a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and a layered defence against single-tone ringing.
 - **Fitted to a real tank.** The tank was tuned, round after round, against recordings of the owner's Teaching Machines Wellspring (a desktop BBD delay and stereo spring reverb): its softer hit, its warmer main ring, where its width sits. A Strymon Magneto was a second reference. The recordings were used for measurement and listening only; none of them is in Resilio or on this site.

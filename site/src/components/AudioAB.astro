@@ -1,0 +1,81 @@
+---
+// One demo clip as a bento audio tile (DESIGN-v2 V11): a bold title, a tiny diagram of
+// what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
+// Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
+// (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
+// The DRY / WET switch appears only when demos.json lists a `dry` file for the clip.
+import Diagram from './diagrams/Diagram.astro';
+import SpecTable from './SpecTable.astro';
+import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
+
+interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string; wide?: boolean }
+const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo', wide = false } = Astro.props;
+const id = `${idPrefix}-${String(n).padStart(2, '0')}`;
+const peaks = await getPeaks(clip.file);
+const W = peaks.length;
+const H2 = 40;
+const d = peaks
+  .map((p, i) => {
+    const a = Math.max(0.6, p * (H2 / 2 - 1));
+    return `M${i + 0.5} ${(H2 / 2 - a).toFixed(2)}V${(H2 / 2 + a).toFixed(2)}`;
+  })
+  .join('');
+const dur = clock(clip.duration_s);
+const diagram = diagramFor(clip.file);
+const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value }));
+---
+<li class:list={['demo', 'tile', wide && 'is-wide']} data-reveal>
+  <div class="demo-head">
+    <H id={`${id}-title`} class="demo-title">{clip.title}</H>
+    {diagram && <Diagram kind={diagram} class="demo-diagram" />}
+  </div>
+  <p class="caption small" id={`${id}-caption`}>{clip.caption}</p>
+  <div
+    class="player"
+    data-player
+    data-src={audioUrl(clip.file)}
+    data-dry={clip.dry ? audioUrl(clip.dry) : undefined}
+    data-duration={clip.duration_s}
+    data-title={clip.title}
+  >
+    <button class="play" type="button" aria-label={`Play: ${clip.title}`} aria-describedby={`${id}-caption`}>
+      <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor" /></svg>
+      <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor" /></svg>
+    </button>
+    <div
+      class="wave"
+      role="slider"
+      tabindex="0"
+      aria-label={`Position in ${clip.title}`}
+      aria-valuemin="0"
+      aria-valuemax={Math.round(clip.duration_s)}
+      aria-valuenow="0"
+      aria-valuetext={`0:00 of ${dur}`}
+    >
+      <svg viewBox={`0 0 ${W} ${H2}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <defs><clipPath id={`${id}-played`}><rect class="played" x="0" y="0" width="0" height={H2} /></clipPath></defs>
+        <path class="trace dim" d={d} />
+        <path class="trace" d={d} clip-path={`url(#${id}-played)`} />
+        <line class="head" x1="0" x2="0" y1="0" y2={H2} />
+      </svg>
+    </div>
+    <div class="meta">
+      <span class="time" aria-hidden="true"><span data-pos>0:00</span> / {dur}</span>
+      {clip.dry && (
+        <span class="ab" role="group" aria-label="Compare dry and wet">
+          <button type="button" data-ab="dry" aria-pressed="false">Dry</button>
+          <button type="button" data-ab="wet" aria-pressed="true">Wet</button>
+        </span>
+      )}
+    </div>
+  </div>
+  <details class="disclosure">
+    <summary>Settings <span class="visually-hidden">for {clip.title}</span></summary>
+    <SpecTable rows={rows} caption={`Settings for ${clip.title}`} />
+    {clip.note && <p class="small">{clip.note}</p>}
+  </details>
+  <details class="disclosure">
+    <summary>Transcript <span class="visually-hidden">of {clip.title}</span></summary>
+    <p class="small">{clip.transcript}</p>
+  </details>
+</li>

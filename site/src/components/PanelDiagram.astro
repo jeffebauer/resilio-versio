@@ -1,0 +1,27 @@
+---
+// The panel map, inlined from docs/minisite/assets/panel/resilio-versio-panel.svg and
+// redrawn as linework: no fills, 1 px strokes at any size, text in mono. The signal
+// colour marks the button and the LEDs. With `draw`, Home's motion script draws the
+// lines in as you scroll (every shape has pathLength="1"); without JS it's simply there.
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { MINISITE } from '../lib/paths';
+
+interface Props { prefix?: string; draw?: boolean; class?: string }
+const { prefix = 'pd', draw = false, class: cls = '' } = Astro.props;
+
+const raw = await readFile(join(MINISITE, 'assets', 'panel', 'resilio-versio-panel.svg'), 'utf8');
+const svg = raw
+  .replace(/<\?xml[^>]*>\s*/, '')
+  // ids must be unique on the page (the manual has #blend, #decay … as headings)
+  .replace(/\bid="([^"]+)"/g, `id="${prefix}-$1"`)
+  .replace(/aria-labelledby="([^"]+)"/, (_, ids: string) =>
+    `aria-labelledby="${ids.split(/\s+/).map((i) => `${prefix}-${i}`).join(' ')}"`)
+  .replace(/<svg([^>]*?)\swidth="[^"]*"\sheight="[^"]*"/, '<svg$1')
+  .replace(/<(circle|rect|line)\b/g, '<$1 pathLength="1"')
+  // An inline <style> applies to the whole page: scope its rules to this diagram.
+  .replace(/<style>([\s\S]*?)<\/style>/, (_, css: string) =>
+    `<style>${css.replace(/(^|})\s*([^{}]+)\{/g, (_m, end: string, sel: string) =>
+      `${end}${sel.split(',').map((x) => `.panel-diagram ${x.trim()}`).join(',')}{`)}</style>`);
+---
+<div class={`panel-diagram ${cls}`.trim()} data-draw={draw ? '' : undefined} set:html={svg} />

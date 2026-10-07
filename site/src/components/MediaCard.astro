@@ -1,0 +1,24 @@
+---
+// Rounded image card with the caption above it, in the index style ("Fig. 02 — …").
+// Without `src` it shows the render placeholder at the same aspect ratio.
+import Placeholder from './Placeholder.astro';
+interface Props {
+  fig?: string;
+  caption: string;
+  src?: string;
+  alt?: string;
+  ratio: string;
+  render?: { id: string; name: string };
+  class?: string;
+}
+const { fig, caption, src, alt = '', ratio, render, class: cls = '' } = Astro.props;
+const [w, h] = ratio.split(':').map(Number);
+---
+<figure class={`figure ${cls}`.trim()}>
+  <figcaption class="caption">{fig && <span class="num">Fig. {fig}</span>}{caption}</figcaption>
+  {src ? (
+    <div class="card-media" style={`aspect-ratio: ${w} / ${h}`}><img src={src} alt={alt} loading="lazy" decoding="async" /></div>
+  ) : (
+    <Placeholder id={render?.id ?? ''} name={render?.name ?? caption} ratio={ratio} />
+  )}
+</figure>

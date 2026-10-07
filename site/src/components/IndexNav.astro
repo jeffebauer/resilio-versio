@@ -1,0 +1,14 @@
+---
+// A doc page's table of contents: plain links, no numbers (DESIGN-v2 V5).
+interface Item { href: string; label: string; sub?: boolean }
+interface Props { items: Item[]; label?: string; class?: string }
+const { items, label = 'On this page', class: cls = '' } = Astro.props;
+---
+<nav class={`toc ${cls}`.trim()} aria-label={label}>
+  <p class="toc-title micro quiet" aria-hidden="true">Contents</p>
+  <ul>
+    {items.map((it) => (
+      <li class={it.sub ? 'sub-item' : undefined}><a href={it.href}>{it.label}</a></li>
+    ))}
+  </ul>
+</nav>

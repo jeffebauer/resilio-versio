@@ -1,0 +1,191 @@
+---
+// The style tile, revision 2 (DESIGN-v2): type, palette, header, tiles,
+// diagrams, the annotated-panel callout and the audio tile, built from the real tokens and
+// components, so it doubles as the component test page. Not in the sitemap, noindex.
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import Chip from '../components/Chip.astro';
+import Logo from '../components/Logo.astro';
+import AudioAB from '../components/AudioAB.astro';
+import Diagram from '../components/diagrams/Diagram.astro';
+import AnnotatedPanel from '../components/AnnotatedPanel.astro';
+import { shape, type DiagramKind } from '../components/diagrams/shapes';
+import { getDemos } from '../lib/demos';
+import { contrast, grade } from '../lib/contrast';
+import { fontPlan } from '../lib/fonts';
+
+const { clips } = await getDemos();
+const fonts = fontPlan();
+
+const TYPE = [
+  { cls: 'display', token: '--fs-display', range: '48 → 120 px', meta: 'Bold 700 · line 0.95 · −2 %', sample: 'Resilio Versio' },
+  { cls: 'h2', token: '--fs-h2', range: '36 → 88 px', meta: 'Bold 700 · line 0.95 · −2 %', sample: 'The sound' },
+  { cls: 'h3', token: '--fs-h3', range: '24 → 40 px', meta: 'Bold 700 · tile statements', sample: '7 CV inputs' },
+  { cls: 'statement', token: 'statement', range: '28 → 56 px', meta: 'Bold 700 · the intro', sample: 'A simulated spring tank you can throw snares into.' },
+  { cls: 'lede', token: '--fs-lede', range: '20 → 30 px', meta: 'Light 300 · line 1.15', sample: 'A spring tank, not a room. Every hit lands in the springs as its own splash.' },
+  { cls: '', token: '--fs-body', range: '17 → 22 px', meta: 'Light 300 · line 1.4', sample: 'Every hit lands in the springs as its own splash: a bright clang on the attack, then echoes that sweep upward, then a tail that darkens and blurs into a wash.' },
+  { cls: 'small', token: '--fs-small', range: '15 → 18 px', meta: 'Light 300 · captions, tile lines', sample: 'Fully right is 100 % wet, for a send/return: the classic dub way, throwing the snare into it.' },
+  { cls: 'ui', token: '--fs-ui', range: '14 px', meta: 'Regular 400 · header, buttons (Medium)', sample: 'Sound   Manual   Install   Presets   Changelog' },
+  { cls: 'micro', token: '--fs-micro', range: '12 px', meta: 'Mono 400 · labels, values', sample: 'TANK 1 · 2 · ECHO' },
+];
+
+// Every text/background pair the site uses (4.5:1 for text, 3:1 for large text and marks).
+const COLOURS = [
+  { name: 'Paper', token: '--paper', hex: '#ffffff', use: 'Page, reading pages', pairs: [['Ink', '#0a0a0a'], ['Ink 2', '#5c5c63'], ['Signal ink (focus)', '#c83d16']] },
+  { name: 'Tile', token: '--tile', hex: '#f0f0f2', use: 'Bento tiles, download band, code', pairs: [['Ink', '#0a0a0a'], ['Ink 2', '#5c5c63']] },
+  { name: 'Ink', token: '--ink', hex: '#0a0a0a', use: 'Text, dark buttons', pairs: [['Paper (button text)', '#ffffff']] },
+  { name: 'Ink 2', token: '--ink-2', hex: '#5c5c63', use: 'Secondary text on paper and tiles', pairs: [] },
+  { name: 'Line', token: '--line', hex: '#e2e2e6', use: 'Hairlines: header, footer, tables', pairs: [] },
+  { name: 'Dark', token: '--dark', hex: '#0b0b0c', use: 'Hero and sound bands', pairs: [['On dark', '#f5f5f7'], ['On dark 2', '#a1a1aa'], ['Signal (focus, marks)', '#ee5641']] },
+  { name: 'Tile dark', token: '--tile-dark', hex: '#18181b', use: 'Audio tiles on the dark band', pairs: [['On dark', '#f5f5f7'], ['On dark 2', '#a1a1aa']] },
+  { name: 'Signal', token: '--signal', hex: '#ee5641', use: 'Marks only: LEDs, playheads, diagram highlights', pairs: [['on Paper (mark)', '#ffffff'], ['on Tile (mark)', '#f0f0f2']] },
+  { name: 'Signal ink', token: '--signal-ink', hex: '#c83d16', use: 'The one red fill: the download button', pairs: [['White text', '#ffffff']] },
+  { name: 'Signal hover', token: '--signal-hover', hex: '#b23512', use: 'Button hover', pairs: [['White text', '#ffffff']] },
+];
+const textOn = (hex: string) => (contrast(hex, '#0a0a0a') > contrast(hex, '#ffffff') ? '#0a0a0a' : '#ffffff');
+
+const DIAGRAMS: [DiagramKind, string][] = [
+  ['decay', 'Decay envelope'], ['throw', 'The throw'], ['echo', 'Echo repeats'], ['bigknob', 'The Big Knob'], ['wobble', 'WOBBLE drift'],
+  ['tanks', 'TANK 1 / 2'], ['attitude', 'Attitudes'], ['splash', 'SPLASH'], ['cv', 'CV inputs'], ['hold', 'The Hold'], ['howl', 'The Howl'], ['drywet', 'Dry, then wet'],
+];
+---
+<Base title="Style tile: Resilio Versio minisite" description="The Resilio Versio minisite's design system, revision 2: type, palette, header, tiles, diagrams, the annotated panel and the audio tile." noindex>
+  <div class="doc-hero column">
+    <p class="kicker small quiet">Style tile · revision 2</p>
+    <h1 class="display">The system, before the pages</h1>
+  </div>
+  <div class="column flow">
+    <p class="lede">Built from <code>docs/minisite/design/tokens.css</code> and the site’s real components. Heavy display, light text, a white body with dark bands, tiles instead of rules.</p>
+    <p class="small quiet">
+      Fonts this build: {fonts.sans ? `Phonic (${fonts.present.length} of 12 files).` : 'Phonic files not supplied, so this page shows Inter, the open-source fallback. Sizes and widths shift a little once Phonic is in.'}
+    </p>
+  </div>
+
+  <!-- Type -->
+  <section class="st-section" aria-labelledby="type">
+    <div class="column"><h2 class="h2" id="type">Type</h2><p class="quiet">Phonic Bold for headings, statements and big numbers; Light for reading; Mono for values.</p></div>
+    <div class="wide">
+      {TYPE.map((t) => (
+        <div class="st-row">
+          <p class="micro quiet">{t.token}<br />{t.range}<br />{t.meta}</p>
+          <p class={`type-specimen ${t.cls === 'ui' ? '' : t.cls}`} style={t.cls === 'ui' ? 'font: var(--wt-reg) var(--fs-ui)/1.4 var(--font-sans); white-space: pre' : undefined}>{t.sample}</p>
+        </div>
+      ))}
+      <div class="st-row">
+        <p class="micro quiet">Weights<br />300 · 400 · 500 · 700, italics</p>
+        <div class="lede">
+          <p style="font-weight: 300">Light 300 · reading text <i>and its italic</i></p>
+          <p style="font-weight: 400">Regular 400 · UI, anything under 15 px <i>italic</i></p>
+          <p style="font-weight: 500">Medium 500 · buttons, strong words</p>
+          <p style="font-weight: 700">Bold 700 · headings and big numbers</p>
+          <p class="mono">Mono · v2026.10.06 · BLEND 0.45 (11:30)</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Palette -->
+  <section class="st-section" aria-labelledby="colour">
+    <div class="column"><h2 class="h2" id="colour">Palette</h2><p class="quiet">White body, cool greys, a near-black band, one red. Ratios are WCAG 2, computed at build.</p></div>
+    <div class="wide"><div class="swatches">
+      {COLOURS.map((c) => (
+        <div class="swatch">
+          <div class="chipbox" style={`background: ${c.hex}; color: ${textOn(c.hex)}`}><span class="micro">{c.hex}</span></div>
+          <p>{c.name} <span class="micro quiet">{c.token}</span></p>
+          <p class="small quiet">{c.use}</p>
+          {c.pairs.length > 0 && (
+            <dl class="micro">
+              {c.pairs.map(([label, other]) => {
+                const r = contrast(c.hex, other);
+                return <><dt>{label}</dt><dd>{r.toFixed(1)}:1 {grade(r)}</dd></>;
+              })}
+            </dl>
+          )}
+        </div>
+      ))}
+    </div></div>
+  </section>
+
+  <!-- Header -->
+  <section class="st-section" aria-labelledby="header">
+    <div class="column"><h2 class="h2" id="header">Header</h2><p class="quiet">A flat three-column bar on a hairline. Over the dark bands it turns light-on-dark.</p></div>
+    <div class="wide flow">
+      {[['', 'light'], ['is-over-dark', 'dark']].map(([cls, key]) => (
+        <div class={`header-sample ${key}`}>
+          <div class={`site-header ${cls}`}>
+            <span class="wordmark"><Logo class="logo logo-full" /><Logo class="logo logo-short" short /></span>
+            <nav class="nav" aria-label={`Header sample, ${key}`}>
+              <ul>{['Sound', 'Manual', 'Install', 'Presets', 'Changelog', 'FAQ'].map((l) => <li><a href="#header">{l}</a></li>)}</ul>
+            </nav>
+            <a class="btn btn-dark btn-small header-cta" href="#header">Download</a>
+          </div>
+          <p class="sample-body small">{key === 'dark' ? 'Over the hero and the sound band.' : 'On white pages.'}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <!-- Buttons -->
+  <section class="st-section" aria-labelledby="buttons">
+    <div class="column"><h2 class="h2" id="buttons">Buttons</h2><p class="quiet">One rounded rectangle for every control. The red fill appears once per screen: the download.</p></div>
+    <div class="wide">
+      <div class="st-row"><p class="micro quiet">Primary</p><p class="demo-row"><Button href="#buttons" variant="primary" arrow>Download</Button><Button href="#buttons" variant="primary">Firmware for the Versio (.bin)<span class="mono">126 KB</span></Button></p></div>
+      <div class="st-row"><p class="micro quiet">Dark, small</p><p class="demo-row"><Button href="#buttons" variant="dark">Plugin for macOS (AU/VST3)</Button><Button href="#buttons" variant="dark" small>Download</Button></p></div>
+      <div class="st-row"><p class="micro quiet">Ghost</p><p class="demo-row"><Button href="#buttons" variant="ghost">Listen</Button><Button href="#buttons" variant="ghost" arrow>Read the manual</Button></p></div>
+      <div class="st-row"><p class="micro quiet">Coming soon</p><p class="download"><span class="soon"><Button variant="primary" disabled>Firmware for the Versio (.bin)<span class="mono">126 KB</span></Button><span class="micro quiet">Coming soon: the link goes live when the repository is public.</span></span></p></div>
+      <div class="st-row"><p class="micro quiet">Chips</p><p class="demo-row"><Chip dot>TANK 2</Chip><Chip>TAPE</Chip><span class="badge">Pre-release</span></p></div>
+    </div>
+  </section>
+
+  <!-- Tiles -->
+  <section class="st-section" aria-labelledby="tiles">
+    <div class="column"><h2 class="h2" id="tiles">Tiles</h2><p class="quiet">Rounded <code>--tile</code> grey, one big moment each, mixed sizes.</p></div>
+    <div class="wide">
+      <ul class="bento" aria-label="Tile samples">
+        <li class="tile feature is-big"><h3 class="feature-big">2 springs</h3><p class="feature-line small">Big tile: 2 × 2 (one row tall below three columns).</p><Diagram kind="tanks" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">7 CV inputs</h3><p class="feature-line small">Small tile.</p><Diagram kind="cv" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">Splash</h3><p class="feature-line small">Small tile.</p><Diagram kind="splash" class="feature-diagram" /></li>
+        <li class="tile feature is-wide"><h3 class="feature-big">Tape echo</h3><p class="feature-line small">Wide tile: 2 × 1.</p><Diagram kind="echo" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">The Howl</h3><p class="feature-line small">Small tile.</p><Diagram kind="howl" class="feature-diagram" /></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Diagrams -->
+  <section class="st-section" aria-labelledby="diagrams">
+    <div class="column"><h2 class="h2" id="diagrams">Tiny diagrams</h2><p class="quiet">1.5 px lines in the text colour; the red marks the one thing to look at.</p></div>
+    <div class="wide">
+      <ul class="diagram-grid">
+        {DIAGRAMS.map(([kind, label]) => <li class="tile"><Diagram kind={kind} /><span class="micro">{label}</span><span class="small quiet">{shape(kind).label}</span></li>)}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Annotated panel -->
+  <section class="st-section" aria-labelledby="callouts">
+    <div class="column"><h2 class="h2" id="callouts">Annotated panel</h2><p class="quiet">Callouts with leader lines on wide screens; numbered markers and a list when narrower. Placed in percentages, so it scales.</p></div>
+    <div class="wide"><AnnotatedPanel /></div>
+  </section>
+
+  <!-- Audio tile -->
+  <section class="st-section" aria-labelledby="audio">
+    <div class="column"><h2 class="h2" id="audio">Audio tile</h2><p class="quiet">Real audio. Press play; Tab to the waveform and use the arrow keys to seek. Settings open without moving the tile next to it.</p></div>
+    <div class="wide">
+      <ul class="demos">
+        <AudioAB clip={clips[0]} n={1} idPrefix="tile-paper" />
+      </ul>
+    </div>
+    <div class="band-dark" style="margin-top: var(--stack-4); padding-block: var(--stack-5)">
+      <div class="wide">
+        <ul class="demos">
+          <AudioAB clip={clips[3]} n={4} idPrefix="tile-ink" />
+          <AudioAB clip={clips[5]} n={6} idPrefix="tile-ink" />
+          <AudioAB clip={clips[7]} n={8} idPrefix="tile-ink" />
+        </ul>
+      </div>
+    </div>
+  </section>
+  <script>
+    import '../scripts/player';
+  </script>
+</Base>

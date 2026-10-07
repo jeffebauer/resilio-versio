@@ -1,0 +1,167 @@
+---
+// Home (DESIGN-v2 "Home page, revised order"): hero (dark) → intro → the sound (dark) →
+// the panel → features → two ways to play → download (tile band) → footer.
+// Copy comes from docs/minisite/content/overview.md, split at its headings.
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import HeroMedia from '../components/HeroMedia.astro';
+import AnnotatedPanel from '../components/AnnotatedPanel.astro';
+import FeatureTiles from '../components/FeatureTiles.astro';
+import DemoList from '../components/DemoList.astro';
+import DownloadBlock from '../components/DownloadBlock.astro';
+import { Picture } from 'astro:assets';
+import { mustRender, widthsFor } from '../lib/renders';
+import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
+
+const page = await getPage('overview');
+const tank = mustRender('tank-macro.jpg');
+const patched = mustRender('patched.jpg');
+const wideSizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
+const { h1, rest } = takeH1(pageHtml(page));
+const { lead, sections } = splitSections(rest);
+const noSlots = (html: string) => splitSlots(html).filter((p) => p.kind === 'html').map((p) => (p as { html: string }).html).join('');
+const paras = (html: string) => html.match(/<p>[\s\S]*?<\/p>/g) ?? [];
+const inner = (p = '') => p.replace(/^<p>|<\/p>$/g, '');
+
+// Lead: the tagline (bold line), the lede, and the etymology note.
+const leadParas = paras(noSlots(lead));
+const tagline = stripTags(leadParas[0] ?? '');
+const lede = inner(leadParas[1]);
+// The intro's bold statement is the lede's first sentence; the rest follows as the paragraph.
+const cut = lede.indexOf('. ') + 1;
+const statement = cut > 0 ? lede.slice(0, cut) : lede;
+const ledeRest = cut > 0 ? lede.slice(cut + 1) : '';
+const etymology = leadParas[2] ?? '';
+
+const sound = section(sections, 'what-it-sounds-like');
+const moves = section(sections, 'built-around-the-dub-moves');
+const panel = section(sections, 'the-panel');
+const safe = section(sections, 'safe-to-try');
+const plugin = section(sections, 'the-plugin');
+const status = section(sections, 'status');
+
+const soundIntro = paras(sound.html)[0] ?? '';
+const soundList = sound.html.match(/<ul>[\s\S]*?<\/ul>/)?.[0] ?? '';
+const movesIntro = paras(moves.html)[0] ?? '';
+const panelParas = paras(noSlots(panel.html));
+const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\/p>/, '');
+---
+<Base title={page.data.title} description={page.data.description} bodyClass="home" darkTop>
+  <!-- 1 Hero (dark) -->
+  <section class="hero band-dark" aria-labelledby="title">
+    <div class="wide">
+      <HeroMedia />
+      <div class="hero-title">
+        <h1 class="display" id="title">{h1}</h1>
+        <p class="hero-tagline">{tagline}</p>
+        <div class="actions">
+          <Button href="#sound" variant="ghost">Listen</Button>
+          <Button href="#download" variant="primary" arrow>Download</Button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Intro (white) -->
+  <section class="section intro" aria-labelledby="intro-h">
+    <h2 id="intro-h" class="visually-hidden">Introduction</h2>
+    <div class="column flow">
+      <p class="statement" data-split set:html={statement} />
+      {ledeRest && <p class="lede" set:html={ledeRest} />}
+      <div class="small quiet" set:html={etymology} />
+    </div>
+    <figure class="wide intro-media" data-reveal>
+      <div class="card-media" style="aspect-ratio: 2400 / 1028">
+        <Picture src={tank} widths={widthsFor(tank)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
+          alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
+      </div>
+      <figcaption class="caption">The tank: a transducer and its springs.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3 The sound (dark) -->
+  <section class="section band-dark sound" id="sound" aria-labelledby="sound-h">
+    <div class="column flow">
+      <h2 class="h2" id="sound-h">The sound</h2>
+      <div class="lede" set:html={inner(soundIntro)} />
+      <p class="small quiet">Ten clips, each Resilio itself, rendered from test signals the project made. Loudness-matched. Headphones or monitors.</p>
+    </div>
+    <div class="wide">
+      <DemoList />
+    </div>
+    <div class="wide sound-notes described" set:html={soundList} />
+  </section>
+
+  <!-- 4 The panel (white) -->
+  <section class="section" id="panel" aria-labelledby="panel-h">
+    <div class="column flow">
+      <h2 class="h2" id="panel-h">The panel</h2>
+      <div class="lede" set:html={inner(panelParas[0])} />
+    </div>
+    <div class="wide panel-wrap">
+      <AnnotatedPanel />
+    </div>
+    <div class="column flow">
+      <div set:html={panelParas[1] ?? ''} />
+      <p><Button href="/manual/#controls" variant="ghost" arrow>All the controls in the manual</Button></p>
+    </div>
+  </section>
+
+  <!-- 5 Features (white) -->
+  <section class="section features" id="features" aria-labelledby="features-h">
+    <div class="column flow">
+      <h2 class="h2" id="features-h">{moves.title}</h2>
+      <div class="lede" set:html={inner(movesIntro)} />
+    </div>
+    <div class="wide">
+      <FeatureTiles />
+    </div>
+    <div class="column">
+      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
+    </div>
+  </section>
+
+  <!-- 6 Two ways to play (white) -->
+  <section class="section two-ways-section" id="two-ways" aria-labelledby="two-ways-h">
+    <div class="column">
+      <h2 class="h2" id="two-ways-h">Two ways to play</h2>
+    </div>
+    <figure class="wide" data-reveal>
+      <div class="card-media" style="aspect-ratio: 16 / 9">
+        <Picture src={patched} widths={widthsFor(patched)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
+          alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
+      </div>
+      <figcaption class="caption">Patched: both inputs and both outputs.</figcaption>
+    </figure>
+    <div class="wide two-ways">
+      <div class="tile way">
+        <h3 class="h3">On the module</h3>
+        <p class="small quiet">Firmware for the Noise Engineering Versio</p>
+        <div class="flow" set:html={safeHtml} />
+        <Button href="/install/#on-the-versio" variant="ghost" arrow>How to install</Button>
+      </div>
+      <div class="tile way">
+        <h3 class="h3">In your DAW</h3>
+        <p class="small quiet">AU/VST3 plugin for macOS</p>
+        <div class="flow" set:html={plugin.html} />
+        <Button href="/install/#in-a-daw-macos" variant="ghost" arrow>Install the plugin</Button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 Download (light grey band) -->
+  <section class="section band-tile" id="download" aria-labelledby="download-h">
+    <div class="wide download-grid">
+      <div class="flow">
+        <h2 class="h2" id="download-h">Download</h2>
+        <h3 class="small status-title">{status.title}</h3>
+        <div class="flow small quiet" set:html={status.html} />
+      </div>
+      <DownloadBlock />
+    </div>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/motion';
+</script>

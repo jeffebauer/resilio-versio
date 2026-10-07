@@ -1,0 +1,16 @@
+---
+// The module turning as you scroll (R4, PLAN §B7). For now: the still only
+// (a placeholder until the render exists). Later: AVIF frames drawn to a <canvas>
+// by the Home motion script, with this still kept for reduced motion and no-JS.
+import Placeholder from './Placeholder.astro';
+interface Props { still?: string; alt?: string; frames?: string[]; ratio?: string; class?: string }
+const { still, alt = '', frames = [], ratio = '4:5', class: cls = '' } = Astro.props;
+const [w, h] = ratio.split(':').map(Number);
+---
+<div class={`scrub ${cls}`.trim()} data-scrub data-frames={frames.length ? JSON.stringify(frames) : undefined}>
+  {still ? (
+    <div class="card-media" style={`aspect-ratio: ${w} / ${h}`}><img src={still} alt={alt} loading="lazy" decoding="async" /></div>
+  ) : (
+    <Placeholder id="R3/R4" name="Module, three-quarter turn" ratio={ratio} />
+  )}
+</div>

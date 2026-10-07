@@ -1,0 +1,24 @@
+---
+// One rounded rectangle for every control: primary (the screen's one red fill), dark, ghost.
+interface Props {
+  href?: string;
+  variant?: 'primary' | 'dark' | 'ghost';
+  small?: boolean;
+  arrow?: boolean;
+  disabled?: boolean;
+  class?: string;
+  [key: string]: unknown;
+}
+const { href, variant = 'primary', arrow = false, disabled = false, small = false, class: cls = '', ...rest } = Astro.props;
+const classes = `btn btn-${variant}${small ? ' btn-small' : ''} ${cls}`.trim();
+---
+{disabled ? (
+  <span class={classes} aria-disabled="true" role="link" {...rest}><slot /></span>
+) : href ? (
+  <a class={classes} href={href} {...rest}>
+    <slot />
+    {arrow && <svg class="arrow" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 9 9 3M4 3h5v5" fill="none" stroke="currentColor" stroke-width="1.2" /></svg>}
+  </a>
+) : (
+  <button class={classes} type="button" {...rest}><slot /></button>
+)}

@@ -1,0 +1,25 @@
+---
+// A tiny diagram (DESIGN-v2 V10): 1.5 px lines in currentColor, one highlight in the
+// signal red. Labelled for screen readers with what it shows.
+import { shape, type DiagramKind } from './shapes';
+interface Props { kind: DiagramKind; class?: string; decorative?: boolean }
+const { kind, class: cls = '', decorative = false } = Astro.props;
+const s = shape(kind);
+---
+<svg
+  class={`diagram ${cls}`.trim()}
+  viewBox="0 0 160 64"
+  preserveAspectRatio="xMinYMid meet"
+  fill="none"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={decorative ? undefined : 'img'}
+  aria-label={decorative ? undefined : s.label}
+  aria-hidden={decorative ? 'true' : undefined}
+  focusable="false"
+>
+  {!decorative && <title>{s.label}</title>}
+  {(s.faint ?? []).map((d) => <path class="d-faint" d={d} />)}
+  {s.ink.map((d) => <path class="d-ink" d={d} />)}
+  {s.hot.map((d) => <path class="d-hot" d={d} />)}
+</svg>

@@ -1,0 +1,19 @@
+---
+// Features as a bento grid (DESIGN-v2 V9): rounded --tile cards in mixed sizes, each with
+// a tiny diagram of what it does (V10), one big Phonic Bold statement and one line.
+// The single "Read the manual" button sits under the grid (in index.astro). In the source
+// the heading comes first, so screen readers meet the name before the picture; CSS shows
+// the diagram on top.
+import Diagram from './diagrams/Diagram.astro';
+import { FEATURE_TILES } from '../data/controls';
+---
+<ul class="bento" aria-label="Features">
+  {FEATURE_TILES.map((t) => (
+    <li class:list={['tile', 'feature', t.size && `is-${t.size}`]} data-reveal>
+      <h3 class="feature-big">{t.big}</h3>
+      <p class="feature-line small">{t.line}</p>
+      <Diagram kind={t.diagram} class="feature-diagram" />
+
+    </li>
+  ))}
+</ul>
