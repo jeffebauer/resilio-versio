@@ -56,6 +56,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **“Big Knob” section live** on the home page (history of Tubby's Altec 9069B with the desk renders, after The sound); “Big Knob” in quotes site-wide; the intro statement rises as one block; footer on the Download section's columns; the hero film resumes after scrolling away
 - 7 Oct 2026: **Site polish live** (your Mesurer rounds): sliding nav pill and pill buttons; intro on the tank image; centred section intros; one casing rule; panel list as label | description; manual terminology, panel table beside the drawing, orange subheads and list markers, reading-position contents; install without tabs; presets values under the text; changelog by date; a narrower reading column; hero film without flicker or white edges on mobile (check on your phone). Mesurer runs in `npm run dev` only
 - 7 Oct 2026: **King Tubby's MCI desk renders** (third pass, your notes): front, plate-on, ¾, Big Knob macros, the red EQ grid; in `renders/minisite_final/bigknob/` (scene scripts on the agent's branch, not merged)
 - 7 Oct 2026: **Site polish live:** warm-neutral greys (cohesive with the orange-red), round play/pause buttons, every image caption in small mono, "Built around dub performance moves", the clips note removed
