@@ -14,15 +14,15 @@
   /* ---- Colour (V2) ------------------------------------------------------ */
   --paper:        #ffffff; /* page: white (revision 1's warm off-white is retired) */
   --white:        #ffffff;
-  --tile:         #f0f0f2; /* cool light grey: bento tiles, the download band, image wells */
-  --ink:          #0a0a0a; /* text, dark buttons */
-  --ink-2:        #5c5c63; /* cool secondary text: 6.6:1 on paper, 5.8:1 on tile */
-  --line:         #e2e2e6; /* hairlines on white: header, footer, tables only */
-  --dark:         #0b0b0c; /* the hero and sound bands */
-  --tile-dark:    #18181b; /* tiles on the dark band */
-  --on-dark:      #f5f5f7; /* text on --dark: 18.1:1 */
-  --on-dark-2:    #a1a1aa; /* secondary text on --dark (7.7:1) and on --tile-dark (6.9:1) */
-  --line-dark:    #2c2c31; /* hairlines on the dark band */
+  --tile:         #f2f1ee; /* warm-neutral light grey (owner, 7 Oct: the cool greys fought the orange-red): bento tiles, the download band, image wells */
+  --ink:          #0b0a09; /* text, dark buttons */
+  --ink-2:        #5e5c58; /* warm-neutral secondary text: 6.7:1 on paper, 5.9:1 on tile */
+  --line:         #e4e2de; /* hairlines on white: header, footer, tables only */
+  --dark:         #0c0b0a; /* the hero and sound bands */
+  --tile-dark:    #1a1917; /* tiles on the dark band */
+  --on-dark:      #f6f5f2; /* text on --dark: 18.0:1 */
+  --on-dark-2:    #a8a49e; /* secondary text on --dark (7.9:1) and on --tile-dark (7.1:1) */
+  --line-dark:    #2e2c29; /* hairlines on the dark band */
 
   /* The one accent: LED red (revision 1, D3), unchanged.
      --signal for marks, dots, LEDs, playheads and diagram highlights (never small text);
@@ -157,7 +157,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 /* ---- Media ---------------------------------------------------------------- */
 .card-media { border-radius: var(--radius-tile); overflow: hidden; background: var(--tile); }
 .card-media img { width: 100%; height: 100%; object-fit: cover; }
-.caption { font-size: var(--fs-small); color: var(--ink-2); padding-block: var(--stack-1); }
+.caption { font: var(--wt-reg) var(--fs-micro) / 1.35 var(--font-mono); letter-spacing: 0; color: var(--ink-2); padding-top: var(--stack-2); }  /* every image caption: small mono, as under the panel (owner, 7 Oct) */
 
 /* ---- Spec / reference tables (hairlines stay here) ----------------------- */
 .spec { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
@@ -166,7 +166,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 
 /* ---- Audio player --------------------------------------------------------- */
 .player { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; }
-.player .play { width: 2.75rem; height: 2.75rem; border-radius: var(--radius-ui); border: 0; background: var(--ink); color: var(--paper); }
+.player .play { width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 0; background: var(--ink); color: var(--paper); }
 .player .wave { height: 2.5rem; color: var(--ink); }
 .player .wave .head { stroke: var(--signal); }
 .player .ab { display: inline-flex; border-radius: var(--radius-ui); box-shadow: inset 0 0 0 var(--hair) var(--line); padding: 0.2rem; }

@@ -34,7 +34,7 @@ const ledeRest = cut > 0 ? lede.slice(cut + 1) : '';
 const etymology = leadParas[2] ?? '';
 
 const sound = section(sections, 'what-it-sounds-like');
-const moves = section(sections, 'built-around-the-dub-moves');
+const moves = section(sections, 'built-around-dub-performance-moves');
 const panel = section(sections, 'the-panel');
 const safe = section(sections, 'safe-to-try');
 const plugin = section(sections, 'the-plugin');
@@ -83,7 +83,6 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="column flow">
       <h2 class="h2" id="sound-h">The sound</h2>
       <div class="lede" set:html={inner(soundIntro)} />
-      <p class="small quiet">Ten clips, each Resilio itself, rendered from test signals the project made. Loudness-matched. Headphones or monitors.</p>
     </div>
     <div class="wide">
       <DemoList />
