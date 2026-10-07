@@ -3,14 +3,19 @@
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
         --python site/renders/render_hero.py -- --frames DIR [--samples 48] [--only 1,60,120]
 
-Timeline (30 fps, 1920 x 1080):
-  frames   1-210  hero_reveal (7 s): starts near-black, the only light the four
-                  LEDs; from frame 50 the studio light comes up while the camera
-                  pushes in and tilts down to the floor-level R7b angle, landing
-                  by frame 200 on R7b's composition.
-  frames 211-306  hero_hold_loop (3.2 s = one bar): camera and light still, only
-                  the LEDs flicker. The LED pattern repeats every bar (96 frames),
-                  so frame 307 would equal frame 211: the loop is seamless.
+Timeline (30 fps, 1920 x 1080), v2 "product film" (owner, 7 Oct):
+  frames   1-240  hero_reveal (8 s). The camera starts low and close in front of
+                  the module, looking steeply up so it looms; it is near-black,
+                  the LEDs the only light. One continuous jib-like move: the
+                  camera dollies back while rising slightly and tilting down,
+                  ending square to the panel on R7a's composition. Quintic
+                  ease-in-out (smootherstep) for a long, soft settle, no overshoot.
+                  Light in three stages: dark -> the rim and top lights trace the
+                  edges and knob caps (frames 50-150) -> the soft key, fills and
+                  world come up to the R7a monolith look (frames 110-225).
+  frames 241-336  hero_hold_loop (3.2 s = one bar): camera and light at rest, as
+                  in the R7a still; only the LEDs flicker. The LED pattern repeats
+                  every bar (96 frames), so frame 337 would equal 241: seamless.
 
 LEDs, hand-animated as a dub groove at 75 bpm (a beat = 24 frames):
   LED1/LED2 (IN L/R)   the skank on beats 2 and 4; beat 4 is the louder hit.
@@ -36,10 +41,12 @@ import render_clay  # noqa: E402
 FPS = 30
 BEAT = 24                 # frames per beat at 75 bpm
 BAR = 4 * BEAT            # 96 frames = the loop period
-REVEAL_END = 210
-HOLD_START, HOLD_END = 211, 306
-LIGHTS_ON = (50, 195)     # studio light ramps up over these frames
-CAM_MOVE = (1, 200)
+REVEAL_END = 240
+HOLD_START, HOLD_END = 241, 336
+EDGES_ON = (50, 150)      # rim + top light: the edges and knob caps appear first
+LIGHTS_ON = (110, 225)    # then the soft key, fills and world
+CAM_MOVE = (1, 236)
+EDGE_LIGHTS = ("rim", "top")
 
 GREEN = (0.06, 1.0, 0.14)
 AMBER = (1.0, 0.40, 0.02)
@@ -86,21 +93,25 @@ def _colour(level):
 
 
 def _ease(f, f0, f1):
+    """Smootherstep: zero velocity and acceleration at both ends."""
     k = min(1.0, max(0.0, (f - f0) / (f1 - f0)))
-    return k * k * (3 - 2 * k)
+    return k * k * k * (k * (6 * k - 15) + 10)
 
 
 def build():
     ref = render_clay.build_module("monolith")
     sc = bpy.context.scene
-    # every light the monolith mood made: ramp from 0 to its full energy
+    # every light the monolith mood made ramps from 0 to its full (R7a) energy;
+    # the edge lights first, the key and fills later. Keyed every frame with an
+    # eased curve so the light grows smoothly, at rest by the hold.
     for ob in [o for o in bpy.data.objects if o.type == "LIGHT"]:
         full = ob.data.energy
-        for f in (1, LIGHTS_ON[0]):
-            ob.data.energy = 0.0
+        span = EDGES_ON if ob.name in EDGE_LIGHTS else LIGHTS_ON
+        for f in range(1, REVEAL_END + 1, 3):
+            ob.data.energy = full * _ease(f, *span)
             ob.data.keyframe_insert("energy", frame=f)
         ob.data.energy = full
-        ob.data.keyframe_insert("energy", frame=LIGHTS_ON[1])
+        ob.data.keyframe_insert("energy", frame=REVEAL_END)
     bg = sc.world.node_tree.nodes["Background"].inputs["Strength"]
     full = bg.default_value
     for f in (1, LIGHTS_ON[0]):
@@ -139,12 +150,10 @@ def build():
             ld.keyframe_insert("color", frame=f)
             ld.keyframe_insert("energy", frame=f)
 
-    # camera: from the R8_emerge view (85 mm, 590 mm away) to R7b's floor angle (24 mm)
-    c = ref["center"]
-    start_t = c + C.Vector((0, 0, 20))
-    az, el, d = math.radians(22), math.radians(10), 590.0
-    start = start_t + d * C.Vector((math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)))
-    end, end_t = C.Vector((60, -140, 5)), C.Vector((0, 6, 62))
+    # camera: low and close looking steeply up -> R7a (front-on, floor level, 24 mm)
+    start, start_t = C.Vector((0, -62, 2.5)), C.Vector((0, 0, 118))
+    end, end_t = C.Vector((0, -170, 6)), C.Vector((0, 0, 66))
+    lens0, lens1 = 20.0, 24.0
     tgt = bpy.data.objects.new("cam_target", None)
     C.link(tgt)
     cd = bpy.data.cameras.new("hero")
@@ -156,11 +165,16 @@ def build():
     con.target = tgt
     con.track_axis = "TRACK_NEGATIVE_Z"
     con.up_axis = "UP_Y"
-    for f in range(CAM_MOVE[0], CAM_MOVE[1] + 1, 2):
+    # focus on the panel face: a slight pull early, sharp (f/16) once readable
+    cd.dof.use_dof = True
+    cd.dof.aperture_fstop = 16 * bpy.context.scene.unit_settings.scale_length
+    for f in range(CAM_MOVE[0], CAM_MOVE[1] + 1):
         k = _ease(f, *CAM_MOVE)
         cam.location = start.lerp(end, k)
         tgt.location = start_t.lerp(end_t, k)
-        cd.lens = 85.0 + (24.0 - 85.0) * k
+        cd.lens = lens0 + (lens1 - lens0) * k
+        cd.dof.focus_distance = (C.Vector((0, 0, 64)) - cam.location).length
+        cd.dof.keyframe_insert("focus_distance", frame=f)
         cam.keyframe_insert("location", frame=f)
         tgt.keyframe_insert("location", frame=f)
         cd.keyframe_insert("lens", frame=f)
@@ -175,8 +189,10 @@ def main():
     out = argv[argv.index("--frames") + 1]
     samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 64
     only = [int(x) for x in argv[argv.index("--only") + 1].split(",")] if "--only" in argv else None
+    scale = int(argv[argv.index("--scale") + 1]) if "--scale" in argv else 100
     build()
     C.setup_cycles(samples=samples)
+    bpy.context.scene.render.resolution_percentage = scale
     sc = bpy.context.scene
     sc.render.use_persistent_data = True
     sc.render.image_settings.file_format = "JPEG"
