@@ -25,7 +25,7 @@ interface Props {
   /** The page opens on a dark band (Home's hero): the header starts light-on-dark. */
   darkTop?: boolean;
 }
-const { title, description, ogImage = '/og/default.png', noindex = false, bodyClass, darkTop = false } = Astro.props;
+const { title, description, ogImage = '/og/resilio-hero.jpg', noindex = false, bodyClass, darkTop = false } = Astro.props;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const og = new URL(ogImage, Astro.site);
@@ -67,7 +67,7 @@ const onVercel = Boolean(process.env.VERCEL);
     <meta property="og:image" content={og} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Resilio Versio: a dub spring reverb for the Noise Engineering Versio" />
+    <meta property="og:image:alt" content="The Resilio Versio module standing in the dark, its LEDs lit green." />
     <meta name="twitter:card" content="summary_large_image" />
 
     {preload.map((f) => <link rel="preload" href={`/fonts/${f}`} as="font" type="font/woff2" crossorigin />)}
