@@ -58,7 +58,7 @@ The download is a zip with the plugin in both formats, a read-me, and the firmwa
    ~/Library/Audio/Plug-Ins/
    ```
    Drag `Resilio Versio.vst3` into the **VST3** folder and `Resilio Versio.component` into the **Components** folder. Create the folder if it's missing.
-3. **Let macOS open it.** The plugin isn't notarised by Apple (it's a free test build), so macOS blocks it at first. Open **Terminal** and paste these two lines, one at a time (each is a single line):
+3. **Let macOS open it.** The plugin isn't notarised by Apple (it's a free download), so macOS blocks it at first. Open **Terminal** and paste these two lines, one at a time (each is a single line):
    ```
    xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Resilio Versio.vst3"
    ```

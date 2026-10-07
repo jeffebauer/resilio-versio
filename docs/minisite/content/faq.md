@@ -26,7 +26,7 @@ Yes. <!-- OWNER: confirm, and the licence (see Credits). -->
 No, macOS only (12 or newer, Apple Silicon or Intel), as Audio Unit and VST3.
 
 ### Why does macOS block the plugin?
-It's a free test build and isn't notarised by Apple. Two Terminal lines on the [install page](/install#in-a-daw-macos) let macOS open it.
+It's free and isn't notarised by Apple. Two Terminal lines on the [install page](/install#in-a-daw-macos) let macOS open it.
 
 ### Does the plugin sound like the module?
 They run the same sound engine with the same controls, so a setting in the plugin is a setting on the module. The plugin is the project's desktop test bench, laid out like the module's panel.
@@ -50,5 +50,4 @@ Neither. It's a physical-style model of springs (feedback loops that smear each 
 Yes, once the repository is public: [github.com/jeffebauer/resilio-versio](https://github.com/jeffebauer/resilio-versio). It includes the full specification and every design decision with its reasons. <!-- OWNER: remove "once the repository is public" when it is. -->
 
 ### Where do I send feedback or bugs?
-<!-- OWNER: GitHub issues, an email address, or a form? -->
-Tell us what it sounds like next to spring reverbs you know, any knob that feels dead or too touchy, and anything that clicks or glitches (with the settings, if you can).
+Open an issue on [GitHub](https://github.com/jeffebauer/resilio-versio/issues). Tell us what it sounds like next to spring reverbs you know, any knob that feels dead or too touchy, and anything that clicks or glitches (with the settings, if you can).
