@@ -11,12 +11,12 @@
 | M2 plugin | Passed. **Installed `1e02c96`** (7 Oct 14:53, AU validated): the first-chord fix and the plugin panel layout fix |
 | M3 CPU | **Run 22** (`1e02c96`, the first-chord fix, 7 Oct): echo mode 69.1 / 76.3 %, switch 76.2 %, worst moment (lap wrap) **78.8 %** (run 21: 78.1). Under the 80 % ceiling, 1.2 points of headroom |
 | M8 tuning | First-chord fix merged (SPEC v1.0.45). Nothing new this session |
-| M9 polish | **Site live** at https://resilio-versio.vercel.app (public production from `main`; downloads show "coming soon" while the repo is private, `DOWNLOADS_LIVE` unset). **Repo still private** |
+| M9 polish | **Public (7 Oct):** repo public; first public release **v2026.10.07-0671d22** (Latest, stable asset names, licence files); site live with working downloads (`DOWNLOADS_LIVE` defaults on; `=0` in the environment turns it off). Friends' releases marked pre-public |
 
 - **`main` HEAD:** this handoff's commit. Code (core/firmware/plugin/host) last changed at `1e02c96`.
 - **Gates:** full ctest **100 % of 24** at wrap (7 Oct, `main` with code at `1e02c96`; 1,691 s). CPU run 22 on the chip (below).
 - **Firmware** (built at wrap, no firmware change): release **127,700 B (97 %)**, profile **128,856 B (98 %, ~2.2 KB left)**, m0test 82,320 B (62 %).
-- **Plugin in Ableton:** `1e02c96` = the last code commit. On the Versio: `bdd3910`. Latest release `a6c70a4` (private).
+- **Plugin in Ableton:** `1e02c96` = the last code commit. **On the Versio:** `1e02c96` (`dist/resilio_versio_release_1e02c96.bin`): the owner's click check and clock-hold check passed. **Latest release:** v2026.10.07-0671d22 (same code).
 
 ## The minisite (how it works now)
 
@@ -38,15 +38,15 @@ Nothing running. Kept on purpose:
 ## Next steps
 1. **Owner's open site checks** (TASKS §2): the hero film on iPhone (white edges, the reveal→loop handover, resume after scrolling away: none of these could be watched here), the “Big Knob” copy, the demo clips.
 2. **Next release** with the first-chord fix (CPU timed: run 22): `tools/make_release.sh`, then the owner's click check and the clock-hold check (TASKS §1).
-3. **Going public** (owner's "flip it" only): flip visibility → first public release → `DOWNLOADS_LIVE=1` on Vercel → redeploy. Draft notes: `docs/release-notes-public.md`.
+3. **Done this session:** gone public (release, visibility, site downloads). Next releases: `tools/make_release.sh --notes <file> --publish`, then update `site/src/data/release.json` (fallback) and add a dated entry to `docs/minisite/content/changelog.md`; the site reads the latest release from GitHub at build, so a redeploy (any push to `main`) picks it up.
 4. **Stereo in:** owner's answers (TASKS §3), then a plugin-only prototype in TANK 2.
 5. Housekeeping when convenient: delete the merged site branches (local + remote) once PR #2 is closed.
 
 ## Waiting on the owner (`docs/TASKS.md`)
-- §1 clock-hold check on the module. §2 iPhone hero check, “Big Knob” copy read, demo clips, close PR #2. §3 stereo-in questions. §4 "flip it".
+- §2 iPhone hero check, “Big Knob” copy read, demo clips, close PR #2. §3 stereo-in questions.
 
 ## Will bite
-- **Production is public:** every push to `main` deploys the live site. Site work goes on `feat/site-refine` and merges only on "merge it".
+- **Everything is public now:** the repo (history included), issues, and the site; every push to `main` deploys the live site. Never commit fonts, reference recordings or IRs, museum/listing photos. Site work goes on `feat/site-refine` and merges only on "merge it".
 - **The browser pane:** when hidden, video won't autoplay (the page falls back to the still) and screenshots fail; time also stops. Ask the owner to show it (Cmd+Shift+B) to verify video. Chrome also pauses muted autoplay offscreen (handled: the hero resumes via an IntersectionObserver).
 - **Astro dev:** new files in `docs/minisite/assets/renders/` need a dev-server restart (eager image glob); the first request after a restart shows images still converting. `demos.json` is cached in memory: restart after editing it. Scoped `<style>` doesn't reach `set:html` content: use `:global(...)`.
 - **Fonts never enter git** (`site/public/fonts/` is ignored); check `git status` before site commits.

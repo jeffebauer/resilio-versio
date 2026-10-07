@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, end of session 10. The site is live at https://resilio-versio.vercel.app: your full polish pass, the “Big Knob” history section with the desk renders, MD UI / MD IO fonts; downloads still "coming soon" while the repo is private. Plugin `1e02c96` (first-chord fix) in Ableton
+**Last updated:** 7 Oct 2026, end of session 10. **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -14,7 +14,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 **Plugin in Ableton:** `1e02c96` (installed 7 Oct 14:53, AU validated): the first-chord fix (a new sound after drums is read on its own) and the plugin panel layout fix, plus everything in `c1d98ac` (new panel names, the gate clock hold, echo mode's springs blend C, tape wear B, TENSION note values, the purple tap light). **Rescan:** hold ⌥, Rescan, then insert a fresh instance
 
-**Share package:** [GitHub Release v2026.10.06-a6c70a4](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.06-a6c70a4) (private, Latest): universal plugin, firmware, read-me with the what's-new notes
+**Releases:** [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22), the first public release (Latest): universal plugin, firmware, licence files, stable download names. The three friends' releases stay as history, marked "pre-public build"
 
 ## Now (in this order)
 
@@ -27,16 +27,13 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
 
-### 4. Going public (when the site is ready)
-- Going-public prep **merged** (ADR 0045, SPEC v1.0.44). **The repo only goes public when you say "flip it"**; then the first public release (`make_release.sh --publish`), then the site goes live (merge to `main`)
-
 ## Design questions (answer whenever you have a view; the plugin is the best judge)
 
 ## Later
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **The first public release** (`1e02c96`, your hardware checks passed): being cut now, with the repo going public and the site's downloads switched on (ADR 0045)
+- **Close PR #2** and delete the merged site branches when you're happy (or tell Claude to); anything else from your Mesurer rounds
 - **Site polish**: further rounds as you send Mesurer notes (run `npm run dev` in `.claude/worktrees/site-refine/site`, or ask Claude to start it: http://localhost:4323); each round goes live on "merge it"
 
 ## What to send Claude
@@ -56,6 +53,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Went public** (your "make the repo public"): the first public release v2026.10.07-0671d22 cut and marked Latest (stable download names, licence files, notes from `releases/first-public-release.md`); the repo is public; the friends' three releases carry the pre-public note; the site's download buttons are live, with the changelog entry
 - 7 Oct 2026: **Hardware checks passed** on `1e02c96` (`dist/resilio_versio_release_1e02c96.bin`): the click check, and the gate clock hold (echo time stays put through Ableton's transport stop/start)
 - 7 Oct 2026: **CPU run 22 on the chip** (the first-chord fix): echo mode 69.1 / 76.3 %, switch 76.2 %, worst moment 78.8 % (run 21: 78.1). Under the 80 % ceiling
 - 7 Oct 2026: **“Big Knob” section live** on the home page (history of Tubby's Altec 9069B with the desk renders, after The sound); “Big Knob” in quotes site-wide; the intro statement rises as one block; footer on the Download section's columns; the hero film resumes after scrolling away
