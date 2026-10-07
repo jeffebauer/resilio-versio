@@ -166,9 +166,8 @@ html.hero-film .hero-still { visibility: hidden; }
   font-size: clamp(1.75rem, 1.05rem + 2.6vw, 3.5rem); font-weight: var(--wt-display);
   line-height: 1.04; letter-spacing: var(--track-display);
 }
-/* The intro sits on the tank image under a dark scrim (owner, 7 Oct). Its section's top and
-   bottom space match the page margin left and right. */
-.section.intro { padding-block: var(--margin); }
+/* The intro sits on the tank image under a dark scrim (owner, 7 Oct); the section keeps the
+   standard section spacing above and below. */
 /* Height from the content, at least the image's own shape on wide screens (no aspect-ratio:
    with a min-height it would widen the card past the screen on phones). */
 .intro-card { position: relative; display: grid; align-items: end; justify-items: start; min-height: clamp(26rem, 42.8vw, 38rem); background: var(--dark); --intro-pad: clamp(1.25rem, 0.5rem + 3vw, 3.5rem); }
