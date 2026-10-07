@@ -18,10 +18,16 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (in this order)
 
+### 1. GitHub tidy-up (tomorrow morning, 8 Oct; ~5 minutes)
+Claude's session wasn't allowed to delete branches, so these are yours. All the branches named below are already fully on `main`, so nothing is lost.
+- [ ] **Close PR #2:** `gh pr close 2 --comment "Closing: this work landed on main via feat/site-refine."`
+- [ ] **Delete the merged site branches on GitHub:** `git push origin --delete feat/site feat/site-v2 feat/site-renders`
+- [ ] **Delete them on your Mac:** `git branch -d feat/site feat/site-v2 feat/site-renders worktree-agent-af8f70117b76a1b09` (keep `feat/site-refine`: it's the site review branch)
+- [ ] **Protect `main`** (GitHub → Settings → Rules → Rulesets, target `main`): turn on **Block force pushes** and **Restrict deletions** only. Leave "Require a pull request" and "Require status checks" **off**, because Claude commits straight to `main` after the tests pass. Or tell Claude "set up branch protection" and it does it with `gh`
+
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
-- [ ] **PR #2** (`feat/site-v2` → `feat/site`) is still open on GitHub though its work is on `main`: close it (or tell Claude to)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
@@ -33,7 +39,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 - **A custom look for the plugin** (knob style, panel artwork), if you want one after living with the plain version
 
 ## Waiting on Claude (no action needed)
-- **Close PR #2** and delete the merged site branches when you're happy (or tell Claude to); anything else from your Mesurer rounds
+- Anything else from your Mesurer rounds
 - **Site polish**: further rounds as you send Mesurer notes (run `npm run dev` in `.claude/worktrees/site-refine/site`, or ask Claude to start it: http://localhost:4323); each round goes live on "merge it"
 
 ## What to send Claude
