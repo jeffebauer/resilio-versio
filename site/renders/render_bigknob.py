@@ -45,6 +45,9 @@ SHOTS = [
          note="Macro: the Big Knob with its neighbours and the overspray plume."),
     dict(id="BK5_macro_eq", mood="graze",
          note="Macro: raking light across the red EQ knobs (channels 1-6)."),
+    dict(id="BK7_knob_topdown", mood="topdown",
+         note="Close-up, near top-down (14 deg off the knob's axis): low-key charcoal panel, a raking "
+              "key across the HI PASS FILTER legend, deep focus so every step label is sharp."),
 ]
 
 
@@ -84,6 +87,51 @@ def lights(ref, mood, cam=None, spec_target=None):
                      power=C.watts(C.KEY_W * 0.03) * 0.38 ** 2, spread=60)
         if cam is not None:
             spec_softbox(ref, cam, spec_target or bk, 700, 0.05, dist=900)
+    elif mood == "topdown":
+        # low key: the sprayed paint should read charcoal, not grey. A soft key
+        # rakes in from 11 o'clock (up-plate, a little left), ~30 deg above
+        # the plate, so the print and leader lines read crisply and the
+        # knob's shadow falls to 5 o'clock, clear of the labels. A small soft
+        # source off the mirror angle gives the cap's spun streak and the
+        # red gloss a controlled highlight; a faint fill from the front.
+        C.world(0.004)
+        f = ref["frame"]
+        bk = f.world(830, 508, 0)
+        # key: a soft-edged pool (a spot with a large radius) raking from
+        # up-plate left, centred on the dial and falling off before the bare
+        # plume right of 7.5K, which therefore stays dark. Diffuse only, so
+        # no metal can mirror it.
+        # (kept over the plate: further up-plate it sat inside the meter bridge)
+        k = f.world(830 - 260, 508 + 120, 200)
+        aim_at = f.world(818, 515, 0)
+        kd = bpy.data.lights.new("rake", "SPOT")
+        kd.energy = C.watts(C.KEY_W * 1.3) * ((k - aim_at).length / 1000) ** 2
+        kd.color = (1.0, 0.96, 0.9)
+        kd.shadow_soft_size = 28.0
+        kd.spot_size = 2 * math.atan(95.0 / (k - aim_at).length)
+        kd.spot_blend = 0.75
+        key = bpy.data.objects.new("rake", kd)
+        C.link(key)
+        key.location = k
+        C.aim(key, aim_at)
+        key.visible_glossy = False
+        # glint: a small source, highlights only (no diffuse), on the knob alone
+        g = f.world(830 - 110, 508 + 100, 320)
+        glint = C.area_light("glint", g, f.world(830, 508, 26), size=70,
+                             power=C.watts(C.KEY_W * 0.009) * ((g - bk).length / 1000) ** 2, spread=12)
+        glint.visible_diffuse = False
+        # light linking: the glint lights the Big Knob only (else the bare
+        # plume right of the dial mirrors it)
+        knob_parts = bpy.data.collections.new("big_knob_parts")
+        for ob in bpy.data.objects:
+            if ob.name.split(".")[0] in ("big_skirt", "big_body", "big_cap", "big_dot"):
+                knob_parts.objects.link(ob)
+        glint.light_linking.receiver_collection = knob_parts
+        # faint fill from the front so the knob's shadow side isn't black
+        fl = f.world(830 - 80, 508 - 420, 160)
+        fill = C.area_light("front_fill", fl, f.world(800, 508, 0), size=250,
+                            power=C.watts(C.KEY_W * 0.006) * ((fl - bk).length / 1000) ** 2, spread=25)
+        fill.visible_glossy = False
     elif mood == "graze":
         C.world(0.02)
         f = ref["frame"]
@@ -127,11 +175,23 @@ def camera_for(shot, ref):
     if sid == "BK5_macro_eq":
         tgt = f.world(170, 340, 6)
         return C.camera(sid, tgt, -8, 30, 100, 640, fstop=8, focus=f.world(170, 345, 10))
+    if sid == "BK7_knob_topdown":
+        # looking nearly straight down the knob's axis: 14 deg off the plate
+        # normal, tipped towards the front so the fluted body still shows.
+        # Aimed a little left of the knob so it sits just right of centre and
+        # the bare plume beyond 7.5K stays at the frame edge.
+        tgt = f.world(822, 520, 6)
+        tilt, d = math.radians(14), 520
+        cam = C.camera(sid, tgt, 0, 0, 100, 1.0, fstop=16, focus=f.world(830, 515, 2))
+        cam.location = f.world(822, 520 - d * math.sin(tilt), 6 + d * math.cos(tilt))
+        C.aim(cam, tgt)
+        cam.data.dof.focus_distance = (f.world(830, 518, 1) - cam.location).length
+        return cam
     raise KeyError(sid)
 
 
 def ground(mood):
-    dark = mood in ("low", "graze")
+    dark = mood in ("low", "graze", "topdown")
     rgb = (0.012, 0.011, 0.010) if dark else C.GROUND_RGB
     return C.cyclorama(width=24000, front=6000, back=1400, height=6000, radius=1200, rgb=rgb,
                        texture=not dark)
