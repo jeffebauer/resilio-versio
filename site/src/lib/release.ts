@@ -3,7 +3,7 @@ import { REPO } from '../data/site';
 
 // The current release, read once per build (PLAN §B5, BRIEF §9 option A).
 // GitHub's API first (GITHUB_TOKEN optional, avoids the 60/hour limit);
-// src/data/release.json when the API can't be reached (today: the repo is private).
+// src/data/release.json when the API can't be reached (rate limit, network).
 export interface Release {
   version: string;
   date: string; // YYYY-MM-DD

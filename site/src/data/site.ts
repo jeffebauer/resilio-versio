@@ -4,11 +4,11 @@ export const REPO = 'jeffebauer/resilio-versio';
 export const REPO_URL = `https://github.com/${REPO}`;
 
 /**
- * The go-public switch (BRIEF §9, PLAN §B10). While false, the download buttons show a
- * "coming soon" state, because GitHub's release links 404 while the repo is private.
- * Flip it here, or set DOWNLOADS_LIVE=1 in Vercel's environment, once the repo is public.
+ * The go-public switch (BRIEF §9, PLAN §B10). On since the repo went public (7 Oct 2026):
+ * the download buttons link straight to the latest release's stable-named files.
+ * DOWNLOADS_LIVE=0 in the environment turns them back to "coming soon".
  */
-export const DOWNLOADS_LIVE = process.env.DOWNLOADS_LIVE === '1' || false;
+export const DOWNLOADS_LIVE = process.env.DOWNLOADS_LIVE !== '0';
 
 export const DOWNLOAD = {
   firmware: `${REPO_URL}/releases/latest/download/resilio-versio-firmware.bin`,

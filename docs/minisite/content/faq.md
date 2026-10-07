@@ -47,7 +47,7 @@ Only where you ask for it. Every knob position is usable, and the tail always fa
 Neither. It's a physical-style model of springs (feedback loops that smear each echo by frequency, which makes the chirp), shaped by ear against recordings of a real tank. Nothing is sampled, and SPLASH adds no samples to your hits.
 
 ### Can I read the code?
-Yes, once the repository is public: [github.com/jeffebauer/resilio-versio](https://github.com/jeffebauer/resilio-versio). It includes the full specification and every design decision with its reasons. <!-- OWNER: remove "once the repository is public" when it is. -->
+Yes: [github.com/jeffebauer/resilio-versio](https://github.com/jeffebauer/resilio-versio). It includes the full specification and every design decision with its reasons.
 
 ### Where do I send feedback or bugs?
 Open an issue on [GitHub](https://github.com/jeffebauer/resilio-versio/issues). Tell us what it sounds like next to spring reverbs you know, any knob that feels dead or too touchy, and anything that clicks or glitches (with the settings, if you can).
