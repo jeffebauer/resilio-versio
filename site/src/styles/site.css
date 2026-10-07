@@ -264,6 +264,9 @@ code { font-family: var(--font-mono); font-size: 0.88em; }
 /* ---- Two ways to play ---------------------------------------------------- */
 .two-ways { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: calc(var(--gutter) * 2); }
 .two-ways .v-rule { min-height: auto; align-self: stretch; }
+/* Centred on the page, not biased right like the other sections: columns 2-11, each side wider (owner, 7 Oct). */
+.grid > .main.two-ways { grid-column: 2 / -2; column-gap: calc(var(--gutter) * 3); }
+@media (max-width: 63.99rem) { .grid > .main.two-ways { grid-column: 1 / -1; } }
 .two-ways > div { display: flex; flex-direction: column; gap: var(--stack-3); align-items: flex-start; }
 .two-ways h3 { font-size: var(--fs-h2); line-height: var(--lh-snug); }
 @media (max-width: 47.99rem) {
