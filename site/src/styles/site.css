@@ -363,7 +363,7 @@ html.hero-film .hero-still { visibility: hidden; }
 .download { display: grid; gap: var(--stack-3); }
 /* One size, one family: only the version is in ink (owner: the line had too many styles) */
 .download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
-.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; }
+.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-ink); }   /* the accent (owner, 7 Oct); the AA-safe tone for text */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
 .download .target h3 { font-size: var(--fs-h3); line-height: 1.05; }
@@ -448,13 +448,13 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
    gap to the text, and the same space between items (owner, 7 Oct). */
 .prose ul, .prose ol { list-style: none; padding-left: 0; }
 .prose ol { counter-reset: step; }
-.prose ul > li, .prose ol > li { position: relative; padding-left: 2rem; }
+.prose ul > li, .prose ol > li { position: relative; padding-left: 2.5rem; }   /* marker column 1.25rem + a 1.25rem gap (owner, 7 Oct) */
 .prose li + li { margin-top: var(--stack-2); }
 .prose ol > li { counter-increment: step; }
 .prose ol > li::before {
   content: counter(step); position: absolute; left: 0; width: 1.25rem; text-align: right;
   top: 0; font-family: var(--font-mono); font-weight: var(--wt-reg); font-size: 0.85em;
-  line-height: calc(var(--lh-body) / 0.85 * 1em); color: var(--ink-2);   /* the same line box as the text */
+  line-height: calc(var(--lh-body) / 0.85 * 1em); color: var(--signal-ink);   /* the same line box as the text; accent numbers (owner, 7 Oct) */
 }
 .prose ul > li::before {
   content: ""; position: absolute; left: calc(1.25rem - 6px); top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--signal);
