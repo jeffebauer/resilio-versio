@@ -157,6 +157,17 @@ html.hero-film .hero-still { visibility: hidden; }
 /* The buttons' bottom edge sits on the tagline's last baseline (owner, 7 Oct): MD UI's baseline
    is 0.283 em above the bottom of a 1.2 line box. */
 .hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: end; margin-bottom: calc(var(--tagline-fs) * 0.283); display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
+/* Portrait phones and tablets (owner, 8 Oct: the module was small in a 16:9 frame): the frame
+   fills the screen as first seen, Safari's bars showing (svh), less the header, the gap and the
+   title's first line, so the h1 stays in view; the film and still crop in around the module. */
+@media (orientation: portrait) and (max-width: 63.99rem) {
+  .hero-frame {
+    --hero-cut: calc(var(--header-h) + var(--stack-2) + clamp(1.5rem, 1rem + 2vw, 3rem) + var(--fs-display) * var(--lh-display) + 1.25rem);
+    aspect-ratio: auto; min-height: 22rem;
+    height: calc(100vh - var(--hero-cut));
+    height: calc(100svh - var(--hero-cut));
+  }
+}
 @media (max-width: 47.99rem) {
   .hero-title { grid-template-columns: minmax(0, 1fr); }
   .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-1); margin-bottom: 0; }
