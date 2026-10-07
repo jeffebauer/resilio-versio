@@ -45,13 +45,14 @@ const values = (s: PanelSettings) => [
           <div class="preset">
             <figure class="preset-panel">
               <PanelWire settings={s} controls label={`${sec.title}: panel settings`} />
-              <figcaption>
-                <dl class="preset-values">
-                  {values(s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
-                </dl>
-              </figcaption>
             </figure>
-            <div class="preset-text" set:html={sec.html} />
+            <div class="preset-text">
+              <Fragment set:html={sec.html} />
+              <dl class="preset-values" aria-label={`${sec.title}: exact values`}>
+                {values(s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+                {values(s).length % 2 === 1 && <div class="filler" aria-hidden="true" />}
+              </dl>
+            </div>
           </div>
         ) : <Fragment set:html={sec.html} />}
       </>
@@ -60,13 +61,24 @@ const values = (s: PanelSettings) => [
 </Doc>
 
 <style>
-  .preset { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: var(--gutter); align-items: start; margin-block: var(--stack-2) var(--stack-4); }
+  /* Same gap between drawing and text as the manual's panel map; titles get more room (owner, 7 Oct). */
+  .preset { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); gap: var(--stack-3) 3.5rem; align-items: start; margin-block: var(--stack-4) var(--stack-4); }
   .preset-panel { margin: 0; }
-  .preset-text > :first-child { margin-top: 0; }
-  .preset-values { display: grid; grid-template-columns: repeat(3, auto); gap: 0.35rem var(--stack-1); margin: var(--stack-1) 0 0; font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); }
-  .preset-values div { display: flex; flex-direction: column; }
-  .preset-values dt { color: var(--ink-2); font-size: 0.625rem; text-transform: uppercase; }
+  /* The section copy arrives as HTML (set:html), so these reach it unscoped. */
+  .preset-text > :global(:first-child) { margin-top: 0; }
+  .preset-text > :global(* + *) { margin-top: var(--stack-2); }
+  .preset-text > .preset-values { margin-top: var(--stack-3); }
+  /* The exact values: a small two-across definition list under the text, hairlines running
+     unbroken across both pairs (owner, 7 Oct). */
+  .preset-values {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0;
+    font: var(--wt-reg) var(--fs-small) / 1.3 var(--font-sans); border-bottom: var(--hair) solid var(--line);
+  }
+  .preset-values div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: baseline; padding: 0.45rem 0; border-top: var(--hair) solid var(--line); }
+  .preset-values div:nth-child(odd) { padding-right: var(--gutter); }
+  .preset-values dt { color: var(--ink-2); font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; }
   .preset-values dd { margin: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+  @media (max-width: 29.99rem) { .preset-values { grid-template-columns: minmax(0, 1fr); } .preset-values div:nth-child(odd) { padding-right: 0; } }
   @media (max-width: 39.99rem) {
     .preset { grid-template-columns: minmax(0, 1fr); }
     .preset-panel { max-width: 18rem; }
