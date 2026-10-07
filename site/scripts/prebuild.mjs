@@ -5,8 +5,8 @@
 // 2. Fetches the licensed MD UI / MD IO variable webfonts into public/fonts/ (git-ignored):
 //    - FONTS_DIR=/path/to/woff2s       copy from a local folder, or
 //    - FONTS_URL=https://…/ + FONTS_TOKEN=…   download each file with a bearer token
-//      (FONTS_TOKEN defaults to BLOB_READ_WRITE_TOKEN, which Vercel sets once a Blob store
-//      is connected to the project: a private store then needs only FONTS_URL),
+//      (FONTS_TOKEN defaults to BLOB_READ_WRITE_TOKEN, else to VERCEL_OIDC_TOKEN, which Vercel
+//      gives every build: a private Blob store connected to the project then needs only FONTS_URL),
 //    - neither: skip. The site builds and renders on the fallback stack in tokens.css.
 import { mkdir, copyFile, readdir, writeFile, access } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
@@ -34,7 +34,8 @@ async function exists(p) {
 async function fonts() {
   const dest = join(pub, 'fonts');
   const { FONTS_DIR, FONTS_URL } = process.env;
-  const FONTS_TOKEN = process.env.FONTS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+  const FONTS_TOKEN = process.env.FONTS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN;
+  if (FONTS_URL && !FONTS_TOKEN && !FONTS_DIR) console.warn('fonts: FONTS_URL is set but there is no token (FONTS_TOKEN, BLOB_READ_WRITE_TOKEN or VERCEL_OIDC_TOKEN)');
 
   if (FONTS_DIR) {
     const n = await copyDir(resolve(FONTS_DIR), dest, (f) => FONT_FILES.includes(f));

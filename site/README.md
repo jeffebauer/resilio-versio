@@ -40,7 +40,7 @@ If you change a Markdown plugin in `src/plugins/` and the output doesn't change,
 The repository is going public, so the font files must never be in git. `site/public/fonts/` is git-ignored. Before each build, `scripts/prebuild.mjs` fetches them:
 
 - `FONTS_DIR=/path/to/folder` copies the two files below from that folder (good for local work), or
-- `FONTS_URL=https://…/` + `FONTS_TOKEN=…` downloads them with `Authorization: Bearer <token>` (for Vercel, from a private Blob store: connect the store to the project and `FONTS_TOKEN` defaults to the `BLOB_READ_WRITE_TOKEN` Vercel sets, so only `FONTS_URL` is needed, e.g. `https://<store-id>.private.blob.vercel-storage.com/fonts/`), or
+- `FONTS_URL=https://…/` + `FONTS_TOKEN=…` downloads them with `Authorization: Bearer <token>` (for Vercel, from a private Blob store: connect the store to the project and `FONTS_TOKEN` defaults to `BLOB_READ_WRITE_TOKEN` or, for newer stores, the `VERCEL_OIDC_TOKEN` every Vercel build gets, so only `FONTS_URL` is needed, e.g. `https://<store-id>.private.blob.vercel-storage.com/fonts/`), or
 - neither: skips. The site still builds and looks right on Inter (and doesn't request the missing files).
 
 The two files (`src/lib/fonts.ts`), both variable fonts from Mass-Driver: `MDUI-VF.woff2` (text: optical size 6–48, weight 200–900, slant for italics) and `MDIO-VF.woff2` (mono: weight 200–900, italic).
