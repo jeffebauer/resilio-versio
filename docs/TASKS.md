@@ -24,7 +24,6 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 ### 2. The minisite (live; refinements on a branch)
 - [ ] Look through your review changes on `feat/site-refine`: locally at http://localhost:4323 (Claude starts it; MD UI / MD IO fonts) or on the protected preview https://resilio-versio-git-feat-site-refine-jeffebauers-projects.vercel.app. The new wireframe panel (manual's panel map; each starting point drawn as a set panel), MD UI + MD IO, the hero edge, the download section. OK it and Claude merges it to `main` (live)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
-- [ ] **Fonts on Vercel** (≈10 min, Claude walks you through it): a private Vercel Blob store connected to the project, the two variable fonts (`MDUI-VF.woff2`, `MDIO-VF.woff2`, never in git) uploaded to it, and `FONTS_URL` set, so the live site shows MD UI / MD IO instead of Inter. Worth checking: your Future Fonts licence covers web use
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
@@ -58,6 +57,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Fonts on Vercel:** private Blob store connected, MD UI + MD IO uploaded, `FONTS_URL` set; the `feat/site-refine` preview builds with them (`downloaded 2/2`). The live site switches to them when the branch merges
 - 7 Oct 2026: **Site live** at https://resilio-versio.vercel.app (revision 2 and the render scripts merged to `main`, for friends' feedback). **Plugin `1e02c96` installed** (first-chord fix, AU validated). Fonts switched from Phonic to MD UI (text) + MD IO (mono), both variable
 - 7 Oct 2026: **Minisite:** Vercel project set up (protected previews); Blender installed; panel art v2 and the logos in; renders picked and placed; the hero film (rises from below, lands straight on) rendered; Inter as the fallback font; all 12 Phonic cuts converted to web fonts (kept out of git). **Redesign (revision 2)** decided with you (DESIGN-v2.md: a hybrid of TE, Mier, Bull 5 and Fors, retiring the UDO-specific elements) and built by a cloud session (PR #2), then your review changes (text-only callouts, diagrams instead of pictograms, denser tiles, the whole hero film)
 - 7 Oct 2026: **First chord after drums:** B everywhere on the A/B page; merged (SPEC v1.0.45)
