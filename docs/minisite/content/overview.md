@@ -16,7 +16,7 @@ A simulated spring tank you can throw snares into, splash, drive, filter like Ki
 <!-- DEMOS: the demo player goes here (assets/audio/demos.json). -->
 
 <!-- DOWNLOADS: two buttons, with version, date and size from the release data:
-     "Firmware for the Versio (.bin)" and "Plugin for macOS (AU/VST3)". Link: "How to install". -->
+     "Firmware for Versio (.bin)" and "Plugin for macOS (AU/VST3)". Link: "How to install". -->
 
 ## What it sounds like
 

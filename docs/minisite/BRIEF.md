@@ -42,7 +42,7 @@ Landing page, top to bottom:
 
 1. **Name + one line**: "Resilio Versio: a dub spring reverb for the Noise Engineering Versio" (and "also as an AU/VST3 plugin for macOS").
 2. **Listen**: the demo player (all ten clips available; the first two or three visible without scrolling on desktop).
-3. **Get it**: two buttons side by side, *Firmware for the Versio (.bin)* and *Plugin for macOS (AU/VST3)*, each with the version, date and size, plus a "how to install" link.
+3. **Get it**: two buttons side by side, *Firmware for Versio (.bin)* and *Plugin for macOS (AU/VST3)*, each with the version, date and size, plus a "how to install" link.
 4. **What it sounds like** (four short points).
 5. **The dub moves** (throw, Big Knob, tape echo into springs, the held bed, the howl), each a sentence, linking into the manual.
 6. **The panel** diagram (`assets/panel/resilio-versio-panel.svg`) with a link to the manual.
