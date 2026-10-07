@@ -439,12 +439,14 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose strong, .prose b { font-weight: 600; }   /* semibold in long-form text (owner, 7 Oct) */
 .prose > * + * { margin-top: var(--stack-3); }   /* roomier (owner, 7 Oct) */
 .prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
-.prose > h2:first-child, .prose > .tabs:first-child h2:first-child { margin-top: 0; }
+.prose > h2:first-child { margin-top: 0; }
 .prose h3 { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-ink); }   /* accent, so headings stand apart from bold body copy (owner, 7 Oct); the AA-safe accent */
 .prose h3 + * { margin-top: var(--stack-1); }
 .prose h2 + * { margin-top: var(--stack-3); }
 .prose ul, .prose ol { padding-left: 1.2em; }
 .prose li + li { margin-top: 0.35em; }
+.prose > ol, .prose > ol + * { margin-top: var(--stack-4); }   /* numbered steps: room above and below (owner, 7 Oct) */
+.prose ol > li + li { margin-top: var(--stack-3); }
 .prose ol li::marker { font-family: var(--font-mono); font-size: 0.85em; }
 .prose blockquote {
   margin: var(--stack-4) 0; padding: var(--stack-3); border-radius: var(--radius-tile); background: var(--tile);
@@ -452,7 +454,8 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 }
 .prose blockquote::before { content: ""; flex: none; width: 0.5em; height: 0.5em; margin-top: 0.45em; border-radius: 50%; background: var(--signal); }
 .prose pre {
-  position: relative; overflow-x: auto; padding: 1rem 1.1rem; padding-right: 5.5rem; background: var(--tile); border-radius: var(--radius-tag);
+  position: relative; overflow-x: auto; padding: 1rem 1.1rem 1rem 1.4rem; padding-right: 5.5rem; background: var(--tile);
+  border-radius: calc(1.125rem + 0.5rem);   /* concentric with the copy button: its radius plus its inset */
   font-size: var(--fs-ui); line-height: 1.5;
 }
 .prose pre code { font-size: inherit; white-space: pre; }
@@ -460,7 +463,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .code-wrap { position: relative; }
 .code-wrap .copy {
   position: absolute; top: 0.5rem; right: 0.5rem; min-height: 2.25rem; padding: 0 0.85rem; border: 0; cursor: pointer;
-  border-radius: var(--radius-ui); background: var(--ink); color: var(--paper);
+  border-radius: 999px; background: var(--ink); color: var(--paper);
   font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase;
 }
 .table-scroll { overflow-x: auto; margin-block: var(--stack-3); }
@@ -468,6 +471,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose .spec { font-size: var(--fs-small); }
 .prose .spec th { font-weight: var(--wt-reg); color: var(--ink-2); width: auto; font-size: var(--fs-micro); font-family: var(--font-mono); text-transform: uppercase; }
 .prose .spec td { padding-right: var(--gutter); }
+.table-scroll[aria-label="Table: Troubleshooting"] tbody td:first-child { font-weight: 600; }   /* the symptom (owner, 7 Oct) */
 .prose .spec.wide td, .prose .spec.wide th { white-space: nowrap; }
 
 /* Changelog: version in mono, date quiet */
@@ -475,14 +479,6 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .release-head .date { color: var(--ink-2); font-weight: var(--wt-light); }
 
 /* Install: Module / Plugin switch (rounded rectangle, segments inside) */
-.switch { display: inline-flex; width: max-content; padding: 0.25rem; border-radius: var(--radius-ui); background: var(--tile); margin-top: var(--stack-4); }
-.switch a, .switch button {
-  border: 0; background: none; color: inherit; cursor: pointer; text-decoration: none;
-  min-height: 2.5rem; display: inline-flex; align-items: center; padding: 0 1.2rem; border-radius: var(--radius-inner);
-  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans);
-}
-.switch [aria-selected="true"] { background: var(--ink); color: var(--paper); }
-.tabpanel[hidden] { display: none; }
 
 /* Slot components inside prose */
 .prose .slot { margin-block: var(--stack-4); }
