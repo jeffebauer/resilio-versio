@@ -22,7 +22,7 @@ A simulated spring tank you can throw snares into, splash, drive, filter like Ki
 
 A spring tank, not a room. Every hit lands in the springs as its own **splash**: a bright clang on the attack, then echoes that sweep upward (the highs arrive after the lows: the "boing" of a real spring), then a tail that darkens and blurs into a wash instead of ticking like a delay.
 
-## Built around the dub moves
+## Built around dub performance moves
 
 Dub treats the mixing desk as an instrument played live. The reverb isn't a background room: it's thrown at single hits, ridden, filtered and muted, then left to ring on its own, and every pass comes out different.
 
