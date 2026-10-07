@@ -58,12 +58,13 @@ BIG = dict(u=830.0, v=508.0)  # the Big Knob
 BIG_STEPS = ["OFF", "70", "100", "150", "200", "500", "1K", "2K", "3K", "5K", "7.5K"]
 BIG_POINTER_STEP = 4          # "200": the photo's pointer is at about 11-12 o'clock
 
-# EQ positions: 'R' red knob, 'T' bat-handle toggle, 'S' a bare silver bushing
-# (a knob missing). Rows top -> bottom, channels 1..12 (counted in the photo).
+# EQ positions: rows top -> bottom, channels 1..12. In the photo channels
+# 7-12 (and ch 4 top) show bare pot stems where knobs are missing; the owner
+# asked for the full grid restored with the same red skirted knobs.
 EQ = [
-    "RRRTRRTTTTTT",
-    "RRRRRRTTTTTS",
-    "RRRRRRTTTSTR",
+    "RRRRRRRRRRRR",
+    "RRRRRRRRRRRR",
+    "RRRRRRRRRRRR",
 ]
 BTN_LABELS = ["1", "2", "3", "4", "EKO 1", "EKO 2", "LINE", "CUE"]
 
@@ -95,7 +96,7 @@ def _bump_noise(m, scale, strength, distance=0.05, detail=6):
     return m
 
 
-def _weather(m, ao_dist=1.2, ao_dark=0.5, scale=0.25, amt=0.18, rough_amt=0.12):
+def _weather(m, ao_dist=1.6, ao_dark=0.3, scale=0.25, amt=0.3, rough_amt=0.15):
     """Age a material: grime in the crevices (ambient occlusion darkens the
     flutes and edges), blotchy fading, uneven sheen."""
     nt = m.node_tree
@@ -171,11 +172,11 @@ def _worn_ink(m, scale=1.2, lo=0.45):
 def materials():
     lin = C.hex_to_linear
     M = {}
-    M["red"] = _principled("knob_red", lin("#a8382a"), rough=0.42, coat=0.15)
-    M["red_skirt"] = _principled("knob_red_skirt", lin("#b03c2b"), rough=0.38, coat=0.2)
-    M["black_knob"] = _principled("knob_black", (0.022, 0.021, 0.02), rough=0.38, coat=0.1)
-    M["cap_grey"] = _principled("cap_grey", lin("#8d8c88"), rough=0.42, metallic=0.25)
-    M["cap_light"] = _principled("cap_light", lin("#8e8d88"), rough=0.42, metallic=0.3)
+    M["red"] = _principled("knob_red", lin("#86392a"), rough=0.7, spec=0.3)
+    M["red_skirt"] = _principled("knob_red_skirt", lin("#8c3e2a"), rough=0.7, spec=0.3)
+    M["black_knob"] = _principled("knob_black", (0.016, 0.0155, 0.015), rough=0.62, spec=0.3)
+    M["cap_grey"] = _principled("cap_grey", lin("#6c6a64"), rough=0.58, metallic=0.4)
+    M["cap_light"] = _principled("cap_light", lin("#73716a"), rough=0.52, metallic=0.5)
     M["cap_silver"] = C.steel("cap_silver", 0.75, 0.18, aniso=0.5)
     M["dot"] = _principled("dot", (0.015, 0.015, 0.015), rough=0.6)
     M["ink"] = _principled("ink", lin(INK), rough=0.55)
@@ -184,14 +185,14 @@ def materials():
     M["nickel"] = C.steel("nickel", 0.55, 0.3)
     M["brass"] = _principled("screw_brass", lin("#8f8466"), rough=0.35, metallic=1.0)
     M["slot"] = _principled("slot", (0.006, 0.006, 0.006), rough=0.7)
-    M["key"] = _principled("keycap", (0.018, 0.018, 0.018), rough=0.32, coat=0.2)
-    M["fader_red"] = _principled("fader_red", lin("#b8483a"), rough=0.4, coat=0.25)
-    M["fader_red_top"] = _principled("fader_red_top", lin("#d47a6c"), rough=0.5)
-    M["cabinet"] = _bump_noise(_principled("cabinet", (0.016, 0.0155, 0.015), rough=0.55), 0.9, 0.03)
-    M["bridge"] = _bump_noise(_principled("bridge", (0.017, 0.0165, 0.016), rough=0.6), 1.2, 0.1)
+    M["key"] = _principled("keycap", (0.014, 0.014, 0.014), rough=0.45)
+    M["fader_red"] = _principled("fader_red", lin("#8e402d"), rough=0.68, spec=0.3)
+    M["fader_red_top"] = _principled("fader_red_top", lin("#a8604f"), rough=0.6)
+    M["cabinet"] = _bump_noise(_principled("cabinet", (0.0055, 0.0053, 0.005), rough=0.7, spec=0.3), 0.9, 0.03)
+    M["bridge"] = _bump_noise(_principled("bridge", (0.0055, 0.0053, 0.005), rough=0.75, spec=0.3), 1.2, 0.1)
     M["interior"] = _principled("interior", (0.015, 0.014, 0.013), rough=0.8)
     M["bezel"] = _principled("bezel", (0.02, 0.02, 0.02), rough=0.45)
-    M["vu_face"] = _principled("vu_face", lin("#f2d6b6"), rough=0.75)
+    M["vu_face"] = _vu_face("vu_face", lin("#f2d6b6"))
     M["vu_red"] = _principled("vu_red", lin("#c0503c"), rough=0.6)
     M["vu_ink"] = _principled("vu_ink", lin("#3a302a"), rough=0.6)
     M["needle"] = _principled("needle", (0.02, 0.02, 0.02), rough=0.5)
@@ -217,6 +218,30 @@ def materials():
     return M
 
 
+def _vu_face(name, rgb, strength=2.4):
+    """Peach meter card, backlit: warm emission brightest near the top
+    centre (the lamps sit behind the top edge), falling off softly."""
+    m = _principled(name, rgb, rough=0.75)
+    nt = m.node_tree
+    p = nt.nodes["Principled BSDF"]
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    # POINT mapping: out = in * scale + location; centre at y = +18 mm (top centre)
+    mp.inputs["Location"].default_value = (0, -0.3, 0)
+    mp.inputs["Scale"].default_value = (1 / 85.0, 1 / 60.0, 1)
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    gr = nt.nodes.new("ShaderNodeTexGradient")
+    gr.gradient_type = "SPHERICAL"
+    nt.links.new(mp.outputs["Vector"], gr.inputs["Vector"])
+    st = nt.nodes.new("ShaderNodeMath")
+    st.operation = "MULTIPLY"
+    st.inputs[1].default_value = strength
+    nt.links.new(gr.outputs["Fac"], st.inputs[0])
+    p.inputs["Emission Color"].default_value = (1.0, 0.62, 0.30, 1)
+    nt.links.new(st.outputs[0], p.inputs["Emission Strength"])
+    return m
+
+
 def _glass(name):
     m = bpy.data.materials.new(name)
     m.use_nodes = True
@@ -229,14 +254,20 @@ def _glass(name):
     fr = nt.nodes.new("ShaderNodeFresnel")
     fr.inputs["IOR"].default_value = 1.5
     mix = nt.nodes.new("ShaderNodeMixShader")
-    half = nt.nodes.new("ShaderNodeMath")
-    half.operation = "MULTIPLY"
-    half.inputs[1].default_value = 0.5
-    nt.links.new(fr.outputs[0], half.inputs[0])
-    nt.links.new(half.outputs[0], mix.inputs[0])
+    dim = nt.nodes.new("ShaderNodeMath")          # old, slightly hazy glass: not a mirror
+    dim.operation = "MULTIPLY"
+    dim.inputs[1].default_value = 0.6
+    nt.links.new(fr.outputs[0], dim.inputs[0])
+    nt.links.new(dim.outputs[0], mix.inputs[0])
     nt.links.new(tr.outputs[0], mix.inputs[1])
     nt.links.new(gl.outputs[0], mix.inputs[2])
-    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    em = nt.nodes.new("ShaderNodeEmission")      # faint warm glow in the glass
+    em.inputs["Color"].default_value = (1.0, 0.6, 0.3, 1)
+    em.inputs["Strength"].default_value = 0.025
+    add = nt.nodes.new("ShaderNodeAddShader")
+    nt.links.new(mix.outputs[0], add.inputs[0])
+    nt.links.new(em.outputs[0], add.inputs[1])
+    nt.links.new(add.outputs[0], out.inputs["Surface"])
     return m
 
 
@@ -259,7 +290,7 @@ def _jewel(name, rgb):
 
 def _vinyl(name):
     """Black padded vinyl: a soft sheen, fine grain, crinkles."""
-    m = _principled(name, (0.018, 0.017, 0.016), rough=0.36, coat=0.15)
+    m = _principled(name, (0.011, 0.0105, 0.01), rough=0.58, spec=0.35)
     nt = m.node_tree
     p = nt.nodes["Principled BSDF"]
     tc = nt.nodes.new("ShaderNodeTexCoord")
@@ -281,15 +312,31 @@ def _vinyl(name):
     nt.links.new(grain.outputs["Fac"], add.inputs[0])
     nt.links.new(wav.outputs["Fac"], add.inputs[2])
     b = nt.nodes.new("ShaderNodeBump")
-    b.inputs["Strength"].default_value = 0.35
-    b.inputs["Distance"].default_value = 0.3
+    b.inputs["Strength"].default_value = 0.55
+    b.inputs["Distance"].default_value = 0.45
     nt.links.new(add.outputs[0], b.inputs["Height"])
     nt.links.new(b.outputs["Normal"], p.inputs["Normal"])
     rr = nt.nodes.new("ShaderNodeMapRange")
-    rr.inputs["To Min"].default_value = 0.3
-    rr.inputs["To Max"].default_value = 0.5
+    rr.inputs["To Min"].default_value = 0.5
+    rr.inputs["To Max"].default_value = 0.72
     nt.links.new(wav.outputs["Fac"], rr.inputs["Value"])
     nt.links.new(rr.outputs[0], p.inputs["Roughness"])
+    # scuffed, greyed patches where the vinyl is worn (forearms on the top edge)
+    sc = nt.nodes.new("ShaderNodeTexNoise")
+    sc.inputs["Scale"].default_value = 0.03
+    sc.inputs["Detail"].default_value = 8
+    sc.inputs["Roughness"].default_value = 0.7
+    nt.links.new(tc.outputs["Object"], sc.inputs["Vector"])
+    scr = nt.nodes.new("ShaderNodeMapRange")
+    scr.inputs["From Min"].default_value = 0.6
+    scr.inputs["From Max"].default_value = 0.75
+    nt.links.new(sc.outputs["Fac"], scr.inputs["Value"])
+    col = nt.nodes.new("ShaderNodeMix")
+    col.data_type = "RGBA"
+    col.inputs["A"].default_value = (0.011, 0.0105, 0.01, 1)
+    col.inputs["B"].default_value = (0.022, 0.021, 0.019, 1)
+    nt.links.new(scr.outputs[0], col.inputs["Factor"])
+    nt.links.new(col.outputs["Result"], p.inputs["Base Color"])
     return m
 
 
@@ -373,7 +420,7 @@ def overspray_mask(knobs, res=2.0, seed=7):
     # cloudy, wispy edges
     n1 = _fbm(h, w, 70 * res, rng, 5)
     n2 = _fbm(h, w, 18 * res, rng, 4)
-    m = 0.95 - bare + (n1 - 0.5) * 0.45 * (0.4 + bare) + (n2 - 0.5) * 0.2
+    m = 1.12 - bare + (n1 - 0.5) * 0.45 * (0.4 + bare) + (n2 - 0.5) * 0.2
     # dark halos round knobs and caps (sprayed with the knobs on)
     halo = np.zeros((h, w), np.float32)
     for (cu, cv, r, wt) in knobs:
@@ -449,7 +496,7 @@ def plate_material(mask_img):
     col = nt.nodes.new("ShaderNodeMix")
     col.data_type = "RGBA"
     col.inputs["A"].default_value = (0.66, 0.655, 0.64, 1)      # aluminium
-    col.inputs["B"].default_value = (0.03, 0.029, 0.028, 1)     # black spray
+    col.inputs["B"].default_value = (0.018, 0.0175, 0.017, 1)   # black spray
     nt.links.new(dens.outputs[0], col.inputs["Factor"])
     # faint grime in the bare metal
     tc = nt.nodes.new("ShaderNodeTexCoord")
@@ -478,7 +525,12 @@ def plate_material(mask_img):
     nt.links.new(met.outputs[0], p.inputs["Metallic"])
     rough = nt.nodes.new("ShaderNodeMapRange")
     rough.inputs["To Min"].default_value = 0.42
-    rough.inputs["To Max"].default_value = 0.6
+    rough.inputs["To Max"].default_value = 0.88
+    spi = nt.nodes.new("ShaderNodeMapRange")       # matte spray: little sheen
+    spi.inputs["To Min"].default_value = 0.5
+    spi.inputs["To Max"].default_value = 0.2
+    nt.links.new(dens.outputs[0], spi.inputs["Value"])
+    nt.links.new(spi.outputs[0], p.inputs["Specular IOR Level"])
     nt.links.new(dens.outputs[0], rough.inputs["Value"])
     nt.links.new(rough.outputs[0], p.inputs["Roughness"])
     p.inputs["Anisotropic"].default_value = 0.25
@@ -506,7 +558,7 @@ def surround_material(wear_img):
     tex = _image_lookup(nt, wear_img, W + 2 * SURR["side"], D + SURR["front"] + SURR["back"])
     col = nt.nodes.new("ShaderNodeMix")
     col.data_type = "RGBA"
-    col.inputs["A"].default_value = (0.028, 0.027, 0.026, 1)
+    col.inputs["A"].default_value = (0.008, 0.0078, 0.0075, 1)
     col.inputs["B"].default_value = (*C.hex_to_linear("#94866d"), 1)
     nt.links.new(tex.outputs["Color"], col.inputs["Factor"])
     nt.links.new(col.outputs["Result"], p.inputs["Base Color"])
@@ -731,6 +783,34 @@ def screw(frame, M, u, v, r=3.3, rot=None):
     return hd
 
 
+def arc_slab(name, width, r_out, hc, a0, a1, mat, r_in=None, n=40):
+    """A slab curved about the u axis: across u it is `width` wide; in (v, h)
+    it is the arc band r_in..r_out about (0, hc), angles a0..a1 (deg from +h
+    towards +v). With r_in None it is solid down to h = 0 (a cheek plate)."""
+    outer = [(r_out * math.sin(math.radians(a0 + (a1 - a0) * i / n)),
+              hc + r_out * math.cos(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+    if r_in is None:
+        inner = [(outer[-1][0], 0.0), (outer[0][0], 0.0)]
+    else:
+        inner = [(r_in * math.sin(math.radians(a1 - (a1 - a0) * i / n)),
+                  hc + r_in * math.cos(math.radians(a1 - (a1 - a0) * i / n))) for i in range(n + 1)]
+    prof = outer + inner
+    bm = bmesh.new()
+    L = [bm.verts.new((-width / 2, v, h)) for v, h in prof]
+    Rr = [bm.verts.new((width / 2, v, h)) for v, h in prof]
+    m = len(prof)
+    for i in range(m):
+        j = (i + 1) % m
+        bm.faces.new((L[i], L[j], Rr[j], Rr[i]))
+    bm.faces.new(list(reversed(L)))
+    bm.faces.new(Rr)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = C.mesh_obj(name, bm, mat, smooth=True)
+    ob.data.set_sharp_from_angle(angle=math.radians(30))
+    C.add_bevel(ob, 0.4)
+    return ob
+
+
 def keycap(frame, M, u, v, label, w=25.0, d=13.0, h=6.5, size=3.0):
     k = C.box("key", (w, d, h), (0, 0, h / 2), M["key"], bevel=0.9)
     frame.put(k, u, v, 0)
@@ -776,23 +856,13 @@ def plate(frame, M, rng):
             if kind == "R":
                 knob(frame, M, cu, vv, "red", pointer=rng.uniform(-150, 150))
                 discs.append((cu, vv, 18, 0.5))
-            elif kind == "T":
-                toggle(frame, M, cu, vv, up=rng.random() > 0.4)
-                discs.append((cu, vv, 8, 0.35))
-            elif kind == "S":
-                b = lathe("bushing", [(0, 0), (4.2, 0), (4.2, 9), (3.4, 10), (0, 10)], M["cap_silver"], segs=32)
-                frame.put(b, cu, vv, 0)
-            # step dots round every EQ position + BOOST / KHZ legends (tiny, faint)
+            # step dots round every EQ position (the legends are unreadable: left off)
             for k in range(11):
                 a = math.radians(225 - 27 * k)
                 faint.disc((cu + 21.5 * math.cos(a), vv + 16.5 * math.sin(a)), 0.35, 8)
-            if row < 2:
-                text(frame, "BOOST", cu - 12, vv - 20.5, 2.4, M["ink_faint"])
-                text(frame, "KHZ", cu + 14, vv - 20.5, 2.4, M["ink_faint"])
         # knob row B + its legend
         knob(frame, M, cu, V_KNOB_B, "black", pointer=rng.uniform(-140, 140))
         discs.append((cu, V_KNOB_B, 17, 0.6))
-        text(frame, "ECHO", cu, V_KNOB_B - 21.5, 3.0, M["ink_faint"])
         screw(frame, M, cu, V_SCREW)
         # fader: slot, cap at the bottom of travel, scale, screw, number
         slot = C.box("slot", (2.6, V_SLOT_TOP - V_SLOT_BOT, 0.3), (0, 0, 0.1), M["slot"])
@@ -840,23 +910,36 @@ def plate(frame, M, rng):
     knob(frame, M, 874, 245, "ring", pointer=10)
     discs.append((874, 245, 30, 0.35))
 
-    # master faders: black housing, four clear channels, coloured caps
+    # master faders: a quadrant bank. Each clear channel is an arc rising out
+    # of the black frame (crest ~26 mm above the plate); the coloured lever
+    # caps ride the curve. Caps sit low on the arc, as in the photo.
     hu, hv = 683.0, 121.0
-    hs = C.box("mf_housing", (90, 146, 6), (0, 0, 3), M["housing"], bevel=1.2)
-    frame.put(hs, hu, hv, 0)
-    discs.append((hu, hv, 60, 0.5))
+    R, crest = 119.0, 26.0
+    hc = crest - R                     # arc centre, below the plate
+    half = math.degrees(math.asin(66.0 / R))
+    base = C.box("mf_base", (92, 150, 4), (0, 0, 2), M["housing"], bevel=1.0)
+    frame.put(base, hu, hv, 0)
+    discs.append((hu, hv, 62, 0.6))
     for k, mc in enumerate(("mf_red", "mf_blue", "mf_green", "mf_white")):
         cu = hu - 30 + 20 * k
-        rail = C.box("mf_rail", (15, 132, 7), (0, 0, 3.5), M["rail"], bevel=2.0)
-        frame.put(rail, cu, hv + 4, 4)
-        sc = screw(frame, M, cu, hv + 64, r=2.8)
-        sc.location.z = 11.2
-        cap = C.box("mf_cap", (14, 10, 12), (0, 0, 0), M[mc], bevel=2.0)
-        cap.rotation_euler = (math.radians(-25), 0, 0)
-        frame.put(cap, cu, 83, 16)
-        cap.rotation_euler = (math.radians(-25), 0, 0)
-        sb = C.cylinder("mf_screw", 2.2, 1.5, (0, 0, 0), M["nickel"], segs=16)
-        frame.put(sb, cu, hv - 66, 6.5)
+        for side in (-1, 1):           # black cheeks, solid down to the base
+            ch = arc_slab("mf_cheek", 2.6, R + 1.5, hc, -half - 2, half + 2, M["housing"])
+            frame.put(ch, cu + side * 8.7, hv, 0)
+        rail = arc_slab("mf_rail", 13.6, R, hc, -half, half, M["rail"], r_in=R - 5.0)
+        frame.put(rail, cu, hv, 0)
+        slot = arc_slab("mf_slot", 2.2, R + 0.15, hc, -half + 3, half - 3, M["slot"], r_in=R - 6)
+        frame.put(slot, cu + 2.5, hv, 0)
+        th = math.radians(-22.0)       # cap position on the arc (towards the front)
+        cap = C.box("mf_cap", (8.5, 11, 12), (0, 0, 0), M[mc], bevel=2.6)
+        frame.put(cap, cu + 2.5, hv + (R + 4.5) * math.sin(th), hc + (R + 4.5) * math.cos(th))
+        cap.rotation_euler = (-th, 0, 0)
+        for sv, sa in ((hv + 69, half), (hv - 69, -half)):
+            sb = screw(frame, M, cu, sv, r=2.6)
+            sb.location.z = 4.0
+    # end caps of the bank
+    for side in (-1, 1):
+        ec = arc_slab("mf_end", 4.0, R + 1.5, hc, -half - 2, half + 2, M["housing"])
+        frame.put(ec, hu + side * 44, hv, 0)
 
     # small rectangular buttons, the label plate, lamps
     for bu in (824.0, 845.0):
@@ -933,45 +1016,63 @@ def vu_meter(frame, M, u, v, bw, bh, fw, fh, label, label_dv, size_lab=10.5, see
     face = C.box("vu_face", (fw + 2, fh + 2, 1), (0, 0, 0), M["vu_face"])
     frame.put(face, u, v, 3.5)
     zf = 4.05
-    # scale: pivot below the face
-    piv = (u, v - 0.62 * fh)
-    R = 0.98 * fh
+    s = fh / 84.0
+    # one pivot near the bottom centre of the face, under a black cover
+    piv = (u, v - 0.5 * fh + 6.0 * s)
+    R = 0.74 * fh
     ink = Print("vu_ink", M["vu_ink"], z=zf)
     red = Print("vu_red", M["vu_red"], z=zf + 0.01)
-    a_lo, a_hi, a_zero = 132.0, 48.0, 64.0       # -20 ... +3, 0 VU
-    ink.arc(piv, R, a_zero, a_lo, 0.35)
-    red.arc(piv, R, a_hi, a_zero, 1.3)
-    ink.arc(piv, R - 0.8, a_hi, a_zero, 0.3)
-    marks = [(-20, 132), (-10, 118), (-7, 108), (-5, 100), (-3, 89), (-2, 83), (-1, 75), (0, 64),
-             (1, 57), (2, 52), (3, 48)]
-    s = fh / 84.0
+    # angles (deg, 90 = straight up): -20 VU at 140, 0 VU at 62, +3 at 40
+    marks = [(-20, 140), (-10, 126), (-7, 116), (-5, 107), (-3, 95), (-2, 87), (-1, 76), (0, 62),
+             (1, 54), (2, 47), (3, 40)]
+    a_lo, a_zero, a_hi = 140.0, 62.0, 40.0
+    ink.arc(piv, R, a_zero, a_lo, 0.4 * s, n=64)
+    red.arc(piv, R + 1.0 * s, a_hi, a_zero, 2.2 * s, n=24)      # the red zone band
+    ink.arc(piv, R, a_hi, a_zero, 0.4 * s, n=24)
     for val, ang in marks:
         a = math.radians(ang)
+        major = val in (-20, -10, -7, -5, -3, 0, 3)
+        L = (5.0 if major else 3.5) * s
         p0 = (piv[0] + R * math.cos(a), piv[1] + R * math.sin(a))
-        p1 = (piv[0] + (R + 3.2 * s) * math.cos(a), piv[1] + (R + 3.2 * s) * math.sin(a))
-        (red if val > 0 else ink).line(p0, p1, 0.5)
-        lab = str(abs(val)) if val else "0"
-        q = (piv[0] + (R + 7.2 * s) * math.cos(a), piv[1] + (R + 7.2 * s) * math.sin(a))
-        text(frame, lab, q[0], q[1], 3.1 * s, M["vu_red"] if val > 0 else M["vu_ink"], h=zf + 0.02,
+        p1 = (piv[0] + (R + L) * math.cos(a), piv[1] + (R + L) * math.sin(a))
+        (red if val > 0 else ink).line(p0, p1, 0.55 * s)
+        lab = ("+" + str(val)) if val > 0 else str(abs(val))
+        q = (piv[0] + (R + L + 4.0 * s) * math.cos(a), piv[1] + (R + L + 4.0 * s) * math.sin(a))
+        text(frame, lab, q[0], q[1], 3.4 * s, M["vu_red"] if val > 0 else M["vu_ink"], h=zf + 0.02,
              rot=ang - 90)
-    for k in range(9):  # percent scale under the arc
-        a = math.radians(130 - 66 * k / 8)
-        p0 = (piv[0] + (R - 1.0) * math.cos(a), piv[1] + (R - 1.0) * math.sin(a))
-        p1 = (piv[0] + (R - 3.0 * s) * math.cos(a), piv[1] + (R - 3.0 * s) * math.sin(a))
-        ink.line(p0, p1, 0.3)
-    text(frame, "VU", u, v - 0.22 * fh, 4.0 * s, M["vu_ink"], h=zf + 0.02)
+    # second (percent) scale under the arc, 0 .. 100 with minor ticks
+    Rp = R - 1.2 * s
+    for k in range(21):
+        ang = a_lo - (a_lo - a_zero) * k / 20
+        a = math.radians(ang)
+        L = (3.6 if k % 5 == 0 else 2.0) * s
+        ink.line((piv[0] + Rp * math.cos(a), piv[1] + Rp * math.sin(a)),
+                 (piv[0] + (Rp - L) * math.cos(a), piv[1] + (Rp - L) * math.sin(a)), 0.35 * s)
+        if k % 5 == 0 and k:
+            q = (piv[0] + (Rp - 7.5 * s) * math.cos(a), piv[1] + (Rp - 7.5 * s) * math.sin(a))
+            text(frame, str(k * 5), q[0], q[1], 2.4 * s, M["vu_ink"], h=zf + 0.02, rot=ang - 90)
+    text(frame, "VU", u, piv[1] + 0.42 * R, 7.5 * s, M["vu_ink"], h=zf + 0.02, condense=1.0)
     ink.finish(frame)
     red.finish(frame)
-    # needle at rest (just left of -20), from the pivot
-    a = math.radians(136 + rng.uniform(-1, 1))
-    n0 = Vector((piv[0], piv[1]))
-    n1 = Vector((piv[0] + (R + 2) * math.cos(a), piv[1] + (R + 2) * math.sin(a)))
-    nb = Print("vu_needle", M["needle"], z=zf + 1.2)
-    lo = n0 + (n1 - n0) * 0.42   # hidden below the face edge
-    nb.line(lo.xy, n1.xy, 0.5)
+    # pivot cover: a small black half-dome at the bottom centre
+    cov = C.sphere("vu_pivot_cover", 5.5 * s, (0, 0, 0), M["needle"])
+    cov.scale = (1.0, 1.0, 0.3)
+    frame.put(cov, piv[0], piv[1], zf)
+    # needle at rest, slightly left of -20, from the pivot
+    a = math.radians(a_lo + 4 + rng.uniform(-1, 1))
+    n0 = Vector(piv)
+    n1 = Vector((piv[0] + (R + 4.5 * s) * math.cos(a), piv[1] + (R + 4.5 * s) * math.sin(a)))
+    nb = Print("vu_needle", M["needle"], z=zf + 1.4)
+    nb.line(n0.xy, (n0 + (n1 - n0) * 0.3).xy, 0.9 * s)
+    nb.line((n0 + (n1 - n0) * 0.3).xy, n1.xy, 0.45 * s)
     nb.finish(frame)
-    gl = C.box("vu_glass", (fw + 4, fh + 4, 0.2), (0, 0, 0), M["glass"])
+    gl = C.box("vu_glass", (fw + 4, fh + 4, 0.8), (0, 0, 0), M["glass"])
     frame.put(gl, u, v, t - 3.6)
+    # four bezel screws
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            sc = screw(frame, M, u + sx * (bw / 2 - fr / 2), v + sy * (bh / 2 - fr / 2), r=1.9)
+            sc.location.z = t
     text(frame, label, u, v + label_dv, size_lab, M["ink_faint"], h=0.05, spacing=1.25, condense=0.95)
 
 
@@ -1097,10 +1198,10 @@ def armrest(M, cab):
             for j, (py, pz) in enumerate(prof):
                 tz = pz / height
                 front = min(1.0, max(0.0, -py / depth))   # 0 at the back, 1 at the front face
-                puff = 6.0 * math.sin(math.pi * tx) ** 0.5 * math.sin(math.pi * min(1, tz * 1.05)) ** 0.6
+                puff = 2.2 * math.sin(math.pi * tx) ** 0.5 * math.sin(math.pi * min(1, tz * 1.05)) ** 0.6
                 yy = y0 + py * (1 - 0.07 * seam) - puff * front
                 zz = zb + pz - 2.0 * seam * (tz > 0.8) * (tz - 0.8) * 5
-                yy += sag * 1.5 * math.sin(5 * tz + p) * math.sin(math.pi * tx) * front
+                yy += sag * 1.0 * math.sin(5 * tz + p) * math.sin(math.pi * tx) * front
                 row.append(bm.verts.new((x, yy, zz)))
             grid.append(row)
         for ix in range(xs_n):

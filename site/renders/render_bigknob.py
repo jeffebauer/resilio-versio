@@ -32,7 +32,7 @@ SHOTS = [
     dict(id="BK_match", mood="studio", note="Camera mimicking MoPOP's photo: layout check only.",
          aspect=(2000, 1530)),
     dict(id="BK1_front", mood="studio",
-         note="Front on: square to the desk at a seated eye-line (camera 1.25 m up, 1.3 m back), "
+         note="Front on: square to the desk at a seated eye-line (30 deg down, 3.5 m away on a 50 mm lens), "
               "the whole console, the Big Knob top right."),
     dict(id="BK1_front_plate", mood="studio",
          note="Front on, alternative: the camera on the control plate's normal (looking straight "
@@ -67,6 +67,8 @@ def lights(ref, mood, cam=None, spec_target=None):
     if mood == "studio":
         C.world(0.32)
         C.studio(c, ref["size"], key=1.0, fill=0.28, rim=0.6)
+        if cam is not None:   # bare aluminium reads bright, as in the museum photo
+            spec_softbox(ref, cam, ref["plate_center"], 1400, 0.065, dist=2200)
     elif mood == "low":
         C.world(0.01)
         bk = ref["big_knob"]
@@ -108,14 +110,14 @@ def camera_for(shot, ref):
         C.aim(cam, f.world(472, -1103 + 2000 * math.cos(p), 1776 - 2000 * math.sin(p)))
         return cam
     if sid == "BK1_front":
-        return C.camera(sid, V((0, 130, 320)), 0, 30, 50, 2650, shift=(0, -0.012))
+        return C.camera(sid, V((0, 130, 330)), 0, 30, 50, 3500, shift=(0, -0.005))
     if sid == "BK1_front_plate":
         tgt = f.world(475, 300, 0)
         cam = C.camera(sid, tgt, 0, 90 - mci_desk.SLOPE, 50, 1900)
         return cam
     if sid == "BK2_angled":
         tgt = f.world(690, 400, 30)
-        return C.camera(sid, tgt, 36, 23, 35, 1280, shift=(-0.03, 0.005))
+        return C.camera(sid, tgt, 36, 23, 35, 1600, shift=(-0.095, 0.0))
     if sid == "BK3_macro_knob":
         tgt = f.world(828, 522, 10)
         return C.camera(sid, tgt, -12, 44, 100, 400, fstop=11, focus=f.world(830, 515, 6))
