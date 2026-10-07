@@ -304,12 +304,15 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 @media (max-width: 47.99rem) { .two-ways { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Download (tile band) ---------------------------------------------------- */
-.download-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--stack-5) var(--gutter); align-items: start; }
-.status-title { font-weight: var(--wt-display); margin-top: var(--stack-4); }
+/* The title on its own row, so Status and the release line start level (owner, 7 Oct) */
+.download-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--stack-4) clamp(2rem, 1rem + 4vw, 6rem); align-items: start; }
+.download-title { grid-column: 1 / -1; }
+.status-title { font-weight: var(--wt-display); }
 @media (max-width: 63.99rem) { .download-grid { grid-template-columns: minmax(0, 1fr); } }
 .download { display: grid; gap: var(--stack-3); }
-.download .release-line { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; align-items: baseline; }
-.download .version { font: var(--wt-reg) var(--fs-lede) / 1.1 var(--font-mono); letter-spacing: -0.01em; }
+/* One size, one family: only the version is in ink (owner: the line had too many styles) */
+.download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
+.download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; }
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
 .download .target h3 { font-size: var(--fs-h3); line-height: 1.05; }
