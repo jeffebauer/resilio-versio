@@ -277,6 +277,7 @@ html.hero-film .hero-still { visibility: hidden; }
 .ap { position: relative; margin: 0; }
 .ap-stage { position: relative; overflow: hidden; border-radius: var(--radius-tile); background: #d9d7d3; aspect-ratio: var(--full-ratio); }
 .ap-stage img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ap-crop { display: contents; }   /* wide screens: the whole render; narrower: the panel crop inside the grey well */
 .ap-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .ap-lines path { fill: none; stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .ap-lines path { filter: drop-shadow(0 0 0.6px rgb(255 255 255 / 0.95)) drop-shadow(0 0 0.6px rgb(255 255 255 / 0.95)); }
@@ -311,7 +312,8 @@ html.hero-film .hero-still { visibility: hidden; }
 /* Narrower: the render cropped to the panel, numbered markers, the callouts as a list beside it. */
 @media (max-width: 79.99rem) {
   .ap { display: grid; grid-template-columns: minmax(0, 19rem) minmax(0, 1fr); gap: var(--stack-3) var(--stack-4); align-items: start; }
-  .ap-stage { aspect-ratio: var(--crop-ratio); }
+  .ap-stage { aspect-ratio: auto; }
+  .ap-crop { display: block; position: relative; aspect-ratio: var(--crop-ratio); }   /* no clip: the render runs on to the well's edges, which clip it (no seam) */
   .ap-stage img { inset: auto; left: var(--img-x); top: var(--img-y); width: var(--img-w); height: auto; max-width: none; }
   .ap-lines { display: none; }
   .ap-marker { position: absolute; left: var(--cx); top: var(--cy); transform: translate(-50%, -50%); box-shadow: 0 0 0 1.5px #ffffff; }
@@ -322,7 +324,10 @@ html.hero-film .hero-still { visibility: hidden; }
 }
 @media (max-width: 39.99rem) {
   .ap { grid-template-columns: minmax(0, 1fr); }
-  .ap-stage { width: 100%; }   /* fills the content column, aligned with the callouts' text (owner, 8 Oct) */
+  /* The grey well fills the content column, aligned with the callouts' text; the panel keeps
+     its size and height, centred in it (owner, 8 Oct). */
+  .ap-stage { display: grid; justify-items: center; }
+  .ap-crop { width: min(100%, 17rem); }
 }
 
 /* ---- Features: bento tiles (V9) --------------------------------------------- */
