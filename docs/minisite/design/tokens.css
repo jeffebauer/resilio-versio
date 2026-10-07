@@ -16,12 +16,12 @@
   --white:        #ffffff;
   --tile:         #f0f0f2; /* cool light grey: bento tiles, the download band, image wells */
   --ink:          #0a0a0a; /* text, dark buttons */
-  --ink-2:        #5c5c63; /* cool secondary text: 6.5:1 on paper, 5.8:1 on tile */
+  --ink-2:        #5c5c63; /* cool secondary text: 6.6:1 on paper, 5.8:1 on tile */
   --line:         #e2e2e6; /* hairlines on white: header, footer, tables only */
   --dark:         #0b0b0c; /* the hero and sound bands */
   --tile-dark:    #18181b; /* tiles on the dark band */
-  --on-dark:      #f5f5f7; /* text on --dark: 18.4:1 */
-  --on-dark-2:    #a1a1aa; /* secondary text on --dark (7.9:1) and on --tile-dark (6.9:1) */
+  --on-dark:      #f5f5f7; /* text on --dark: 18.1:1 */
+  --on-dark-2:    #a1a1aa; /* secondary text on --dark (7.7:1) and on --tile-dark (6.9:1) */
   --line-dark:    #2c2c31; /* hairlines on the dark band */
 
   /* The one accent: LED red (revision 1, D3), unchanged.
