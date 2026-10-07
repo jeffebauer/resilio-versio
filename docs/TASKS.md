@@ -28,6 +28,7 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
+- [ ] **Try the five new dub and dub techno starting points** (Starting points page: Chord stab into the bed, Echo chord, Telephone snare, Murky tape echo, Siren swoop): set from the manual, not yet heard by anyone. Keep, retune or cut (Claude can render them for you first)
 - [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
@@ -59,6 +60,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Site update live** (your notes): a Colour section on the home page (µ-law grit, TAPE 12-bit, VALVE 10-bit, only on the reverb, 24 kHz, each with a diagram); the manual's ATTITUDE now explains the bit depths and the grit; Starting points gains dub and dub techno tips and five characters; "Latest release" is a heading over version · date · What's new; Download and Menu sit closer on phones; 4 px between phone-menu items
 - 7 Oct 2026: **Went public** (your "make the repo public"): the first public release v2026.10.07-0671d22 cut and marked Latest (stable download names, licence files, notes from `releases/first-public-release.md`); the repo is public; the friends' three releases carry the pre-public note; the site's download buttons are live, with the changelog entry
 - 7 Oct 2026: **Hardware checks passed** on `1e02c96` (`dist/resilio_versio_release_1e02c96.bin`): the click check, and the gate clock hold (echo time stays put through Ableton's transport stop/start)
 - 7 Oct 2026: **CPU run 22 on the chip** (the first-chord fix): echo mode 69.1 / 76.3 %, switch 76.2 %, worst moment 78.8 % (run 21: 78.1). Under the 80 % ceiling
