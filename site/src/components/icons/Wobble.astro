@@ -1,7 +1,0 @@
----
-// Pictogram: a pitch wave that swells and settles.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'Wobble', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path d="M2 12c1.2-3 2.3-3.8 3.4-2.4C6.6 11.2 7.2 18 9 18s2.2-13 4-13 2.4 13 4.2 13c1.6 0 2-6 3.2-7.4.6-.6 1.1-.2 1.6.4" /></Glyph>

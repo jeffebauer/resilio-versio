@@ -1,7 +1,0 @@
----
-// Pictogram: an arrow thrown into a spring tank.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'The throw', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path d="M3.5 2.5l7.2 7.2" /><path fill="currentColor" stroke="none" d="M13.8 12.8 5.7 11.4l6.7-6.7Z" /><rect x="2.5" y="15" width="19" height="6.5" rx="1.5" /><path d="M7 18.25h10" stroke-width="2" stroke-dasharray="2 2.5" /></Glyph>

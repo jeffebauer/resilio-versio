@@ -1,7 +1,0 @@
----
-// Pictogram: a valve: a glass bulb with its glowing filament and pins.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'Attitude', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path d="M6.5 18V9a5.5 5.5 0 0 1 11 0v9Z" /><path fill="currentColor" stroke="none" d="M10 9.5h4v5h-4z" /><path d="M8.5 21.5V18M12 21.5V18M15.5 21.5V18M5 18h14" /></Glyph>

@@ -1,7 +1,0 @@
----
-// Pictogram: a knob with its pointer, a ring of position marks around it.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'Knob', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M12 5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm-1.2 1.9v6.1h2.4V6.9Z" /><circle cx="4.93" cy="19.57" r="1.3" fill="currentColor" stroke="none" /><circle cx="2" cy="12.5" r="1.3" fill="currentColor" stroke="none" /><circle cx="4.93" cy="5.43" r="1.3" fill="currentColor" stroke="none" /><circle cx="12" cy="2.5" r="1.3" fill="currentColor" stroke="none" /><circle cx="19.07" cy="5.43" r="1.3" fill="currentColor" stroke="none" /><circle cx="22" cy="12.5" r="1.3" fill="currentColor" stroke="none" /><circle cx="19.07" cy="19.57" r="1.3" fill="currentColor" stroke="none" /></Glyph>

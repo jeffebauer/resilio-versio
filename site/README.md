@@ -31,7 +31,7 @@ npm run preview    # serve site/dist/ to check a build
 npm run check      # type and template check (astro check)
 ```
 
-`/style` is the style tile (revision 2): type, palette with contrast ratios, header, buttons, tiles, pictograms, tiny diagrams, the annotated panel and the audio tile on one page (not in the sitemap, `noindex`).
+`/style` is the style tile (revision 2): type, palette with contrast ratios, header, buttons, tiles, tiny diagrams, the annotated panel and the audio tile on one page (not in the sitemap, `noindex`).
 
 If you change a Markdown plugin in `src/plugins/` and the output doesn't change, clear Astro's cache: `rm -rf node_modules/.astro`.
 
@@ -89,9 +89,8 @@ src/content.config.ts   the content collection over docs/minisite/content
 src/layouts/            Base (head, header bar, footer), Doc (contents + centred prose)
 src/pages/              index (Home), manual, install, presets, changelog, faq, credits, style
 src/components/         HeroMedia, AnnotatedPanel, FeatureTiles, AudioAB (audio tile), DemoList,
-                        DownloadBlock, Pictogram, Button, Chip, MediaCard, Placeholder, SpecTable,
+                        DownloadBlock, Button, Chip, MediaCard, Placeholder, SpecTable,
                         IndexNav (doc contents), PanelDiagram, ScrubSequence, DocContent, Footer, Logo
-src/components/icons/   the pictograms (one .astro per glyph, 24-unit grid)
 src/components/diagrams/ the tiny diagrams (shapes.ts draws them, Diagram.astro renders)
 src/scripts/motion.ts   GSAP reveals and the hero push-in, Home only
 src/scripts/player.ts   the Web Audio A/B player

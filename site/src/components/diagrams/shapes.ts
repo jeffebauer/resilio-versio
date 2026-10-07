@@ -3,7 +3,7 @@
 // box; `ink` paths take the text colour, `hot` paths the signal red (one highlight).
 export type DiagramKind =
   | 'decay' | 'throw' | 'echo' | 'bigknob' | 'wobble'
-  | 'tanks' | 'attitude' | 'splash' | 'hold' | 'howl' | 'drywet';
+  | 'tanks' | 'attitude' | 'splash' | 'hold' | 'howl' | 'drywet' | 'cv';
 
 export interface Shape { ink: string[]; hot: string[]; faint?: string[]; label: string }
 
@@ -136,15 +136,49 @@ export function shape(kind: DiagramKind): Shape {
       };
     }
     case 'howl': {
+      // One hit, then the tank's own feedback building up and holding: the envelope grows
+      // and levels off (it never runs away), the pitch creeps up, the edge stays rough.
+      const env = (x: number) => 1 - Math.exp(-(x - 16) / 28);
       const rough: [number, number][] = [];
-      for (let x = 12; x <= 104; x += 2) {
-        const env = Math.min(1, (x - 12) / 30);
-        rough.push([x, MID - env * 20 * Math.sin(x * 0.9) * (0.7 + 0.3 * Math.sin(x * 0.23))]);
+      const top: [number, number][] = [];
+      const bottom: [number, number][] = [];
+      let phase = 0;
+      for (let x = 16; x <= 156; x += 0.5) {
+        phase += 0.5 * (0.42 + 0.3 * ((x - 16) / 140));
+        const a = 24 * env(x);
+        rough.push([x, MID - a * Math.sin(phase) * (0.82 + 0.18 * Math.sin(x * 0.21))]);
+        if (x % 4 === 0) { top.push([x, MID - a]); bottom.push([x, MID + a]); }
       }
       return {
-        label: 'The Howl: one hit tips the tank into its own rough feedback; pull DECAY back and it falls away.',
-        ink: [tick(10, 50, 58), ring(104, 156, 16, 6, 3.8)],
+        label: 'The Howl: one hit tips the tank into its own feedback, which builds into a rough, rising roar and holds there until you pull DECAY back.',
+        faint: [line(top), line(bottom)],
+        ink: [tick(10, 50, 58)],
         hot: [line(rough)],
+      };
+    }
+    case 'cv': {
+      // A knob's arc (seven o'clock to five o'clock): the hand-set position in ink, the
+      // CV's voltage (0–5 V) in red, carrying the arc on past where the hand left it.
+      const cx = 30, cy = 35, r = 22;
+      const at = (p: number, rr = r): [number, number] => {
+        const a = ((-135 + 270 * p) * Math.PI) / 180;
+        return [cx + rr * Math.sin(a), cy - rr * Math.cos(a)];
+      };
+      const arc = (p0: number, p1: number) => {
+        const [x0, y0] = at(p0);
+        const [x1, y1] = at(p1);
+        return `M${f(x0)} ${f(y0)}A${r} ${r} 0 ${(p1 - p0) * 270 > 180 ? 1 : 0} 1 ${f(x1)} ${f(y1)}`;
+      };
+      const knob = 0.42, cv = 0.78;
+      const [hx0, hy0] = at(knob, 6);
+      const [hx1, hy1] = at(knob, 16);
+      const volts: [number, number][] = [];
+      for (let x = 84; x <= 156; x += 1) volts.push([x, 50 - 18 * (1 - Math.cos(((x - 84) / 72) * 2 * Math.PI))]);
+      return {
+        label: 'CV: a voltage from 0 to 5 V adds to where the knob is set, turning it further than your hand did.',
+        faint: [arc(0, 1), 'M84 50H156'],
+        ink: [arc(0, knob), `M${f(hx0)} ${f(hy0)}L${f(hx1)} ${f(hy1)}`, 'M64 35H74M69 30V40'],
+        hot: [arc(knob, cv), line(volts)],
       };
     }
     case 'drywet': {

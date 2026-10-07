@@ -1,7 +1,0 @@
----
-// Pictogram: a filter slope: low frequencies cut, the rest let through.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'Tone', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path fill="currentColor" stroke="none" d="M2 21h20V4.5h-6.5c-3.5 0-4.6 3.3-5.7 7.3C8.7 15.8 7.3 21 2 21Z" /></Glyph>

@@ -30,8 +30,8 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 
 /* ---- Flowing copy -------------------------------------------------------- */
 .flow > * + * { margin-top: var(--stack-3); }
-.flow a, .prose a, .feature-line a { text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
-.flow a:hover, .prose a:hover, .feature-line a:hover { text-decoration-color: currentColor; }
+.flow a, .prose a { text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
+.flow a:hover, .prose a:hover { text-decoration-color: currentColor; }
 .lede strong, .lede b { font-weight: var(--wt-display); }
 
 /* ---- Header: a flat three-column bar on a hairline (V4) ------------------- */
@@ -187,9 +187,6 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .diagram .d-hot { stroke: var(--signal); }
 .diagram .d-faint { stroke: currentColor; opacity: 0.3; }
 
-/* ---- Pictograms (V8) ------------------------------------------------------- */
-.glyph { width: 2.5rem; height: 2.5rem; flex: none; }
-
 /* ---- Disclosure (settings, transcript) ------------------------------------- */
 .disclosure { border-top: var(--hair) solid var(--line); }
 .disclosure summary {
@@ -242,16 +239,17 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 }
 .ap > figcaption { margin-top: var(--stack-2); }
 
-/* Wide screens: callout boxes either side of the panel, joined by leader lines. */
+/* Wide screens: text-only callouts either side of the panel (owner, 7 Oct: no boxes), each
+   at the end of its leader line, set flush against it: right-aligned on the left side,
+   left-aligned on the right. Dark text on the light grey ground of the render. */
 @media (min-width: 80rem) {
   .ap-list { position: absolute; inset: 0 0 auto 0; aspect-ratio: var(--full-ratio); pointer-events: none; }
-  .ap-callout {
-    position: absolute; top: var(--by); width: min(17.5rem, 31%); transform: translateY(-50%); pointer-events: auto;
-    padding: 0.6rem 0.8rem; border-radius: var(--radius-tag); background: var(--paper);
-    box-shadow: 0 0 0 var(--hair) rgb(10 10 10 / 0.08), 0 0.75rem 1.5rem -1rem rgb(0 0 0 / 0.35);
-  }
-  .ap-callout.side-l { right: calc(100% - var(--bx)); }
-  .ap-callout.side-r { left: var(--bx); }
+  /* The name sits on the leader line; its one line of text hangs below. */
+  .ap-callout { position: absolute; top: var(--by); width: min(16rem, 30%); transform: translateY(-0.55rem); pointer-events: auto; }
+  .ap-callout.side-l { right: calc(100% - var(--bx)); padding-right: 0.6rem; text-align: right; }
+  .ap-callout.side-r { left: var(--bx); padding-left: 0.6rem; }
+  .ap-name { color: var(--ink); }
+  .ap-line { color: #2e2e33; }
   .ap-num, .ap-marker { display: none; }
 }
 /* Narrower: the render cropped to the panel, numbered markers, the callouts as a list beside it. */
@@ -272,22 +270,26 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 }
 
 /* ---- Features: bento tiles (V9) --------------------------------------------- */
+/* Owner, 7 Oct: denser. Three columns from 50rem (800 px) up, mixed sizes kept (the big
+   tile 2 × 2, wide tiles 2 × 1); two columns on small tablets; one only on phones.
+   Each tile: the diagram on top (shown first, though it follows the text in the source),
+   the statement, then its line pushed to the bottom. */
 .bento {
   list-style: none; padding: 0; margin: 0;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-flow: row dense; gap: var(--gutter);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row dense;
+  gap: clamp(0.625rem, 0.4rem + 0.6vw, 1rem);
 }
-.feature { display: flex; flex-direction: column; gap: var(--stack-2); min-height: clamp(13rem, 10rem + 6vw, 17rem); }
+.tile.feature { padding: clamp(1rem, 0.75rem + 0.6vw, 1.5rem); }
+.feature { display: flex; flex-direction: column; gap: 0.75rem; min-height: clamp(11rem, 9rem + 4vw, 14rem); }
 .feature.is-wide { grid-column: span 2; }
 .feature.is-big { grid-column: span 2; grid-row: span 2; }
-.feature-big { font-size: var(--fs-h3); line-height: 1; letter-spacing: var(--track-display); }
-.feature.is-big .feature-big { font-size: clamp(3rem, 1.6rem + 5vw, 6.5rem); line-height: var(--lh-display); }
-.feature.is-big .feature-icon { width: clamp(3.5rem, 2.5rem + 3vw, 5.5rem); height: auto; }
-.feature-diagram { width: 100%; max-width: 22rem; height: clamp(3.5rem, 2.5rem + 3vw, 5.5rem); margin-top: auto; color: var(--ink); }
-.feature.is-big .feature-diagram { max-width: 26rem; height: clamp(4rem, 3rem + 4vw, 8rem); }
-.feature-big + .feature-line { margin-top: auto; }
-.feature-line { color: var(--ink-2); max-width: 30em; }
-.feature-line a { color: var(--ink); white-space: nowrap; }
-@media (max-width: 71.99rem) {
+.feature-diagram { order: -1; width: 100%; max-width: 17rem; height: clamp(3.25rem, 2.6rem + 1.4vw, 4.5rem); margin-bottom: auto; color: var(--ink); }
+.feature.is-wide .feature-diagram { max-width: 18rem; }
+.feature.is-big .feature-diagram { max-width: 36rem; height: clamp(5rem, 1.5rem + 8vw, 13rem); }
+.feature-big { font-size: clamp(1.375rem, 1.1rem + 0.8vw, 2rem); line-height: 1; letter-spacing: var(--track-display); padding-top: 0.5rem; }
+.feature.is-big .feature-big { font-size: clamp(2.75rem, 1.6rem + 4vw, 5.5rem); line-height: var(--lh-display); }
+.feature-line { color: var(--ink-2); max-width: 32em; }
+@media (max-width: 49.99rem) {
   .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feature.is-big { grid-row: span 1; }
 }
@@ -295,6 +297,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   .bento { grid-template-columns: minmax(0, 1fr); }
   .feature.is-wide, .feature.is-big { grid-column: auto; }
   .feature { min-height: 0; }
+  .feature.is-big .feature-diagram { height: 4.5rem; }
 }
 
 /* ---- Two ways to play -------------------------------------------------------- */
@@ -468,9 +471,6 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .swatch dt { color: var(--ink-2); }
 .swatch dd { margin: 0; }
 .demo-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
-.glyph-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); gap: var(--gutter); }
-.glyph-grid li { display: grid; gap: var(--stack-2); justify-items: start; }
-.glyph-grid .glyph { width: 3.5rem; height: 3.5rem; }
 .diagram-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--gutter); }
 .diagram-grid li { display: grid; gap: var(--stack-2); }
 .diagram-grid .diagram { width: 100%; height: auto; }

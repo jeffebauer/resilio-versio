@@ -1,5 +1,5 @@
 ---
-// The style tile, revision 2 (DESIGN-v2): type, palette, header, tiles, pictograms,
+// The style tile, revision 2 (DESIGN-v2): type, palette, header, tiles,
 // diagrams, the annotated-panel callout and the audio tile, built from the real tokens and
 // components, so it doubles as the component test page. Not in the sitemap, noindex.
 import Base from '../layouts/Base.astro';
@@ -7,14 +7,12 @@ import Button from '../components/Button.astro';
 import Chip from '../components/Chip.astro';
 import Logo from '../components/Logo.astro';
 import AudioAB from '../components/AudioAB.astro';
-import Pictogram from '../components/Pictogram.astro';
 import Diagram from '../components/diagrams/Diagram.astro';
 import AnnotatedPanel from '../components/AnnotatedPanel.astro';
 import { shape, type DiagramKind } from '../components/diagrams/shapes';
 import { getDemos } from '../lib/demos';
 import { contrast, grade } from '../lib/contrast';
 import { fontPlan } from '../lib/fonts';
-import type { Pictogram as PictogramName } from '../data/controls';
 
 const { clips } = await getDemos();
 const fonts = fontPlan();
@@ -46,16 +44,12 @@ const COLOURS = [
 ];
 const textOn = (hex: string) => (contrast(hex, '#0a0a0a') > contrast(hex, '#ffffff') ? '#0a0a0a' : '#ffffff');
 
-const GLYPHS: [PictogramName, string][] = [
-  ['springs', 'Springs'], ['splash', 'Splash'], ['tape', 'Tape echo'], ['wobble', 'Wobble'], ['throw', 'The throw'],
-  ['valve', 'Attitude (valve)'], ['tone', 'Tone'], ['cv', 'CV input'], ['decay', 'Decay'], ['knob', 'Knob'],
-];
 const DIAGRAMS: [DiagramKind, string][] = [
   ['decay', 'Decay envelope'], ['throw', 'The throw'], ['echo', 'Echo repeats'], ['bigknob', 'The Big Knob'], ['wobble', 'WOBBLE drift'],
-  ['tanks', 'TANK 1 / 2'], ['attitude', 'Attitudes'], ['splash', 'SPLASH'], ['hold', 'The Hold'], ['howl', 'The Howl'], ['drywet', 'Dry, then wet'],
+  ['tanks', 'TANK 1 / 2'], ['attitude', 'Attitudes'], ['splash', 'SPLASH'], ['cv', 'CV inputs'], ['hold', 'The Hold'], ['howl', 'The Howl'], ['drywet', 'Dry, then wet'],
 ];
 ---
-<Base title="Style tile: Resilio Versio minisite" description="The Resilio Versio minisite's design system, revision 2: type, palette, header, tiles, pictograms, diagrams, the annotated panel and the audio tile." noindex>
+<Base title="Style tile: Resilio Versio minisite" description="The Resilio Versio minisite's design system, revision 2: type, palette, header, tiles, diagrams, the annotated panel and the audio tile." noindex>
   <div class="doc-hero column">
     <p class="kicker small quiet">Style tile · revision 2</p>
     <h1 class="display">The system, before the pages</h1>
@@ -148,20 +142,11 @@ const DIAGRAMS: [DiagramKind, string][] = [
     <div class="column"><h2 class="h2" id="tiles">Tiles</h2><p class="quiet">Rounded <code>--tile</code> grey, one big moment each, mixed sizes.</p></div>
     <div class="wide">
       <ul class="bento" aria-label="Tile samples">
-        <li class="tile feature is-big"><Pictogram name="springs" class="feature-icon" decorative /><h3 class="feature-big">2 springs</h3><Diagram kind="tanks" class="feature-diagram" /><p class="feature-line small">Big tile: 2 × 2.</p></li>
-        <li class="tile feature is-wide"><Pictogram name="tape" class="feature-icon" decorative /><h3 class="feature-big">Tape echo</h3><Diagram kind="echo" class="feature-diagram" /><p class="feature-line small">Wide tile: 2 × 1, with a tiny diagram.</p></li>
-        <li class="tile feature"><Pictogram name="cv" class="feature-icon" decorative /><h3 class="feature-big">7 CV inputs</h3><p class="feature-line small">Small tile.</p></li>
-        <li class="tile feature"><Pictogram name="splash" class="feature-icon" decorative /><h3 class="feature-big">Splash</h3><p class="feature-line small">Small tile.</p></li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- Pictograms -->
-  <section class="st-section" aria-labelledby="pictograms">
-    <div class="column"><h2 class="h2" id="pictograms">Pictograms</h2><p class="quiet">Our own set: bold, solid glyphs on a 24-unit grid, 2.5-unit strokes with round ends, in the text colour.</p></div>
-    <div class="wide">
-      <ul class="glyph-grid">
-        {GLYPHS.map(([name, label]) => <li><Pictogram name={name} title={label} /><span class="micro quiet">{label}</span></li>)}
+        <li class="tile feature is-big"><h3 class="feature-big">2 springs</h3><p class="feature-line small">Big tile: 2 × 2 (one row tall below three columns).</p><Diagram kind="tanks" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">7 CV inputs</h3><p class="feature-line small">Small tile.</p><Diagram kind="cv" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">Splash</h3><p class="feature-line small">Small tile.</p><Diagram kind="splash" class="feature-diagram" /></li>
+        <li class="tile feature is-wide"><h3 class="feature-big">Tape echo</h3><p class="feature-line small">Wide tile: 2 × 1.</p><Diagram kind="echo" class="feature-diagram" /></li>
+        <li class="tile feature"><h3 class="feature-big">The Howl</h3><p class="feature-line small">Small tile.</p><Diagram kind="howl" class="feature-diagram" /></li>
       </ul>
     </div>
   </section>

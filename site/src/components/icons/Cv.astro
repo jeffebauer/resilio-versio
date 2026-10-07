@@ -1,7 +1,0 @@
----
-// Pictogram: a jack socket with a patch cable plugged in.
-import Glyph from './Glyph.astro';
-interface Props { title?: string; class?: string; decorative?: boolean }
-const { title = 'CV input', ...rest } = Astro.props;
----
-<Glyph title={title} {...rest}><path fill="currentColor" stroke="none" fill-rule="evenodd" d="M8.5 2a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 3.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z" /><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none" /><path d="M8.5 8.5c3 4 5 5 7.5 7.5s3.5 4 6 4.5" stroke-width="3" /></Glyph>

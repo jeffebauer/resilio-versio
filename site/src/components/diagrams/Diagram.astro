@@ -18,6 +18,7 @@ const s = shape(kind);
   aria-hidden={decorative ? 'true' : undefined}
   focusable="false"
 >
+  {!decorative && <title>{s.label}</title>}
   {(s.faint ?? []).map((d) => <path class="d-faint" d={d} />)}
   {s.ink.map((d) => <path class="d-ink" d={d} />)}
   {s.hot.map((d) => <path class="d-hot" d={d} />)}

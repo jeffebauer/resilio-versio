@@ -21,21 +21,21 @@ export const CONTROLS: Control[] = [
   { name: 'Gate', anchor: 'gate-input', line: 'Throws in TANK 1 and 2; clocks the echo in TANK ECHO.', at: [44.6, 97.27], side: 'r' },
 ];
 
-// Features as bento tiles (DESIGN-v2 V9): one big statement each, a pictogram, sometimes a
-// tiny diagram. Lines are shortened from docs/minisite/content/overview.md and manual.md.
-export type Pictogram = 'springs' | 'splash' | 'tape' | 'wobble' | 'throw' | 'valve' | 'tone' | 'cv' | 'decay' | 'knob';
-export interface FeatureTile { big: string; line: string; icon: Pictogram; diagram?: DiagramKind; size?: 'big' | 'wide'; href?: string }
+// Features as bento tiles (DESIGN-v2 V9, owner's review of 7 Oct): one big statement each,
+// a tiny diagram (V10) where the pictogram used to be, and one line. Lines are shortened
+// from docs/minisite/content/overview.md and manual.md; a single "Read the manual" button
+// sits under the grid. The order matters: with three columns and dense packing it fills
+// five even rows (the big tile beside two small ones, then a wide and a small per row).
+export interface FeatureTile { big: string; line: string; diagram: DiagramKind; size?: 'big' | 'wide' }
 
 export const FEATURE_TILES: FeatureTile[] = [
-  { big: '2 springs', icon: 'springs', size: 'big', diagram: 'tanks', line: 'TANK 1: one spring, sparse and the most splashy. TANK 2: two springs, the classic tank.', href: '/manual/#tank-top-switch' },
-  { big: 'The throw', icon: 'throw', size: 'wide', diagram: 'throw', line: 'Open the springs for one snare, close them, let the tail ring on. The THROW / TAP button and the gate input both throw.', href: '/manual/#throw--tap-button' },
-  { big: '3 attitudes', icon: 'valve', line: 'CLEAN · TAPE · VALVE: the saturation inside the tank. Your dry signal stays clean.', href: '/manual/#attitude-bottom-switch' },
-  { big: '7 CV inputs', icon: 'cv', line: 'One per knob, 0–5 V, added to the knob’s position.', href: '/manual/#cv-inputs' },
-  { big: 'The Big Knob', icon: 'tone', size: 'wide', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.', href: '/manual/#tone' },
-  { big: 'Tape echo', icon: 'tape', size: 'wide', diagram: 'echo', line: 'TANK ECHO: a worn tape echo feeding the springs, clocked from your sequencer or tapped in on the button.', href: '/manual/#echo-mode-tank-echo' },
-  { big: 'Wobble', icon: 'wobble', line: 'Tape drift left of noon, a steady warble right of noon.', href: '/manual/#wobble' },
-  { big: 'Splash', icon: 'splash', line: 'Your hits, hitting harder. Nothing added; ghost notes stay quiet.', href: '/manual/#splash' },
-  { big: '0 dead zones', icon: 'knob', size: 'wide', line: 'Every knob position usable, no cliff edge into runaway feedback. The tail always fades unless you ask it not to.' },
-  { big: 'The held bed', icon: 'decay', size: 'wide', diagram: 'hold', line: 'At the top of DECAY, in CLEAN and TAPE, the tail holds as a near-endless bed that dips under your kick and bass.', href: '/manual/#decay' },
-  { big: 'The Howl', icon: 'valve', size: 'wide', diagram: 'howl', line: 'In VALVE the top of DECAY lets the tank howl: rideable spring feedback. Pull DECAY back and it falls into a normal tail.', href: '/manual/#decay' },
+  { big: '2 springs', size: 'big', diagram: 'tanks', line: 'TANK 1: one spring, sparse and the most splashy. TANK 2: two springs, the classic tank.' },
+  { big: '3 attitudes', diagram: 'attitude', line: 'CLEAN · TAPE · VALVE: the saturation inside the tank. Your dry signal stays clean.' },
+  { big: '7 CV inputs', diagram: 'cv', line: 'One per knob, 0–5 V, added to the knob’s position.' },
+  { big: 'The throw', size: 'wide', diagram: 'throw', line: 'Open the springs for one snare, close them, let the tail ring on. The THROW / TAP button and the gate input both throw.' },
+  { big: 'Wobble', diagram: 'wobble', line: 'Tape drift left of noon, a steady warble right of noon.' },
+  { big: 'Splash', diagram: 'splash', line: 'Your hits, hitting harder. Nothing added; ghost notes stay quiet.' },
+  { big: 'The Big Knob', size: 'wide', diagram: 'bigknob', line: 'TONE right of noon: King Tubby’s steep low cut, up to 800 Hz, swept smoothly by hand or with CV.' },
+  { big: 'Tape echo', size: 'wide', diagram: 'echo', line: 'TANK ECHO: a worn tape echo feeding the springs, clocked from your sequencer or tapped in on the button.' },
+  { big: 'The Howl', diagram: 'howl', line: 'In VALVE the top of DECAY lets the tank howl: rideable spring feedback. Pull DECAY back and it falls into a normal tail.' },
 ];
