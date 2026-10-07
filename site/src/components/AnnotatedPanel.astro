@@ -54,6 +54,7 @@ const stage = [
 ---
 <figure class="ap" style={stage}>
   <div class="ap-stage">
+    <div class="ap-crop">
     <Picture src={front} widths={widthsFor(front)} sizes="(min-width: 80rem) 92rem, 1200px" formats={['avif', 'webp']} loading="lazy"
       alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks." />
     <svg class="ap-lines" viewBox={`0 0 ${IMG.w} ${IMG.h}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
@@ -65,6 +66,7 @@ const stage = [
       ))}
     </svg>
     {items.map((c) => <span class="ap-marker" style={c.style} aria-hidden="true">{c.n}</span>)}
+    </div>
   </div>
   <ol class="ap-list" aria-label="Resilio’s controls on the panel">
     {items.map((c) => (

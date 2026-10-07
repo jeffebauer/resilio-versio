@@ -7,7 +7,7 @@ order: 4
 
 # Starting points
 
-Six classic dub settings to start from, then five characters from dub and dub techno, with tips for getting there. Then move by ear. The Versio has no preset memory: set the knobs by hand (in the plugin, type the values or save them as your DAW's presets).
+Six classic dub settings to start from, then five characters from dub and dub techno, with tips for getting there. Then move by ear. Found a setting worth sharing? [Suggest it](https://github.com/jeffebauer/resilio-versio/issues/new?template=sound_idea.yml), and it may join this page, with credit. The Versio has no preset memory: set the knobs by hand (in the plugin, type the values or save them as your DAW's presets).
 
 **Reading the panels.** Each starting point shows the panel with its knobs and switches set, and the exact values underneath. Knob values run from 0 (fully left, 7 o'clock) to 1 (fully right, 5 o'clock); noon is 0.5, and each hour is about 0.1. The switches are drawn in their position: up, centre or down.
 

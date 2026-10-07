@@ -89,3 +89,8 @@ These supersede the earlier text where they conflict. The site code (`site/`, `d
 - **Docs:** reading column 42rem (about 65 characters), a wider gutter from the contents; the contents mark the section being read with an accent bullet that pushes in. Numbers and bullets share one marker column inside the text edge. Install has no tabs (the two halves inline). Presets show each starting point as a set panel with a two-across values list under its text. The changelog is headed by date, the version under it.
 - **Hero film:** two stacked videos (the loop takes over on the reveal's matching last frame), starts on black when it will play (the still if autoplay is blocked), forced corner clipping for iOS, resumes when scrolled back into view.
 - **Mesurer** (mesurer.dev) is the review overlay, injected in `astro dev` only.
+
+### Dark mode (owner, 8 Oct)
+- Follows the system; a System · Light · Dark switch in the footer overrides it (stored in the browser as `rv-theme`, applied before first paint).
+- Dark tokens in `tokens.css`: page `#141312` (a step above the hero/sound bands' `#0c0b0a`, so they still read as bands), tile `#1f1d1b`, raised card `#2a2826`, text `#f6f5f2`, secondary `#aaa69f`. The accent as text switches to `--signal` (`--signal-text`, 5.3:1). The red button keeps `--signal-ink` with white text.
+- The panel render keeps its light grey studio ground in both themes, and its callouts stay dark (`--on-render`).

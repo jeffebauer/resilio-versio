@@ -49,5 +49,10 @@ Neither. It's a physical-style model of springs (feedback loops that smear each 
 ### Can I read the code?
 Yes: [github.com/jeffebauer/resilio-versio](https://github.com/jeffebauer/resilio-versio). It includes the full specification and every design decision with its reasons.
 
-### Where do I send feedback or bugs?
-Open an issue on [GitHub](https://github.com/jeffebauer/resilio-versio/issues). Tell us what it sounds like next to spring reverbs you know, any knob that feels dead or too touchy, and anything that clicks or glitches (with the settings, if you can).
+### How do I give feedback or report a bug?
+On GitHub Issues, with a free GitHub account. Feedback is very welcome: Resilio is refined with the people playing it. Two short forms do the asking:
+
+- **[Suggest a sound](https://github.com/jeffebauer/resilio-versio/issues/new?template=sound_idea.yml):** a sound, a move or a control you'd like, or one that could feel better. A reference (a track, a recording, another spring) helps, and how close Resilio gets today.
+- **[Report a bug](https://github.com/jeffebauer/resilio-versio/issues/new?template=bug_report.yml):** something clicks, glitches, crashes or doesn't do what its name says. Say whether it was the Versio or the plugin, the version, and the settings in panel names (BLEND, DECAY, TANK, ATTITUDE…). A short recording helps most.
+
+Plain impressions are useful too: what it sounds like next to spring reverbs you know, or a knob that feels dead or too touchy. Every issue is read, and sound ideas are tried and listened to before anything changes. Changes that come from the community are listed in the [changelog](/changelog/), credited to whoever suggested them.

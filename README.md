@@ -49,7 +49,7 @@ One DSP core with no platform code and three hosts: an offline renderer (WAV in,
 
 ## Feedback
 
-Found a bug, or have an idea for the sound? Open a [GitHub issue](https://github.com/jeffebauer/resilio-versio/issues/new/choose). There are short templates for a bug report and for a sound idea.
+Resilio is refined with the people playing it, and feedback is very welcome. [Suggest a sound](https://github.com/jeffebauer/resilio-versio/issues/new?template=sound_idea.yml) or [report a bug](https://github.com/jeffebauer/resilio-versio/issues/new?template=bug_report.yml): each is a short form. Ideas are tried and listened to before anything ships, and the ones that make it are credited in the [changelog](https://resilio-versio.vercel.app/changelog/). More in the [FAQ](https://resilio-versio.vercel.app/faq/#how-do-i-give-feedback-or-report-a-bug).
 
 ## Licence
 

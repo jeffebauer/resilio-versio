@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Player's guide
-    url: https://github.com/jeffebauer/resilio-versio/blob/main/docs/manual.md
-    about: How every control works, and how to install or remove the firmware.
+  - name: Manual
+    url: https://resilio-versio.vercel.app/manual/
+    about: How every control works. Installing or removing the firmware is on https://resilio-versio.vercel.app/install/
   - name: Latest release
     url: https://github.com/jeffebauer/resilio-versio/releases/latest
     about: Firmware and plugin downloads, with install steps.

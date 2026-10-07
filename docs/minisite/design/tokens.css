@@ -33,6 +33,10 @@
   --on-signal:    #ffffff;
 
   --focus:        #c83d16;
+  --signal-text:  #c83d16; /* the accent as text (versions, numbers, doc subheads): AA on paper and tile */
+  --raised:       #ffffff; /* a card on a tile band (the download targets): white in light, a step up from the band in dark */
+  --on-render:    #0b0a09; /* text laid over the light grey panel render: stays dark in both themes */
+  color-scheme: light;
 
   /* ---- Type (V3) -------------------------------------------------------- */
   --font-sans: "MD UI", "Inter", "MD UI Fallback", "Helvetica Neue", Arial, sans-serif;
@@ -83,6 +87,22 @@
   --dur-1: 160ms; --dur-2: 320ms; --dur-3: 700ms; --dur-4: 1200ms;
 }
 
+/* ---- Dark mode (owner, 8 Oct) ---------------------------------------------
+   Follows the system unless the reader picks Light or Dark in the footer (data-theme on
+   <html>, set before first paint). The page sits a step above the hero and sound bands'
+   near-black, so those bands still read as bands. Tile and text pairs keep AA:
+   --ink 17.0:1 on paper, --ink-2 7.7:1 on paper and 6.9:1 on tile, --signal-text 5.3:1 on paper and 4.8:1 on tile. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #141312; --tile: #1f1d1b; --ink: #f6f5f2; --ink-2: #aaa69f; --line: #2e2c29;
+    --raised: #2a2826; --signal-text: #ee5641; --focus: #ee5641; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #141312; --tile: #1f1d1b; --ink: #f6f5f2; --ink-2: #aaa69f; --line: #2e2c29;
+  --raised: #2a2826; --signal-text: #ee5641; --focus: #ee5641; color-scheme: dark;
+}
+
 /* ---- Base ---------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -106,7 +126,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .band-dark {
   background: var(--dark); color: var(--on-dark);
   --paper: var(--dark); --ink: var(--on-dark); --ink-2: var(--on-dark-2);
-  --tile: var(--tile-dark); --line: var(--line-dark); --focus: var(--signal);
+  --tile: var(--tile-dark); --line: var(--line-dark); --focus: var(--signal); --signal-text: var(--signal);
 }
 .band-tile { background: var(--tile); }
 
