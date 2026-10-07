@@ -26,11 +26,12 @@ Resilio runs behind your Versio's printed panel, so the printed labels don't mat
 | Right knob, middle row | **TENSION** |
 | Centre knob, lower | **WOBBLE** |
 | Right knob, lowest | **DRIVE** |
-| Top switch | **TANK**: 1 · 2 · ECHO (left, centre, right) |
-| Bottom switch | **ATTITUDE**: CLEAN · TAPE · VALVE (left, centre, right) |
+| Top switch | **TANK**: 1 · 2 · ECHO (up, centre, down) |
+| Bottom switch | **ATTITUDE**: CLEAN · TAPE · VALVE (up, centre, down) |
 | Button | **THROW / TAP** |
 | Four LEDs, left to right | Input L, input R, output L, output R |
-| Jacks | As printed on your module: each knob's CV input follows its knob; gate in, In L/R, Out L/R |
+| Jacks, top two rows | CV for each knob, in the order drawn (BLEND, TONE, DECAY, DRIVE; SPLASH, WOBBLE, TENSION), and the THROW gate |
+| Jacks, bottom row | In L, In R, Out L, Out R |
 
 ## Controls
 

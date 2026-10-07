@@ -1,0 +1,143 @@
+---
+// The Resilio panel as a wireframe, drawn from the owner's panel art
+// (docs/minisite/assets/panel/resilio-versio-panel-art.svg, Figma, 7 Oct) in the same
+// units (191 x 486 = the Versio's 50.5 x 128.5 mm), so every control sits where it does
+// on the module. Linework only: 1 px strokes at any size, the signal colour for the LEDs,
+// the button, TIME / TAP and ECHO, as on the art.
+// With `settings`, the knobs point at their values and the switches sit in their
+// positions (the presets page); `controls` crops off the jacks.
+import type { PanelSettings } from '../lib/panel';
+import { KNOBS, SWITCHES } from '../lib/panel';
+
+interface Props { settings?: PanelSettings; controls?: boolean; label?: string; class?: string }
+const { settings, controls = false, label, class: cls = '' } = Astro.props;
+
+const W = 191, H = controls ? 302 : 486;
+const R = 18;                       // knob cap
+const angle = (v: number) => -150 + 300 * v;   // 0 = 7 o'clock, 1 = 5 o'clock
+const polar = (cx: number, cy: number, r: number, deg: number) => {
+  const a = (deg - 90) * Math.PI / 180;
+  return [+(cx + r * Math.cos(a)).toFixed(2), +(cy + r * Math.sin(a)).toFixed(2)];
+};
+const arc = (cx: number, cy: number, r: number) => {
+  const [x1, y1] = polar(cx, cy, r, -150), [x2, y2] = polar(cx, cy, r, 150);
+  return `M${x1} ${y1}A${r} ${r} 0 1 1 ${x2} ${y2}`;
+};
+const ticks = (cx: number, cy: number) =>
+  Array.from({ length: 11 }, (_, i) => {
+    const d = -150 + i * 30, [x1, y1] = polar(cx, cy, 19.5, d), [x2, y2] = polar(cx, cy, 22, d);
+    return `M${x1} ${y1}L${x2} ${y2}`;
+  }).join('');
+
+const knobs = KNOBS.map((k) => {
+  const v = settings?.[k.key] ?? 0.5;
+  const [px1, py1] = polar(k.x, k.y, 6, angle(v)), [px2, py2] = polar(k.x, k.y, R - 2.5, angle(v));
+  const [ex1, ey1] = polar(k.x, k.y, 25.5, -150), [ex2, ey2] = polar(k.x, k.y, 25.5, 150);
+  return { ...k, v, pointer: `M${px1} ${py1}L${px2} ${py2}`, ends: [[ex1, ey1], [ex2, ey2]] };
+});
+
+// Three-way toggles, vertical as on the module: position 0 up, 2 down.
+const switches = SWITCHES.map((s) => {
+  const pos = settings ? s.options.indexOf(settings[s.key]) : 0;
+  const dy = [-9, 0, 9][pos < 0 ? 0 : pos];
+  return { ...s, pos, lever: `M${s.x} ${s.y}L${s.x} ${s.y + dy}`, tip: s.y + dy };
+});
+
+const jacks = [
+  ['BLEND', 'TONE', 'DECAY', 'DRIVE'],
+  ['SPLASH', 'WOBBLE', 'TENSION', 'THROW'],
+  ['↓ L', '↓ R', '↑ L', '↑ R'],
+];
+const jx = [19.8, 70.2, 120.6, 168.6], jy = [314.8, 367.6, 420.4];
+const leds = [65.35, 84.55, 110.95, 130.15];
+const screws = [[29, 11.4], [163.4, 11.4], [29, 474.4], [163.4, 474.4]].filter(([, y]) => y < H);
+
+const title = label ?? (settings ? 'Resilio panel settings' : 'Resilio Versio panel map');
+const desc = settings
+  ? [
+      ...KNOBS.map((k) => `${k.name} ${settings[k.key]}`),
+      ...SWITCHES.map((s) => `${s.name} ${settings[s.key]}`),
+    ].join(', ')
+  : 'The Resilio panel. Top: BLEND left, DECAY right, four LEDs between them (IN L, IN R, OUT L, OUT R). Centre: TONE, then WOBBLE. Left: SPLASH, right: TENSION (TIME in echo mode), then DRIVE. Left, lower: the TANK switch (1, 2, ECHO, top to bottom) above the ATTITUDE switch (CLEAN, TAPE, VALVE). Centre, lower: the THROW button (TAP in echo mode). Jacks, three rows: CV for BLEND, TONE, DECAY, DRIVE; SPLASH, WOBBLE, TENSION and the THROW gate; input L and R, output L and R.';
+---
+<svg class={`panel-wire ${settings ? 'is-set' : ''} ${cls}`.trim()} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${title}. ${desc}`}>
+  <rect class="ln" x="0.5" y="0.5" width={W - 1} height={H - 1} rx="3" />
+  {screws.map(([x, y]) => <circle class="ln soft" cx={x} cy={y} r="5" />)}
+  <text class="brand" x="95.5" y="36" text-anchor="middle">RESILIO</text>
+
+  <!-- LEDs: IN L, IN R, OUT L, OUT R -->
+  <rect class="ln" x="60.2" y="55.2" width="29.7" height="9.2" rx="0.5" />
+  <text class="mono tiny" x="75" y="61.9" text-anchor="middle">IN</text>
+  <rect class="ln" x="105.2" y="55.2" width="30.7" height="9.2" rx="0.5" />
+  <text class="mono tiny" x="120.5" y="61.9" text-anchor="middle">OUT</text>
+  {leds.map((x) => <circle class="ln sig" cx={x} cy="74.85" r="5.2" />)}
+
+  {knobs.map((k) => (
+    <g class="knob">
+      <path class="ln soft" d={arc(k.x, k.y, 22)} />
+      <path class="ln soft" d={ticks(k.x, k.y)} />
+      <circle class="ln" cx={k.x} cy={k.y} r={R} />
+      <path class="ln ptr" d={k.pointer} />
+      <text class="mono tiny soft-t" x={k.ends[0][0]} y={k.ends[0][1] + 2} text-anchor="middle">{k.marks[0]}</text>
+      <text class="mono tiny soft-t" x={k.ends[1][0]} y={k.ends[1][1] + 2} text-anchor="middle">{k.marks[1]}</text>
+      <text class="name" x={k.lx} y={k.ly} text-anchor="middle">{k.name}</text>
+    </g>
+  ))}
+  <rect class="ln sig" x="146.2" y="186.4" width="36.7" height="9.2" rx="0.5" />
+  <text class="mono tiny sig-t" x="164.5" y="193.1" text-anchor="middle">TIME</text>
+
+  {switches.map((s) => (
+    <g class="switch">
+      <circle class="ln" cx={s.x} cy={s.y} r="7.5" />
+      <circle class="ln soft" cx={s.x} cy={s.y} r="4" />
+      <path class="ln ptr" d={s.lever} />
+      <circle class="ln ptr-dot" cx={s.x} cy={s.tip} r="2.6" />
+      <path class="ln soft" d={`M47.5 ${s.y - 10}H49V${s.y + 10}H47.5M49 ${s.y}H47.5`} />
+      {s.options.map((o, i) => (
+        <text class:list={['mono', 'opt', { 'sig-t': o === 'ECHO', on: settings && i === s.pos, off: settings && i !== s.pos }]}
+          x="53" y={s.y - 10 + i * 10 + 2.2}>{s.marks[i]}{o}</text>
+      ))}
+      <title>{s.name}</title>
+    </g>
+  ))}
+
+  <circle class="ln sig" cx="99" cy="262.1" r="10.1" />
+  <text class="name" x="99.4" y="285.1" text-anchor="middle">THROW</text>
+  <rect class="ln sig" x="83.2" y="288.4" width="31.7" height="9.2" rx="0.5" />
+  <text class="mono tiny sig-t" x="99" y="295.1" text-anchor="middle">TAP</text>
+
+  {!controls && (
+    <g class="jacks">
+      {jy.map((y, r) => jx.map((x, c) => (
+        <g>
+          <circle class:list={['ln', { sig: r === 1 && c === 3 }]} cx={x} cy={y} r="13" />
+          <circle class="ln soft" cx={x} cy={y} r="8.5" />
+          <text class="mono tiny" x={x} y={y + 28} text-anchor="middle">{jacks[r][c]}</text>
+        </g>
+      )))}
+      <path class="ln soft" d="M6 452.5H83M107 452.5H181" />
+      <text class="mono tiny" x="44.5" y="461" text-anchor="middle">INPUT</text>
+      <text class="mono tiny" x="144.5" y="461" text-anchor="middle">OUTPUT</text>
+    </g>
+  )}
+</svg>
+
+<style>
+  .panel-wire { display: block; width: 100%; height: auto; color: var(--ink); overflow: visible; }
+  .ln { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
+  .soft { opacity: 0.45; }
+  .sig { stroke: var(--signal); }
+  text { fill: currentColor; stroke: none; }
+  .brand { font: 700 14px var(--font-sans); letter-spacing: 2.4px; }
+  .name { font: 600 7.4px var(--font-sans); letter-spacing: 0.2px; }
+  .mono { font-family: var(--font-mono); font-weight: 400; }
+  .tiny { font-size: 4.6px; letter-spacing: 0.3px; }
+  .opt { font-size: 5.2px; }
+  .soft-t { opacity: 0.6; }
+  .sig-t { fill: var(--signal); }
+  .ptr-dot { fill: var(--paper, #fff); }
+  /* With settings: the pointers and the chosen switch positions in ink, the rest quieter */
+  .is-set .ptr, .is-set .ptr-dot { stroke: var(--signal); stroke-width: 2; }
+  .is-set .opt.off { opacity: 0.4; }
+  .is-set .opt.on { font-weight: 700; }
+</style>

@@ -6,7 +6,7 @@
 build/rv_render test_audio/stimulus/02_hits.wav out.wav --preset presets/starting_points/tubby_snare_splash.json
 ```
 
-Clock positions are approximate (fully left 7 o'clock = 0, noon = 0.5, fully right 5 o'clock = 1, so each hour is about 0.1); the numbers are exact. Switches: TANK 1 / 2 / ECHO = left / centre / right; ATTITUDE CLEAN / TAPE / VALVE = left / centre / right (names since v1.0.43: SPRINGS 1 / 2 / 3, CLEAN / DRIVEN / KICKED before; the preset files read either).
+Clock positions are approximate (fully left 7 o'clock = 0, noon = 0.5, fully right 5 o'clock = 1, so each hour is about 0.1); the numbers are exact. Switches (vertical toggles): TANK 1 / 2 / ECHO = up / centre / down; ATTITUDE CLEAN / TAPE / VALVE = up / centre / down (names since v1.0.43: SPRINGS 1 / 2 / 3, CLEAN / DRIVEN / KICKED before; the preset files read either).
 
 WOBBLE is bipolar: noon is still, left drifts like tape, right is a vibrato. Every preset sits just left of noon for a little tape drift. TONE right of noon is the Big Knob low cut, so the presets that sit there (Tubby snare, tight slap) are slightly thinned. Rechecked on the sound of 6 Oct 2026 (the wet alone, on the test hits, skank and a held pad): skank and pads stay clear of the output limiter in every preset; loud drum hits reach it in Tubby snare splash, Drowned Howl and Valve tank drop (the wet's peaks touch the limiter's ~−1.7 dBFS knee), so a red output light on the hardest hits is normal there.
 
