@@ -4,7 +4,7 @@
 // With DOWNLOADS_LIVE off the buttons show "coming soon" (the state before the repo went public).
 import Button from './Button.astro';
 import { getRelease, fileSize, longDate } from '../lib/release';
-import { DOWNLOAD, DOWNLOADS_LIVE } from '../data/site';
+import { DOWNLOAD, DOWNLOADS_LIVE, LINKS } from '../data/site';
 
 interface Props { compact?: boolean; headingLevel?: 'h2' | 'h3'; idPrefix?: string }
 const { compact = false, headingLevel: H = 'h3', idPrefix = 'dl' } = Astro.props;
@@ -21,7 +21,7 @@ const targets = [
     needs: [
       'A Noise Engineering Versio module.',
       'A computer with Chrome and a micro-USB data cable.',
-      'Going back to Noise Engineering’s firmware is one step, with the same app.',
+      `Noise Engineering’s <a href="${LINKS.firmwareSwap}">Firmware Swap</a> web app, to install it, and to go back to their firmware any time.`,
     ],
   },
   {
@@ -68,7 +68,7 @@ const targets = [
         {!compact && (
           <div class="needs">
             <p class="needs-title">You’ll need</p>
-            <ul class="small">{t.needs.map((n) => <li>{n}</li>)}</ul>
+            <ul class="small">{t.needs.map((n) => <li set:html={n} />)}</ul>
           </div>
         )}
       </section>
