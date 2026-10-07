@@ -368,7 +368,7 @@ html.hero-film .hero-still { visibility: hidden; }
 .download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-ink); }   /* the accent (owner, 7 Oct); the AA-safe tone for text */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--paper); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
-.download .target h3 { font-size: var(--fs-h3); line-height: 1.05; }
+.download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.1; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
 .download .target .btn { justify-self: start; }
 .download .target ul { list-style: disc; padding-left: 1.15em; color: var(--ink-2); }
 .download .target li::marker { color: var(--ink-2); }
@@ -581,8 +581,8 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose dl.terms dt { font-weight: 600; padding-right: var(--gutter); }   /* no column gap, so the hairlines run unbroken (owner, 7 Oct) */
 
 /* ---- Download: "You'll need", a roomier middot ---------- */
-.download .needs { display: grid; gap: 0.4rem; }
-.download .needs-title { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
+.download .needs { display: grid; gap: 0.4rem; margin-top: 0.75rem; }   /* more room under the button (owner, 7 Oct) */
+.download .needs-title { font: 700 var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink); }   /* bold, primary text (owner, 7 Oct) */
 .download .sep { margin-inline: 0.6em; }
 
 /* ---- Bullets in the accent, site-wide (owner, 7 Oct) ------------------------- */
