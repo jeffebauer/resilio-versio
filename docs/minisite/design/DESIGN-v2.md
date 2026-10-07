@@ -69,3 +69,10 @@ Kept from revision 1: the content and its sources, the renders and the hero film
 | `--radius-tile` | clamp(0.75rem, 0.5rem + 0.8vw, 1.25rem) | bento tiles |
 
 `--cream` is retired. Rule-based structure gives way to tiles and space; hairlines remain only in the header, footer and tables.
+
+## Amendments (owner review, 7 Oct 2026)
+
+- **V7 callouts:** no boxes. Each leader line ends in the control name (Phonic Bold) and its one line of text, set straight on the render.
+- **V8 pictograms: retired.** The CV jack, the attitude glyph and the tape-echo glyph misread (a magnifying glass, a ghost, a face). Every feature tile shows a tiny diagram instead (V10), including new ones for 7 CV inputs and the Howl.
+- **V9 tiles:** "held bed" and "0 dead zones" dropped; no per-tile manual links (one "Read the manual" button under the grid); a denser grid (three columns from 800 px, two from 640 px, one on phones).
+- **Hero:** the reveal film (8 s, rising from below to land level and square on the panel) and its hold loop are in; the hero still is the film's final framing (`hero_still.jpg`).
