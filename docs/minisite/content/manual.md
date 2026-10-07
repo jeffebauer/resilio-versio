@@ -110,11 +110,13 @@ Switching crossfades, so it's safe mid-tail. Into ECHO the echo fades in on a fr
 
 Named for the saturation.
 
-- **CLEAN** (left): a polite, linear tank.
-- **TAPE** (centre): tape saturation, the core dub colour, with a fine grain on the reverb.
-- **VALVE** (right): a spring in a cranked valve amp. Hard, lopsided saturation inside the tank, the growl of an overdriven valve stage, rattle and lurch on hits, coarse grit, and the howl at the top of DECAY.
+- **CLEAN** (left): a polite, linear tank. The reverb isn't bit-reduced.
+- **TAPE** (centre): tape saturation, the core dub colour, and the reverb at **12-bit µ-law**: a fine grain.
+- **VALVE** (right): a spring in a cranked valve amp. Hard, lopsided saturation inside the tank, the growl of an overdriven valve stage, rattle and lurch on hits, and the howl at the top of DECAY. The reverb is at **10-bit µ-law**: coarse, clearly gritty.
 
-Flipping it changes the tail already ringing. The dry signal is never coloured.
+**The grit.** In TAPE and VALVE the reverb runs through a 24 kHz µ-law converter, the companded grain of early digital delays and samplers. µ-law steps are coarse on loud sounds and fine on quiet ones, so hits get the most grit and a fading tail ends in grain, then silence. At 24 kHz the top octave (above about 11 kHz) is cut cleanly, with no aliasing. The converter sits before TONE, so TONE right of noon thins the grit along with the tail.
+
+Flipping ATTITUDE changes the tail already ringing. The dry signal is never coloured or bit-reduced, so BLEND fully left is a clean passthrough in every position.
 
 ### THROW / TAP button
 
