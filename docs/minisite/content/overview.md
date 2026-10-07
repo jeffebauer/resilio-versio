@@ -61,6 +61,14 @@ Resilio runs behind your Versio's printed panel, so the labels on your module wo
 - **7 CV inputs** One per knob, 0–5 V, added to the knob's position
 - **1 gate input** Throws, or clocks the echo
 
+## Shape it with us
+
+Resilio is tuned by ear, and your ears count too. Tell us what you hear, what you'd reach for and what gets in the way, and we'll refine it together.
+
+- **Play it.** On the module or in your DAW, on your own material.
+- **Tell us.** Open an issue on GitHub (a free account): an idea for the sound, or a bug.
+- **Hear it change.** Ideas are tried and listened to before anything ships. The ones that make it are in the changelog, credited to whoever suggested them.
+
 ## Safe to try
 
 Resilio replaces the module's firmware completely, and goes back just as easily. You install it with Noise Engineering's own Firmware Swap web app, and you go back to any Noise Engineering firmware with the same app. Resilio changes nothing else on the module.

@@ -37,6 +37,11 @@ export const DOCS = [
 export const LINKS = {
   source: REPO_URL,
   issues: `${REPO_URL}/issues`,
+  // The two issue forms (.github/ISSUE_TEMPLATE), opened directly; the FAQ answer has the detail.
+  newIssue: `${REPO_URL}/issues/new/choose`,
+  soundIdea: `${REPO_URL}/issues/new?template=sound_idea.yml`,
+  bugReport: `${REPO_URL}/issues/new?template=bug_report.yml`,
+  feedbackFaq: '/faq/#how-do-i-give-feedback-or-report-a-bug',
   mit: `${REPO_URL}/blob/main/LICENSE`,
   agpl: `${REPO_URL}/blob/main/LICENSES/AGPL-3.0.txt`,
   notice: `${REPO_URL}/blob/main/NOTICE`,

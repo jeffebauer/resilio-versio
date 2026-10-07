@@ -9,6 +9,8 @@ order: 5
 
 Newest first. Versions are named by date and build (`vYYYY.MM.DD-<build>`). Every release has the firmware for the Versio and the plugin for macOS, unless it says otherwise.
 
+Changes suggested by players are credited in their entry. Have an idea? [Suggest a sound](https://github.com/jeffebauer/resilio-versio/issues/new?template=sound_idea.yml).
+
 <!-- LATEST: show the current version, date and download buttons here, from the release data. -->
 
 ## 7 October 2026
