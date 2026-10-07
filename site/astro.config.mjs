@@ -17,7 +17,8 @@ export default defineConfig({
   site,
   output: 'static',
   trailingSlash: 'ignore',
-  build: { format: 'directory' },
+  // CSS inlined into each page: one less render-blocking request (Lighthouse, PLAN §B8).
+  build: { format: 'directory', inlineStylesheets: 'always' },
   integrations: [
     sitemap({ filter: (page) => !page.includes('/style') }),
   ],

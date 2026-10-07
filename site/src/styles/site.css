@@ -378,7 +378,8 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .toc .sub-item a { color: var(--ink-2); }
 @media (max-width: 47.99rem) { .toc .sub-item { display: none; } }
 
-.prose { font-size: var(--fs-body); }
+.prose { font-size: var(--fs-body); overflow-wrap: break-word; }
+.prose a { overflow-wrap: anywhere; }
 .prose > * + * { margin-top: var(--stack-2); }
 .prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: var(--stack-5); }
 .prose > h2:first-child, .prose > .tabs:first-child h2:first-child { margin-top: 0; }

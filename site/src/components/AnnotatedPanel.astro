@@ -4,7 +4,11 @@
 // so it scales. On narrower screens the render is cropped to the panel, the controls get
 // numbered markers, and the callouts become a numbered list beside or under it.
 // It is one ordered list either way, so it reads as a list to screen readers.
+import { Picture } from 'astro:assets';
 import { CONTROLS } from '../data/controls';
+import { mustRender, widthsFor } from '../lib/renders';
+
+const front = mustRender('front-on-wide.jpg');
 
 // The render (/renders/front-on-wide.jpg, 2116 × 1190 px) and where the 50.5 × 128.5 mm
 // panel sits in it, measured from the image and checked by eye against the knobs.
@@ -50,7 +54,7 @@ const stage = [
 ---
 <figure class="ap" style={stage}>
   <div class="ap-stage">
-    <img src="/renders/front-on-wide.jpg" width={IMG.w} height={IMG.h} loading="lazy" decoding="async"
+    <Picture src={front} widths={widthsFor(front)} sizes="(min-width: 80rem) 92rem, 1200px" formats={['avif', 'webp']} loading="lazy"
       alt="The Versio module with the Resilio panel, seen straight on: a black panel with white labels, seven black knobs, the TANK and ATTITUDE toggles, the THROW button, four lit red LEDs and twelve jacks." />
     <svg class="ap-lines" viewBox={`0 0 ${IMG.w} ${IMG.h}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
       {items.map((c) => (

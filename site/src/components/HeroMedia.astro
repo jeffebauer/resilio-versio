@@ -6,10 +6,14 @@
 // shows without JavaScript, and all that reduced-motion users see.
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { Picture, getImage } from 'astro:assets';
 import { PUBLIC_DIR } from '../lib/paths';
+import { mustRender, render, widthsFor } from '../lib/renders';
 
 const has = (f: string) => existsSync(join(PUBLIC_DIR, 'renders', f));
-const still = has('hero_still.jpg') ? '/renders/hero_still.jpg' : '/renders/hero-monolith.jpg';
+const stillImg = render('hero_still.jpg') ?? mustRender('hero-monolith.jpg');
+const poster = (await getImage({ src: stillImg, width: Math.min(1600, stillImg.width), format: 'webp' })).src;
+const sizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const sources = (name: string) =>
   (['webm', 'mp4'] as const)
     .filter((ext) => has(`${name}.${ext}`))
@@ -22,13 +26,13 @@ const alt = 'The Resilio Versio module seen from the floor, towering against a d
 <div class="hero-frame" data-hero>
   {film ? (
     <>
-      <img class="hero-still" src={still} width="2400" height="1350" fetchpriority="high" decoding="async" alt={alt} />
+      <Picture class="hero-still" src={stillImg} widths={widthsFor(stillImg)} sizes={sizes} formats={['avif', 'webp']} fetchpriority="high" loading="eager" alt={alt} />
       <video
         class="hero-video"
         muted
         playsinline
         preload="none"
-        poster={still}
+        poster={poster}
         aria-hidden="true"
         data-hero-video
         data-hold={JSON.stringify(hold)}
@@ -42,7 +46,7 @@ const alt = 'The Resilio Versio module seen from the floor, towering against a d
       </button>
     </>
   ) : (
-    <img class="hero-still" src={still} width="2400" height="1350" fetchpriority="high" decoding="async" alt={alt} />
+    <Picture class="hero-still" src={stillImg} widths={widthsFor(stillImg)} sizes={sizes} formats={['avif', 'webp']} fetchpriority="high" loading="eager" alt={alt} />
   )}
 </div>
 {film && (

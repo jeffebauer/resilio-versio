@@ -9,9 +9,14 @@ import AnnotatedPanel from '../components/AnnotatedPanel.astro';
 import FeatureTiles from '../components/FeatureTiles.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
+import { Picture } from 'astro:assets';
+import { mustRender, widthsFor } from '../lib/renders';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
 
 const page = await getPage('overview');
+const tank = mustRender('tank-macro.jpg');
+const patched = mustRender('patched.jpg');
+const wideSizes = '(min-width: 92rem) 92rem, calc(100vw - 2rem)';
 const { h1, rest } = takeH1(pageHtml(page));
 const { lead, sections } = splitSections(rest);
 const noSlots = (html: string) => splitSlots(html).filter((p) => p.kind === 'html').map((p) => (p as { html: string }).html).join('');
@@ -67,7 +72,7 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     </div>
     <figure class="wide intro-media" data-reveal>
       <div class="card-media" style="aspect-ratio: 2400 / 1028">
-        <img src="/renders/tank-macro.jpg" width="2400" height="1028" loading="lazy" decoding="async"
+        <Picture src={tank} widths={widthsFor(tank)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
           alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
       </div>
       <figcaption class="caption">The tank: a transducer and its springs.</figcaption>
@@ -123,7 +128,7 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     </div>
     <figure class="wide" data-reveal>
       <div class="card-media" style="aspect-ratio: 16 / 9">
-        <img src="/renders/patched.jpg" width="2400" height="1350" loading="lazy" decoding="async"
+        <Picture src={patched} widths={widthsFor(patched)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
           alt="The Resilio Versio module patched with four cables, black and red for each left and right pair, into both inputs and both outputs." />
       </div>
       <figcaption class="caption">Patched: both inputs and both outputs.</figcaption>
