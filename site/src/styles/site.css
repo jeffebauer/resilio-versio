@@ -599,3 +599,12 @@ ul > li::marker { color: var(--signal); }
   .prose dl.terms { grid-template-columns: minmax(0, 1fr); }
   .prose dl.terms dd { border-top: 0; padding-top: 0; }
 }
+
+/* ---- King Tubby's Big Knob (history; owner, 7 Oct) --------------------------------
+   The intro's image-and-scrim card, then the story in the reading column, then three
+   renders of the recreated desk. */
+.bigknob .bigknob-story { margin-top: var(--stack-5); }
+.bigknob .bigknob-gallery { margin-top: var(--stack-5); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gutter); }
+.bigknob .bigknob-gallery figure { margin: 0; }
+.bigknob .bigknob-note { margin-top: var(--stack-3); padding-top: 0; }
+@media (max-width: 47.99rem) { .bigknob .bigknob-gallery { grid-template-columns: minmax(0, 1fr); } }
