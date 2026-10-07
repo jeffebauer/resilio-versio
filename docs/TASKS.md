@@ -56,6 +56,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 7 Oct 2026: **Site polish live:** warm-neutral greys (cohesive with the orange-red), round play/pause buttons, every image caption in small mono, "Built around dub performance moves", the clips note removed
 - 7 Oct 2026: **Site review changes live** (`feat/site-refine` merged): MD UI / MD IO fonts; a wireframe panel drawn from your art (the manual's panel map, each starting point as a set panel; switches up / centre / down); home: sound claims removed, patched still below the cards, card buttons bottom-aligned, hero edge fixed, download section realigned, dividers between white sections; footer: one legal paragraph, "Made with love by Jesse Bauer"
 - 7 Oct 2026: **Fonts on Vercel:** private Blob store connected, MD UI + MD IO uploaded, `FONTS_URL` set; the `feat/site-refine` preview builds with them (`downloaded 2/2`). The live site switches to them when the branch merges
 - 7 Oct 2026: **Site live** at https://resilio-versio.vercel.app (revision 2 and the render scripts merged to `main`, for friends' feedback). **Plugin `1e02c96` installed** (first-chord fix, AU validated). Fonts switched from Phonic to MD UI (text) + MD IO (mono), both variable
