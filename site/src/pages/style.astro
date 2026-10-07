@@ -57,13 +57,13 @@ const DIAGRAMS: [DiagramKind, string][] = [
   <div class="column flow">
     <p class="lede">Built from <code>docs/minisite/design/tokens.css</code> and the site’s real components. Heavy display, light text, a white body with dark bands, tiles instead of rules.</p>
     <p class="small quiet">
-      Fonts this build: {fonts.sans ? `Phonic (${fonts.present.length} of 12 files).` : 'Phonic files not supplied, so this page shows Inter, the open-source fallback. Sizes and widths shift a little once Phonic is in.'}
+      Fonts this build: {fonts.sans ? `MD UI${fonts.mono ? ' and MD IO' : ''} (variable fonts).` : 'MD UI files not supplied, so this page shows Inter, the open-source fallback. Sizes and widths shift a little once MD UI is in.'}
     </p>
   </div>
 
   <!-- Type -->
   <section class="st-section" aria-labelledby="type">
-    <div class="column"><h2 class="h2" id="type">Type</h2><p class="quiet">Phonic Bold for headings, statements and big numbers; Light for reading; Mono for values.</p></div>
+    <div class="column"><h2 class="h2" id="type">Type</h2><p class="quiet">MD UI Bold for headings, statements and big numbers; Light for reading; MD IO for values.</p></div>
     <div class="wide">
       {TYPE.map((t) => (
         <div class="st-row">

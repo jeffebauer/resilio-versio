@@ -1,14 +1,14 @@
 /* Resilio Versio minisite: design tokens and base components, revision 2.
    Decisions: docs/minisite/design/DESIGN-v2.md (revision 2) on top of DESIGN.md (revision 1).
-   Light body, dark hero and sound bands (V2). Type: Phonic Bold display + Light text (V3).
-   Phonic is licensed and self-hosted; the font files are NOT in this public repo.
+   Light body, dark hero and sound bands (V2). Type: MD UI Bold display + Light text (V3; MD UI replaced Phonic 7 Oct), MD IO for values.
+   MD UI and MD IO are licensed and self-hosted; the font files are NOT in this public repo.
 
-   Fonts: the twelve Phonic @font-face rules are written by the site (site/src/lib/fonts.ts,
+   Fonts: the two variable-font @font-face rules are written by the site (site/src/lib/fonts.ts,
    rendered in site/src/layouts/Base.astro), one per file that is actually present, so the
-   browser never asks for a missing file. The stacks below name Phonic first; when its files
+   browser never asks for a missing file. The stacks below name MD UI / MD IO first; when their files
    are absent the site takes it out of the stacks and Inter (open source, self-hosted) leads. */
 
-@font-face { font-family: "Phonic Fallback"; src: local("Helvetica Neue"), local("Arial"); size-adjust: 100%; }
+@font-face { font-family: "MD UI Fallback"; src: local("Helvetica Neue"), local("Arial"); size-adjust: 100%; }
 
 :root {
   /* ---- Colour (V2) ------------------------------------------------------ */
@@ -35,11 +35,11 @@
   --focus:        #c83d16;
 
   /* ---- Type (V3) -------------------------------------------------------- */
-  --font-sans: "Phonic", "Inter", "Phonic Fallback", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Phonic Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: "MD UI", "Inter", "MD UI Fallback", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "MD IO", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Fluid, rem-based (zoom and text size still work). min at 375 px, max at 1920 px. */
-  --fs-display: clamp(3rem, 1.6rem + 6vw, 7.5rem);         /* 48 -> 120: Phonic Bold, the title and big numbers */
+  --fs-display: clamp(3rem, 1.6rem + 6vw, 7.5rem);         /* 48 -> 120: MD UI Bold, the title and big numbers */
   --fs-h2:      clamp(2.25rem, 1.3rem + 4vw, 5.5rem);      /* 36 -> 88: section headings, Bold */
   --fs-h3:      clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);     /* 24 -> 40: tile statements, Bold */
   --fs-lede:    clamp(1.25rem, 0.95rem + 1.05vw, 1.875rem); /* 20 -> 30 */
@@ -56,7 +56,7 @@
   --wt-light:   300;  /* reading text */
   --wt-reg:     400;  /* UI, anything under 15 px */
   --wt-medium:  500;  /* button labels, strong in text */
-  --wt-display: 700;  /* Phonic Bold: headings, statements, big numbers */
+  --wt-display: 700;  /* MD UI Bold: headings, statements, big numbers */
 
   --track-display: -0.02em;
   --track-ui: 0.01em;
