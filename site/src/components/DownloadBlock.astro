@@ -13,7 +13,7 @@ const live = DOWNLOADS_LIVE;
 const targets = [
   {
     key: 'firmware',
-    title: 'On the Versio',
+    title: 'For your Versio',
     button: 'Firmware for the Versio (.bin)',
     size: fileSize(r.firmwareBytes),
     href: DOWNLOAD.firmware,
@@ -26,7 +26,7 @@ const targets = [
   },
   {
     key: 'plugin',
-    title: 'In your DAW',
+    title: 'For your DAW',
     button: 'Plugin for macOS (AU/VST3)',
     size: fileSize(r.pluginBytes),
     href: DOWNLOAD.plugin,
@@ -45,8 +45,7 @@ const targets = [
     <span class="version">{r.version}</span>
     <span class="quiet" aria-hidden="true">·</span>
     <span class="quiet"><time datetime={r.date}>{longDate(r.date)}</time></span>
-    <span class="quiet" aria-hidden="true">·</span>
-    <a href="/changelog/">What’s new</a>
+    <a class="whats-new" href="/changelog/">What’s new</a>
   </p>
   <div class="targets">
     {targets.map((t) => (
@@ -62,13 +61,18 @@ const targets = [
             <span class="micro quiet">Coming soon: the link goes live when the repository is public.</span>
           </span>
         )}
-        {!compact && <ul class="small">{t.needs.map((n) => <li>{n}</li>)}</ul>}
+        {!compact && (
+          <div class="needs">
+            <p class="needs-title">You’ll need</p>
+            <ul class="small">{t.needs.map((n) => <li>{n}</li>)}</ul>
+          </div>
+        )}
       </section>
     ))}
   </div>
   <p class="small">
     <a href="/install/">How to install</a>
-    <span class="quiet" aria-hidden="true">  ·  </span>
+    <span class="quiet sep" aria-hidden="true">·</span>
     <a href={live ? r.url : DOWNLOAD.release}>All files and checksums on GitHub</a>
   </p>
 </div>

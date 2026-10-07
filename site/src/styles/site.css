@@ -10,7 +10,6 @@
 html { scroll-padding-top: calc(var(--header-h) + 1rem); }
 body { min-height: 100vh; display: flex; flex-direction: column; overflow-x: clip; }
 main { flex: 1 0 auto; }
-strong, b { font-weight: var(--wt-medium); }
 code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere; }
 
 /* Never set Light below 15 px (DESIGN blind spot 3): small UI text is Regular. */
@@ -56,22 +55,32 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .wordmark .logo-full { height: 0.9375rem; aspect-ratio: 540 / 40; }
 .wordmark .logo-short { display: none; height: 0.875rem; aspect-ratio: 264 / 40; }
 
-.site-header .nav { grid-column: 2 / 4; grid-row: 1; }
-.site-header .nav ul { display: flex; gap: clamp(1rem, 0.4rem + 1.2vw, 2rem); list-style: none; margin: 0; padding: 0; }
+.site-header .nav { position: relative; grid-column: 2 / 4; grid-row: 1; justify-self: start; }
+.site-header .nav ul { display: flex; gap: clamp(0.25rem, 0.1rem + 0.5vw, 0.75rem); list-style: none; margin: 0 0 0 -0.75rem; padding: 0; }   /* -0.75rem: the text stays where it was; the pill's padding hangs left */
 .site-header .nav a, .menu li a {
   font: var(--wt-reg) var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui);
   text-decoration: none; text-underline-offset: 0.35em;
 }
-.site-header .nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.site-header .nav a:hover, .site-header .nav a[aria-current="page"] { text-decoration: underline; text-decoration-thickness: var(--hair); }
+.site-header .nav a { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0 0.75rem; }
+/* Hover: a soft rounded pill that slides and resizes from link to link (owner, 7 Oct); it rests on
+   the current page. Placed by the script in Base.astro; without JS, the current page gets it. */
+.site-header .nav .nav-pill {
+  position: absolute; z-index: 0; top: 50%; left: 0; height: 2.25rem; width: 0; translate: 0 -50%;
+  border-radius: var(--radius-ui); background: color-mix(in srgb, currentColor 9%, transparent);
+  opacity: 0; pointer-events: none;
+  transition: left var(--dur-2) var(--ease-out), width var(--dur-2) var(--ease-out), opacity var(--dur-1) var(--ease-out);
+}
+.site-header .nav .nav-pill.is-on { opacity: 1; }
+.site-header .nav:not(.has-pill) a[aria-current="page"] { background: color-mix(in srgb, currentColor 9%, transparent); border-radius: var(--radius-ui); }
+@media (prefers-reduced-motion: reduce) { .site-header .nav .nav-pill { transition: opacity var(--dur-1) linear; } }
 .header-cta { grid-column: 3; grid-row: 1; justify-self: end; }
 
 .menu { display: none; position: relative; grid-row: 1; grid-column: 3; justify-self: end; }
 .menu summary {
-  list-style: none; cursor: pointer; min-height: 2.75rem; display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0 0.9rem; border-radius: var(--radius-ui);
+  list-style: none; cursor: pointer; min-height: 2.25rem; display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0 0.9rem; border-radius: var(--radius-ui);   /* the same size as the Download button beside it (.btn-small) */
   box-shadow: inset 0 0 0 var(--hair) color-mix(in srgb, currentColor 35%, transparent);
-  font: var(--wt-medium) var(--fs-ui) / 1 var(--font-sans);
+  font: var(--wt-display) var(--fs-ui) / 1 var(--font-sans);
 }
 .menu summary svg { width: 1rem; height: 1rem; }
 .menu summary::-webkit-details-marker { display: none; }
@@ -127,7 +136,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .hero-pause .i-play, .hero-pause.is-paused .i-pause { display: none; }
 .hero-pause.is-paused .i-play { display: block; }
 .hero-title {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gutter); row-gap: var(--stack-2);
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gutter); row-gap: 0.5rem;
   padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); align-items: end;
 }
 .hero-title h1 { grid-column: 1; }
@@ -135,7 +144,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   grid-column: 1; max-width: 26em; color: var(--ink-2);
   font-weight: var(--wt-light); font-size: clamp(1.375rem, 1rem + 1.5vw, 2.25rem); line-height: 1.2; letter-spacing: -0.005em;
 }
-.hero-title .actions { grid-column: 2; grid-row: 1 / 3; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; padding-bottom: 0.35rem; }
+.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: center; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
 @media (max-width: 47.99rem) {
   .hero-title { grid-template-columns: minmax(0, 1fr); }
   .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-1); }
@@ -146,10 +155,23 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
   font-size: clamp(1.75rem, 1.05rem + 2.6vw, 3.5rem); font-weight: var(--wt-display);
   line-height: 1.04; letter-spacing: var(--track-display);
 }
-.intro .column { max-width: none; }
-.intro .column > .statement { max-width: 20em; }
-.intro .column { width: min(100% - 2 * var(--margin), 56rem); }
-.intro .lede { max-width: 32em; }
+/* The intro sits on the tank image under a dark scrim (owner, 7 Oct), centred. */
+/* Height from the content, at least the image's own shape on wide screens (no aspect-ratio:
+   with a min-height it would widen the card past the screen on phones). */
+.intro-card { position: relative; display: grid; place-items: center; min-height: clamp(26rem, 42.8vw, 38rem); background: var(--dark); }
+.intro-card .intro-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.intro-scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 72% 80% at 50% 52%, rgb(12 11 10 / 0.8), rgb(12 11 10 / 0.55) 70%, rgb(12 11 10 / 0.4)),
+    linear-gradient(rgb(12 11 10 / 0.15), rgb(12 11 10 / 0.15));
+}
+.intro-copy {
+  position: relative; z-index: 1; max-width: 50rem; padding: clamp(2rem, 1rem + 4vw, 4.5rem) clamp(1.25rem, 0.5rem + 4vw, 4rem);
+  text-align: center; color: var(--on-dark); --ink-2: var(--on-dark-2);
+}
+.intro-copy .statement { max-width: 20em; margin-inline: auto; }
+.intro-copy .lede { max-width: 32em; margin-inline: auto; }
 [data-split] .line-mask { padding-bottom: 0.08em; margin-bottom: -0.08em; }
 
 /* ---- The sound (dark) ------------------------------------------------------ */
@@ -161,19 +183,18 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 @media (max-width: 79.99rem) { .demos { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 59.99rem) { .demos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 39.99rem) { .demos { grid-template-columns: minmax(0, 1fr); } .demo.is-wide { grid-column: auto; } }
-/* Each tile spans five shared rows (head, caption, player, settings, transcript): opening
+/* Each tile spans four shared rows (head, caption, player, settings): opening
    Settings in one tile grows only those rows, so its neighbours' contents don't move. */
 .demo {
-  display: grid; grid-row: span 5; grid-template-rows: subgrid; row-gap: var(--stack-2); align-content: start;
+  display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: var(--stack-2); align-content: start;
   padding: clamp(1.1rem, 0.8rem + 0.8vw, 1.5rem);
 }
 @supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
-.demo .disclosure + .disclosure { margin-top: calc(-1 * var(--stack-2)); }
 .demo-head { display: grid; gap: var(--stack-2); align-content: start; }
 .demo-title { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); line-height: 1.1; letter-spacing: -0.015em; }
 .demo-diagram { width: 100%; height: 3.25rem; color: var(--ink); }
 .demo.is-wide .demo-diagram { height: 4.5rem; }
-.demo .caption { padding: 0; }
+.demo-caption { font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }   /* sans, not the mono image captions (owner, 7 Oct) */
 .demo .player { align-self: end; }
 .demo .spec { font-size: var(--fs-ui); }
 .demo .spec th, .demo .spec td { padding-block: 0.5rem; }
@@ -284,6 +305,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 .feature { display: flex; flex-direction: column; gap: 0.75rem; min-height: clamp(11rem, 9rem + 4vw, 14rem); }
 .feature.is-wide { grid-column: span 2; }
 .feature.is-big { grid-column: span 2; grid-row: span 2; }
+.feature.is-full { grid-column: 1 / -1; }   /* closes the grid: 15 cells at three columns, 12 at two (the CV tile went, owner 7 Oct) */
 .feature-diagram { order: -1; width: 100%; max-width: 17rem; height: clamp(3.25rem, 2.6rem + 1.4vw, 4.5rem); margin-bottom: auto; color: var(--ink); }
 .feature.is-wide .feature-diagram { max-width: 18rem; }
 .feature.is-big .feature-diagram { max-width: 36rem; height: clamp(5rem, 1.5rem + 8vw, 13rem); }
@@ -296,7 +318,7 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 }
 @media (max-width: 39.99rem) {
   .bento { grid-template-columns: minmax(0, 1fr); }
-  .feature.is-wide, .feature.is-big { grid-column: auto; }
+  .feature.is-wide, .feature.is-big, .feature.is-full { grid-column: auto; }
   .feature { min-height: 0; }
   .feature.is-big .feature-diagram { height: 4.5rem; }
 }
@@ -311,9 +333,8 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 
 /* ---- Download (tile band) ---------------------------------------------------- */
 /* The title on its own row, so Status and the release line start level (owner, 7 Oct) */
-.download-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.7fr); gap: var(--stack-4) clamp(2rem, 1rem + 4vw, 6rem); align-items: start; }
+.download-grid { display: grid; grid-template-columns: minmax(0, 0.75fr) minmax(0, 2fr); gap: var(--stack-4) clamp(2rem, 1rem + 4vw, 6rem); align-items: start; }
 .download-title { grid-column: 1 / -1; }
-.status-title { font-weight: var(--wt-display); }
 @media (max-width: 63.99rem) { .download-grid { grid-template-columns: minmax(0, 1fr); } }
 .download { display: grid; gap: var(--stack-3); }
 /* One size, one family: only the version is in ink (owner: the line had too many styles) */
@@ -345,7 +366,7 @@ main:has(> .band-tile:last-child, > .band-dark:last-child) + .site-footer { bord
 .site-footer a:hover { text-decoration: underline; text-decoration-thickness: var(--hair); }
 /* The legal lines: full width under a hairline that stops at the gutters (owner, 7 Oct) */
 .site-footer .legal { grid-column: 1 / -1; border-top: var(--hair) solid var(--line); padding-top: var(--stack-3); color: var(--ink-2); display: grid; gap: 0.35rem; font-size: var(--fs-micro); line-height: 1.5; }
-.site-footer .credit { color: var(--ink); font-weight: 600; }
+.site-footer .credit { color: var(--ink); font-weight: 600; margin-top: var(--stack-2); }
 .site-footer .credit a { text-decoration: underline; text-decoration-thickness: var(--hair); text-underline-offset: 0.15em; }
 @media (max-width: 47.99rem) {
   .site-footer .wide { grid-template-columns: minmax(0, 1fr); }
@@ -490,3 +511,14 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .header-sample.dark { background: var(--dark); }
 .header-sample.dark .sample-body { color: var(--on-dark-2); }
 @media (max-width: 63.99rem) { .header-sample .site-header .menu { display: none; } }
+
+/* ---- Centred section intros (owner, 7 Oct) ---------------------------------------- */
+.centered { text-align: center; }
+.centered .lede { margin-inline: auto; }
+.panel-list ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+
+/* ---- Download: "You'll need", What's new on the right, a roomier middot ---------- */
+.download .needs { display: grid; gap: 0.4rem; }
+.download .needs-title { font: var(--wt-reg) var(--fs-micro) / 1.3 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
+.download .release-line .whats-new { margin-left: auto; }
+.download .sep { margin-inline: 0.6em; }

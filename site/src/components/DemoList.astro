@@ -12,4 +12,15 @@ const shown = clips.slice(0, limit);
 </ul>
 <script>
   import '../scripts/player';
+  // Opening Settings on one card opens it on the cards beside it in the same row (owner,
+  // 7 Oct), so a row compares at a glance and stays aligned. Rows are read from the layout.
+  const all = [...document.querySelectorAll<HTMLDetailsElement>('[data-demos] details[data-settings]')];
+  let syncing = false;
+  all.forEach((d) => d.addEventListener('toggle', () => {
+    if (syncing) return;
+    const top = d.closest('li')!.offsetTop;
+    syncing = true;
+    all.forEach((o) => { if (o !== d && o.closest('li')!.offsetTop === top) o.open = d.open; });
+    syncing = false;
+  }));
 </script>

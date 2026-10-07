@@ -70,15 +70,15 @@
     },
     {
       "file": "09-valve-howl.mp3",
-      "title": "VALVE Howl",
-      "caption": "The Drowned Howl starting point: one snare tips the tank into its own feedback; at 10 seconds DECAY comes back down and it falls away.",
+      "title": "The VALVE howl",
+      "caption": "The Drowned howl starting point: one snare tips the tank into its own feedback; at 10 seconds DECAY comes back down and it falls away.",
       "transcript": "One snare hit, then a rough, moving roar that keeps going on its own: the springs feeding back, shifting in pitch and texture, never a pure tone. After about ten seconds it falls quickly into a normal tail and fades to silence.",
       "duration_s": 18.0,
       "settings": { "TANK": "2", "ATTITUDE": "VALVE", "BLEND": "0.8 (3)", "DECAY": "0.95 (4:30), down to 0.6 (1) between 10 and 11 s", "TONE": "0.35 (10:30)", "TENSION": "0.3 (10)", "SPLASH": "0.5 (12)", "DRIVE": "0.6 (1)", "WOBBLE": "0.41 (11)" }
     },
     {
       "file": "10-hold.mp3",
-      "title": "The Hold",
+      "title": "The hold",
       "caption": "CLEAN with DECAY fully up: a pad blooms into a held bed that keeps ringing after the chord stops at 8 seconds.",
       "transcript": "A C minor pad fades in and blooms into a wide, still wash. At eight seconds the chord itself stops, but the wash carries on, held and slowly fading, to the end of the clip.",
       "duration_s": 20.0,

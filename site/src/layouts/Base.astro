@@ -97,6 +97,39 @@ const onVercel = Boolean(process.env.VERCEL);
       <slot />
     </main>
     <Footer />
+    <script>
+      // The header nav's hover pill: slides and resizes from link to link, rests on the
+      // current page (owner, 7 Oct). Without JS the current page simply has the pill.
+      const nav = document.querySelector<HTMLElement>('.site-header .nav');
+      if (nav) {
+        const pill = document.createElement('span');
+        pill.className = 'nav-pill';
+        pill.setAttribute('aria-hidden', 'true');
+        nav.prepend(pill);
+        nav.classList.add('has-pill');
+        const links = [...nav.querySelectorAll<HTMLAnchorElement>('a')];
+        const current = links.find((a) => a.getAttribute('aria-current') === 'page');
+        const place = (a: HTMLElement | undefined, animate = true) => {
+          if (!a) { pill.classList.remove('is-on'); return; }
+          if (!animate) pill.style.transition = 'none';
+          pill.style.left = `${a.offsetLeft}px`;
+          pill.style.width = `${a.offsetWidth}px`;
+          pill.classList.add('is-on');
+          if (!animate) { void pill.offsetWidth; pill.style.transition = ''; }
+        };
+        // Appear in place on the first hover (no slide in from the left edge).
+        let shown = Boolean(current);
+        place(current, false);
+        links.forEach((a) => {
+          a.addEventListener('pointerenter', () => { place(a, shown); shown = true; });
+          a.addEventListener('focus', () => { place(a, shown); shown = true; });
+        });
+        nav.addEventListener('pointerleave', () => { place(current); shown = Boolean(current); });
+        nav.addEventListener('focusout', (e) => { if (!nav.contains(e.relatedTarget as Node)) place(current); });
+        addEventListener('resize', () => place(current, false));
+        document.fonts?.ready.then(() => place(current, false));
+      }
+    </script>
     {onVercel && <Analytics />}
     <script>
       // The header is white on white pages and light-on-dark over a dark band (.band-dark):

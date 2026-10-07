@@ -29,7 +29,8 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     <H id={`${id}-title`} class="demo-title">{clip.title}</H>
     {diagram && <Diagram kind={diagram} class="demo-diagram" />}
   </div>
-  <p class="caption small" id={`${id}-caption`}>{clip.caption}</p>
+  <p class="demo-caption" id={`${id}-caption`}>{clip.caption}</p>
+  <p class="visually-hidden" id={`${id}-transcript`}>Transcript: {clip.transcript}</p>
   <div
     class="player"
     data-player
@@ -38,7 +39,7 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     data-duration={clip.duration_s}
     data-title={clip.title}
   >
-    <button class="play" type="button" aria-label={`Play: ${clip.title}`} aria-describedby={`${id}-caption`}>
+    <button class="play" type="button" aria-label={`Play: ${clip.title}`} aria-describedby={`${id}-caption ${id}-transcript`}>
       <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor" /></svg>
       <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor" /></svg>
     </button>
@@ -69,13 +70,9 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
       )}
     </div>
   </div>
-  <details class="disclosure">
+  <details class="disclosure" data-settings>
     <summary>Settings <span class="visually-hidden">for {clip.title}</span></summary>
     <SpecTable rows={rows} caption={`Settings for ${clip.title}`} />
     {clip.note && <p class="small">{clip.note}</p>}
-  </details>
-  <details class="disclosure">
-    <summary>Transcript <span class="visually-hidden">of {clip.title}</span></summary>
-    <p class="small">{clip.transcript}</p>
   </details>
 </li>

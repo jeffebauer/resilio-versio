@@ -88,5 +88,5 @@ Delete `Resilio Versio.vst3` from `~/Library/Audio/Plug-Ins/VST3/` and `Resilio 
 | No colour sweep at power-up | Check the module is getting power, then flash the firmware again. |
 | The knobs don't do what the printed labels say | Expected: Resilio has its own layout. See the [panel map](/manual#panel-map). |
 | "Resilio Versio can't be opened" / the DAW doesn't list it | Run the two Terminal lines (step 3) and rescan. |
-| Output LEDs red a lot | The output limiter is catching peaks. Lower DRIVE or DECAY (it's normal in a big Howl). |
+| Output LEDs red a lot | The output limiter is catching peaks. Lower DRIVE or DECAY (it's normal in a big howl). |
 | Input LEDs red | Your source is near clipping at the jack. Turn it down. |

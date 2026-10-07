@@ -18,7 +18,7 @@ The springs got a big rework, and there's a whole new mode on the TANK switch. R
 **New names** (same sound, same positions; saved sets keep their settings)
 - **BLEND** (was MIX), as on Noise Engineering's own Versio modules.
 - **TANK 1 · 2 · ECHO** (was SPRINGS 1 · 2 · 3): the third position is the echo, and echo isn't a spring.
-- **ATTITUDE CLEAN · TAPE · VALVE** (was CLEAN · DRIVEN · KICKED), named for the saturation: TAPE is tape saturation, the dub colour; VALVE is a cranked valve stage inside the tank, with rattle, coarse grit and the Howl.
+- **ATTITUDE CLEAN · TAPE · VALVE** (was CLEAN · DRIVEN · KICKED), named for the saturation: TAPE is tape saturation, the dub colour; VALVE is a cranked valve stage inside the tank, with rattle, coarse grit and the howl.
 - **THROW / TAP**: the button throws in TANK 1–2 and taps the echo's tempo in ECHO.
 - A DAW may show the old names on a device you already have until it rescans the plugin or you load a fresh one.
 
@@ -42,8 +42,8 @@ The springs got a big rework, and there's a whole new mode on the TANK switch. R
 - In TANK ECHO the button taps the tempo and the gate is the echo's clock. The LEDs flash purple on each tap, then pulse purple on your beat for 4 seconds.
 - In the plugin, held MIDI notes act as the gate, so a clip can sequence throws to the sample.
 
-**The Hold at the top of DECAY (CLEAN and TAPE)**
-- Turn DECAY all the way up and the tail holds: a near-endless bed for dub techno breakdowns that new sounds layer into. It ducks under kick and bass only. VALVE keeps its Howl.
+**The hold at the top of DECAY (CLEAN and TAPE)**
+- Turn DECAY all the way up and the tail holds: a near-endless bed for dub techno breakdowns that new sounds layer into. It ducks under kick and bass only. VALVE keeps its howl.
 
 **Grit in TAPE and VALVE**
 - The wet goes through a 24 kHz µ-law converter: the companded grit of early digital delays and samplers. TAPE is 12-bit (a fine grain), VALVE 10-bit (clearly gritty). CLEAN stays clean, and the dry is never touched.
