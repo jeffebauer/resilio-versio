@@ -110,12 +110,10 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     <div class="column flow">
       <h2 class="h2" id="features-h">{moves.title}</h2>
       <div class="lede" set:html={inner(movesIntro)} />
+      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
     </div>
     <div class="wide">
       <FeatureTiles />
-    </div>
-    <div class="column">
-      <p><Button href="/manual/" variant="ghost" arrow>Read the manual</Button></p>
     </div>
   </section>
 
