@@ -322,7 +322,7 @@ html.hero-film .hero-still { visibility: hidden; }
 }
 @media (max-width: 39.99rem) {
   .ap { grid-template-columns: minmax(0, 1fr); }
-  .ap-stage { width: min(100%, 17rem); justify-self: center; }
+  .ap-stage { width: 100%; }   /* fills the content column, aligned with the callouts' text (owner, 8 Oct) */
 }
 
 /* ---- Features: bento tiles (V9) --------------------------------------------- */
