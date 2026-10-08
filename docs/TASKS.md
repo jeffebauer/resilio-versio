@@ -25,11 +25,14 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] **Delete them on your Mac:** `git branch -d feat/site feat/site-v2 feat/site-renders worktree-agent-af8f70117b76a1b09` (keep `feat/site-refine`: it's the site review branch)
 - [ ] **Protect `main`** (GitHub → Settings → Rules → Rulesets, target `main`): turn on **Block force pushes** and **Restrict deletions** only. Leave "Require a pull request" and "Require status checks" **off**, because Claude commits straight to `main` after the tests pass. Or tell Claude "set up branch protection" and it does it with `gh`
 
+### 1b. Record modular parts for the new demos (whenever you can; spec in `docs/minisite/demos-plan.md`)
+- [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), `plucks.wav` (a sequenced pluck line), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They feed clips 4, 5 and 7 of the eight-clip set; I make the rest from licence-free samples and synths
+
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
 - [ ] **Try the five new dub and dub techno starting points** (Starting points page: Chord stab into the bed, Echo chord, Telephone snare, Murky tape echo, Siren swoop): set from the manual, not yet heard by anyone. Keep, retune or cut (Claude can render them for you first)
-- [ ] **Listen to the ten demo clips** (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
+- [ ] ~~**Listen to the ten demo clips**~~ (being replaced by the musical set, 8 Oct) (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
