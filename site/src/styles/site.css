@@ -267,11 +267,9 @@ html.hero-film .hero-still { visibility: hidden; }
 .player .wave { position: relative; display: block; width: 100%; cursor: pointer; touch-action: none; border-radius: 2px; }
 .player .wave svg { width: 100%; height: 100%; overflow: visible; }
 .player .wave .trace { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
-/* The wet as one solid shape in the neutral, the dry's bars cut into it in the tile colour
-   (owner, 8 Oct: C, neutral). Unplayed: mixed toward the tile, solid, not see-through. */
-.player .wave .wet-shape { fill: currentColor; stroke: none; }
-.player .wave .wet-shape.dim { fill: color-mix(in srgb, currentColor 38%, var(--tile)); }
-.player .wave .trace.dry { stroke: var(--tile); }  /* punched out of the shape (owner, 8 Oct) */
+/* A pair: the dry above the line, the wet below, both in the neutral (owner, 8 Oct: A, neutral).
+   Unplayed: mixed toward the tile, solid, not see-through. */
+.player .wave .trace.dim { stroke: color-mix(in srgb, currentColor 38%, var(--tile)); }
 .player .wave .head { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .player .meta { display: flex; gap: 0.75rem; align-items: center; }
 .player .time { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
