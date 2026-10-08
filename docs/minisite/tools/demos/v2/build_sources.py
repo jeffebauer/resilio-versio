@@ -569,19 +569,22 @@ def clip08(src: Path, out: Path, cues: dict):
 # as short blips, then one long rising wail.
 
 def siren(out: Path):
-    dur, tail = 6.0, 12.0
+    """The classic sound-system dub siren (owner, 8 Oct): a buzzy tone switching between two
+    pitches a fourth apart (660 and 880 Hz), with a few ms of glide on each switch. Three
+    bursts; on the last the switching speeds up, like a hand turning the rate knob."""
+    dur, tail = 6.0, 20.0
     t = np.arange(int((dur + tail) * SR)) / SR
     gate = np.zeros_like(t)
-    for s, e in [(0.0, 0.35), (0.5, 0.85), (1.0, 1.35), (2.0, 5.0)]:
-        g = (t >= s) & (t < e)
-        gate[g] = 1.0
+    for s0, e0 in [(0.0, 1.4), (1.75, 2.9), (3.3, 6.0)]:
+        gate[(t >= s0) & (t < e0)] = 1.0
     gate = np.convolve(gate, np.ones(240) / 240, mode="same")  # 5 ms edges, no clicks
-    lfo_rate = np.where(t < 2.0, 6.0, 1.2)
-    lfo = 2 * np.abs(((np.cumsum(lfo_rate) / SR) % 1.0) - 0.5)  # triangle 0..1
-    rise = np.clip((t - 2.0) / 3.0, 0, 1)
-    freq = 420 * 2 ** (lfo * 1.0 + rise * 0.8)
+    rate = np.where(t < 3.3, 2.6, 2.6 + (7.0 - 2.6) * np.clip((t - 3.3) / 2.2, 0, 1))  # switches per second / 2
+    sq = (((np.cumsum(rate) / SR) % 1.0) < 0.5).astype(float)       # 0 = low, 1 = high
+    glide = np.ones(int(0.006 * SR)) / int(0.006 * SR)              # 6 ms glide between the pitches
+    pitch = np.convolve(sq, glide, mode="same")
+    freq = 660.0 * 2 ** (pitch * 5 / 12)                             # 660 Hz and a fourth up (880 Hz)
     phase = 2 * np.pi * np.cumsum(freq) / SR
-    tone = np.tanh(2.5 * np.sin(phase)) * 0.8 + 0.2 * np.sin(2 * phase)
+    tone = np.tanh(3.0 * np.sin(phase)) * 0.75 + 0.25 * np.sin(2 * phase + 0.4)  # buzzy, square-ish
     x = tone * gate
     buf = np.stack([x, x], axis=1)
     buf = buf / max(1e-9, np.abs(buf).max()) * 10 ** (-6 / 20)

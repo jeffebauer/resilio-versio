@@ -178,9 +178,9 @@
       "dry": "09-dry.mp3",
       "blend": 0.6,
       "title": "The rough end",
-      "caption": "VALVE with DRIVE up. A dub siren tips the tank into its howl, then DECAY comes down at 10 seconds and it falls away.",
-      "transcript": "Three short siren blips and a rising wail. The springs catch it and keep going on their own as a rough, moving roar. At ten seconds it drops back into a normal tail and fades.",
-      "duration_s": 17.0,
+      "caption": "VALVE with DRIVE up. A two-tone dub siren tips the tank into its howl, then DECAY eases down from 9 seconds and the howl settles into a long tail.",
+      "transcript": "A classic sound-system siren switching between two pitches, in three bursts, the last one speeding up. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
+      "duration_s": 22.0,
       "settings": {
         "TANK": "2",
         "ATTITUDE": "VALVE",

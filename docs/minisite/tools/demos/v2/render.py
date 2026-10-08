@@ -111,12 +111,13 @@ CLIPS = {
         transcript="Bongos play a busy sixteenth-note pattern of open and muted hits at 118 bpm, with an 808 cowbell on the offbeats and a soft kick from the second bar. Now and then a single cowbell hit bursts into a short, metallic splash of spring reverb while the rest of the groove stays dry.",
         notes=f"Bongos by Versilian Studios (CC0). TR-808 cowbell from Michael Fischer's 808 set via TidalCycles (CC0). Kick: {DRUMS}. Played in code."),
     "09": dict(
-        title="The rough end", src="09_siren.wav", blend=0.6, dur=17.0,
+        title="The rough end", src="09_siren.wav", blend=0.6, dur=22.0,
         set=dict(springs="2", attitude="VALVE", decay=0.95, tone=0.4, tension=0.35, splash=0.4, drive=0.65, wobble=0.42),
-        auto={"breakpoints": [{"t": 0.0, "key": "decay", "value": 0.95}, {"t": 10.5, "key": "decay", "value": 0.95},
-                              {"t": 11.5, "key": "decay", "value": 0.6}]},
-        caption="VALVE with DRIVE up. A dub siren tips the tank into its howl, then DECAY comes down at 10 seconds and it falls away.",
-        transcript="Three short siren blips and a rising wail. The springs catch it and keep going on their own as a rough, moving roar. At ten seconds it drops back into a normal tail and fades.",
+        # Owner, 8 Oct: DECAY eases off over 7 s so the howl settles instead of dropping out.
+        auto={"breakpoints": [{"t": 0.0, "key": "decay", "value": 0.95}, {"t": 9.0, "key": "decay", "value": 0.95},
+                              {"t": 15.0, "key": "decay", "value": 0.89}]},
+        caption="VALVE with DRIVE up. A two-tone dub siren tips the tank into its howl, then DECAY eases down from 9 seconds and the howl settles into a long tail.",
+        transcript="A classic sound-system siren switching between two pitches, in three bursts, the last one speeding up. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
         notes="Siren synthesised in code."),
 }
 
