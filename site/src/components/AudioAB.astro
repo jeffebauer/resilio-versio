@@ -1,7 +1,7 @@
 ---
 // One demo clip as a bento audio tile (DESIGN-v2 V11): a bold title, a tiny diagram of
 // what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
-// Waveform peaks are computed at build (src/lib/demos.ts): the dry above the line, the wet below. Playback is Web Audio
+// Waveform peaks are computed at build (src/lib/demos.ts): the wet as a neutral shape, the dry cut into it. Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
 // A clip with a `dry` file is mixed by the floating BLEND fader (BlendFader.astro), which
 // starts at the clip's own BLEND (data-blend).
@@ -16,20 +16,13 @@ const peaks = await getPeaks(clip);
 const W = peaks.wet.length;
 const H2 = 40;
 const M = H2 / 2;
-// A pair splits at the centre line (owner, 8 Oct): the dry's bars rise in the neutral, the
-// wet's hang below in orange, on one scale, so nothing overlaps. A single file is mirrored.
-const bars = (ps: number[], dir: -1 | 0 | 1) => ps
-  .map((p, i) => {
-    if (!dir) {
-      const a = Math.max(0.6, p * (M - 1));
-      return `M${i + 0.5} ${(M - a).toFixed(2)}V${(M + a).toFixed(2)}`;
-    }
-    const y0 = M + dir;
-    return `M${i + 0.5} ${y0}V${(y0 + dir * Math.max(0.6, p * (M - 2))).toFixed(2)}`;
-  })
-  .join('');
-const dry = peaks.dry && bars(peaks.dry, -1);
-const wet = bars(peaks.wet, peaks.dry ? 1 : 0);
+// The wet is one solid shape in the neutral; the dry's bars are cut into it in the tile colour, so
+// the shape around and after each hit is the tail (owner, 8 Oct: C, neutral). A single file is the shape alone.
+const amp = (p: number) => Math.max(0.6, p * (M - 1));
+const top = peaks.wet.map((p, i) => `${i + 0.5} ${(M - amp(p)).toFixed(2)}`);
+const bottom = peaks.wet.map((p, i) => `${i + 0.5} ${(M + amp(p)).toFixed(2)}`).reverse();
+const wet = `M${top.join('L')}L${bottom.join('L')}Z`;
+const dry = peaks.dry?.map((p, i) => `M${i + 0.5} ${(M - amp(p)).toFixed(2)}V${(M + amp(p)).toFixed(2)}`).join('');
 const dur = clock(clip.duration_s);
 const diagram = diagramFor(clip.file);
 // "0.45 (11:30), the slider's start" -> a knob at 0.45, then "0.45, the slider's start" (the
@@ -73,10 +66,10 @@ const blend = clip.blend ?? 0.5;
     >
       <svg viewBox={`0 0 ${W} ${H2}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs><clipPath id={`${id}-played`}><rect class="played" x="0" y="0" width="0" height={H2} /></clipPath></defs>
-        <path class="trace wet dim" d={wet} />
-        {dry && <path class="trace dry dim" d={dry} />}
+        <path class="wet-shape dim" d={wet} />
+        {dry && <path class="trace dry" d={dry} />}
         <g clip-path={`url(#${id}-played)`}>
-          <path class="trace wet" d={wet} />
+          <path class="wet-shape" d={wet} />
           {dry && <path class="trace dry" d={dry} />}
         </g>
         <line class="head" x1="0" x2="0" y1="0" y2={H2} />
