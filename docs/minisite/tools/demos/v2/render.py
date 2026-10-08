@@ -118,13 +118,15 @@ CLIPS = {
         transcript="A clean electric guitar picks slow, ringing arpeggios over E minor nine, C major seven, A minor nine and B seven sus at 72 bpm, ending on a soft strum. The spring tail wavers evenly in pitch, a gentle vibrato, and each note blooms with a deep, slow boing.",
         notes="Guitar: Emilyguitar by Karoryfer (CC0). Played in code."),
     "09": dict(
-        title="The rough end", src="09_siren.wav", blend=0.6, dur=22.0,
-        set=dict(springs="2", attitude="VALVE", decay=0.95, tone=0.4, tension=0.35, splash=0.4, drive=0.65, wobble=0.42),
+        title="The rough end", src="09_siren.wav", blend=0.4, dur=22.0,
+        # Owner, 8 Oct: the siren should read as it is before the howl takes over, so the clean
+        # side leads (BLEND 0.4) and TONE is neutral so its high note stays bright in the springs.
+        set=dict(springs="2", attitude="VALVE", decay=0.95, tone=0.5, tension=0.35, splash=0.4, drive=0.65, wobble=0.42),
         # Owner, 8 Oct: DECAY eases off over 7 s so the howl settles instead of dropping out.
         auto={"breakpoints": [{"t": 0.0, "key": "decay", "value": 0.95}, {"t": 9.0, "key": "decay", "value": 0.95},
                               {"t": 15.0, "key": "decay", "value": 0.89}]},
-        caption="VALVE with DRIVE up. A sound-system wheel-up siren tips the tank into its howl, then DECAY eases down from 9 seconds and the howl settles into a long tail.",
-        transcript="A sound-system wheel-up siren, a soft tone flipping quickly between two notes, in three short calls and a longer one. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
+        caption="VALVE with DRIVE up. One call of a sound-system siren, a beep then two notes flipping, tips the tank into its howl. DECAY eases down from 9 seconds and the howl settles into a long tail.",
+        transcript="A sound-system siren, a single beep followed by a high and a low note flipping quickly back and forth, once. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
         notes="Siren synthesised in code."),
 }
 

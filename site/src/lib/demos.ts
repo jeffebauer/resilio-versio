@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { MPEGDecoder } from 'mpg123-decoder';
 import { MINISITE } from './paths';
@@ -31,8 +33,13 @@ export function getDemos(): Promise<Demos> {
   return demos;
 }
 
-/** Public URL of a clip file (copied into public/audio by scripts/prebuild.mjs). */
-export const audioUrl = (file: string) => `/audio/${file}`;
+/** Public URL of a clip file (copied into public/audio by scripts/prebuild.mjs), with a
+ *  fingerprint of its contents, so a re-rendered clip is never served from a browser's or the
+ *  CDN's cache under its old name (owner, 8 Oct: an old siren kept playing). */
+export const audioUrl = (file: string) => {
+  const hash = createHash('sha1').update(readFileSync(join(AUDIO_DIR, file))).digest('hex').slice(0, 10);
+  return `/audio/${file}?v=${hash}`;
+};
 
 // Peaks are computed once per build: decode the MP3, take the loudest sample
 // (both channels) in each of PEAK_COUNT slices, normalise to 0..1.

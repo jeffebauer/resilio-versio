@@ -601,25 +601,40 @@ def clip08(src: Path, out: Path, cues: dict):
 # The sound-system siren: a square-ish oscillator swept by a slow triangle LFO, played
 # as short blips, then one long rising wail.
 
-def siren(out: Path):
-    """A sound-system "wheel up" siren (owner, 8 Oct), synthesised from scratch to the character
-    of a reference the owner chose (measured, never used: it comes from a commercial record).
-    A soft, rounded tone (the fundamental strong, a little 3rd and 7th harmonic) swapping
-    between two pitches a minor third apart (418 and 500 Hz) about six times a second, in short
-    repeated calls with a longer one to finish."""
-    dur, tail = 6.4, 20.0
-    t = np.arange(int((dur + tail) * SR)) / SR
-    gate = np.zeros_like(t)
-    for s0, e0 in [(0.0, 0.85), (1.0, 1.85), (2.0, 2.85), (3.2, 6.2)]:
-        gate[(t >= s0) & (t < e0)] = 1.0
-    gate = np.convolve(gate, np.ones(240) / 240, mode="same")  # 5 ms edges, no clicks
-    sq = (((t * 6.2) % 1.0) < 0.5).astype(float)               # ~80 ms on each pitch
-    glide = np.ones(int(0.003 * SR)) / int(0.003 * SR)          # 3 ms between the pitches
-    pitch = np.convolve(sq, glide, mode="same")
-    freq = 418.0 * (500.0 / 418.0) ** pitch
-    phase = 2 * np.pi * np.cumsum(freq) / SR
-    tone = np.sin(phase) + 0.08 * np.sin(3 * phase) + 0.05 * np.sin(7 * phase)  # -22 / -26 dB, as measured
-    x = tone * gate
+def siren(out: Path, transpose: float = 0.0):
+    """A sound-system siren (owner, 8 Oct), synthesised from scratch to match a reference the
+    owner chose (measured only, never used or published: it comes from a commercial record).
+    Each call is one beep (60 ms on the high note, then a 100 ms fade on the low note), a short
+    gap, then the siren flipping between the two notes every 80 ms, starting low. The high note
+    (1000 Hz) is near-sine; the low note (417 Hz) is hollow, with a strong 3rd harmonic; both
+    carry a slight 62 Hz buzz, as measured."""
+    HI, LO, HALF, BUZZ = 1000.0, 417.0, 0.080, 62.0
+    HI, LO = HI * 2 ** (transpose / 12), LO * 2 ** (transpose / 12)
+    calls = [(0.0, 1.4)]                      # one call (owner, 8 Oct): the focus is the howl
+    dur, tail = 0.175 + 1.4 + 0.2, 20.0
+    n = int((dur + tail) * SR)
+    t = np.arange(n) / SR
+    hi = np.zeros(n)                          # 1 where the high note sounds
+    amp = np.zeros(n)
+    for c0, length in calls:
+        b = (t >= c0) & (t < c0 + 0.06)                      # the beep: high note
+        hi[b] = 1.0; amp[b] = 1.0
+        d = (t >= c0 + 0.06) & (t < c0 + 0.165)              # then the low note fading out
+        amp[d] = np.exp(-(t[d] - c0 - 0.06) / 0.022)
+        s0 = c0 + 0.175                                       # the siren: low first, 80 ms each
+        sw = (t >= s0) & (t < s0 + length)
+        amp[sw] = 1.0
+        hi[sw] = (((t[sw] - s0 + 0.055) / HALF).astype(int) % 2 == 1)   # the first low note is short (~25 ms), as measured
+    k = int(0.0015 * SR)
+    amp = np.convolve(amp, np.ones(k) / k, mode="same")      # 1.5 ms edges, no clicks
+    hi_s = np.convolve(hi, np.ones(k) / k, mode="same")
+    freq = LO + (HI - LO) * hi_s
+    ph = 2 * np.pi * np.cumsum(freq) / SR
+    lo_tone = np.sin(ph) + 0.35 * np.sin(3 * ph) + 0.08 * np.sin(5 * ph)   # 3rd harmonic at about -9 dB
+    hi_tone = np.sin(ph)
+    tone = hi_s * hi_tone + (1 - hi_s) * lo_tone / 1.3
+    tone *= 1 + 0.36 * np.sin(2 * np.pi * BUZZ * t)          # the 62 Hz buzz (sidebands about -15 dB)
+    x = tone * amp
     buf = np.stack([x, x], axis=1)
     buf = buf / max(1e-9, np.abs(buf).max()) * 10 ** (-6 / 20)
     sf.write(str(out), buf.astype(np.float32), SR, subtype="PCM_24")
