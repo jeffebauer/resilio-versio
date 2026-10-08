@@ -178,9 +178,7 @@ const DIAGRAMS: [DiagramKind, string][] = [
     <div class="band-dark" style="margin-top: var(--stack-4); padding-block: var(--stack-5)">
       <div class="wide">
         <ul class="demos">
-          <AudioAB clip={clips[3]} n={4} idPrefix="tile-ink" />
-          <AudioAB clip={clips[5]} n={6} idPrefix="tile-ink" />
-          <AudioAB clip={clips[7]} n={8} idPrefix="tile-ink" />
+          {clips.slice(1, 4).map((c, i) => <AudioAB clip={c} n={i + 2} idPrefix="tile-ink" />)}
         </ul>
       </div>
     </div>
