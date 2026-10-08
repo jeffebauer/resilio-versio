@@ -670,7 +670,7 @@ ul > li::marker { color: var(--signal); }
   position: fixed; z-index: 30; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   width: min(26rem, calc(100vw - 2rem));
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.9rem;
-  padding: 0.45rem 1rem; border-radius: 0.5rem;
+  padding: 0.45rem 1rem; border-radius: 0.75rem;
   /* Dark tinted glass in both themes (owner, 8 Oct), so its own colours are the dark band's. */
   --ink: var(--on-dark); --ink-2: var(--on-dark-2); --paper: var(--dark);
   background: rgb(12 11 10 / 0.55); color: var(--ink);
