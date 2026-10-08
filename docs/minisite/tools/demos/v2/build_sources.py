@@ -602,22 +602,23 @@ def clip08(src: Path, out: Path, cues: dict):
 # as short blips, then one long rising wail.
 
 def siren(out: Path):
-    """The classic sound-system dub siren (owner, 8 Oct): a buzzy tone switching between two
-    pitches a fourth apart (660 and 880 Hz), with a few ms of glide on each switch. Three
-    bursts; on the last the switching speeds up, like a hand turning the rate knob."""
-    dur, tail = 6.0, 20.0
+    """A sound-system "wheel up" siren (owner, 8 Oct), synthesised from scratch to the character
+    of a reference the owner chose (measured, never used: it comes from a commercial record).
+    A soft, rounded tone (the fundamental strong, a little 3rd and 7th harmonic) swapping
+    between two pitches a minor third apart (418 and 500 Hz) about six times a second, in short
+    repeated calls with a longer one to finish."""
+    dur, tail = 6.4, 20.0
     t = np.arange(int((dur + tail) * SR)) / SR
     gate = np.zeros_like(t)
-    for s0, e0 in [(0.0, 1.4), (1.75, 2.9), (3.3, 6.0)]:
+    for s0, e0 in [(0.0, 0.85), (1.0, 1.85), (2.0, 2.85), (3.2, 6.2)]:
         gate[(t >= s0) & (t < e0)] = 1.0
     gate = np.convolve(gate, np.ones(240) / 240, mode="same")  # 5 ms edges, no clicks
-    rate = np.where(t < 3.3, 2.6, 2.6 + (7.0 - 2.6) * np.clip((t - 3.3) / 2.2, 0, 1))  # switches per second / 2
-    sq = (((np.cumsum(rate) / SR) % 1.0) < 0.5).astype(float)       # 0 = low, 1 = high
-    glide = np.ones(int(0.006 * SR)) / int(0.006 * SR)              # 6 ms glide between the pitches
+    sq = (((t * 6.2) % 1.0) < 0.5).astype(float)               # ~80 ms on each pitch
+    glide = np.ones(int(0.003 * SR)) / int(0.003 * SR)          # 3 ms between the pitches
     pitch = np.convolve(sq, glide, mode="same")
-    freq = 660.0 * 2 ** (pitch * 5 / 12)                             # 660 Hz and a fourth up (880 Hz)
+    freq = 418.0 * (500.0 / 418.0) ** pitch
     phase = 2 * np.pi * np.cumsum(freq) / SR
-    tone = np.tanh(3.0 * np.sin(phase)) * 0.75 + 0.25 * np.sin(2 * phase + 0.4)  # buzzy, square-ish
+    tone = np.sin(phase) + 0.08 * np.sin(3 * phase) + 0.05 * np.sin(7 * phase)  # -22 / -26 dB, as measured
     x = tone * gate
     buf = np.stack([x, x], axis=1)
     buf = buf / max(1e-9, np.abs(buf).max()) * 10 ** (-6 / 20)
