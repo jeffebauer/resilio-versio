@@ -268,6 +268,7 @@ html.hero-film .hero-still { visibility: hidden; }
 .player .wave svg { width: 100%; height: 100%; overflow: visible; }
 .player .wave .trace { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .player .wave .trace.dim { opacity: 0.35; }
+.player .wave .trace.wet { stroke: var(--signal); }  /* the dry in the neutral (currentColor) in front of the wet in orange (owner, 8 Oct) */
 .player .wave .head { stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .player .meta { display: flex; gap: 0.75rem; align-items: center; }
 .player .time { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }

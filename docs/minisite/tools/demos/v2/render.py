@@ -87,8 +87,8 @@ CLIPS = {
         # Owner, 8 Oct: a more extreme ride, warm and dark up into telephone territory and back.
         auto={"clock_bpm": 120, "breakpoints": tone((0.0, 0.35), (9.0, 0.97), (12.0, 0.97), (19.0, 0.4))},
         caption="One chord every two bars into the tape echo on dotted eighths. TONE rides from warm and dark all the way up to a thin telephone ring, then back down, the classic dub techno filter move.",
-        transcript="A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
-        notes="Clavisynth by Versilian Studios (CC0). Played in code."),
+        transcript="A single F minor ninth stab every two bars at 120 bpm over a quiet offbeat hi-hat, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
+        notes=f"Clavisynth by Versilian Studios (CC0). Hat: {DRUMS}. Played in code."),
     "06": dict(
         title="Vibes in the springs", src="06_vibes.wav", blend=0.45, dur=22.0,
         set=dict(springs="2", attitude="CLEAN", decay=0.72, tone=0.45, tension=0.5, splash=0.2, drive=0.12, wobble=0.43),

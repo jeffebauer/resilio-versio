@@ -1,7 +1,7 @@
 ---
 // One demo clip as a bento audio tile (DESIGN-v2 V11): a bold title, a tiny diagram of
 // what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
-// Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
+// Waveform peaks are computed at build (src/lib/demos.ts): the wet in orange, the dry in front. Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
 // A clip with a `dry` file is mixed by the floating BLEND fader (BlendFader.astro), which
 // starts at the clip's own BLEND (data-blend).
@@ -12,15 +12,18 @@ import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
 interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string; wide?: boolean }
 const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo', wide = false } = Astro.props;
 const id = `${idPrefix}-${String(n).padStart(2, '0')}`;
-const peaks = await getPeaks(clip.file);
-const W = peaks.length;
+const peaks = await getPeaks(clip);
+const W = peaks.wet.length;
 const H2 = 40;
-const d = peaks
+const trace = (ps: number[]) => ps
   .map((p, i) => {
     const a = Math.max(0.6, p * (H2 / 2 - 1));
     return `M${i + 0.5} ${(H2 / 2 - a).toFixed(2)}V${(H2 / 2 + a).toFixed(2)}`;
   })
   .join('');
+// The wet in the signal orange behind, the dry in the neutral in front (owner, 8 Oct).
+const wet = trace(peaks.wet);
+const dry = peaks.dry && trace(peaks.dry);
 const dur = clock(clip.duration_s);
 const diagram = diagramFor(clip.file);
 // "0.45 (11:30), the slider's start" -> a knob at 0.45, then "0.45, the slider's start" (the
@@ -64,8 +67,12 @@ const blend = clip.blend ?? 0.5;
     >
       <svg viewBox={`0 0 ${W} ${H2}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
         <defs><clipPath id={`${id}-played`}><rect class="played" x="0" y="0" width="0" height={H2} /></clipPath></defs>
-        <path class="trace dim" d={d} />
-        <path class="trace" d={d} clip-path={`url(#${id}-played)`} />
+        <path class="trace wet dim" d={wet} />
+        {dry && <path class="trace dry dim" d={dry} />}
+        <g clip-path={`url(#${id}-played)`}>
+          <path class="trace wet" d={wet} />
+          {dry && <path class="trace dry" d={dry} />}
+        </g>
         <line class="head" x1="0" x2="0" y1="0" y2={H2} />
       </svg>
     </div>
