@@ -669,7 +669,7 @@ ul > li::marker { color: var(--signal); }
 .fader {
   position: fixed; z-index: 30; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   width: min(34rem, calc(100vw - 2rem));
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.9rem;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.9rem;
   padding: 0.55rem 1.1rem; border-radius: var(--radius-tile);
   background: color-mix(in srgb, var(--paper) 94%, transparent); color: var(--ink);
   box-shadow: 0 0 0 var(--hair) var(--line), 0 1.25rem 2.5rem -1rem rgb(0 0 0 / 0.35);
@@ -678,9 +678,7 @@ ul > li::marker { color: var(--signal); }
   transition: transform var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
 }
 .fader.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.fader-end, .fader-value { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
-.fader-end { font-weight: 700; color: var(--ink); }
-.fader-value { min-width: 6.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.fader-end { font: 700 var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink); }
 .fader-body { position: relative; height: 3rem; --cap-w: 1.25rem; }
 .fader-ticks { position: absolute; inset: 0 calc(var(--cap-w) / 2); width: calc(100% - var(--cap-w)); height: 100%; overflow: visible; }
 .fader-ticks line { stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -702,6 +700,5 @@ ul > li::marker { color: var(--signal); }
 .fader input[type="range"]:focus-visible { outline: none; }
 .fader input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus); }
 .fader input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus); }
-@media (max-width: 29.99rem) { .fader { grid-template-columns: auto minmax(0, 1fr) auto; } .fader-value { display: none; } }
 @media (prefers-reduced-motion: reduce) { .fader { transition: opacity var(--dur-1) linear; } }
 
