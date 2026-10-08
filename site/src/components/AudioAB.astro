@@ -3,10 +3,10 @@
 // what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
 // Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
-// The DRY / WET switch appears only when demos.json lists a `dry` file for the clip.
+// The BLEND slider (dry ↔ wet, the module's own curve) appears when a clip has a `dry` file.
 import Diagram from './diagrams/Diagram.astro';
 import SpecTable from './SpecTable.astro';
-import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
+import { audioUrl, clock, diagramFor, getPeaks, knobClock, type Clip } from '../lib/demos';
 
 interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string; wide?: boolean }
 const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo', wide = false } = Astro.props;
@@ -23,6 +23,7 @@ const d = peaks
 const dur = clock(clip.duration_s);
 const diagram = diagramFor(clip.file);
 const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value }));
+const blend = clip.blend ?? 0.5;
 ---
 <li class:list={['demo', 'tile', wide && 'is-wide']} data-reveal>
   <div class="demo-head">
@@ -37,6 +38,7 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     data-src={audioUrl(clip.file)}
     data-dry={clip.dry ? audioUrl(clip.dry) : undefined}
     data-duration={clip.duration_s}
+    data-blend={clip.dry ? blend : undefined}
     data-title={clip.title}
   >
     <button class="play" type="button" aria-label={`Play: ${clip.title}`} aria-describedby={`${id}-caption ${id}-transcript`}>
@@ -62,13 +64,16 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     </div>
     <div class="meta">
       <span class="time" aria-hidden="true"><span data-pos>0:00</span> / {dur}</span>
-      {clip.dry && (
-        <span class="ab" role="group" aria-label="Compare dry and wet">
-          <button type="button" data-ab="dry" aria-pressed="false">Dry</button>
-          <button type="button" data-ab="wet" aria-pressed="true">Wet</button>
-        </span>
-      )}
     </div>
+    {clip.dry && (
+      <label class="blend">
+        <span class="blend-end" aria-hidden="true">Dry</span>
+        <input type="range" min="0" max="100" step="1" value={Math.round(blend * 100)} data-blend
+          aria-label={`BLEND for ${clip.title}, dry to wet`} aria-valuetext={`BLEND ${knobClock(blend)} o'clock`} />
+        <span class="blend-end" aria-hidden="true">Wet</span>
+        <span class="blend-value" aria-hidden="true" data-blend-value>BLEND {knobClock(blend)}</span>
+      </label>
+    )}
   </div>
   <details class="disclosure" data-settings>
     <summary>Settings <span class="visually-hidden">for {clip.title}</span></summary>

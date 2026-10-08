@@ -1,11 +1,20 @@
 // The A/B demo player (PLAN §B6). Web Audio, one clip at a time.
 // - Audio loads on the first press of Play (never autoplays; iOS needs that tap).
 // - With a dry file, dry and wet run from one start time through two gains, and the
-//   DRY / WET switch crossfades in 30 ms, so you compare the sound, not the timing.
+//   BLEND slider mixes them with the module's own curve (dry √(1−b), wet √b: equal
+//   power, exact at both ends; core/params/Mappings.h mixGains), smoothed over 30 ms.
 // - Keyboard: Space/Enter on Play; on the waveform slider ←/→ 1 s, PgUp/PgDn 5 s,
 //   Home/End; Space toggles play there too.
 
 type Mode = 'dry' | 'wet';
+
+const mixGains = (b: number) => ({ dry: Math.sqrt(1 - b), wet: Math.sqrt(b) });
+const knobClock = (v: number) => {
+  const q = Math.round((7 + 10 * v) * 4) / 4;
+  const h = Math.floor(q);
+  const m = Math.round((q - h) * 60);
+  return `${((h - 1) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}`;
+};
 
 let ctx: AudioContext | null = null;
 let current: Player | null = null;
@@ -32,7 +41,8 @@ class Player {
   rect: SVGRectElement;
   head: SVGLineElement;
   pos: HTMLElement;
-  abButtons: HTMLButtonElement[];
+  blendInput: HTMLInputElement | null;
+  blendValue: HTMLElement | null;
   title: string;
   wetUrl: string;
   dryUrl?: string;
@@ -43,7 +53,7 @@ class Player {
   loading: Promise<void> | null = null;
   sources: AudioBufferSourceNode[] = [];
   gains: Partial<Record<Mode, GainNode>> = {};
-  mode: Mode = 'wet';
+  blend = 1;
   playing = false;
   offset = 0;
   startedAt = 0;
@@ -56,7 +66,9 @@ class Player {
     this.rect = el.querySelector('rect.played')!;
     this.head = el.querySelector('line.head')!;
     this.pos = el.querySelector('[data-pos]')!;
-    this.abButtons = [...el.querySelectorAll<HTMLButtonElement>('[data-ab]')];
+    this.blendInput = el.querySelector<HTMLInputElement>('[data-blend]');
+    this.blendValue = el.querySelector<HTMLElement>('[data-blend-value]');
+    if (this.blendInput) this.blend = Number(this.blendInput.value) / 100;
     this.title = el.dataset.title ?? '';
     this.wetUrl = el.dataset.src!;
     this.dryUrl = el.dataset.dry || undefined;
@@ -66,7 +78,7 @@ class Player {
     this.playBtn.addEventListener('click', () => this.toggle());
     this.wave.addEventListener('keydown', (e) => this.onKey(e));
     this.wave.addEventListener('pointerdown', (e) => this.onPointer(e));
-    for (const b of this.abButtons) b.addEventListener('click', () => this.setMode(b.dataset.ab as Mode));
+    this.blendInput?.addEventListener('input', () => this.setBlend(Number(this.blendInput!.value) / 100));
   }
 
   async load() {
@@ -113,7 +125,7 @@ class Player {
       const src = ac.createBufferSource();
       src.buffer = buf;
       const g = ac.createGain();
-      g.gain.value = m === this.mode || !this.buffers.dry ? 1 : 0;
+      g.gain.value = this.buffers.dry ? mixGains(this.blend)[m] : 1;
       src.connect(g).connect(ac.destination);
       src.start(t0, at);
       if (m === 'wet') src.onended = () => { if (this.sources.includes(src) && this.playing) this.ended(); };
@@ -156,17 +168,20 @@ class Player {
     this.render();
   }
 
-  setMode(m: Mode) {
-    this.mode = m;
-    for (const b of this.abButtons) b.setAttribute('aria-pressed', String(b.dataset.ab === m));
-    if (!ctx) return;
+  setBlend(b: number) {
+    this.blend = Math.min(1, Math.max(0, b));
+    const label = knobClock(this.blend);
+    if (this.blendValue) this.blendValue.textContent = `BLEND ${label}`;
+    this.blendInput?.setAttribute('aria-valuetext', `BLEND ${label} o'clock`);
+    if (!ctx || !this.buffers.dry) return;
     const now = ctx.currentTime;
+    const target = mixGains(this.blend);
     (['wet', 'dry'] as Mode[]).forEach((k) => {
       const g = this.gains[k]?.gain;
       if (!g) return;
       g.cancelScheduledValues(now);
       g.setValueAtTime(g.value, now);
-      g.linearRampToValueAtTime(k === m ? 1 : 0, now + XFADE);
+      g.linearRampToValueAtTime(target[k], now + XFADE);
     });
   }
 

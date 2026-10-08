@@ -661,3 +661,12 @@ ul > li::marker { color: var(--signal); }
 .theme-switch button { border: 0; background: none; color: var(--ink-2); padding: 0.4rem 0.8rem; border-radius: 999px; font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; cursor: pointer; }
 .theme-switch button:hover { color: var(--ink); }
 .theme-switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* ---- Demo BLEND slider (demos round 2; owner, 8 Oct) -------------------------------
+   Dry ↔ Wet under the waveform, mixing the clip's dry and wet files like the module's
+   BLEND knob. The thumb is the accent; the clock position reads out on the right. */
+.player .blend { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.6rem; margin-top: 0.25rem; }
+.player .blend-end, .player .blend-value { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
+.player .blend-value { min-width: 6.5em; text-align: right; color: var(--ink); }
+.player .blend input[type="range"] { width: 100%; margin: 0; accent-color: var(--signal-ink); height: 1.75rem; cursor: pointer; }
+.band-dark .player .blend input[type="range"], :root[data-theme="dark"] .player .blend input[type="range"] { accent-color: var(--signal); }

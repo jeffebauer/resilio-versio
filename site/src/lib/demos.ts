@@ -5,11 +5,14 @@ import { MINISITE } from './paths';
 import type { DiagramKind } from '../components/diagrams/shapes';
 
 // docs/minisite/assets/audio/demos.json, as written by the demo tools.
-// A clip may later list a `dry` file (same length, loudness-matched): the A/B
-// switch appears only then (PLAN §B6). Until the pairs exist, `file` is the wet clip.
+// A clip with a `dry` file (demos round 2) is a pair rendered from one source: `file` is
+// Resilio fully wet, `dry` is BLEND fully left (the clean passthrough, so they line up),
+// both with the same gain. The BLEND slider mixes them like the knob; `blend` (0–1) is
+// where it starts. Without a `dry` file, `file` is a finished mix and plays as it is.
 export interface Clip {
   file: string;
   dry?: string;
+  blend?: number;
   title: string;
   caption: string;
   transcript: string;
@@ -58,6 +61,14 @@ export function getPeaks(file: string): Promise<number[]> {
   let p = peakCache.get(file);
   if (!p) { p = computePeaks(file); peakCache.set(file, p); }
   return p;
+}
+
+/** A knob value (0–1) as its clock position: 0 is 7 o'clock, 0.5 noon, 1 is 5 o'clock. */
+export function knobClock(v: number): string {
+  const q = Math.round((7 + 10 * v) * 4) / 4;
+  const h = Math.floor(q);
+  const m = Math.round((q - h) * 60);
+  return `${((h - 1) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}`;
 }
 
 /** "0:18" */
