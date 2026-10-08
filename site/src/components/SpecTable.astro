@@ -1,6 +1,8 @@
 ---
-// Hairline rows: a name and a value (with an optional link out).
-interface Row { name: string; value: string; href?: string; mono?: boolean }
+// Hairline rows: a name and a value (with an optional link out). A row with `knob` (0–1)
+// shows a tiny knob at that position before the value.
+import KnobGlyph from './KnobGlyph.astro';
+interface Row { name: string; value: string; href?: string; mono?: boolean; knob?: number }
 interface Props { rows: Row[]; caption?: string; class?: string }
 const { rows, caption, class: cls = '' } = Astro.props;
 ---
@@ -10,7 +12,7 @@ const { rows, caption, class: cls = '' } = Astro.props;
     {rows.map((r) => (
       <tr>
         <th scope="row">{r.href ? <a href={r.href}>{r.name}</a> : r.name}</th>
-        <td class={r.mono ? 'mono' : undefined}>{r.value}</td>
+        <td class={r.mono ? 'mono' : undefined}>{r.knob !== undefined ? <span class="knob-value"><KnobGlyph value={r.knob} />{r.value}</span> : r.value}</td>
         {rows.some((x) => x.href) && <td class="go">{r.href && <a href={r.href} aria-hidden="true" tabindex="-1">Manual →</a>}</td>}
       </tr>
     ))}

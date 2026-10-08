@@ -707,3 +707,12 @@ ul > li::marker { color: var(--signal); }
 
 /* The source note under a demo's Settings (owner, 8 Oct): a hairline above, small and quiet. */
 .demo .demo-note { margin-top: 0.75rem; padding-top: 0.75rem; border-top: var(--hair) solid var(--line); font: var(--wt-reg) var(--fs-micro) / 1.45 var(--font-sans); color: var(--ink-2); }
+
+/* Knob glyphs beside setting values (owner, 8 Oct): the position at a glance, 7 to 5 o'clock. */
+.knob-value { display: inline-flex; align-items: center; gap: 0.45rem; }
+.knob-glyph { flex: none; width: 1.4em; height: 1.4em; overflow: visible; }
+.knob-glyph path, .knob-glyph line { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.knob-glyph .kg-track { stroke: var(--line); stroke-width: 2; }
+.knob-glyph .kg-travel { stroke: var(--signal); stroke-width: 2; }
+.knob-glyph .kg-body { fill: none; stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.knob-glyph .kg-pointer { stroke: var(--ink); stroke-width: 1.5; }

@@ -1,6 +1,7 @@
 ---
 import Doc from '../layouts/Doc.astro';
 import PanelWire from '../components/PanelWire.astro';
+import KnobGlyph from '../components/KnobGlyph.astro';
 import { getPage, pageHtml, splitSections, stripTags, takeH1 } from '../lib/content';
 import { KNOBS, SWITCHES, type PanelSettings, type KnobKey } from '../lib/panel';
 
@@ -67,7 +68,7 @@ const values = (s: PanelSettings) => [
         <div class="preset-text">
           <Fragment set:html={b.html} />
           <dl class="preset-values" aria-label={`${b.title}: exact values`}>
-            {values(b.s).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+            {values(b.s).map(([k, v]) => <div><dt>{k}</dt><dd>{SWITCHES.some((w) => w.name === k) ? v : <span class="knob-value"><KnobGlyph value={Number(v)} />{v}</span>}</dd></div>)}
             {values(b.s).length % 2 === 1 && <div class="filler" aria-hidden="true" />}
           </dl>
         </div>
