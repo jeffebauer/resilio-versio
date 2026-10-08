@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 7 Oct 2026, end of session 10. **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 8 Oct 2026, end of session 11 (site only: copy in your voice, feedback section, dark mode, new demos with the BLEND fader, knob drawings, analytics on; shared on ModWiggler). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -18,7 +18,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (in this order)
 
-### 1. GitHub tidy-up (tomorrow morning, 8 Oct; ~5 minutes)
+### 1. GitHub tidy-up (~5 minutes)
 Claude's session wasn't allowed to delete branches, so these are yours. All the branches named below are already fully on `main`, so nothing is lost.
 - [ ] **Close PR #2:** `gh pr close 2 --comment "Closing: this work landed on main via feat/site-refine."`
 - [ ] **Delete the merged site branches on GitHub:** `git push origin --delete feat/site feat/site-v2 feat/site-renders`
@@ -26,16 +26,17 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] **Protect `main`** (GitHub → Settings → Rules → Rulesets, target `main`): turn on **Block force pushes** and **Restrict deletions** only. Leave "Require a pull request" and "Require status checks" **off**, because Claude commits straight to `main` after the tests pass. Or tell Claude "set up branch protection" and it does it with `gh`
 
 ### 1b. Record modular parts for the new demos (whenever you can; spec in `docs/minisite/demos-plan.md`)
-- [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), `plucks.wav` (a sequenced pluck line), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They feed clips 4, 5 and 7 of the eight-clip set; I make the rest from licence-free samples and synths
+- [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They replace the FM clav stand-ins in "Chord stab into the bed" and "Echo chord"
+- [ ] Optional: a dry siren from your modular (an oscillator flipping between two notes) if you'd like the real thing in "The rough end" instead of the synthesised one
 
 ### 1c. The new demos
-- [ ] Listen to the ten new demos on the site and send notes per clip (kit B chosen; your modular parts will replace the FM clav in clips 4 and 5)
+- [ ] Listen to the ten demos on the site and send notes per clip (done so far: Tubby throw and sweep, Trombone dub, Chord stab into the bed, Echo chord, The rough end)
+- [ ] Read replies on your ModWiggler thread and pass on anything to act on (GitHub issues come with their own forms)
 
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
 - [ ] **Try the five new dub and dub techno starting points** (Starting points page: Chord stab into the bed, Echo chord, Telephone snare, Murky tape echo, Siren swoop): set from the manual, not yet heard by anyone. Keep, retune or cut (Claude can render them for you first)
-- [ ] ~~**Listen to the ten demo clips**~~ (being replaced by the musical set, 8 Oct) (the "The sound" tiles; rendered, not yet heard by anyone): approve, cut or redo
 
 ### 3. Stereo in: what it should sound like (answer whenever; study on branch `proto/stereo-in-study`, `docs/research/stereo-input-study.md`)
 - [ ] Recommended: stereo in **TANK 2 only** (the one position with CPU room), built first in the plugin, then timed on the chip; mono patches unchanged. Questions: a hard-left guitar comes back hard left, or leans and blooms? Left tail stays left after a centred phrase follows, or drifts in? One-sided as loud as centred? In R alone: right, or centre as today? TANK 2 only OK? Less grit on the panned part in TAPE/VALVE OK? Worth ~5 % CPU for the panned part's "highs later" smear?
@@ -47,6 +48,8 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 
 ## Waiting on Claude (no action needed)
 - Anything else from your Mesurer rounds
+- **Demo revisions** as you send notes per clip; the render tools are in `docs/minisite/tools/demos/v2/` (each clip's dry/wet pair re-renders exactly)
+- **Community feedback** from ModWiggler and GitHub issues: triage, and credit adopted ideas in the changelog
 - **Site polish**: further rounds as you send Mesurer notes (run `npm run dev` in `.claude/worktrees/site-refine/site`, or ask Claude to start it: http://localhost:4323); each round goes live on "merge it"
 
 ## What to send Claude

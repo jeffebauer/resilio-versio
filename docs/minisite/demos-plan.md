@@ -2,6 +2,8 @@
 
 8 Oct 2026. Decided with the owner: replace the ten control demos (made from the test stimuli, DRIVE mostly at noon or above) with eight musical clips that show the range of the sound, sweet by default, with a dry/wet slider on each.
 
+**Status (8 Oct, end of session 11): live.** Ten clips replaced the plan's eight after the owner's sample audition: 01 Tubby throw and sweep (kit B Virtuosity drums, Baby Blue bass), 02 Organ bubble into echo, 03 Trombone dub, 04 Chord stab into the bed and 05 Echo chord (FM clav stand-ins for the owner's modular parts), 06 Vibes in the springs, 07 Zither drips, 08 Percussion in the springs, 10 Guitar warble, 09 The rough end (a siren synthesised from a measured reference, one call). All sources CC0. One floating BLEND fader replaced the per-card sliders. Clocked echo clips render with a 4 s clock lead-in (cut off) so the echo is locked from the first note. Tools: `docs/minisite/tools/demos/v2/` (`fetch_samples.py`, `build_sources.py`, `render.py`); the clip table below is the original plan.
+
 ## Decisions
 
 - **Sources (mixed):** the owner records modular parts in a dub techno style. Everything else comes from licence-free (CC0) samples or is synthesised in code. No commercial recordings: the site and repo are public.
