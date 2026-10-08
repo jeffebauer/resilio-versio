@@ -1,6 +1,8 @@
 // Tiny diagrams (DESIGN-v2 V10): small line drawings of what a control or a demo does,
 // computed here so they stay simple and true to the manual. Each is drawn in a 160 × 64
-// box; `ink` paths take the text colour, `hot` paths the signal red (one highlight).
+// box; `ink` paths take the text colour, `hot` paths the signal red (one highlight). Where a
+// drawing shows a sound and its reverb, the dry hit is ink and the reverb or echo is red, as
+// on the players' waveforms (owner, 8 Oct).
 export type DiagramKind =
   | 'decay' | 'throw' | 'echo' | 'bigknob' | 'wobble'
   | 'tanks' | 'attitude' | 'splash' | 'hold' | 'howl' | 'drywet' | 'cv'
@@ -58,8 +60,8 @@ export function shape(kind: DiagramKind): Shape {
     case 'decay':
       return {
         label: 'A hit, then the spring’s tail ringing on and fading away.',
-        hot: [`M10 ${MID - 26}V${MID + 26}`],
-        ink: [ring(10, 154, 24, 16, 3.4)],
+        ink: [`M10 ${MID - 26}V${MID + 26}`],
+        hot: [ring(10, 154, 24, 16, 3.4)],
       };
     case 'throw': {
       // Lane 1: the send gate opens for one hit. Lane 2: hits; only that one rings on.
@@ -67,16 +69,16 @@ export function shape(kind: DiagramKind): Shape {
       return {
         label: 'The send opens for one hit, closes, and that hit’s tail rings on.',
         faint: ['M4 12H68M80 12H156'],
-        hot: ['M68 12V4H80V12'],
-        ink: [...hits.map((x) => tick(x, 8)), ring(74, 156, 14, 11, 2.6, 34)],
+        hot: ['M68 12V4H80V12', ring(74, 156, 14, 11, 2.6, 34)],
+        ink: hits.map((x) => tick(x, 8)),
       };
     }
     case 'echo': {
       const xs = [10, 34, 58, 82, 106, 130, 154];
       return {
         label: 'One hit, then echo repeats, each quieter than the last.',
-        hot: [tick(xs[0], 50)],
-        ink: xs.slice(1).map((x, i) => tick(x, 50 * Math.pow(0.68, i + 1))),
+        ink: [tick(xs[0], 50)],
+        hot: xs.slice(1).map((x, i) => tick(x, 50 * Math.pow(0.68, i + 1))),
       };
     }
     case 'bigknob': {
@@ -164,8 +166,8 @@ export function shape(kind: DiagramKind): Shape {
       };
     }
     case 'howl': {
-      // One hit, then the tank's own feedback building up and holding: the envelope grows
-      // and levels off (it never runs away), the pitch creeps up, the edge stays rough.
+      // One hit, then the tank's own feedback: a rough roar drawn loudest first and shrinking
+      // away, like the other tails (owner, 8 Oct: the build-up drawing, mirrored left to right).
       const env = (x: number) => 1 - Math.exp(-(x - 16) / 28);
       const rough: [number, number][] = [];
       const top: [number, number][] = [];
@@ -174,11 +176,12 @@ export function shape(kind: DiagramKind): Shape {
       for (let x = 16; x <= 156; x += 0.5) {
         phase += 0.5 * (0.42 + 0.3 * ((x - 16) / 140));
         const a = 24 * env(x);
-        rough.push([x, MID - a * Math.sin(phase) * (0.82 + 0.18 * Math.sin(x * 0.21))]);
-        if (x % 4 === 0) { top.push([x, MID - a]); bottom.push([x, MID + a]); }
+        const xm = 172 - x; // mirrored: 16..156 runs 156..16
+        rough.push([xm, MID - a * Math.sin(phase) * (0.82 + 0.18 * Math.sin(x * 0.21))]);
+        if (x % 4 === 0) { top.push([xm, MID - a]); bottom.push([xm, MID + a]); }
       }
       return {
-        label: 'The Howl: one hit tips the tank into its own feedback, which builds into a rough, rising roar and holds there until you pull DECAY back.',
+        label: 'The Howl: one hit tips the tank into its own feedback, a rough roar that rings on and dies away when you pull DECAY back.',
         faint: [line(top), line(bottom)],
         ink: [tick(10, 50, 58)],
         hot: [line(rough)],

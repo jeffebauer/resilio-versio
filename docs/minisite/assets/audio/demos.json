@@ -94,7 +94,7 @@
       "blend": 0.5,
       "title": "Echo chord",
       "caption": "One chord every two bars into the tape echo on dotted eighths. TONE rides from warm and dark all the way up to a thin telephone ring, then back down, the classic dub techno filter move.",
-      "transcript": "A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
+      "transcript": "A single F minor ninth stab every two bars at 120 bpm over a quiet offbeat hi-hat, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
       "duration_s": 21.5,
       "settings": {
         "TANK": "ECHO",
@@ -108,7 +108,7 @@
         "WOBBLE": "0.44 (11:30)",
         "CLOCK": "120 bpm"
       },
-      "note": "Clavisynth by Versilian Studios (CC0). Played in code."
+      "note": "Clavisynth by Versilian Studios (CC0). Hat: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Played in code."
     },
     {
       "file": "06-wet.mp3",

@@ -450,6 +450,14 @@ def clip05(src: Path, out: Path, cues: dict):
              (6, 3, "Fm9", .8), (7, 14, "Fm11", .7)]
     for bar, s, ch, v in stabs:
         stab(m, clav, ch, T(bar, s) + hum(3), vary(v, 0.04), length=0.18)
+    # Owner, 8 Oct: an offbeat hat under the stabs, as quiet as clip 04's. Added after the stabs
+    # with the shared random state put back, so the stabs and every later clip stay as they were.
+    state = rng.getstate()
+    kit = kit_b(src / "cc0" / "virtuosity")
+    for bar in range(8):
+        for beat in range(4):
+            m.add("hats", kit.hit("hh", vary(0.45)), T(bar, beat * 4 + 2) + hum(3), db(-8), pan=0.3)
+    rng.setstate(state)
     return m.finish(out / "05_echo_chord.wav")
 
 
