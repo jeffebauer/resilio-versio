@@ -16,3 +16,6 @@ __pycache__/
 .idea/
 # Minisite: licensed Phonic webfonts are never committed (the repo goes public)
 site/public/fonts/
+
+# Demo source samples and the owner's demo stems (docs/minisite/demos-plan.md): never committed
+/test_audio/demo_sources/
