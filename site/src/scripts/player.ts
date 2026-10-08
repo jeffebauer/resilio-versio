@@ -28,7 +28,7 @@ let demosInView = false;
 
 function showFader() {
   if (!fader) return;
-  const on = demosInView || Boolean(current?.playing);
+  const on = demosInView;   // only while the clips are on screen (owner, 8 Oct), even if one is playing
   fader.classList.toggle('is-on', on);
   fader.setAttribute('aria-hidden', String(!on));
   if (faderInput) faderInput.tabIndex = on ? 0 : -1;
@@ -259,5 +259,6 @@ document.addEventListener('astro:page-load', init);
 faderInput?.addEventListener('input', () => setBlend(Number(faderInput.value) / 100, true));
 const demos = document.querySelector('[data-demos]');
 if (fader && demos && 'IntersectionObserver' in window) {
-  new IntersectionObserver(([e]) => { demosInView = e.isIntersecting; showFader(); }, { rootMargin: '0px 0px -25% 0px' }).observe(demos);
+  // Shown only while the clips cross the middle of the screen.
+  new IntersectionObserver(([e]) => { demosInView = e.isIntersecting; showFader(); }, { rootMargin: '-30% 0px -30% 0px' }).observe(demos);
 }

@@ -668,9 +668,9 @@ ul > li::marker { color: var(--signal); }
    floats centred above the bottom edge while the demos are on screen or a clip plays. */
 .fader {
   position: fixed; z-index: 30; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-  width: min(34rem, calc(100vw - 2rem));
+  width: min(26rem, calc(100vw - 2rem));
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.9rem;
-  padding: 0.55rem 1.1rem; border-radius: var(--radius-tile);
+  padding: 0.3rem 0.9rem; border-radius: var(--radius-tile);
   background: color-mix(in srgb, var(--paper) 94%, transparent); color: var(--ink);
   box-shadow: 0 0 0 var(--hair) var(--line), 0 1.25rem 2.5rem -1rem rgb(0 0 0 / 0.35);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
@@ -679,7 +679,7 @@ ul > li::marker { color: var(--signal); }
 }
 .fader.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 .fader-end { font: 700 var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink); }
-.fader-body { position: relative; height: 3rem; --cap-w: 1.25rem; }
+.fader-body { position: relative; height: 2.4rem; --cap-w: 1.05rem; }
 .fader-ticks { position: absolute; inset: 0 calc(var(--cap-w) / 2); width: calc(100% - var(--cap-w)); height: 100%; overflow: visible; }
 .fader-ticks line { stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .fader-slot { position: absolute; left: calc(var(--cap-w) / 2); right: calc(var(--cap-w) / 2); top: 50%; height: 0.3rem; translate: 0 -50%; border-radius: 999px; background: var(--ink); }
@@ -688,12 +688,12 @@ ul > li::marker { color: var(--signal); }
 .fader input[type="range"]::-webkit-slider-runnable-track { height: 100%; background: transparent; }
 .fader input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
 .fader input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: var(--cap-w); height: 2.6rem; margin-top: 0.2rem; border: 0; border-radius: 0.3rem;
+  -webkit-appearance: none; appearance: none; width: var(--cap-w); height: 2.1rem; margin-top: 0.15rem; border: 0; border-radius: 0.3rem;
   background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
   box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
 }
 .fader input[type="range"]::-moz-range-thumb {
-  width: var(--cap-w); height: 2.6rem; border: 0; border-radius: 0.3rem;
+  width: var(--cap-w); height: 2.1rem; border: 0; border-radius: 0.3rem;
   background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
   box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
 }
