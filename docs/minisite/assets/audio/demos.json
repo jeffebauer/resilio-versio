@@ -1,88 +1,219 @@
 {
-  "about": "Resilio Versio demo clips. Every clip is Resilio itself, rendered offline by the project's Renderer (release sound of v2026.10.06-a6c70a4) from synthetic test signals the project generated (snare and rim one-shots, an Am-D offbeat skank at 75 bpm, a C minor pad). No recordings of other instruments or reverbs. MP3, 160 kbps, 48 kHz stereo, loudness-matched to about -20.5 LUFS integrated (EBU R128), peaks at or below -1 dBTP. Settings use panel names; knob values are 0 (fully left, 7 o'clock) to 1 (fully right, 5 o'clock), with approximate clock positions.",
-  "version": "v2026.10.06-a6c70a4",
+  "about": "Resilio Versio demo clips, round 2. Each clip is a pair rendered by the project's Renderer from one dry source: BLEND fully left (the clean passthrough) and BLEND fully right (the wet), with the same gain, so the page's BLEND fader mixes them like the knob. Parts are written and sequenced in code from CC0 samples: Virtuosity Drums (Versilian Studios and Karoryfer), the Baby Blue bass and Emilyguitar (Karoryfer), the FreePats Drawbar Organ, the VSCO 2 CE trombone and VCSL vibraphone, TX81Z clav, Dan Tranh and bongos (Versilian Studios), and a TR-808 cowbell (Michael Fischer, via TidalCycles); the siren is synthesised. MP3 160 kbps, 48 kHz stereo; the mix at each clip's BLEND is about -20.5 LUFS (the drum-heavy clips about 1.4 dB lower), peaks at or below -1 dBTP.",
+  "version": "round 2 (8 Oct 2026)",
   "clips": [
     {
-      "file": "01-dry-then-wet.mp3",
-      "title": "Dry, then wet",
-      "caption": "A one-drop groove: two bars dry, then two bars through the Tubby snare splash starting point.",
-      "transcript": "A snare on beat three with rim clicks around it, at 75 bpm. For two bars it is dry and close. Then the reverb comes in: each snare gets a bright crack and a loose, dripping spring tail with a little tape grit, ringing out after the last hit.",
-      "duration_s": 18.2,
-      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0 for bars 1-2, then 0.45 (11:30)", "DECAY": "0.6 (1)", "TONE": "0.65 (1:30)", "TENSION": "0.35 (10:30)", "SPLASH": "0.7 (2)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)" }
+      "file": "01-wet.mp3",
+      "dry": "01-dry.mp3",
+      "blend": 0.5,
+      "title": "Tubby throw and sweep",
+      "caption": "A one-drop in A minor. The rimshot on bars 2, 4 and 6 is thrown into the springs, then the last two bars go in whole while TONE rides up to the “Big Knob” and back down the tail.",
+      "transcript": "A reggae one-drop at 76 bpm. Swung hi-hats with open-hat lifts, kick and rimshot together on beat three, soft cross-stick ghosts, and a roots bassline that leaves gaps. On bars two, four and six the rimshot alone splashes into the springs and rings on. Then the whole band goes into the springs for the last two bars, and the reverb turns thin and bright like a telephone, holds there, and warms up again as the long tail fades.",
+      "duration_s": 30.0,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.72 (2:15)",
+        "TONE": "0.55 (12:30)",
+        "TENSION": "0.35 (10:30)",
+        "SPLASH": "0.55 (12:30)",
+        "DRIVE": "0.22 (9:15)",
+        "WOBBLE": "0.45 (11:30)"
+      },
+      "note": "Drums: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Bass: Baby Blue by Karoryfer (CC0). Played in code."
     },
     {
-      "file": "02-tank-1-then-2.mp3",
-      "title": "TANK 1, then TANK 2",
-      "caption": "One snare into one spring (sparse, the most splashy), then the same snare into two springs (the classic tank).",
-      "transcript": "A single snare hit, twice. First with one spring: a splashy, sparse tail where you can hear the individual boings. Then with two springs: a denser, smoother tail of the same length.",
-      "duration_s": 11.0,
-      "settings": { "TANK": "1, then 2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.5 (12)", "TONE": "0.5 (12)", "TENSION": "0.5 (12)", "SPLASH": "0.5 (12)", "DRIVE": "0.4 (11)", "WOBBLE": "0.45 (11:30)" },
-      "note": "Two renders joined back to back."
+      "file": "02-wet.mp3",
+      "dry": "02-dry.mp3",
+      "blend": 0.45,
+      "title": "Organ bubble into echo",
+      "caption": "The reggae organ bubble and guitar chops into the tape echo, clocked to the tempo on dotted eighths. In the last bar the band stops and the echo answers.",
+      "transcript": "An organ plays the reggae bubble, a shuffling two-handed pattern of short chords, over A minor seven and D nine at 76 bpm. A clean guitar chops on beats two and four. Each chord comes back as dotted-eighth repeats that fall between the beats and thicken the shuffle. In the last bar the organ stops after two beats and the final guitar chops repeat on their own and fade.",
+      "duration_s": 29.5,
+      "settings": {
+        "TANK": "ECHO",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.45 (11:30), the slider's start",
+        "DECAY": "0.55 (12:30)",
+        "TONE": "0.5 (12)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.4 (11)",
+        "DRIVE": "0.18 (8:45)",
+        "WOBBLE": "0.44 (11:30)",
+        "CLOCK": "76 bpm"
+      },
+      "note": "Organ: FreePats Drawbar Organ (CC0). Guitar: Emilyguitar by Karoryfer (CC0). Played in code."
     },
     {
-      "file": "03-clean-tape-valve.mp3",
-      "title": "CLEAN, TAPE, VALVE",
-      "caption": "The same snare through each ATTITUDE, with DRIVE at 1:30: polite, then tape-saturated, then a cranked valve stage.",
-      "transcript": "A single snare hit, three times. CLEAN: a clear, polite spring tail. TAPE: warmer, slightly saturated, with a fine grain. VALVE: harder and rougher, a rattle on the hit and a gritty tail.",
-      "duration_s": 15.0,
-      "settings": { "TANK": "2", "ATTITUDE": "CLEAN, then TAPE, then VALVE", "BLEND": "0.5 (12)", "DECAY": "0.55 (12:30)", "TONE": "0.5 (12)", "TENSION": "0.45 (11:30)", "SPLASH": "0.6 (1)", "DRIVE": "0.65 (1:30)", "WOBBLE": "0.45 (11:30)" },
-      "note": "Three renders joined back to back."
+      "file": "03-wet.mp3",
+      "dry": "03-dry.mp3",
+      "blend": 0.5,
+      "title": "Trombone dub",
+      "caption": "A trombone calls and the echo answers in the gaps. On the last phrase DECAY comes up so the repeats pile up, then a turn of TENSION bends the tape.",
+      "transcript": "A lone trombone plays three short phrases in A minor at 74 bpm, leaving a bar of space after each. The echo fills the space with a few dotted-eighth repeats. On the last phrase the repeats grow longer and louder and keep going after the horn stops. Near the end the repeats swoop up in pitch as the delay time shortens, then fade.",
+      "duration_s": 23.0,
+      "settings": {
+        "TANK": "ECHO",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.45 (11:30)",
+        "TONE": "0.5 (12)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.4 (11)",
+        "DRIVE": "0.2 (9)",
+        "WOBBLE": "0.45 (11:30)",
+        "CLOCK": "74 bpm"
+      },
+      "note": "Trombone: VSCO 2 CE by Versilian Studios (CC0). Played in code."
     },
     {
-      "file": "04-throw.mp3",
-      "title": "The throw",
-      "caption": "Only the snares on bars 2 and 4 go into the springs (THROW held for each); everything else stays dry, and each tail rings on.",
-      "transcript": "The one-drop groove, mostly dry. On the second bar's snare the springs open for that one hit, and a long tail rings on under the following bar. The same happens on the fourth bar's snare, and its tail rings out at the end.",
-      "duration_s": 18.2,
-      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.7 (2)", "TONE": "0.55 (12:30)", "TENSION": "0.35 (10:30)", "SPLASH": "0.6 (1)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)", "THROW / TAP": "pressed once at the start (throw mode on), then held for the snares of bars 2 and 4" }
+      "file": "04-wet.mp3",
+      "dry": "04-dry.mp3",
+      "blend": 0.5,
+      "title": "Chord stab into the bed",
+      "caption": "Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, with WOBBLE far left for a seasick tape warble. DECAY comes down at the end to let it go.",
+      "transcript": "A four-on-the-floor kick at 120 bpm with a quiet offbeat hi-hat, and short, syncopated F minor ninth chord stabs on a bright FM keyboard. The springs hold every stab as a continuous wash that dips with each kick and swells between them. After the last stab the wash hangs on for two seconds, then fades away. The bed wavers in pitch the whole time, like a badly worn tape.",
+      "duration_s": 21.5,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "CLEAN",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "1 (5)",
+        "TONE": "0.6 (1)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.4 (11)",
+        "DRIVE": "0.2 (9)",
+        "WOBBLE": "0.1 (8)"
+      },
+      "note": "Clavisynth by Versilian Studios (CC0). Kick and hat: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Played in code."
     },
     {
-      "file": "05-splash.mp3",
-      "title": "SPLASH",
-      "caption": "SPLASH fully down for two bars, then at 4 o'clock: the same hits ring the springs much harder.",
-      "transcript": "The one-drop groove through the reverb. For two bars the tail is smooth and even. Then the hits clang into the springs: a brighter, harder crash on each snare and rim, while the quiet ghost notes stay quiet.",
-      "duration_s": 18.2,
-      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.5 (12)", "TONE": "0.5 (12)", "TENSION": "0.45 (11:30)", "SPLASH": "0 for bars 1-2, then 0.9 (4)", "DRIVE": "0.4 (11)", "WOBBLE": "0.45 (11:30)" }
+      "file": "05-wet.mp3",
+      "dry": "05-dry.mp3",
+      "blend": 0.5,
+      "title": "Echo chord",
+      "caption": "One chord every two bars into the tape echo on dotted eighths. TONE rides from warm and dark all the way up to a thin telephone ring, then back down, the classic dub techno filter move.",
+      "transcript": "A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
+      "duration_s": 21.5,
+      "settings": {
+        "TANK": "ECHO",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.6 (1)",
+        "TONE": "0.35 (10:30)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.4 (11)",
+        "DRIVE": "0.2 (9)",
+        "WOBBLE": "0.44 (11:30)",
+        "CLOCK": "120 bpm"
+      },
+      "note": "Clavisynth by Versilian Studios (CC0). Played in code."
     },
     {
-      "file": "06-big-knob.mp3",
-      "title": "King Tubby's “Big Knob”",
-      "caption": "TONE ridden from noon to fully right and back while the groove plays: the tail thins to a telephone splash, then the warmth returns.",
-      "transcript": "The one-drop groove with a long tail. TONE sweeps up: the reverb loses its low end and turns thin, bright and telephone-like, with a nasal ring on the snare. It holds there for a few seconds, then sweeps back and the body returns.",
-      "duration_s": 18.2,
-      "settings": { "TANK": "2", "ATTITUDE": "TAPE", "BLEND": "0.6 (1)", "DECAY": "0.75 (2:30)", "TONE": "0.5 (12) to 1 (5) from 2.6 s to 7 s, held, back to 0.5 by 13.5 s", "TENSION": "0.4 (11)", "SPLASH": "0.6 (1)", "DRIVE": "0.5 (12)", "WOBBLE": "0.45 (11:30)" }
+      "file": "06-wet.mp3",
+      "dry": "06-dry.mp3",
+      "blend": 0.45,
+      "title": "Vibes in the springs",
+      "caption": "Slow minor-ninth chords on soft vibraphone, with a warm tail and a little tape drift.",
+      "transcript": "A vibraphone plays gently rolled chords in D minor, one every few seconds, with a few single notes in between. The springs add a soft, wide bloom behind each chord that drifts very slightly in pitch, and the last chord rings out with a high note on top.",
+      "duration_s": 22.0,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "CLEAN",
+        "BLEND": "0.45 (11:30), the slider's start",
+        "DECAY": "0.72 (2:15)",
+        "TONE": "0.45 (11:30)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.2 (9)",
+        "DRIVE": "0.12 (8:15)",
+        "WOBBLE": "0.43 (11:15)"
+      },
+      "note": "VCSL vibraphone by Versilian Studios (CC0). Played in code."
     },
     {
-      "file": "07-wobble.mp3",
-      "title": "WOBBLE: drift, then warble",
-      "caption": "A held pad: WOBBLE left of noon drifts like worn tape, then right of noon becomes a steady warble.",
-      "transcript": "A soft C minor pad chord in a mostly wet spring. For the first half the reverb's pitch drifts slowly and unevenly, like old tape. Then it changes to a regular, even vibrato until the chord fades.",
-      "duration_s": 15.0,
-      "settings": { "TANK": "2", "ATTITUDE": "CLEAN", "BLEND": "0.7 (2)", "DECAY": "0.6 (1)", "TONE": "0.45 (11:30)", "TENSION": "0.5 (12)", "SPLASH": "0.2 (9)", "DRIVE": "0.25 (9:30)", "WOBBLE": "0.1 (8) until 6.8 s, then 0.9 (4)" }
+      "file": "07-wet.mp3",
+      "dry": "07-dry.mp3",
+      "blend": 0.5,
+      "title": "Zither drips",
+      "caption": "Sparse plucks on a Vietnamese zither, each one dripping into a single spring. Bent notes and a quick run up the strings.",
+      "transcript": "A Dan Tranh, a plucked Vietnamese zither, plays a slow pentatonic figure with long silences. Every pluck sets off the springy drip of a single reverb tank. Midway there is a fast run up the strings, and two notes are bent upwards after they are plucked.",
+      "duration_s": 19.5,
+      "settings": {
+        "TANK": "1",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.6 (1)",
+        "TENSION": "0.6 (1)",
+        "SPLASH": "0.45 (11:30)",
+        "TONE": "0.5 (12)",
+        "DRIVE": "0.18 (8:45)",
+        "WOBBLE": "0.44 (11:30)"
+      },
+      "note": "Dan Tranh by Versilian Studios (CC0). Played in code."
     },
     {
-      "file": "08-echo-skank.mp3",
-      "title": "Skank into echo",
-      "caption": "TANK ECHO clocked at 75 bpm, TENSION on dotted 1/8: offbeat chords into a worn tape echo feeding the springs.",
-      "transcript": "Offbeat A minor and D chord stabs at 75 bpm. Each stab is answered by tape repeats on a dotted eighth, getting darker each time, each with a short spring halo. After the chords stop, the repeats fade out.",
-      "duration_s": 17.6,
-      "settings": { "TANK": "ECHO", "ATTITUDE": "TAPE", "BLEND": "0.5 (12)", "DECAY": "0.6 (1)", "TONE": "0.5 (12)", "TENSION": "0.5 (12) = dotted 1/8 with a clock", "SPLASH": "0.3 (10)", "DRIVE": "0.35 (10:30)", "WOBBLE": "0.45 (11:30)", "Gate": "a 75 bpm clock" }
+      "file": "08-wet.mp3",
+      "dry": "08-dry.mp3",
+      "blend": 0.5,
+      "title": "Percussion in the springs",
+      "caption": "Bongos and an 808 cowbell. A few cowbell hits are thrown into the spring and splash, while everything else stays dry.",
+      "transcript": "Bongos play a busy sixteenth-note pattern of open and muted hits at 118 bpm, with an 808 cowbell on the offbeats and a soft kick from the second bar. Now and then a single cowbell hit bursts into a short, metallic splash of spring reverb while the rest of the groove stays dry.",
+      "duration_s": 20.5,
+      "settings": {
+        "TANK": "1",
+        "ATTITUDE": "CLEAN",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.55 (12:30)",
+        "TONE": "0.55 (12:30)",
+        "TENSION": "0.5 (12)",
+        "SPLASH": "0.5 (12)",
+        "DRIVE": "0.15 (8:30)",
+        "WOBBLE": "0.44 (11:30)"
+      },
+      "note": "Bongos by Versilian Studios (CC0). TR-808 cowbell from Michael Fischer's 808 set via TidalCycles (CC0). Kick: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Played in code."
     },
     {
-      "file": "09-valve-howl.mp3",
-      "title": "The VALVE howl",
-      "caption": "The Drowned howl starting point: one snare tips the tank into its own feedback; at 10 seconds DECAY comes back down and it falls away.",
-      "transcript": "One snare hit, then a rough, moving roar that keeps going on its own: the springs feeding back, shifting in pitch and texture, never a pure tone. After about ten seconds it falls quickly into a normal tail and fades to silence.",
-      "duration_s": 18.0,
-      "settings": { "TANK": "2", "ATTITUDE": "VALVE", "BLEND": "0.8 (3)", "DECAY": "0.95 (4:30), down to 0.6 (1) between 10 and 11 s", "TONE": "0.35 (10:30)", "TENSION": "0.3 (10)", "SPLASH": "0.5 (12)", "DRIVE": "0.6 (1)", "WOBBLE": "0.41 (11)" }
+      "file": "10-wet.mp3",
+      "dry": "10-dry.mp3",
+      "blend": 0.5,
+      "title": "Guitar warble",
+      "caption": "A clean guitar letting slow E minor chords ring, with WOBBLE right of noon for a steady tape warble and TENSION loose for a big, slow boing.",
+      "transcript": "A clean electric guitar picks slow, ringing arpeggios over E minor nine, C major seven, A minor nine and B seven sus at 72 bpm, ending on a soft strum. The spring tail wavers evenly in pitch, a gentle vibrato, and each note blooms with a deep, slow boing.",
+      "duration_s": 28.0,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.62 (1:15)",
+        "TONE": "0.45 (11:30)",
+        "TENSION": "0.28 (9:45)",
+        "SPLASH": "0.35 (10:30)",
+        "DRIVE": "0.15 (8:30)",
+        "WOBBLE": "0.68 (1:45)"
+      },
+      "note": "Guitar: Emilyguitar by Karoryfer (CC0). Played in code."
     },
     {
-      "file": "10-hold.mp3",
-      "title": "The hold",
-      "caption": "CLEAN with DECAY fully up: a pad blooms into a held bed that keeps ringing after the chord stops at 8 seconds.",
-      "transcript": "A C minor pad fades in and blooms into a wide, still wash. At eight seconds the chord itself stops, but the wash carries on, held and slowly fading, to the end of the clip.",
-      "duration_s": 20.0,
-      "settings": { "TANK": "2", "ATTITUDE": "CLEAN", "BLEND": "0.6 (1)", "DECAY": "1 (5), from noon at the start", "TONE": "0.45 (11:30)", "TENSION": "0.5 (12)", "SPLASH": "0.2 (9)", "DRIVE": "0.25 (9:30)", "WOBBLE": "0.43 (11:15)" }
+      "file": "09-wet.mp3",
+      "dry": "09-dry.mp3",
+      "blend": 0.6,
+      "title": "The rough end",
+      "caption": "VALVE with DRIVE up. A sound-system wheel-up siren tips the tank into its howl, then DECAY eases down from 9 seconds and the howl settles into a long tail.",
+      "transcript": "A sound-system wheel-up siren, a soft tone flipping quickly between two notes, in three short calls and a longer one. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
+      "duration_s": 22.0,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "VALVE",
+        "BLEND": "0.6 (1), the slider's start",
+        "DECAY": "0.95 (4:30)",
+        "TONE": "0.4 (11)",
+        "TENSION": "0.35 (10:30)",
+        "SPLASH": "0.4 (11)",
+        "DRIVE": "0.65 (1:30)",
+        "WOBBLE": "0.42 (11:15)"
+      },
+      "note": "Siren synthesised in code."
     }
   ]
 }

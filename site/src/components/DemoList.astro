@@ -1,5 +1,6 @@
 ---
 import AudioAB from './AudioAB.astro';
+import BlendFader from './BlendFader.astro';
 import { getDemos } from '../lib/demos';
 interface Props { limit?: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string }
 const { limit, headingLevel, idPrefix } = Astro.props;
@@ -10,6 +11,7 @@ const shown = clips.slice(0, limit);
 <ul class="demos" data-demos>
   {shown.map((clip, i) => <AudioAB clip={clip} n={i + 1} headingLevel={headingLevel} idPrefix={idPrefix} wide={i === 0 || i === shown.length - 1} />)}
 </ul>
+{shown.some((c) => c.dry) && <BlendFader />}
 <script>
   import '../scripts/player';
   // Opening Settings on one card opens it on the cards beside it in the same row (owner,

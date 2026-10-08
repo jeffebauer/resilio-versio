@@ -3,7 +3,8 @@
 // what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
 // Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
-// The DRY / WET switch appears only when demos.json lists a `dry` file for the clip.
+// A clip with a `dry` file is mixed by the floating BLEND fader (BlendFader.astro), which
+// starts at the clip's own BLEND (data-blend).
 import Diagram from './diagrams/Diagram.astro';
 import SpecTable from './SpecTable.astro';
 import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
@@ -23,6 +24,7 @@ const d = peaks
 const dur = clock(clip.duration_s);
 const diagram = diagramFor(clip.file);
 const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value }));
+const blend = clip.blend ?? 0.5;
 ---
 <li class:list={['demo', 'tile', wide && 'is-wide']} data-reveal>
   <div class="demo-head">
@@ -37,6 +39,7 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     data-src={audioUrl(clip.file)}
     data-dry={clip.dry ? audioUrl(clip.dry) : undefined}
     data-duration={clip.duration_s}
+    data-blend={clip.dry ? blend : undefined}
     data-title={clip.title}
   >
     <button class="play" type="button" aria-label={`Play: ${clip.title}`} aria-describedby={`${id}-caption ${id}-transcript`}>
@@ -62,12 +65,6 @@ const rows = Object.entries(clip.settings).map(([name, value]) => ({ name, value
     </div>
     <div class="meta">
       <span class="time" aria-hidden="true"><span data-pos>0:00</span> / {dur}</span>
-      {clip.dry && (
-        <span class="ab" role="group" aria-label="Compare dry and wet">
-          <button type="button" data-ab="dry" aria-pressed="false">Dry</button>
-          <button type="button" data-ab="wet" aria-pressed="true">Wet</button>
-        </span>
-      )}
     </div>
   </div>
   <details class="disclosure" data-settings>

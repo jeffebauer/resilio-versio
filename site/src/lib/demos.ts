@@ -5,11 +5,14 @@ import { MINISITE } from './paths';
 import type { DiagramKind } from '../components/diagrams/shapes';
 
 // docs/minisite/assets/audio/demos.json, as written by the demo tools.
-// A clip may later list a `dry` file (same length, loudness-matched): the A/B
-// switch appears only then (PLAN §B6). Until the pairs exist, `file` is the wet clip.
+// A clip with a `dry` file (demos round 2) is a pair rendered from one source: `file` is
+// Resilio fully wet, `dry` is BLEND fully left (the clean passthrough, so they line up),
+// both with the same gain. The BLEND slider mixes them like the knob; `blend` (0–1) is
+// where it starts. Without a `dry` file, `file` is a finished mix and plays as it is.
 export interface Clip {
   file: string;
   dry?: string;
+  blend?: number;
   title: string;
   caption: string;
   transcript: string;
@@ -60,6 +63,14 @@ export function getPeaks(file: string): Promise<number[]> {
   return p;
 }
 
+/** A knob value (0–1) as its clock position: 0 is 7 o'clock, 0.5 noon, 1 is 5 o'clock. */
+export function knobClock(v: number): string {
+  const q = Math.round((7 + 10 * v) * 4) / 4;
+  const h = Math.floor(q);
+  const m = Math.round((q - h) * 60);
+  return `${((h - 1) % 12) + 1}${m ? `:${String(m).padStart(2, '0')}` : ''}`;
+}
+
 /** "0:18" */
 export function clock(seconds: number): string {
   const s = Math.round(seconds);
@@ -67,8 +78,9 @@ export function clock(seconds: number): string {
 }
 
 // The tiny diagram on each demo tile (DESIGN-v2 V11), by clip file number.
+// Demos round 2 (docs/minisite/demos-plan.md): one per clip in the eight-clip set.
 const DIAGRAMS: Record<string, DiagramKind> = {
-  '01': 'drywet', '02': 'tanks', '03': 'attitude', '04': 'throw', '05': 'splash',
-  '06': 'bigknob', '07': 'wobble', '08': 'echo', '09': 'howl', '10': 'hold',
+  '01': 'throw', '02': 'echo', '03': 'echo', '04': 'hold', '05': 'echo',
+  '06': 'decay', '07': 'splash', '08': 'throw', '09': 'howl', '10': 'wobble',
 };
 export const diagramFor = (file: string): DiagramKind | undefined => DIAGRAMS[file.slice(0, 2)];
