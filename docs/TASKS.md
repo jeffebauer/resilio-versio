@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 8 Oct 2026, session 12 (site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 9 Oct 2026, session 12 (stepped TONE listening page; site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -31,6 +31,11 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 
 ### 1c. Community
 - [ ] Read replies on your ModWiggler thread and pass on anything to act on (GitHub issues come with their own forms)
+
+### 1d. Stepped TONE: listen (`renders/tone_steps/index.html`; prototype on branch `proto/tone-steps`)
+- [ ] **The sweep:** the site's TONE rides on Tubby throw and Echo chord, smooth (today) against stepped to 1 kHz and the whole Altec switch (blind mode available). Keep smooth, or step?
+- [ ] **Each step held:** OFF and all ten Altec steps on three demos, plus today's TONE fully right. If stepped: which range (to 1 kHz, or the whole switch, where the reverb fades out from ~2 kHz)?
+- [ ] **CV:** the Versio adds each CV to its knob in hardware, so the firmware can't step the knob and sweep the CV separately. If stepped: should a CV walk the steps too, should steps glide (softer by CV, still stepped by hand), or should stepped/smooth be a panel setting? (page §3)
 
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
