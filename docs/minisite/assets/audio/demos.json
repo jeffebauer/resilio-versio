@@ -93,7 +93,7 @@
       "dry": "05-dry.mp3",
       "blend": 0.5,
       "title": "Echo chord",
-      "caption": "One chord every two bars into the tape echo on dotted eighths. TONE rides slowly up and back down, the classic dub techno filter move.",
+      "caption": "One chord every two bars into the tape echo on dotted eighths. TONE rides from warm and dark all the way up to a thin telephone ring, then back down, the classic dub techno filter move.",
       "transcript": "A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
       "duration_s": 21.5,
       "settings": {
@@ -101,7 +101,7 @@
         "ATTITUDE": "TAPE",
         "BLEND": "0.5 (12), the slider's start",
         "DECAY": "0.6 (1)",
-        "TONE": "0.45 (11:30)",
+        "TONE": "0.35 (10:30)",
         "TENSION": "0.5 (12)",
         "SPLASH": "0.4 (11)",
         "DRIVE": "0.2 (9)",

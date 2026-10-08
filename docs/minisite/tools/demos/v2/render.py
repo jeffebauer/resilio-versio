@@ -83,9 +83,10 @@ CLIPS = {
         notes=f"Clavisynth by Versilian Studios (CC0). Kick and hat: {DRUMS}. Played in code."),
     "05": dict(
         title="Echo chord", src="05_echo_chord.wav", blend=0.5, dur=21.5, clock=120,
-        set=dict(springs="ECHO", attitude="TAPE", decay=0.6, tone=0.45, tension=0.5, splash=0.4, drive=0.2, wobble=0.44),
-        auto={"clock_bpm": 120, "breakpoints": tone((0.0, 0.45), (10.0, 0.75), (19.0, 0.5))},
-        caption="One chord every two bars into the tape echo on dotted eighths. TONE rides slowly up and back down, the classic dub techno filter move.",
+        set=dict(springs="ECHO", attitude="TAPE", decay=0.6, tone=0.35, tension=0.5, splash=0.4, drive=0.2, wobble=0.44),
+        # Owner, 8 Oct: a more extreme ride, warm and dark up into telephone territory and back.
+        auto={"clock_bpm": 120, "breakpoints": tone((0.0, 0.35), (9.0, 0.97), (12.0, 0.97), (19.0, 0.4))},
+        caption="One chord every two bars into the tape echo on dotted eighths. TONE rides from warm and dark all the way up to a thin telephone ring, then back down, the classic dub techno filter move.",
         transcript="A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
         notes="Clavisynth by Versilian Studios (CC0). Played in code."),
     "06": dict(
