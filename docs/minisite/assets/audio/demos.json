@@ -72,8 +72,8 @@
       "dry": "04-dry.mp3",
       "blend": 0.5,
       "title": "Chord stab into the bed",
-      "caption": "Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, and DECAY comes down at the end to let it go.",
-      "transcript": "A four-on-the-floor kick at 120 bpm with a quiet offbeat hi-hat, and short, syncopated F minor ninth chord stabs on a bright FM keyboard. The springs hold every stab as a continuous wash that dips with each kick and swells between them. After the last stab the wash hangs on for two seconds, then fades away.",
+      "caption": "Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, with WOBBLE far left for a seasick tape warble. DECAY comes down at the end to let it go.",
+      "transcript": "A four-on-the-floor kick at 120 bpm with a quiet offbeat hi-hat, and short, syncopated F minor ninth chord stabs on a bright FM keyboard. The springs hold every stab as a continuous wash that dips with each kick and swells between them. After the last stab the wash hangs on for two seconds, then fades away. The bed wavers in pitch the whole time, like a badly worn tape.",
       "duration_s": 21.5,
       "settings": {
         "TANK": "2",
@@ -84,7 +84,7 @@
         "TENSION": "0.5 (12)",
         "SPLASH": "0.4 (11)",
         "DRIVE": "0.2 (9)",
-        "WOBBLE": "0.44 (11:30)"
+        "WOBBLE": "0.1 (8)"
       },
       "note": "Clavisynth by Versilian Studios (CC0). Kick and hat: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Played in code."
     },

@@ -21,6 +21,7 @@ import soundfile as sf
 
 RENDERER = Path("build/rv_render")
 TARGET_LUFS = -20.5
+PREROLL = 4.0  # seconds of clock before a clocked echo clip's music (see render_clip)
 PEAK_CEILING_DB = -1.3  # -1 dBTP with room for the MP3 encoder's overshoot (about 0.2 dB)
 SR = 48000
 
@@ -75,9 +76,9 @@ CLIPS = {
         notes="Trombone: VSCO 2 CE by Versilian Studios (CC0). Played in code."),
     "04": dict(
         title="Chord stab into the bed", src="04_stabs.wav", blend=0.5, dur=21.5,
-        set=dict(springs="2", attitude="CLEAN", decay=1.0, tone=0.6, tension=0.5, splash=0.4, drive=0.2, wobble=0.44),
+        set=dict(springs="2", attitude="CLEAN", decay=1.0, tone=0.6, tension=0.5, splash=0.4, drive=0.2, wobble=0.1),
         auto={"breakpoints": key("decay", (0.0, 1.0), (bar_t(120, 8) + 1.8, 1.0), (bar_t(120, 8) + 3.3, 0.55))},
-        caption="Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, and DECAY comes down at the end to let it go.",
+        caption="Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, with WOBBLE far left for a seasick tape warble. DECAY comes down at the end to let it go.",
         transcript="A four-on-the-floor kick at 120 bpm with a quiet offbeat hi-hat, and short, syncopated F minor ninth chord stabs on a bright FM keyboard. The springs hold every stab as a continuous wash that dips with each kick and swells between them. After the last stab the wash hangs on for two seconds, then fades away.",
         notes=f"Clavisynth by Versilian Studios (CC0). Kick and hat: {DRUMS}. Played in code."),
     "05": dict(
@@ -142,6 +143,21 @@ def render_clip(cid: str, c: dict, src: Path, work: Path, out: Path) -> dict:
     spec = dict(c["auto"] or {})
     if c.get("cue_buttons"):  # throw windows from the source's own hit times
         spec["buttons"] = json.loads((src / "cues.json").read_text())[cid]["buttons"]
+    # Clocked echo clips (owner, 8 Oct): the echo glides from its free time to the clock's
+    # division as the first pulses arrive, a tape swoop at the start. Run PREROLL seconds of
+    # silence first so the clock has locked when the music starts, then cut them off.
+    pre = PREROLL if "clock_bpm" in spec else 0.0
+    src_file = src / c["src"]
+    if pre:
+        x, sr = sf.read(str(src_file), always_2d=True)
+        src_file = work / f"{cid}_preroll.wav"
+        sf.write(str(src_file), np.concatenate([np.zeros((int(pre * sr), x.shape[1])), x]).astype(np.float32), sr)
+        spec = json.loads(json.dumps(spec))
+        for bp in spec.get("breakpoints", []):
+            bp["t"] = bp["t"] + pre if bp["t"] > 0 else 0.0
+        spec["buttons"] = [[s0 + pre, s1 + pre] for s0, s1 in spec.get("buttons", [])]
+        if not spec["buttons"]:
+            spec.pop("buttons")
     if spec:
         a = work / f"{cid}_auto.json"
         a.write_text(json.dumps(spec))
@@ -149,9 +165,10 @@ def render_clip(cid: str, c: dict, src: Path, work: Path, out: Path) -> dict:
     files = {}
     for side, mix in (("dry", 0), ("wet", 1)):
         w = work / f"{cid}_{side}.wav"
-        run(RENDERER, src / c["src"], w, *sets, "--set", f"mix={mix}", *auto)
+        run(RENDERER, src_file, w, *sets, "--set", f"mix={mix}", *auto)
         x, sr = sf.read(str(w), always_2d=True)
         assert sr == SR, f"{w} is {sr} Hz"
+        x = x[int(pre * SR):]
         files[side] = x[: int(c["dur"] * SR)]
     n = min(len(files["dry"]), len(files["wet"]))
     dry, wet = files["dry"][:n], files["wet"][:n]
