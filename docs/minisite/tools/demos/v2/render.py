@@ -110,6 +110,13 @@ CLIPS = {
         caption="Bongos and an 808 cowbell. A few cowbell hits are thrown into the spring and splash, while everything else stays dry.",
         transcript="Bongos play a busy sixteenth-note pattern of open and muted hits at 118 bpm, with an 808 cowbell on the offbeats and a soft kick from the second bar. Now and then a single cowbell hit bursts into a short, metallic splash of spring reverb while the rest of the groove stays dry.",
         notes=f"Bongos by Versilian Studios (CC0). TR-808 cowbell from Michael Fischer's 808 set via TidalCycles (CC0). Kick: {DRUMS}. Played in code."),
+    "10": dict(
+        title="Guitar warble", src="10_guitar.wav", blend=0.5, dur=28.0,
+        set=dict(springs="2", attitude="TAPE", decay=0.62, tone=0.45, tension=0.28, splash=0.35, drive=0.15, wobble=0.68),
+        auto=None,
+        caption="A clean guitar letting slow E minor chords ring, with WOBBLE right of noon for a steady tape warble and TENSION loose for a big, slow boing.",
+        transcript="A clean electric guitar picks slow, ringing arpeggios over E minor nine, C major seven, A minor nine and B seven sus at 72 bpm, ending on a soft strum. The spring tail wavers evenly in pitch, a gentle vibrato, and each note blooms with a deep, slow boing.",
+        notes="Guitar: Emilyguitar by Karoryfer (CC0). Played in code."),
     "09": dict(
         title="The rough end", src="09_siren.wav", blend=0.6, dur=22.0,
         set=dict(springs="2", attitude="VALVE", decay=0.95, tone=0.4, tension=0.35, splash=0.4, drive=0.65, wobble=0.42),

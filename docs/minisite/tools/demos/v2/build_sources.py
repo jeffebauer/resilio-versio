@@ -484,6 +484,39 @@ def clip06(src: Path, out: Path, cues: dict):
     return m.finish(out / "06_vibes.wav")
 
 
+# ---- 10 Guitar warble ------------------------------------------------------------------------
+# The clean Epiphone, a slow let-ring arpeggio in E minor at 72 bpm (Em9, Cmaj7, Am9, B7sus, Em),
+# eighths with a light swing and the odd skipped note, so the warble and the loose boing show.
+
+def clip10(src: Path, out: Path, cues: dict):
+    bpm = 72.0
+    spb = 60 / bpm
+    gtr = bank_from(src / "cc0" / "guitar_emily", "guitar")
+    m = Mix(LEAD + 8 * 4 * spb + 6.0)
+    T = lambda b: LEAD + swing8(b, 0.6) * spb
+    shapes = [
+        [40, 47, 50, 54, 55, 54, 50, 47],   # Em9: E B D F# G
+        [36, 43, 47, 52, 55, 52, 47, 43],   # Cmaj7: C G B E G
+        [45, 52, 55, 59, 60, 59, 55, 52],   # Am9: A E G B C
+        [47, 52, 54, 57, 59, 57, 54, 52],   # B7sus: B E F# A B
+    ]
+    skip = {(1, 6), (3, 3), (5, 5), (6, 7)}  # a few rests so it breathes
+    for bar in range(7):
+        notes = shapes[bar % 4]
+        for k, n in enumerate(notes):
+            if (bar, k) in skip:
+                continue
+            b = bar * 4 + k * 0.5
+            v = (0.85 if k == 0 else 0.6 if k % 2 == 0 else 0.5) * vary(1.0, 0.08)
+            ring = (4 - k * 0.5) * spb + 0.6       # let each note ring to the end of the bar
+            x = env(gtr.note(n), ring, 0.25)
+            m.add("guitar", x, T(b) + hum(5), db(-6) * v, pan=(n - 50) / 30)
+    for k, n in enumerate([40, 47, 52, 55, 59, 66]):  # the last bar: a slow Em(add9) strum
+        x = gtr.note(n)
+        m.add("guitar", x, T(28) + k * 0.05 + abs(hum(3)), db(-7) * vary(0.75, 0.05), pan=(n - 50) / 30)
+    return m.finish(out / "10_guitar.wav")
+
+
 # ---- 07 Zither drips --------------------------------------------------------------------------
 # Dan Tranh in G# minor pentatonic (the sampled strings, so nothing is repitched), 80 bpm, with
 # rests, a quick upward glissando and two bends.
@@ -594,7 +627,7 @@ def siren(out: Path):
 
 
 BUILDERS = {"01": clip01, "02": clip02, "03": clip03, "04": clip04, "05": clip05,
-            "06": clip06, "07": clip07, "08": clip08}
+            "06": clip06, "07": clip07, "08": clip08, "10": clip10}
 
 
 def main():

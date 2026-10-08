@@ -174,6 +174,27 @@
       "note": "Bongos by Versilian Studios (CC0). TR-808 cowbell from Michael Fischer's 808 set via TidalCycles (CC0). Kick: Virtuosity Drums by Versilian Studios and Karoryfer (CC0). Played in code."
     },
     {
+      "file": "10-wet.mp3",
+      "dry": "10-dry.mp3",
+      "blend": 0.5,
+      "title": "Guitar warble",
+      "caption": "A clean guitar letting slow E minor chords ring, with WOBBLE right of noon for a steady tape warble and TENSION loose for a big, slow boing.",
+      "transcript": "A clean electric guitar picks slow, ringing arpeggios over E minor nine, C major seven, A minor nine and B seven sus at 72 bpm, ending on a soft strum. The spring tail wavers evenly in pitch, a gentle vibrato, and each note blooms with a deep, slow boing.",
+      "duration_s": 28.0,
+      "settings": {
+        "TANK": "2",
+        "ATTITUDE": "TAPE",
+        "BLEND": "0.5 (12), the slider's start",
+        "DECAY": "0.62 (1:15)",
+        "TONE": "0.45 (11:30)",
+        "TENSION": "0.28 (9:45)",
+        "SPLASH": "0.35 (10:30)",
+        "DRIVE": "0.15 (8:30)",
+        "WOBBLE": "0.68 (1:45)"
+      },
+      "note": "Guitar: Emilyguitar by Karoryfer (CC0). Played in code."
+    },
+    {
       "file": "09-wet.mp3",
       "dry": "09-dry.mp3",
       "blend": 0.6,
