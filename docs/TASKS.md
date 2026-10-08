@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 8 Oct 2026, session 12 (site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 8 Oct 2026, session 12 (site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -25,12 +25,11 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] **Delete them on your Mac:** `git branch -d feat/site feat/site-v2 feat/site-renders worktree-agent-af8f70117b76a1b09` (keep `feat/site-refine`: it's the site review branch)
 - [ ] **Protect `main`** (GitHub → Settings → Rules → Rulesets, target `main`): turn on **Block force pushes** and **Restrict deletions** only. Leave "Require a pull request" and "Require status checks" **off**, because Claude commits straight to `main` after the tests pass. Or tell Claude "set up branch protection" and it does it with `gh`
 
-### 1b. Record modular parts for the new demos (whenever you can; spec in `docs/minisite/demos-plan.md`)
-- [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They replace the FM clav stand-ins in "Chord stab into the bed" and "Echo chord"
+### 1b. Record modular parts for the demos (planned early in the week of 12 Oct; spec in `docs/minisite/demos-plan.md`)
+- [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They replace the FM clav stand-ins in "Chord stab into the bed" and "Echo chord". Extra modular takes are welcome too: depending on how they sound, some may replace other current demos (tell me which, or ask me to put up an A/B page)
 - [ ] Optional: a dry siren from your modular (an oscillator flipping between two notes) if you'd like the real thing in "The rough end" instead of the synthesised one
 
-### 1c. The new demos
-- [ ] Listen to the ten demos on the site and send notes per clip (done so far: Tubby throw and sweep, Trombone dub, Chord stab into the bed, Echo chord, The rough end)
+### 1c. Community
 - [ ] Read replies on your ModWiggler thread and pass on anything to act on (GitHub issues come with their own forms)
 
 ### 2. The minisite (live)
@@ -48,7 +47,7 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 
 ## Waiting on Claude (no action needed)
 - Anything else from your Mesurer rounds
-- **Demo revisions** as you send notes per clip; the render tools are in `docs/minisite/tools/demos/v2/` (each clip's dry/wet pair re-renders exactly)
+- **Modular demos** when your recordings land: built into clips with the same settings, with an A/B page against the current clip wherever one might be replaced; the render tools are in `docs/minisite/tools/demos/v2/`
 - **Community feedback** from ModWiggler and GitHub issues: triage, and credit adopted ideas in the changelog
 - **Site polish**: further rounds as you send Mesurer notes (run `npm run dev` in `.claude/worktrees/site-refine/site`, or ask Claude to start it: http://localhost:4323); each round goes live on "merge it"
 
@@ -69,6 +68,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 8 Oct 2026: **Demos signed off:** you're happy with all ten clips on the site as they are. The modular recordings (§1b) may replace some of them
 - 8 Oct 2026: **Site update live** (your notes): Echo chord gains a quiet offbeat hi-hat (the stabs unchanged); the tile diagrams draw the dry hit white and the reverb or echo orange (the echo, the throw, the single hit with its tail); the Howl drawing starts loud and dies away. Dry and wet in the players' waveforms were tried (overlaid, split, solid with the dry cut out) and reverted to the single wet trace
 - 8 Oct 2026: **New demos live**: ten musical clips written from your sample picks (one-drop with bass, organ bubble and trombone into echo, dub techno stabs into the bed and echo chord, vibes, zither, percussion throws, guitar warble, the rough end with a wheel-up siren), all CC0, each a dry/wet pair mixed by one floating BLEND fader (after the Intellijel crossfader). The old ten are retired
 - 8 Oct 2026: **Site copy rewritten in your voice** (your picks from `docs/minisite/copy-audit.md`): first person throughout, the AI tells removed on every page (colon joints, "not X" lines, slogans, bold-label lists), "Help shape it", the Credits licence and the FAQ's "Is it free?" filled in, the three feedback steps even. Facts unchanged. The FAQ now promises "I read every issue" and the changelog credits community ideas: keep those true

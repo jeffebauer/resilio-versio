@@ -37,6 +37,11 @@ Nothing running. Kept on purpose:
 - Merged site branches `feat/site`, `feat/site-v2`, `feat/site-renders` and PR #2: the owner's tidy-up (TASKS §1; this session wasn't allowed to delete branches).
 - Local-only: `.claude/launch.json` (configs `renders`, `site-refine` on 4323, `site-dist` on 4324 serving `site/dist`). Never committed.
 
+## Session 12 addendum (8 Oct, short site session)
+- **Live** (`ae789f2`): an offbeat hat under Echo chord (`build_sources.py` clip05, drawn with the shared random state restored, so the stabs and the other clips' sources are byte-identical; 10_guitar differs from a fresh full build only because it was last built alone). The tile diagrams draw the dry hit in ink and the reverb in orange (decay, throw, echo), and the Howl drawing is mirrored so it starts loud.
+- **Tried and reverted:** dry plus wet in the players' waveforms (overlaid, split, solid with the dry cut out, orange and neutral). The owner kept the single wet trace. Don't re-propose without a new idea; the commits are on `feat/site-refine` (`62f1513`..`805828d`) if one is wanted back.
+- **The owner signed off the ten demos** and is away for a few days. Modular recordings come early in the week of 12 Oct and may replace some current demos: build them with the same settings and offer an A/B page. The demo-notes steps below are done.
+
 ## Next steps
 1. **Owner notes on the demos** (TASKS §1c). Re-render a clip: `python3 docs/minisite/tools/demos/v2/render.py renders/demos_v2/src renders/demos_v2/work renders/demos_v2/audio <id>` with the venv Python that has numpy + soundfile (recreate one if the scratchpad is gone: `python3 -m venv … && pip install numpy soundfile`); sources via `build_sources.py <test_audio/demo_sources> renders/demos_v2/src <id>`; samples via `fetch_samples.py`. ⚠ `render.py` with ids rewrites `work/clips.json` with only those ids: merge entries into `docs/minisite/assets/audio/demos.json` by id, don't overwrite it.
 2. **Owner's modular stems** (TASKS §1b) replace the FM clav in clips 04 and 05: add a loader in `build_sources.py`, keep the same settings.
