@@ -42,7 +42,7 @@ export const audioUrl = (file: string) => {
 };
 
 // Peaks are computed once per build: decode the MP3, take the loudest sample
-// (both channels) in each of PEAK_COUNT slices.
+// (both channels) in each of PEAK_COUNT slices, normalise to 0..1.
 const peakCache = new Map<string, Promise<number[]>>();
 
 async function computePeaks(file: string): Promise<number[]> {
@@ -60,24 +60,14 @@ async function computePeaks(file: string): Promise<number[]> {
       if (v > peaks[b]) peaks[b] = v;
     }
   }
-  return peaks;
+  const max = Math.max(...peaks, 1e-6);
+  return peaks.map((p) => Math.round((p / max) * 1000) / 1000);
 }
 
-function rawPeaks(file: string): Promise<number[]> {
+export function getPeaks(file: string): Promise<number[]> {
   let p = peakCache.get(file);
   if (!p) { p = computePeaks(file); peakCache.set(file, p); }
   return p;
-}
-
-const norm = (peaks: number[], max: number) => peaks.map((p) => Math.round((p / Math.max(max, 1e-6)) * 1000) / 1000);
-
-/** A clip's waveform, 0..1: the wet, and for a pair the dry too, on one scale (they share a gain,
- *  so the drawing shows how the tails sit against the hits). */
-export async function getPeaks(clip: Clip): Promise<{ wet: number[]; dry?: number[] }> {
-  const wet = await rawPeaks(clip.file);
-  const dry = clip.dry ? await rawPeaks(clip.dry) : undefined;
-  const max = Math.max(...wet, ...(dry ?? []));
-  return { wet: norm(wet, max), dry: dry && norm(dry, max) };
 }
 
 /** A knob value (0–1) as its clock position: 0 is 7 o'clock, 0.5 noon, 1 is 5 o'clock. */
