@@ -45,12 +45,16 @@ DRUMS = "Virtuosity Drums by Versilian Studios and Karoryfer (CC0)"
 # "buttons" for 01 and 08 come from src/cues.json, where build_sources.py records the hit times.
 CLIPS = {
     "01": dict(
-        title="Tubby throw and sweep", src="01_tubby.wav", blend=0.5, dur=30.0, cue_buttons=True,
-        set=dict(springs="2", attitude="TAPE", decay=0.65, tone=0.55, tension=0.35, splash=0.55, drive=0.22, wobble=0.45),
-        auto={"breakpoints": tone((0.0, 0.55), (bar_t(76, 6), 0.55), (bar_t(76, 6) + 2.3, 0.95),
-                                  (bar_t(76, 7) + 1.6, 0.95), (bar_t(76, 8) + 1.5, 0.55))},
-        caption="A one-drop in A minor. The rimshot on bars 2, 4 and 6 is thrown into the springs, then the last fill goes in whole while TONE rides up to the Big Knob and back.",
-        transcript="A reggae one-drop at 76 bpm. Swung hi-hats with open-hat lifts, kick and rimshot together on beat three, soft cross-stick ghosts, and a roots bassline that leaves gaps. On bars two, four and six the rimshot alone splashes into the springs and rings on. Bar seven is thrown too, then the tom fill and the final hit go in while the reverb turns thin and bright like a telephone and warms up again as it fades.",
+        title="Tubby throw and sweep", src="01_tubby.wav", blend=0.5, dur=30.0,
+        set=dict(springs="2", attitude="TAPE", decay=0.72, tone=0.55, tension=0.35, splash=0.55, drive=0.22, wobble=0.45),
+        # Owner, 8 Oct: the sweep was inaudible on short throws. Bars 2, 4 and 6 throw the rimshot;
+        # bars 7-8 are thrown whole with DECAY up, so TONE rides a long wash and its tail.
+        auto={"buttons": [[0.0, 0.02], [4.957, 5.237], [11.273, 11.553], [17.588, 17.868], [19.10, 25.86]],
+              "breakpoints": tone((0.0, 0.55), (19.2, 0.55), (22.36, 0.95), (25.6, 0.95), (29.0, 0.55))
+                             + [{"t": 0.0, "key": "decay", "value": 0.72}, {"t": 19.1, "key": "decay", "value": 0.72},
+                                {"t": 19.6, "key": "decay", "value": 0.85}]},
+        caption="A one-drop in A minor. The rimshot on bars 2, 4 and 6 is thrown into the springs, then the last two bars go in whole while TONE rides up to the “Big Knob” and back down the tail.",
+        transcript="A reggae one-drop at 76 bpm. Swung hi-hats with open-hat lifts, kick and rimshot together on beat three, soft cross-stick ghosts, and a roots bassline that leaves gaps. On bars two, four and six the rimshot alone splashes into the springs and rings on. Then the whole band goes into the springs for the last two bars, and the reverb turns thin and bright like a telephone, holds there, and warms up again as the long tail fades.",
         notes=f"Drums: {DRUMS}. Bass: Baby Blue by Karoryfer (CC0). Played in code."),
     "02": dict(
         title="Organ bubble into echo", src="02_bubble.wav", blend=0.45, dur=29.5, clock=76,
