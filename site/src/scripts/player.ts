@@ -19,6 +19,32 @@ const knobClock = (v: number) => {
 let ctx: AudioContext | null = null;
 let current: Player | null = null;
 
+// The one floating BLEND fader (components/BlendFader.astro) drives whichever clip plays.
+let blend = 0.5;
+const fader = document.querySelector<HTMLElement>('[data-fader]');
+const faderInput = fader?.querySelector<HTMLInputElement>('[data-fader-input]') ?? null;
+const faderValue = fader?.querySelector<HTMLElement>('[data-fader-value]') ?? null;
+let demosInView = false;
+
+function showFader() {
+  if (!fader) return;
+  const on = demosInView || Boolean(current?.playing);
+  fader.classList.toggle('is-on', on);
+  fader.setAttribute('aria-hidden', String(!on));
+  if (faderInput) faderInput.tabIndex = on ? 0 : -1;
+}
+
+function setBlend(b: number, fromUser = false) {
+  blend = Math.min(1, Math.max(0, b));
+  const label = knobClock(blend);
+  if (faderValue) faderValue.textContent = `BLEND ${label}`;
+  if (faderInput) {
+    if (!fromUser) faderInput.value = String(Math.round(blend * 100));
+    faderInput.setAttribute('aria-valuetext', `BLEND ${label} o'clock`);
+  }
+  current?.applyBlend();
+}
+
 const XFADE = 0.03;
 
 function audioContext(): AudioContext {
@@ -41,8 +67,7 @@ class Player {
   rect: SVGRectElement;
   head: SVGLineElement;
   pos: HTMLElement;
-  blendInput: HTMLInputElement | null;
-  blendValue: HTMLElement | null;
+  ownBlend: number;
   title: string;
   wetUrl: string;
   dryUrl?: string;
@@ -53,7 +78,6 @@ class Player {
   loading: Promise<void> | null = null;
   sources: AudioBufferSourceNode[] = [];
   gains: Partial<Record<Mode, GainNode>> = {};
-  blend = 1;
   playing = false;
   offset = 0;
   startedAt = 0;
@@ -66,9 +90,7 @@ class Player {
     this.rect = el.querySelector('rect.played')!;
     this.head = el.querySelector('line.head')!;
     this.pos = el.querySelector('[data-pos]')!;
-    this.blendInput = el.querySelector<HTMLInputElement>('[data-blend]');
-    this.blendValue = el.querySelector<HTMLElement>('[data-blend-value]');
-    if (this.blendInput) this.blend = Number(this.blendInput.value) / 100;
+    this.ownBlend = el.dataset.blend !== undefined ? Number(el.dataset.blend) : 1;
     this.title = el.dataset.title ?? '';
     this.wetUrl = el.dataset.src!;
     this.dryUrl = el.dataset.dry || undefined;
@@ -78,7 +100,6 @@ class Player {
     this.playBtn.addEventListener('click', () => this.toggle());
     this.wave.addEventListener('keydown', (e) => this.onKey(e));
     this.wave.addEventListener('pointerdown', (e) => this.onPointer(e));
-    this.blendInput?.addEventListener('input', () => this.setBlend(Number(this.blendInput!.value) / 100));
   }
 
   async load() {
@@ -102,6 +123,7 @@ class Player {
     if (ac.state === 'suspended') void ac.resume();
     if (current && current !== this) current.pause();
     current = this;
+    if (this.buffers.dry || this.el.dataset.dry) setBlend(this.ownBlend);
     if (!this.buffers.wet) {
       this.playBtn.setAttribute('aria-busy', 'true');
       try { await this.load(); } finally { this.playBtn.removeAttribute('aria-busy'); }
@@ -111,6 +133,7 @@ class Player {
     this.start(this.offset);
     this.playing = true;
     this.el.classList.add('is-playing');
+    showFader();
     this.playBtn.setAttribute('aria-label', `Pause: ${this.title}`);
     this.tick();
   }
@@ -125,7 +148,7 @@ class Player {
       const src = ac.createBufferSource();
       src.buffer = buf;
       const g = ac.createGain();
-      g.gain.value = this.buffers.dry ? mixGains(this.blend)[m] : 1;
+      g.gain.value = this.buffers.dry ? mixGains(blend)[m] : 1;
       src.connect(g).connect(ac.destination);
       src.start(t0, at);
       if (m === 'wet') src.onended = () => { if (this.sources.includes(src) && this.playing) this.ended(); };
@@ -151,6 +174,7 @@ class Player {
     this.stopSources();
     this.playing = false;
     this.el.classList.remove('is-playing');
+    showFader();
     this.playBtn.setAttribute('aria-label', `Play: ${this.title}`);
     cancelAnimationFrame(this.raf);
     this.render();
@@ -168,14 +192,11 @@ class Player {
     this.render();
   }
 
-  setBlend(b: number) {
-    this.blend = Math.min(1, Math.max(0, b));
-    const label = knobClock(this.blend);
-    if (this.blendValue) this.blendValue.textContent = `BLEND ${label}`;
-    this.blendInput?.setAttribute('aria-valuetext', `BLEND ${label} o'clock`);
+  /** Ramp this clip's dry and wet gains to the fader's BLEND (30 ms, no zipper). */
+  applyBlend() {
     if (!ctx || !this.buffers.dry) return;
     const now = ctx.currentTime;
-    const target = mixGains(this.blend);
+    const target = mixGains(blend);
     (['wet', 'dry'] as Mode[]).forEach((k) => {
       const g = this.gains[k]?.gain;
       if (!g) return;
@@ -234,3 +255,9 @@ function init() {
 
 init();
 document.addEventListener('astro:page-load', init);
+
+faderInput?.addEventListener('input', () => setBlend(Number(faderInput.value) / 100, true));
+const demos = document.querySelector('[data-demos]');
+if (fader && demos && 'IntersectionObserver' in window) {
+  new IntersectionObserver(([e]) => { demosInView = e.isIntersecting; showFader(); }, { rootMargin: '0px 0px -25% 0px' }).observe(demos);
+}

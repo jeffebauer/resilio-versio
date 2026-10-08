@@ -662,11 +662,46 @@ ul > li::marker { color: var(--signal); }
 .theme-switch button:hover { color: var(--ink); }
 .theme-switch button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 
-/* ---- Demo BLEND slider (demos round 2; owner, 8 Oct) -------------------------------
-   Dry ↔ Wet under the waveform, mixing the clip's dry and wet files like the module's
-   BLEND knob. The thumb is the accent; the clock position reads out on the right. */
-.player .blend { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.6rem; margin-top: 0.25rem; }
-.player .blend-end, .player .blend-value { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
-.player .blend-value { min-width: 6.5em; text-align: right; color: var(--ink); }
-.player .blend input[type="range"] { width: 100%; margin: 0; accent-color: var(--signal-ink); height: 1.75rem; cursor: pointer; }
-.band-dark .player .blend input[type="range"], :root[data-theme="dark"] .player .blend input[type="range"] { accent-color: var(--signal); }
+/* ---- The floating BLEND fader (owner, 8 Oct; after an Intellijel crossfader) -------
+   One control for the playing demo: Dry and Wet at the ends, a dark slot with tick marks
+   above and below (a longer centre mark), a squarish cap with a light centre line. It
+   floats centred above the bottom edge while the demos are on screen or a clip plays. */
+.fader {
+  position: fixed; z-index: 30; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  width: min(34rem, calc(100vw - 2rem));
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.9rem;
+  padding: 0.55rem 1.1rem; border-radius: var(--radius-tile);
+  background: color-mix(in srgb, var(--paper) 94%, transparent); color: var(--ink);
+  box-shadow: 0 0 0 var(--hair) var(--line), 0 1.25rem 2.5rem -1rem rgb(0 0 0 / 0.35);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transform: translate(-50%, calc(100% + 2rem)); opacity: 0; pointer-events: none;
+  transition: transform var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
+}
+.fader.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.fader-end, .fader-value { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink-2); }
+.fader-end { font-weight: 700; color: var(--ink); }
+.fader-value { min-width: 6.5em; text-align: right; font-variant-numeric: tabular-nums; }
+.fader-body { position: relative; height: 3rem; --cap-w: 1.25rem; }
+.fader-ticks { position: absolute; inset: 0 calc(var(--cap-w) / 2); width: calc(100% - var(--cap-w)); height: 100%; overflow: visible; }
+.fader-ticks line { stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fader-slot { position: absolute; left: calc(var(--cap-w) / 2); right: calc(var(--cap-w) / 2); top: 50%; height: 0.3rem; translate: 0 -50%; border-radius: 999px; background: var(--ink); }
+.fader input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: transparent; cursor: grab; -webkit-appearance: none; appearance: none; }
+.fader input[type="range"]:active { cursor: grabbing; }
+.fader input[type="range"]::-webkit-slider-runnable-track { height: 100%; background: transparent; }
+.fader input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
+.fader input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: var(--cap-w); height: 2.6rem; margin-top: 0.2rem; border: 0; border-radius: 0.3rem;
+  background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
+  box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
+}
+.fader input[type="range"]::-moz-range-thumb {
+  width: var(--cap-w); height: 2.6rem; border: 0; border-radius: 0.3rem;
+  background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
+  box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
+}
+.fader input[type="range"]:focus-visible { outline: none; }
+.fader input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus); }
+.fader input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--focus); }
+@media (max-width: 29.99rem) { .fader { grid-template-columns: auto minmax(0, 1fr) auto; } .fader-value { display: none; } }
+@media (prefers-reduced-motion: reduce) { .fader { transition: opacity var(--dur-1) linear; } }
+

@@ -3,10 +3,11 @@
 // what it shows, the caption, a compact player, and Settings and Transcript behind toggles.
 // Waveform peaks are computed at build (src/lib/demos.ts). Playback is Web Audio
 // (src/scripts/player.ts): lazy-loaded on first play, one clip at a time.
-// The BLEND slider (dry ↔ wet, the module's own curve) appears when a clip has a `dry` file.
+// A clip with a `dry` file is mixed by the floating BLEND fader (BlendFader.astro), which
+// starts at the clip's own BLEND (data-blend).
 import Diagram from './diagrams/Diagram.astro';
 import SpecTable from './SpecTable.astro';
-import { audioUrl, clock, diagramFor, getPeaks, knobClock, type Clip } from '../lib/demos';
+import { audioUrl, clock, diagramFor, getPeaks, type Clip } from '../lib/demos';
 
 interface Props { clip: Clip; n: number; headingLevel?: 'h3' | 'h4'; idPrefix?: string; wide?: boolean }
 const { clip, n, headingLevel: H = 'h3', idPrefix = 'demo', wide = false } = Astro.props;
@@ -65,15 +66,6 @@ const blend = clip.blend ?? 0.5;
     <div class="meta">
       <span class="time" aria-hidden="true"><span data-pos>0:00</span> / {dur}</span>
     </div>
-    {clip.dry && (
-      <label class="blend">
-        <span class="blend-end" aria-hidden="true">Dry</span>
-        <input type="range" min="0" max="100" step="1" value={Math.round(blend * 100)} data-blend
-          aria-label={`BLEND for ${clip.title}, dry to wet`} aria-valuetext={`BLEND ${knobClock(blend)} o'clock`} />
-        <span class="blend-end" aria-hidden="true">Wet</span>
-        <span class="blend-value" aria-hidden="true" data-blend-value>BLEND {knobClock(blend)}</span>
-      </label>
-    )}
   </div>
   <details class="disclosure" data-settings>
     <summary>Settings <span class="visually-hidden">for {clip.title}</span></summary>

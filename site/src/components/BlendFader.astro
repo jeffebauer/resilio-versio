@@ -1,0 +1,31 @@
+---
+// The floating BLEND fader for the demo clips (owner, 8 Oct: one control instead of one per
+// card, after an Intellijel crossfader: the slot, the cap and the tick marks). It floats
+// centred at the bottom of the viewport while the demos are on screen or a clip is playing,
+// and mixes the playing clip's dry and wet files with the module's own BLEND law
+// (src/scripts/player.ts). When a clip starts, the fader moves to that clip's BLEND.
+const TICKS = 10;
+const W = 200;
+const ticks = Array.from({ length: TICKS + 1 }, (_, i) => {
+  const x = (i / TICKS) * W;
+  return { x, long: i === TICKS / 2 };
+});
+---
+<div class="fader" data-fader aria-hidden="true">
+  <span class="fader-end">Dry</span>
+  <div class="fader-body">
+    <svg class="fader-ticks" viewBox={`0 0 ${W} 40`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      {ticks.map((t) => (
+        <>
+          <line x1={t.x} x2={t.x} y1={t.long ? 0 : 6} y2="13" />
+          <line x1={t.x} x2={t.x} y1="27" y2={t.long ? 40 : 34} />
+        </>
+      ))}
+    </svg>
+    <span class="fader-slot" aria-hidden="true"></span>
+    <input type="range" id="demo-blend" min="0" max="100" step="1" value="50" data-fader-input
+      aria-label="BLEND for the playing demo, dry to wet" aria-valuetext="BLEND 12 o'clock" tabindex="-1" />
+  </div>
+  <span class="fader-end">Wet</span>
+  <span class="fader-value" data-fader-value>BLEND 12</span>
+</div>
