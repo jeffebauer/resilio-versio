@@ -123,8 +123,8 @@ CLIPS = {
         # Owner, 8 Oct: DECAY eases off over 7 s so the howl settles instead of dropping out.
         auto={"breakpoints": [{"t": 0.0, "key": "decay", "value": 0.95}, {"t": 9.0, "key": "decay", "value": 0.95},
                               {"t": 15.0, "key": "decay", "value": 0.89}]},
-        caption="VALVE with DRIVE up. A sound-system siren, a beep then two notes flipping, tips the tank into its howl. DECAY eases down from 9 seconds and the howl settles into a long tail.",
-        transcript="A sound-system siren in two calls, each a single beep followed by a high and a low note flipping quickly back and forth. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
+        caption="VALVE with DRIVE up. One call of a sound-system siren, a beep then two notes flipping, tips the tank into its howl. DECAY eases down from 9 seconds and the howl settles into a long tail.",
+        transcript="A sound-system siren, a single beep followed by a high and a low note flipping quickly back and forth, once. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
         notes="Siren synthesised in code."),
 }
 

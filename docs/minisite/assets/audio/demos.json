@@ -199,9 +199,9 @@
       "dry": "09-dry.mp3",
       "blend": 0.6,
       "title": "The rough end",
-      "caption": "VALVE with DRIVE up. A sound-system siren, a beep then two notes flipping, tips the tank into its howl. DECAY eases down from 9 seconds and the howl settles into a long tail.",
-      "transcript": "A sound-system siren in two calls, each a single beep followed by a high and a low note flipping quickly back and forth. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
-      "duration_s": 22.0,
+      "caption": "VALVE with DRIVE up. One call of a sound-system siren, a beep then two notes flipping, tips the tank into its howl. DECAY eases down from 9 seconds and the howl settles into a long tail.",
+      "transcript": "A sound-system siren, a single beep followed by a high and a low note flipping quickly back and forth, once. The springs catch it and keep going on their own as a rough, moving roar. From nine seconds the roar slowly loosens over several seconds, then rings out as a long tail.",
+      "duration_s": 21.8,
       "settings": {
         "TANK": "2",
         "ATTITUDE": "VALVE",

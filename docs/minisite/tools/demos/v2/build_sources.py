@@ -601,7 +601,7 @@ def clip08(src: Path, out: Path, cues: dict):
 # The sound-system siren: a square-ish oscillator swept by a slow triangle LFO, played
 # as short blips, then one long rising wail.
 
-def siren(out: Path):
+def siren(out: Path, transpose: float = 0.0):
     """A sound-system siren (owner, 8 Oct), synthesised from scratch to match a reference the
     owner chose (measured only, never used or published: it comes from a commercial record).
     Each call is one beep (60 ms on the high note, then a 100 ms fade on the low note), a short
@@ -609,8 +609,9 @@ def siren(out: Path):
     (1000 Hz) is near-sine; the low note (417 Hz) is hollow, with a strong 3rd harmonic; both
     carry a slight 62 Hz buzz, as measured."""
     HI, LO, HALF, BUZZ = 1000.0, 417.0, 0.080, 62.0
-    calls = [(0.0, 1.3), (2.0, 3.2)]          # (start, siren length) of each call
-    dur, tail = 2.0 + 0.175 + 3.2 + 0.2, 20.0
+    HI, LO = HI * 2 ** (transpose / 12), LO * 2 ** (transpose / 12)
+    calls = [(0.0, 1.4)]                      # one call (owner, 8 Oct): the focus is the howl
+    dur, tail = 0.175 + 1.4 + 0.2, 20.0
     n = int((dur + tail) * SR)
     t = np.arange(n) / SR
     hi = np.zeros(n)                          # 1 where the high note sounds
