@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 8 Oct 2026, end of session 11 (site only: copy in your voice, feedback section, dark mode, new demos with the BLEND fader, knob drawings, analytics on; shared on ModWiggler). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 8 Oct 2026, session 12 (site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -69,6 +69,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 8 Oct 2026: **Site update live** (your notes): Echo chord gains a quiet offbeat hi-hat (the stabs unchanged); the tile diagrams draw the dry hit white and the reverb or echo orange (the echo, the throw, the single hit with its tail); the Howl drawing starts loud and dies away. Dry and wet in the players' waveforms were tried (overlaid, split, solid with the dry cut out) and reverted to the single wet trace
 - 8 Oct 2026: **New demos live**: ten musical clips written from your sample picks (one-drop with bass, organ bubble and trombone into echo, dub techno stabs into the bed and echo chord, vibes, zither, percussion throws, guitar warble, the rough end with a wheel-up siren), all CC0, each a dry/wet pair mixed by one floating BLEND fader (after the Intellijel crossfader). The old ten are retired
 - 8 Oct 2026: **Site copy rewritten in your voice** (your picks from `docs/minisite/copy-audit.md`): first person throughout, the AI tells removed on every page (colon joints, "not X" lines, slogans, bold-label lists), "Help shape it", the Credits licence and the FAQ's "Is it free?" filled in, the three feedback steps even. Facts unchanged. The FAQ now promises "I read every issue" and the changelog credits community ideas: keep those true
 - 8 Oct 2026: **Site update live** (your notes): "Shape it with us" on the home page (feedback in three steps on a rail, Suggest a sound / Report a bug buttons), the FAQ's how-to, changelog credit for community ideas, Feedback in the footer; **dark mode** (follows your system; System · Light · Dark in the footer); the hero fills the screen on phones; the panel map's frame aligns with the text on phones; You'll need colours swapped and Firmware Swap linked. README rewritten as a summary with the monolith render and the site linked
