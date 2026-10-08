@@ -28,8 +28,7 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 ### 1b. Record modular parts for the new demos (whenever you can; spec in `docs/minisite/demos-plan.md`)
 - [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), `plucks.wav` (a sequenced pluck line), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They feed clips 4, 5 and 7 of the eight-clip set; I make the rest from licence-free samples and synths
 
-### 1c. Download two free samples for the demos (5 minutes; needs a free Freesound login)
-- [ ] The skank: https://freesound.org/people/nlux/sounds/638940/ (CC0) and the melodica pack: https://freesound.org/people/urlande/packs/9578/ (CC0, the whole pack). Save both into `test_audio/demo_sources/` (never committed). They feed clips 2 and 3
+### 1c. The new demos
 - [ ] Listen to the first demos on the preview (Tubby throw and sweep in two kits, Wurlitzer, The rough end): pick a drum kit, and note anything to change
 
 ### 2. The minisite (live)
