@@ -80,7 +80,7 @@ export function clock(seconds: number): string {
 // The tiny diagram on each demo tile (DESIGN-v2 V11), by clip file number.
 // Demos round 2 (docs/minisite/demos-plan.md): one per clip in the eight-clip set.
 const DIAGRAMS: Record<string, DiagramKind> = {
-  '01': 'throw', '02': 'echo', '03': 'tanks', '04': 'hold', '05': 'echo',
-  '06': 'decay', '07': 'splash', '08': 'howl',
+  '01': 'throw', '02': 'echo', '03': 'echo', '04': 'hold', '05': 'echo',
+  '06': 'decay', '07': 'splash', '08': 'throw', '09': 'howl',
 };
 export const diagramFor = (file: string): DiagramKind | undefined => DIAGRAMS[file.slice(0, 2)];

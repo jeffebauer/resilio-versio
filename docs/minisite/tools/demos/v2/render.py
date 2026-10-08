@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demos round 2: render each clip's dry/wet pair, match loudness, encode, write demos.json.
+"""Demos round 2: render each clip's dry/wet pair, match loudness, encode, write clips.json.
 
 Usage (repo root): python3 docs/minisite/tools/demos/v2/render.py <src dir> <work dir> <audio out dir> [clip ids…]
 Needs numpy, soundfile, ffmpeg and the Renderer (build/rv_render; never delete build/).
@@ -21,7 +21,7 @@ import soundfile as sf
 
 RENDERER = Path("build/rv_render")
 TARGET_LUFS = -20.5
-PEAK_CEILING_DB = -1.0
+PEAK_CEILING_DB = -1.3  # -1 dBTP with room for the MP3 encoder's overshoot (about 0.2 dB)
 SR = 48000
 
 
@@ -36,44 +36,83 @@ def knob(v: float) -> str:
 NAMES = {"springs": "TANK", "attitude": "ATTITUDE", "decay": "DECAY", "tone": "TONE",
          "tension": "TENSION", "splash": "SPLASH", "drive": "DRIVE", "wobble": "WOBBLE"}
 
-THROW_BEAT3 = lambda bpm, bars: [[0.0, 0.02]] + [
-    [b * 4 * 60 / bpm + 2 * 60 / bpm - 0.03, b * 4 * 60 / bpm + 2 * 60 / bpm + 0.25] for b in bars]
+LEAD = 0.25  # build_sources.py starts every source after this much silence
+bar_t = lambda bpm, bar: LEAD + bar * 4 * 60 / bpm  # the start of a bar (0-based)
+tone = lambda *pts: [{"t": t, "key": "tone", "value": v} for t, v in pts]
+key = lambda k, *pts: [{"t": t, "key": k, "value": v} for t, v in pts]
 
+DRUMS = "Virtuosity Drums by Versilian Studios and Karoryfer (CC0)"
+# "buttons" for 01 and 08 come from src/cues.json, where build_sources.py records the hit times.
 CLIPS = {
     "01": dict(
-        title="Tubby throw and sweep", src="groove_rusty.wav", blend=0.5, dur=24.0,
-        set=dict(springs="2", attitude="TAPE", decay=0.65, tone=0.55, tension=0.35, splash=0.55, drive=0.25, wobble=0.45),
-        auto={"buttons": THROW_BEAT3(75, [1, 3]),
-              "breakpoints": [{"t": 0.0, "key": "tone", "value": 0.55}, {"t": 12.8, "key": "tone", "value": 0.55},
-                              {"t": 16.0, "key": "tone", "value": 0.95}, {"t": 17.6, "key": "tone", "value": 0.95},
-                              {"t": 20.5, "key": "tone", "value": 0.55}]},
-        caption="A one-drop groove. The snare on bars 2 and 4 is thrown into the springs, then TONE rides up to the “Big Knob” and back.",
-        transcript="A reggae one-drop at 75 bpm on a vintage kit: closed hats, kick and rimshot on beat three, soft cross-stick ghosts. On the second and fourth bars the rimshot is thrown into the springs and its tail rings on. In the last two bars the reverb thins to a telephone-like splash and then warms up again.",
-        notes="Drums: Big Rusty Drums by Karoryfer (CC0), sequenced in code."),
-    "01b": dict(
-        title="Tubby throw and sweep (kit B)", src="groove_virtuosity.wav", blend=0.5, dur=24.0,
-        set=dict(springs="2", attitude="TAPE", decay=0.65, tone=0.55, tension=0.35, splash=0.55, drive=0.25, wobble=0.45),
-        auto=None,  # filled from 01 below
-        caption="The same groove on a second kit, for comparison.",
-        transcript="The same one-drop groove on a modern, tighter kit.",
-        notes="Drums: Virtuosity Drums by Versilian Studios and Karoryfer (CC0), sequenced in code."),
+        title="Tubby throw and sweep", src="01_tubby.wav", blend=0.5, dur=30.0, cue_buttons=True,
+        set=dict(springs="2", attitude="TAPE", decay=0.65, tone=0.55, tension=0.35, splash=0.55, drive=0.22, wobble=0.45),
+        auto={"breakpoints": tone((0.0, 0.55), (bar_t(76, 6), 0.55), (bar_t(76, 6) + 2.3, 0.95),
+                                  (bar_t(76, 7) + 1.6, 0.95), (bar_t(76, 8) + 1.5, 0.55))},
+        caption="A one-drop in A minor. The rimshot on bars 2, 4 and 6 is thrown into the springs, then the last fill goes in whole while TONE rides up to the Big Knob and back.",
+        transcript="A reggae one-drop at 76 bpm. Swung hi-hats with open-hat lifts, kick and rimshot together on beat three, soft cross-stick ghosts, and a roots bassline that leaves gaps. On bars two, four and six the rimshot alone splashes into the springs and rings on. Bar seven is thrown too, then the tom fill and the final hit go in while the reverb turns thin and bright like a telephone and warms up again as it fades.",
+        notes=f"Drums: {DRUMS}. Bass: Baby Blue by Karoryfer (CC0). Played in code."),
+    "02": dict(
+        title="Organ bubble into echo", src="02_bubble.wav", blend=0.45, dur=29.5, clock=76,
+        set=dict(springs="ECHO", attitude="TAPE", decay=0.55, tone=0.5, tension=0.5, splash=0.4, drive=0.18, wobble=0.44),
+        auto={"clock_bpm": 76},
+        caption="The reggae organ bubble and guitar chops into the tape echo, clocked to the tempo on dotted eighths. In the last bar the band stops and the echo answers.",
+        transcript="An organ plays the reggae bubble, a shuffling two-handed pattern of short chords, over A minor seven and D nine at 76 bpm. A clean guitar chops on beats two and four. Each chord comes back as dotted-eighth repeats that fall between the beats and thicken the shuffle. In the last bar the organ stops after two beats and the final guitar chops repeat on their own and fade.",
+        notes="Organ: FreePats Drawbar Organ (CC0). Guitar: Emilyguitar by Karoryfer (CC0). Played in code."),
+    "03": dict(
+        title="Trombone dub", src="03_trombone.wav", blend=0.5, dur=23.0, clock=74,
+        set=dict(springs="ECHO", attitude="TAPE", decay=0.45, tone=0.5, tension=0.5, splash=0.4, drive=0.2, wobble=0.45),
+        auto={"clock_bpm": 74,
+              "breakpoints": key("decay", (0.0, 0.45), (bar_t(74, 4), 0.45), (bar_t(74, 4) + 2.6, 0.85),
+                                 (20.6, 0.85), (21.6, 0.6))
+                             + key("tension", (0.0, 0.5), (18.0, 0.5), (18.5, 0.64))},
+        caption="A trombone calls and the echo answers in the gaps. On the last phrase DECAY comes up so the repeats pile up, then a turn of TENSION bends the tape.",
+        transcript="A lone trombone plays three short phrases in A minor at 74 bpm, leaving a bar of space after each. The echo fills the space with a few dotted-eighth repeats. On the last phrase the repeats grow longer and louder and keep going after the horn stops. Near the end the repeats swoop up in pitch as the delay time shortens, then fade.",
+        notes="Trombone: VSCO 2 CE by Versilian Studios (CC0). Played in code."),
+    "04": dict(
+        title="Chord stab into the bed", src="04_stabs.wav", blend=0.5, dur=21.5,
+        set=dict(springs="2", attitude="CLEAN", decay=1.0, tone=0.6, tension=0.5, splash=0.4, drive=0.2, wobble=0.44),
+        auto={"breakpoints": key("decay", (0.0, 1.0), (bar_t(120, 8) + 1.8, 1.0), (bar_t(120, 8) + 3.3, 0.55))},
+        caption="Dub techno in F minor. Short minor-ninth stabs feed a held spring bed that ducks under each kick, and DECAY comes down at the end to let it go.",
+        transcript="A four-on-the-floor kick at 120 bpm with a quiet offbeat hi-hat, and short, syncopated F minor ninth chord stabs on a bright FM keyboard. The springs hold every stab as a continuous wash that dips with each kick and swells between them. After the last stab the wash hangs on for two seconds, then fades away.",
+        notes=f"Clavisynth by Versilian Studios (CC0). Kick and hat: {DRUMS}. Played in code."),
+    "05": dict(
+        title="Echo chord", src="05_echo_chord.wav", blend=0.5, dur=21.5, clock=120,
+        set=dict(springs="ECHO", attitude="TAPE", decay=0.6, tone=0.45, tension=0.5, splash=0.4, drive=0.2, wobble=0.44),
+        auto={"clock_bpm": 120, "breakpoints": tone((0.0, 0.45), (10.0, 0.75), (19.0, 0.5))},
+        caption="One chord every two bars into the tape echo on dotted eighths. TONE rides slowly up and back down, the classic dub techno filter move.",
+        transcript="A single F minor ninth stab every two bars at 120 bpm, sometimes with a softer second stab pushed just after it. Each stab repeats as a trail of dotted-eighth echoes that fall across the beat. Over the clip the repeats slowly brighten, then darken again.",
+        notes="Clavisynth by Versilian Studios (CC0). Played in code."),
     "06": dict(
-        title="Wurlitzer in the springs", src="wurli.wav", blend=0.45, dur=21.0,
-        set=dict(springs="2", attitude="CLEAN", decay=0.75, tone=0.42, tension=0.5, splash=0.15, drive=0.15, wobble=0.42),
+        title="Vibes in the springs", src="06_vibes.wav", blend=0.45, dur=22.0,
+        set=dict(springs="2", attitude="CLEAN", decay=0.72, tone=0.45, tension=0.5, splash=0.2, drive=0.12, wobble=0.43),
         auto=None,
-        caption="Slow C minor chords on a Wurlitzer, with a long, warm tail and a little tape drift.",
-        transcript="Four slow electric piano chords in C minor, each held for a bar. The reverb is soft and wide, blooming behind each chord and drifting very slightly in pitch, then rings out after the last chord.",
-        notes="Wurlitzer EP200 samples by Greg Sullivan (sullivang.net), CC BY 3.0."),
+        caption="Slow minor-ninth chords on soft vibraphone, with a warm tail and a little tape drift.",
+        transcript="A vibraphone plays gently rolled chords in D minor, one every few seconds, with a few single notes in between. The springs add a soft, wide bloom behind each chord that drifts very slightly in pitch, and the last chord rings out with a high note on top.",
+        notes="VCSL vibraphone by Versilian Studios (CC0). Played in code."),
+    "07": dict(
+        title="Zither drips", src="07_zither.wav", blend=0.5, dur=19.5,
+        set=dict(springs="1", attitude="TAPE", decay=0.6, tension=0.6, splash=0.45, tone=0.5, drive=0.18, wobble=0.44),
+        auto=None,
+        caption="Sparse plucks on a Vietnamese zither, each one dripping into a single spring. Bent notes and a quick run up the strings.",
+        transcript="A Dan Tranh, a plucked Vietnamese zither, plays a slow pentatonic figure with long silences. Every pluck sets off the springy drip of a single reverb tank. Midway there is a fast run up the strings, and two notes are bent upwards after they are plucked.",
+        notes="Dan Tranh by Versilian Studios (CC0). Played in code."),
     "08": dict(
-        title="The rough end", src="siren.wav", blend=0.6, dur=17.0,
+        title="Percussion in the springs", src="08_percussion.wav", blend=0.5, dur=20.5, cue_buttons=True,
+        set=dict(springs="1", attitude="CLEAN", decay=0.55, tone=0.55, tension=0.5, splash=0.5, drive=0.15, wobble=0.44),
+        auto={"breakpoints": []},
+        caption="Bongos and an 808 cowbell. A few cowbell hits are thrown into the spring and splash, while everything else stays dry.",
+        transcript="Bongos play a busy sixteenth-note pattern of open and muted hits at 118 bpm, with an 808 cowbell on the offbeats and a soft kick from the second bar. Now and then a single cowbell hit bursts into a short, metallic splash of spring reverb while the rest of the groove stays dry.",
+        notes=f"Bongos by Versilian Studios (CC0). TR-808 cowbell from Michael Fischer's 808 set via TidalCycles (CC0). Kick: {DRUMS}. Played in code."),
+    "09": dict(
+        title="The rough end", src="09_siren.wav", blend=0.6, dur=17.0,
         set=dict(springs="2", attitude="VALVE", decay=0.95, tone=0.4, tension=0.35, splash=0.4, drive=0.65, wobble=0.42),
         auto={"breakpoints": [{"t": 0.0, "key": "decay", "value": 0.95}, {"t": 10.5, "key": "decay", "value": 0.95},
                               {"t": 11.5, "key": "decay", "value": 0.6}]},
-        caption="VALVE with DRIVE up: a dub siren tips the tank into its howl, then DECAY comes down at 10 seconds and it falls away.",
+        caption="VALVE with DRIVE up. A dub siren tips the tank into its howl, then DECAY comes down at 10 seconds and it falls away.",
         transcript="Three short siren blips and a rising wail. The springs catch it and keep going on their own as a rough, moving roar. At ten seconds it drops back into a normal tail and fades.",
         notes="Siren synthesised in code."),
 }
-CLIPS["01b"]["auto"] = CLIPS["01"]["auto"]
 
 
 def run(*a):
@@ -96,9 +135,12 @@ def render_clip(cid: str, c: dict, src: Path, work: Path, out: Path) -> dict:
     for k, v in c["set"].items():
         sets += ["--set", f"{k}={v}"]
     auto = []
-    if c["auto"]:
+    spec = dict(c["auto"] or {})
+    if c.get("cue_buttons"):  # throw windows from the source's own hit times
+        spec["buttons"] = json.loads((src / "cues.json").read_text())[cid]["buttons"]
+    if spec:
         a = work / f"{cid}_auto.json"
-        a.write_text(json.dumps(c["auto"]))
+        a.write_text(json.dumps(spec))
         auto = ["--auto", a]
     files = {}
     for side, mix in (("dry", 0), ("wet", 1)):
@@ -133,6 +175,8 @@ def render_clip(cid: str, c: dict, src: Path, work: Path, out: Path) -> dict:
     print(f"{cid}: gain {gain_db:+.1f} dB, mix {final_lufs:.1f} LUFS, peaks dry {peaks['dry']:.1f} wet {peaks['wet']:.1f} dBTP")
     settings = {NAMES[k]: (v if isinstance(v, str) else knob(v)) for k, v in c["set"].items()}
     settings = {"TANK": settings.pop("TANK"), "ATTITUDE": settings.pop("ATTITUDE"), "BLEND": knob(b) + ", the slider's start", **settings}
+    if c.get("clock"):
+        settings["CLOCK"] = f"{c['clock']} bpm"
     return {"file": names["wet"], "dry": names["dry"], "blend": b, "title": c["title"], "caption": c["caption"],
             "transcript": c["transcript"], "duration_s": round(n / SR, 1), "settings": settings, "note": c["notes"]}
 

@@ -21,13 +21,15 @@ Sound work happens on the desktop first, in an offline renderer and the plugin. 
 
 ## The demos
 
-Every clip on this site is Resilio itself, rendered offline by its own renderer, with a dry and a wet version so you can blend between them. The sources are:
+Every clip on this site is Resilio itself, rendered offline by its own renderer, with a dry and a wet version so you can blend between them. The parts are written and sequenced in code from free, CC0 samples:
 
-- Drums from [Big Rusty Drums](https://github.com/sfzinstruments/karoryfer.big-rusty-drums) by Karoryfer and [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) by Versilian Studios and Karoryfer, both CC0, sequenced in code.
-- Wurlitzer EP200 samples by [Greg Sullivan](http://www.sullivang.net), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
-- A siren synthesised in code.
+- Drums from [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) by Versilian Studios and Karoryfer.
+- The Baby Blue bass and [Emilyguitar](https://github.com/sfzinstruments/karoryfer.emilyguitar) by Karoryfer.
+- The [FreePats](https://freepats.zenvoid.org/) Drawbar Organ.
+- Trombone, vibraphone, FM clav, Dan Tranh and bongos from Versilian Studios' [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE) and [VCSL](https://github.com/sgossner/VCSL).
+- A TR-808 cowbell from Michael Fischer's 808 set, via [TidalCycles](https://github.com/tidalcycles/sounds-tr808-fischer).
 
-There are no recordings of other reverbs.
+The siren is synthesised, and there are no recordings of other reverbs.
 
 ## References
 
