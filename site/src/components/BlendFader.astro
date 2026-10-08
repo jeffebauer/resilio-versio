@@ -6,9 +6,11 @@
 // (src/scripts/player.ts). When a clip starts, the fader moves to that clip's BLEND.
 const TICKS = 10;
 const W = 200;
-const ticks = Array.from({ length: TICKS + 1 }, (_, i) => {
-  const x = (i / TICKS) * W;
-  return { x, long: i === TICKS / 2 };
+// No marks at the two ends (owner, 8 Oct); the centre mark is taller and thicker, as on
+// the Intellijel.
+const ticks = Array.from({ length: TICKS - 1 }, (_, k) => {
+  const i = k + 1;
+  return { x: (i / TICKS) * W, centre: i === TICKS / 2 };
 });
 ---
 <div class="fader" data-fader aria-hidden="true">
@@ -17,8 +19,8 @@ const ticks = Array.from({ length: TICKS + 1 }, (_, i) => {
     <svg class="fader-ticks" viewBox={`0 0 ${W} 40`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
       {ticks.map((t) => (
         <>
-          <line x1={t.x} x2={t.x} y1={t.long ? 0 : 6} y2="13" />
-          <line x1={t.x} x2={t.x} y1="27" y2={t.long ? 40 : 34} />
+          <line class:list={[t.centre && 'centre']} x1={t.x} x2={t.x} y1={t.centre ? -3 : 7} y2="14" />
+          <line class:list={[t.centre && 'centre']} x1={t.x} x2={t.x} y1="26" y2={t.centre ? 43 : 33} />
         </>
       ))}
     </svg>

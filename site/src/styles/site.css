@@ -670,30 +670,33 @@ ul > li::marker { color: var(--signal); }
   position: fixed; z-index: 30; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   width: min(26rem, calc(100vw - 2rem));
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.9rem;
-  padding: 0.3rem 0.9rem; border-radius: var(--radius-tile);
-  background: color-mix(in srgb, var(--paper) 94%, transparent); color: var(--ink);
-  box-shadow: 0 0 0 var(--hair) var(--line), 0 1.25rem 2.5rem -1rem rgb(0 0 0 / 0.35);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  padding: 0.45rem 1rem; border-radius: 0.5rem;
+  /* Dark tinted glass in both themes (owner, 8 Oct), so its own colours are the dark band's. */
+  --ink: var(--on-dark); --ink-2: var(--on-dark-2); --paper: var(--dark);
+  background: rgb(12 11 10 / 0.55); color: var(--ink);
+  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: inset 0 0 0 var(--hair) rgb(255 255 255 / 0.12), 0 1.25rem 2.5rem -1rem rgb(0 0 0 / 0.4);
   transform: translate(-50%, calc(100% + 2rem)); opacity: 0; pointer-events: none;
   transition: transform var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
 }
 .fader.is-on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
-.fader-end { font: 700 var(--fs-micro) / 1 var(--font-mono); text-transform: uppercase; color: var(--ink); }
-.fader-body { position: relative; height: 2.4rem; --cap-w: 1.05rem; }
+.fader-end { font: 600 var(--fs-ui) / 1 var(--font-sans); letter-spacing: var(--track-ui); color: var(--ink); }
+.fader-body { position: relative; height: 2.85rem; --cap-w: 1.1rem; }
 .fader-ticks { position: absolute; inset: 0 calc(var(--cap-w) / 2); width: calc(100% - var(--cap-w)); height: 100%; overflow: visible; }
-.fader-ticks line { stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fader-ticks line { stroke: color-mix(in srgb, var(--ink-2) 55%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fader-ticks line.centre { stroke: var(--ink-2); stroke-width: 2.5; }
 .fader-slot { position: absolute; left: calc(var(--cap-w) / 2); right: calc(var(--cap-w) / 2); top: 50%; height: 0.3rem; translate: 0 -50%; border-radius: 999px; background: var(--ink); }
 .fader input[type="range"] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; background: transparent; cursor: grab; -webkit-appearance: none; appearance: none; }
 .fader input[type="range"]:active { cursor: grabbing; }
 .fader input[type="range"]::-webkit-slider-runnable-track { height: 100%; background: transparent; }
 .fader input[type="range"]::-moz-range-track { height: 100%; background: transparent; }
 .fader input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; width: var(--cap-w); height: 2.1rem; margin-top: 0.15rem; border: 0; border-radius: 0.3rem;
+  -webkit-appearance: none; appearance: none; width: var(--cap-w); height: 2.45rem; margin-top: 0.2rem; border: 0; border-radius: 0.3rem;
   background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
   box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
 }
 .fader input[type="range"]::-moz-range-thumb {
-  width: var(--cap-w); height: 2.1rem; border: 0; border-radius: 0.3rem;
+  width: var(--cap-w); height: 2.45rem; border: 0; border-radius: 0.3rem;
   background: linear-gradient(90deg, transparent calc(50% - 1px), var(--paper) calc(50% - 1px), var(--paper) calc(50% + 1px), transparent calc(50% + 1px)), var(--ink);
   box-shadow: 0 0.2rem 0.5rem rgb(0 0 0 / 0.3);
 }
