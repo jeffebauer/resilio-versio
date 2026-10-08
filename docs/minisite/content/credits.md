@@ -9,16 +9,19 @@ order: 7
 
 ## How it was shaped
 
-Resilio Versio was designed by ear. [Jesse Bauer](https://jessebauer.xyz), a designer and dub enthusiast, brought the musical goals and made every sonic decision. Claude (Anthropic's AI) was the engineering partner: it wrote the DSP, the firmware and the tools, and turned each technical question into a musical one.
+I'm [Jesse Bauer](https://jessebauer.xyz), a designer and dub enthusiast, and I designed Resilio Versio by ear. I set the musical goals and made every sound decision. Claude (Anthropic's AI) wrote the DSP, the firmware and the tools.
 
-- **Modelled on physics.** The springs follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (Journal of the Audio Engineering Society, 2010): each spring is a feedback loop around a chain of "stretched" allpass filters that spread each echo in time by frequency, which is what makes the chirp. On top: up to two detuned springs spread across the stereo field, a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and a layered defence against single-tone ringing.
-- **Fitted to a real tank.** The tank was tuned, round after round, against recordings of the owner's Teaching Machines Wellspring (a desktop BBD delay and stereo spring reverb): its softer hit, its warmer main ring, where its width sits. A Strymon Magneto was a second reference. The recordings were used for measurement and listening only; none of them is in Resilio or on this site.
-- **Every change heard before it shipped.** Each candidate sound became a level-matched listening page (A against B, in every ATTITUDE, on rim hits, a reggae skank and a held pad), and the owner picked. Over forty decisions are recorded, with their reasons, in the source repository.
-- **Desktop first, hardware for the feel.** Sound work happens in an offline renderer and the plugin; the module is where CPU is measured and the final feel is judged. The firmware fits in 128 KB of flash and runs under 80 % of the chip at its busiest moment.
+The springs are modelled on physics. They follow Välimäki, Parker and Abel's *Parametric Spring Reverberation Effect* (Journal of the Audio Engineering Society, 2010), where each spring is a feedback loop around a chain of "stretched" allpass filters. Those filters spread each echo in time by frequency, and that's what makes the chirp. On top of the model there are up to two detuned springs spread across the stereo field, a drive chain (input transducer, tape, saturation inside the loop, pickup), splash from the hits themselves, and several layers of protection against single-tone ringing.
+
+I tuned the tank round after round against recordings of my Teaching Machines Wellspring, a desktop BBD delay and stereo spring reverb, matching its softer hit, its warmer main ring and where its width sits. A Strymon Magneto was a second reference. I used the recordings for measurement and listening only, and none of them is in Resilio or on this site.
+
+I heard each change before it shipped. Every candidate sound became a level-matched listening page, A against B in each ATTITUDE, on rim hits, a reggae skank and a held pad, and I picked between them. Over forty of those decisions are written up with their reasons in the source repository.
+
+Sound work happens on the desktop first, in an offline renderer and the plugin. The module is where I measure CPU and judge the final feel. The firmware fits in 128 KB of flash and runs under 80 % of the chip at its busiest moment.
 
 ## The demos
 
-Every clip on this site is Resilio itself, rendered offline by the project's renderer from synthetic test signals the project generated (a snare, a rim, an offbeat chord skank, a pad). No recordings of other instruments or other reverbs.
+The clips on this site are all Resilio itself, rendered offline by its own renderer from synthetic test signals generated in code (a snare, a rim, an offbeat chord skank, a pad). There are no recordings of other instruments or other reverbs in them.
 
 ## References
 
@@ -29,14 +32,14 @@ Every clip on this site is Resilio itself, rendered offline by the project's ren
 
 ## Thanks
 
-- **Noise Engineering** for the open Versio platform, the Firmware Swap app, and the printable panel template the panel diagram is drawn from.
-- **Electro-Smith** for the Daisy Seed, libDaisy and DaisySP.
-- **JUCE**, which the plugin is built with.
+- Noise Engineering, for the open Versio platform, the Firmware Swap app, and the printable panel template I drew the panel diagram from.
+- Electro-Smith, for the Daisy Seed, libDaisy and DaisySP.
+- JUCE, which the plugin is built with.
 - The engineers whose moves this is built around: King Tubby, Lee "Scratch" Perry, Scientist, Dennis Bovell, Adrian Sherwood, and the dub techno lineage after them.
 
 ## Licence
 
-<!-- OWNER: no licence has been chosen yet. The plugin is built on JUCE (AGPLv3 or JUCE's commercial licences), so publishing plugin builds brings those terms in; the firmware and the DSP core don't use JUCE. Decide before the repository and downloads go public, then replace this comment with one line, e.g. "Resilio Versio is free software under <licence>. Source: github.com/jeffebauer/resilio-versio." -->
+My code, tools and docs are MIT licensed. The plugin is AGPLv3, because it's built on JUCE. The source is on [GitHub](https://github.com/jeffebauer/resilio-versio).
 
 ## Trademarks
 

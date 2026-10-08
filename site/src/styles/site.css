@@ -645,7 +645,7 @@ ul > li::marker { color: var(--signal); }
 .shape-steps li:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) / 2); left: calc(var(--dot) + 0.5rem); right: calc(0.5rem - var(--gutter)); border-top: var(--hair) solid var(--line); }
 .shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); }
 .shape-title { font-size: var(--fs-body); line-height: 1.2; }
-.shape-steps p { color: var(--ink-2); max-width: 22em; }
+.shape-steps p { color: var(--ink-2); max-width: 22em; text-wrap: pretty; }   /* the three lines are written to similar lengths (owner, 8 Oct) */
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
 @media (max-width: 47.99rem) {
   .shape-steps { grid-template-columns: minmax(0, 1fr); gap: 0; }
