@@ -29,7 +29,7 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] Dry WAVs, 48 kHz / 24-bit, peaks around −6 dBFS, 8 bars each at one tempo (120 bpm suggested; tell me the tempo and key): `stabs.wav` (dub techno chord stabs on the offbeats), `kick.wav` (four on the floor), `stabs_sparse.wav` (one stab every two bars), `plucks.wav` (a sequenced pluck line), optional `bass.wav`. Put them in `test_audio/demo_sources/`. They feed clips 4, 5 and 7 of the eight-clip set; I make the rest from licence-free samples and synths
 
 ### 1c. The new demos
-- [ ] Listen to the first demos on the preview (Tubby throw and sweep in two kits, Wurlitzer, The rough end): pick a drum kit, and note anything to change
+- [ ] Listen to the ten new demos on the site and send notes per clip (kit B chosen; your modular parts will replace the FM clav in clips 4 and 5)
 
 ### 2. The minisite (live)
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
@@ -66,6 +66,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 8 Oct 2026: **New demos live**: ten musical clips written from your sample picks (one-drop with bass, organ bubble and trombone into echo, dub techno stabs into the bed and echo chord, vibes, zither, percussion throws, guitar warble, the rough end with a wheel-up siren), all CC0, each a dry/wet pair mixed by one floating BLEND fader (after the Intellijel crossfader). The old ten are retired
 - 8 Oct 2026: **Site copy rewritten in your voice** (your picks from `docs/minisite/copy-audit.md`): first person throughout, the AI tells removed on every page (colon joints, "not X" lines, slogans, bold-label lists), "Help shape it", the Credits licence and the FAQ's "Is it free?" filled in, the three feedback steps even. Facts unchanged. The FAQ now promises "I read every issue" and the changelog credits community ideas: keep those true
 - 8 Oct 2026: **Site update live** (your notes): "Shape it with us" on the home page (feedback in three steps on a rail, Suggest a sound / Report a bug buttons), the FAQ's how-to, changelog credit for community ideas, Feedback in the footer; **dark mode** (follows your system; System · Light · Dark in the footer); the hero fills the screen on phones; the panel map's frame aligns with the text on phones; You'll need colours swapped and Firmware Swap linked. README rewritten as a summary with the monolith render and the site linked
 - 7 Oct 2026: **Site update live** (your notes): a Colour section on the home page (µ-law grit, TAPE 12-bit, VALVE 10-bit, only on the reverb, 24 kHz, each with a diagram); the manual's ATTITUDE now explains the bit depths and the grit; Starting points gains dub and dub techno tips and five characters; "Latest release" is a heading over version · date · What's new; Download and Menu sit closer on phones; 4 px between phone-menu items. Then the download section: card titles a step under "Latest release", "You'll need" bold with more room, "Firmware for Versio (.bin)"
