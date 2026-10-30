@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 9 Oct 2026, session 12 (stepped TONE listening page; site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 30 Oct 2026 (site: contour lines, bigger lede, the Sublustris cross-link, for review on `feat/site-refine`); before that 9 Oct 2026, session 12 (stepped TONE listening page; site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -38,6 +38,8 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] **CV:** the Versio adds each CV to its knob in hardware, so the firmware can't step the knob and sweep the CV separately. If stepped: should a CV walk the steps too, should steps glide (softer by CV, still stepped by hand), or should stepped/smooth be a panel setting? (page §3)
 
 ### 2. The minisite (live)
+- [ ] **Review the 30 Oct site changes** on `feat/site-refine` (build preview http://localhost:4324, server `site-dist`): the contour lines behind the hero and the sound band, the bigger lede (21 -> 28 px, your pick), the "Its sibling" section above Download, and four small accessibility fixes. Say **"merge it"** to put them live (not pushed yet)
+- [ ] **On Sublustris's launch day:** set `SIBLING_LIVE=1` in the Vercel project's environment variables and redeploy, so "Its sibling" gets its Visit Sublustris Versio button (until then it says "Its site opens soon")
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
 - [ ] **Try the five new dub and dub techno starting points** (Starting points page: Chord stab into the bed, Echo chord, Telephone snare, Murky tape echo, Siren swoop): set from the manual, not yet heard by anyone. Keep, retune or cut (Claude can render them for you first)
