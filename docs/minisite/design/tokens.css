@@ -46,7 +46,7 @@
   --fs-display: clamp(3rem, 1.6rem + 6vw, 7.5rem);         /* 48 -> 120: MD UI Bold, the title and big numbers */
   --fs-h2:      clamp(2.25rem, 1.3rem + 4vw, 5.5rem);      /* 36 -> 88: section headings, Bold */
   --fs-h3:      clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);     /* 24 -> 40: tile statements, Bold */
-  --fs-lede:    clamp(1.125rem, 0.98rem + 0.55vw, 1.5rem);  /* 18 -> 24 (owner, 7 Oct: was 20 -> 30) */
+  --fs-lede:    clamp(1.3125rem, 1.15rem + 0.7vw, 1.75rem); /* 21 -> 28: a clear step above body on phones (from Sublustris, 30 Oct; 18 -> 24 sat one pixel above body; 7 Oct: was 20 -> 30) */
   --fs-body:    clamp(1.0625rem, 0.9rem + 0.55vw, 1.375rem); /* 17 -> 22 */
   --fs-small:   clamp(0.9375rem, 0.85rem + 0.3vw, 1.125rem); /* 15 -> 18 */
   --fs-ui:      0.875rem;  /* 14: header links, buttons */
