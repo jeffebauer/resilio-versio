@@ -1,6 +1,6 @@
 ---
 // Home (DESIGN-v2 "Home page, revised order"): hero (dark) → intro → the sound (dark) →
-// the panel → features → colour → two ways to play → shape it with us → download (tile band) → footer.
+// the panel → features → colour → two ways to play → shape it with us → its sibling → download (tile band) → footer.
 // Copy comes from docs/minisite/content/overview.md, split at its headings.
 import Base from '../layouts/Base.astro';
 import Button from '../components/Button.astro';
@@ -11,7 +11,7 @@ import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
 import Contours from '../components/Contours.astro';
 import { COLOUR_TILES } from '../data/controls';
-import { LINKS } from '../data/site';
+import { LINKS, SIBLING_LIVE, SIBLING_URL } from '../data/site';
 import { Picture } from 'astro:assets';
 import { mustRender, widthsFor } from '../lib/renders';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
@@ -49,6 +49,7 @@ const panel = section(sections, 'the-panel');
 const safe = section(sections, 'safe-to-try');
 const shape = section(sections, 'help-shape-it');
 const plugin = section(sections, 'the-plugin');
+const sibling = section(sections, 'its-sibling');
 const status = section(sections, 'status');
 
 const soundIntro = paras(sound.html)[0] ?? '';
@@ -221,6 +222,17 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
       <Button href={LINKS.soundIdea} variant="primary" arrow>Suggest a sound</Button>
       <Button href={LINKS.bugReport} variant="ghost" arrow>Report a bug</Button>
       <a class="small" href={LINKS.feedbackFaq}>How to give feedback</a>
+    </div>
+  </section>
+
+  <!-- 6c Its sibling (white): Sublustris Versio, linked once its site is public (SIBLING_LIVE) -->
+  <section class="section sibling" aria-labelledby="sibling-h">
+    <div class="column flow centered">
+      <h2 class="h2" id="sibling-h">{sibling.title}</h2>
+      <div class="lede" set:html={sibling.html} />
+      {SIBLING_LIVE
+        ? <p><Button href={SIBLING_URL} variant="ghost" arrow>Visit Sublustris Versio</Button></p>
+        : <p class="small quiet">Its site opens soon.</p>}
     </div>
   </section>
 

@@ -10,6 +10,14 @@ export const REPO_URL = `https://github.com/${REPO}`;
  */
 export const DOWNLOADS_LIVE = process.env.DOWNLOADS_LIVE !== '0';
 
+/**
+ * The sibling switch: Sublustris Versio's site isn't public yet. Until SIBLING_LIVE=1 is set in
+ * the environment (Vercel, then redeploy), the home page's "Its sibling" section names it
+ * without a link.
+ */
+export const SIBLING_LIVE = process.env.SIBLING_LIVE === '1';
+export const SIBLING_URL = 'https://sublustris-versio.vercel.app';
+
 export const DOWNLOAD = {
   firmware: `${REPO_URL}/releases/latest/download/resilio-versio-firmware.bin`,
   plugin: `${REPO_URL}/releases/latest/download/resilio-versio-plugin-macos.zip`,

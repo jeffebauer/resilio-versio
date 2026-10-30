@@ -79,6 +79,10 @@ Resilio replaces the module's firmware completely, and it's just as easy to go b
 
 The same sound engine runs as an Audio Unit and VST3 plugin for macOS, laid out like the module's panel. You can sketch a patch in your DAW and throw from a MIDI clip, and in echo mode it follows your tempo. You don't need a Versio to use it.
 
+## Its sibling
+
+Resilio has a sibling, Sublustris Versio: a huge, warm, lush reverb for the same module. Resilio is for throwing hits into springs. Sublustris is for long, deep spaces.
+
 ## Status
 
 This is the first public release. The firmware works and I play it on real hardware, but the sound may still change between versions. I'd like to hear what you think on [GitHub Issues](https://github.com/jeffebauer/resilio-versio/issues).
