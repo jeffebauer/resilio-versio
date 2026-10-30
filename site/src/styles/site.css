@@ -114,6 +114,12 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
    bands flip dark / light, the colour change is the boundary. */
 .section:not(.band-dark, .band-tile) + .section:not(.band-dark, .band-tile) { border-top: var(--hair) solid var(--line); }
 
+/* The contour lines behind the dark bands (components/Contours.astro): content sits above them.
+   In the tall sound band they cover about the first screen and fade out before the demo cards end. */
+.has-contours { position: relative; isolation: isolate; }
+.has-contours > :not(.contours) { position: relative; z-index: 1; }
+.contours.contours-top { bottom: auto; height: min(100%, 64rem); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
+
 /* ---- Hero (dark) ----------------------------------------------------------- */
 .hero { padding-top: calc(var(--header-h) + var(--stack-2)); padding-bottom: clamp(3.5rem, 2rem + 5vw, 7rem); }
 .hero-frame {

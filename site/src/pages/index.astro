@@ -9,6 +9,7 @@ import AnnotatedPanel from '../components/AnnotatedPanel.astro';
 import FeatureTiles from '../components/FeatureTiles.astro';
 import DemoList from '../components/DemoList.astro';
 import DownloadBlock from '../components/DownloadBlock.astro';
+import Contours from '../components/Contours.astro';
 import { COLOUR_TILES } from '../data/controls';
 import { LINKS } from '../data/site';
 import { Picture } from 'astro:assets';
@@ -64,7 +65,8 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
 ---
 <Base title={page.data.title} description={page.data.description} bodyClass="home" darkTop>
   <!-- 1 Hero (dark) -->
-  <section class="hero band-dark" aria-labelledby="title">
+  <section class="hero band-dark has-contours" aria-labelledby="title">
+    <Contours strength={1} />
     <div class="wide">
       <HeroMedia />
       <div class="hero-title">
@@ -96,7 +98,8 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
   </section>
 
   <!-- 3 The sound (dark) -->
-  <section class="section band-dark sound" id="sound" aria-labelledby="sound-h">
+  <section class="section band-dark sound has-contours" id="sound" aria-labelledby="sound-h">
+    <Contours strength={0.75} class="contours-top" />
     <div class="column flow centered">
       <h2 class="h2" id="sound-h">The sound</h2>
       <div class="lede" set:html={inner(soundIntro)} />
