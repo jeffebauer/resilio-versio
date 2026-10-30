@@ -33,7 +33,7 @@
   --on-signal:    #ffffff;
 
   --focus:        #c83d16;
-  --signal-text:  #c83d16; /* the accent as text (versions, numbers, doc subheads): AA on paper and tile */
+  --signal-text:  #c23a14; /* the accent as text (versions, numbers, doc subheads): AA on paper and tile (30 Oct: a hair darker than --signal-ink, which read 4.49:1 on tile) */
   --raised:       #ffffff; /* a card on a tile band (the download targets): white in light, a step up from the band in dark */
   --on-render:    #0b0a09; /* text laid over the light grey panel render: stays dark in both themes */
   color-scheme: light;

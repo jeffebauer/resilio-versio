@@ -47,6 +47,7 @@ for (const h of pageHeadings(page)) {
       wrap.className = 'code-wrap';
       pre.replaceWith(wrap);
       wrap.append(pre);
+      pre.tabIndex = 0;   // a long line scrolls sideways: reachable by keyboard (axe scrollable-region-focusable)
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'copy';
