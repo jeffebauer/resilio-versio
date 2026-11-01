@@ -122,9 +122,9 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
 /* ---- Hero (dark) ----------------------------------------------------------- */
 /* Ported back from Sublustris Versio's hero (owner, 1 Nov 2026), whose dates below are Sublustris's:
    a transparent film among the contour lines, the title beside the module on wide screens. */
+:root { --fs-hero: clamp(2.75rem, 1.4rem + 4.2vw, 5.5rem); }   /* below the display size, to sit with the tagline (owner, 30 Oct 2026); every page's title (owner, 1 Nov 2026) */
 .hero {
   padding-top: calc(var(--header-h) + var(--stack-2)); padding-bottom: clamp(3.5rem, 2rem + 5vw, 7rem);
-  --fs-hero: clamp(2.75rem, 1.4rem + 4.2vw, 5.5rem);   /* below the display size, to sit with the tagline (owner, 30 Oct 2026) */
 }
 /* The film is transparent and stands among the contour lines, with no card (owner, 30 Oct 2026). Its box
    is 16:9 at most and never taller than the screen leaves room for, so on short screens the
@@ -492,6 +492,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* ---- Doc pages ----------------------------------------------------------------- */
 .doc-hero { padding-top: calc(var(--header-h) + clamp(3rem, 2rem + 4vw, 6rem)); padding-bottom: var(--stack-4); width: min(100% - 2 * var(--margin), 42rem); }   /* lines up with the reading column */
 .doc-hero .kicker { margin-bottom: var(--stack-2); }
+.doc-hero h1 { font-size: var(--fs-hero); }   /* the home hero's title size, not the display size (owner, 1 Nov 2026) */
 .doc-media { margin-bottom: var(--stack-5); }
 .doc-body {
   /* A narrower reading column (about 65 characters at body size, was about 80) and a wider gutter,
