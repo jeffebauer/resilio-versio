@@ -159,8 +159,11 @@ html.hero-film .hero-still { visibility: hidden; }
    scrolling, a key or a tap lights everything at once. */
 html.hero-film .hero.has-contours > .contours { opacity: var(--hero-lit, 0); }
 html.hero-film.hero-lit .hero.has-contours > .contours { opacity: 1; transition: opacity 1s var(--ease-out); }
-html.hero-film .hero-title { animation: hero-title-in 1.2s var(--ease-out) 0.5s both; }
-@keyframes hero-title-in { from { opacity: 0; } }
+/* The title comes in with the contour lines, on the same eased curve from the film's time, rising a
+   little as it fades up (owner, 1 Nov 2026: "in tandem with the other hero elements"; was a fixed
+   1.2 s fade at 0.5 s, whatever the film was doing). */
+html.hero-film .hero-title { opacity: var(--hero-lit, 0); translate: 0 calc((1 - var(--hero-lit, 0)) * 0.75rem); }
+html.hero-film.hero-lit .hero-title { opacity: 1; translate: 0 0; transition: opacity 1s var(--ease-out), translate 1s var(--ease-out); }
 .hero-pause {
   position: absolute; right: 0.75rem; bottom: 0.75rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center;
   border: 0; border-radius: 50%; background: rgb(12 11 10 / 0.7); color: var(--on-dark); cursor: pointer;
@@ -190,6 +193,12 @@ html.hero-film .hero-title { animation: hero-title-in 1.2s var(--ease-out) 0.5s 
    (owner, 30 Oct 2026). */
 .hero-title .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: clamp(2.5rem, 1.5rem + 3vw, 5rem); }
 .hero-title .btn { min-height: 3rem; padding: 0.75rem 1.5rem; font-size: 1.0625rem; }
+/* A soft dark halo behind the hero's text, so it reads over the contour lines (owner, 1 Nov 2026).
+   Two blurred shadows of the band's own dark, no offset: a blur has no edge. Set on each element,
+   not the container, so the em sizes follow each one's type size. */
+.hero-title :is(h1, .hero-name, .hero-tagline, .hero-platform) {
+  text-shadow: 0 0 0.35em color-mix(in srgb, var(--dark) 45%, transparent), 0 0 1.4em color-mix(in srgb, var(--dark) 60%, transparent);
+}
 /* Wide landscape screens (owner, 30 Oct 2026): the title sits beside the module; the film's box
    fills the screen's height. Title and module are one group, centred in the screen both ways
    (owner, 1 Nov 2026): the frame is only as wide as the module, and the film, wider, overflows
