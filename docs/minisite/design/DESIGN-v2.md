@@ -75,7 +75,7 @@ Kept from revision 1: the content and its sources, the renders and the hero film
 - **V7 callouts:** no boxes. Each leader line ends in the control name (Phonic Bold) and its one line of text, set straight on the render.
 - **V8 pictograms: retired.** The CV jack, the attitude glyph and the tape-echo glyph misread (a magnifying glass, a ghost, a face). Every feature tile shows a tiny diagram instead (V10), including new ones for 7 CV inputs and the Howl.
 - **V9 tiles:** "held bed" and "0 dead zones" dropped; no per-tile manual links (one "Read the manual" button under the grid); a denser grid (three columns from 800 px, two from 640 px, one on phones).
-- **Hero:** the reveal film (8 s, rising from below to land level and square on the panel) and its hold loop are in; the hero still is the film's final framing (`hero_still.jpg`).
+- **Hero:** the reveal film (8 s, rising from below to land level and square on the panel) and its hold loop are in; the hero still is the film's final framing (`hero-still.png`, transparent like the films).
 
 ## Amendments, session 10 (7 Oct 2026, the owner's Mesurer polish rounds)
 

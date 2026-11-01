@@ -13,7 +13,7 @@ The site has **no copy of its own text, audio or design tokens**. At build time 
 | Demo clips + captions, settings, transcripts | `docs/minisite/assets/audio/` | `scripts/prebuild.mjs` copies the MP3s to `public/audio/` (git-ignored); `src/lib/demos.ts` reads `demos.json` and computes waveform peaks |
 | Panel map (linework, in the manual) | `docs/minisite/assets/panel/resilio-versio-panel.svg` | inlined by `src/components/PanelDiagram.astro` |
 | Renders (stills) | `docs/minisite/assets/renders/*.jpg` | imported by `src/lib/renders.ts`; Astro serves AVIF/WebP at several widths |
-| Hero film (optional) | `docs/minisite/assets/renders/hero_reveal.{mp4,webm}`, `hero_hold_loop.{mp4,webm}`, `hero_still.jpg` | copied to `public/renders/` by the prebuild; `HeroMedia.astro` plays the reveal once, then loops the hold. Without them the hero shows the still |
+| Hero film (optional) | `docs/minisite/assets/renders/hero-reveal.{mp4,webm}`, `hero-hold-loop.{mp4,webm}` (HEVC and VP9, both with alpha), `hero-still.png` | copied to `public/renders/` by the prebuild; `HeroMedia.astro` plays the reveal once, then loops the hold. Without them the hero shows the still |
 | Panel art | `docs/minisite/assets/panel/resilio-versio-panel-art.svg` | copied to `public/panel/` (git-ignored) |
 
 So: **edit the words in `docs/minisite/content/`, never in `site/`.** Markers in the Markdown (`<!-- PANEL -->`, `<!-- DOWNLOADS -->`, `<!-- LATEST -->`) become components; `<!-- OWNER: … -->` notes are stripped and never published.
