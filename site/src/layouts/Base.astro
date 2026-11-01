@@ -1,7 +1,7 @@
 ---
 // Every page: <head> (SEO, OG, fonts), the header bar (DESIGN-v2 V4), the footer.
-// Inter (SIL OFL, self-hosted from @fontsource) is the fallback when the MD UI / MD IO files
-// aren't present. Latin only; the browser fetches a cut only when the page uses it.
+// Inter (SIL OFL, self-hosted from @fontsource) is the fallback when the MD UI file
+// isn't present (the mono, Paper Mono, is always there). Latin only; the browser fetches a cut only when the page uses it.
 import '@fontsource/inter/latin-300.css';
 import '@fontsource/inter/latin-300-italic.css';
 import '@fontsource/inter/latin-400.css';
@@ -39,7 +39,6 @@ const fonts = fontPlan();
 const fontCss = [
   fonts.css,
   !fonts.sans && 'html:root{--font-sans:"Inter","MD UI Fallback","Helvetica Neue",Arial,sans-serif}',
-  !fonts.mono && 'html:root{--font-mono:ui-monospace,"SF Mono",Menlo,monospace}',
 ].filter(Boolean).join('\n');
 const preload = fonts.sans ? PRELOAD.filter((f) => fonts.present.includes(f)) : [];
 const onVercel = Boolean(process.env.VERCEL);
@@ -77,6 +76,8 @@ const onVercel = Boolean(process.env.VERCEL);
 
     {preload.map((f) => <link rel="preload" href={`/fonts/${f}`} as="font" type="font/woff2" crossorigin />)}
     {fontCss && <style is:inline set:html={fontCss} />}
+    {/* Paper Mono (OFL, in git): the mono and the labels (owner, 1 Nov 2026, as on Sublustris) */}
+    <style is:inline set:html={'@font-face{font-family:"Paper Mono SV";src:url("/type/PaperMonoSV-VF.woff2") format("woff2");font-weight:100 800;font-display:swap}'} />
     <slot name="head" />
   </head>
   <body class={bodyClass}>

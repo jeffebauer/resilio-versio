@@ -43,6 +43,7 @@ The siren is synthesised, and there are no recordings of other reverbs.
 - Noise Engineering, for the open Versio platform, the Firmware Swap app, and the printable panel template I drew the panel diagram from.
 - Electro-Smith, for the Daisy Seed, libDaisy and DaisySP.
 - JUCE, which the plugin is built with.
+- [Paper](https://paper.design), for Paper Mono, the monospaced type on this site (SIL Open Font License 1.1).
 - The engineers whose moves this is built around: King Tubby, Lee "Scratch" Perry, Scientist, Dennis Bovell, Adrian Sherwood, and the dub techno lineage after them.
 
 ## Licence

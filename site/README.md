@@ -35,17 +35,19 @@ npm run check      # type and template check (astro check)
 
 If you change a Markdown plugin in `src/plugins/` and the output doesn't change, clear Astro's cache: `rm -rf node_modules/.astro`.
 
-## Fonts (MD UI and MD IO are licensed: never commit them)
+## Fonts (MD UI is licensed: never commit it)
 
-The repository is going public, so the font files must never be in git. `site/public/fonts/` is git-ignored. Before each build, `scripts/prebuild.mjs` fetches them:
+The repository is going public, so the MD UI file must never be in git. `site/public/fonts/` is git-ignored. Before each build, `scripts/prebuild.mjs` fetches them:
 
 - `FONTS_DIR=/path/to/folder` copies the two files below from that folder (good for local work), or
 - `FONTS_URL=https://…/` + `FONTS_TOKEN=…` downloads them with `Authorization: Bearer <token>` (for Vercel, from a private Blob store: connect the store to the project and `FONTS_TOKEN` defaults to `BLOB_READ_WRITE_TOKEN` or, for newer stores, the `VERCEL_OIDC_TOKEN` every Vercel build gets, so only `FONTS_URL` is needed, e.g. `https://<store-id>.private.blob.vercel-storage.com/fonts/`), or
 - neither: skips. The site still builds and looks right on Inter (and doesn't request the missing files).
 
-The two files (`src/lib/fonts.ts`), both variable fonts from Mass-Driver: `MDUI-VF.woff2` (text: optical size 6–48, weight 200–900, slant for italics) and `MDIO-VF.woff2` (mono: weight 200–900, italic).
+The file (`src/lib/fonts.ts`), a variable font from Mass-Driver: `MDUI-VF.woff2` (text: optical size 6–48, weight 200–900, slant for italics).
 
-How they're used: the site writes one `@font-face` per file that is present, covering every weight. The browser picks MD UI's optical size from the text size by itself. A missing file is simply not declared, so the browser never asks for it, and Inter (300/400/500/700 + italics, from `@fontsource/inter`) or the system mono takes over.
+The mono is **Paper Mono** (Paper, SIL OFL 1.1), in git at `public/type/PaperMonoSV-VF.woff2` with its licence: weight 100–800, the same build as Sublustris Versio's (slashed zero, duospace M W m w, narrow space baked into the default glyphs). It sets the labels and values, the control-like labels (buttons, nav, the panel's control names, the fader ends), the ledes and the card descriptions (owner, 1 Nov 2026).
+
+How they're used: the site writes one `@font-face` per file that is present, covering every weight. The browser picks MD UI's optical size from the text size by itself. A missing file is simply not declared, so the browser never asks for it, and Inter (300/400/500/700 + italics, from `@fontsource/inter`) takes over.
 
 Locally: `FONTS_DIR="~/Library/CloudStorage/Dropbox/Type/FontBase/Type/Mass-Driver/MD_IO-V2-FutureFonts/Fonts/Variable" npm run dev`.
 

@@ -1,12 +1,13 @@
 /* Resilio Versio minisite: design tokens and base components, revision 2.
    Decisions: docs/minisite/design/DESIGN-v2.md (revision 2) on top of DESIGN.md (revision 1).
-   Light body, dark hero and sound bands (V2). Type: MD UI Bold display + Light text (V3; MD UI replaced Phonic 7 Oct), MD IO for values.
-   MD UI and MD IO are licensed and self-hosted; the font files are NOT in this public repo.
+   Light body, dark hero and sound bands (V2). Type: MD UI Bold display + Light text (V3; MD UI replaced Phonic 7 Oct), Paper Mono for values,
+   labels and ledes (owner, 1 Nov 2026: MD IO replaced, as on Sublustris).
+   MD UI is licensed and self-hosted; its file is NOT in this public repo. Paper Mono (SIL OFL) is.
 
-   Fonts: the two variable-font @font-face rules are written by the site (site/src/lib/fonts.ts,
-   rendered in site/src/layouts/Base.astro), one per file that is actually present, so the
-   browser never asks for a missing file. The stacks below name MD UI / MD IO first; when their files
-   are absent the site takes it out of the stacks and Inter (open source, self-hosted) leads. */
+   Fonts: MD UI's variable-font @font-face is written by the site (site/src/lib/fonts.ts,
+   rendered in site/src/layouts/Base.astro) only when its file is present, so the browser never
+   asks for a missing file; when it's absent the site takes it out of the stack and Inter (open
+   source, self-hosted) leads. Base.astro always declares Paper Mono. */
 
 @font-face { font-family: "MD UI Fallback"; src: local("Helvetica Neue"), local("Arial"); size-adjust: 100%; }
 
@@ -40,7 +41,7 @@
 
   /* ---- Type (V3) -------------------------------------------------------- */
   --font-sans: "MD UI", "Inter", "MD UI Fallback", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "MD IO", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-mono: "Paper Mono SV", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Fluid, rem-based (zoom and text size still work). min at 375 px, max at 1920 px. */
   --fs-display: clamp(3.25rem, 1.6rem + 6vw, 7.5rem);      /* 52 -> 120: MD UI Bold, the title and big numbers */
@@ -145,7 +146,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .display { font-size: var(--fs-display); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h2      { font-size: var(--fs-h2); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.1; letter-spacing: -0.015em; }
-.lede    { font-size: var(--fs-lede); line-height: 1.6; text-wrap: balance; }
+.lede    { font-family: var(--font-mono); font-size: calc(var(--fs-lede) * 0.88); line-height: 1.6; text-wrap: balance; }   /* Paper Mono, to set it apart from body (owner, 1 Nov 2026, as on Sublustris) */
 .small   { font-size: var(--fs-small); }
 /* MD UI's italic axis tops out at 12°, which read far too slanted (owner, 7 Oct): a gentler oblique. */
 em, i, cite { font-style: oblique 7deg; }
