@@ -193,11 +193,22 @@ html.hero-film.hero-lit .hero-title { opacity: 1; translate: 0 0; transition: op
    (owner, 30 Oct 2026). */
 .hero-title .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: clamp(2.5rem, 1.5rem + 3vw, 5rem); }
 .hero-title .btn { min-height: 3rem; padding: 0.75rem 1.5rem; font-size: 1.0625rem; }
-/* A soft dark halo behind the hero's text, so it reads over the contour lines (owner, 1 Nov 2026).
-   Two blurred shadows of the band's own dark, no offset: a blur has no edge. Set on each element,
-   not the container, so the em sizes follow each one's type size. */
-.hero-title :is(h1, .hero-name, .hero-tagline, .hero-platform) {
-  text-shadow: 0 0 0.4em color-mix(in srgb, var(--dark) 60%, transparent), 0 0 1.6em color-mix(in srgb, var(--dark) 80%, transparent);
+/* A soft dark shadow behind the hero's text, so it reads over the contour lines (owner, 1 Nov 2026).
+   One wide pool of the band's own dark behind the whole block, not a text-shadow (a glyph's halo
+   follows its thin strokes and barely showed). The radial gradient reaches transparent exactly at
+   the pool's edge, on an eased curve, so there's no edge or step anywhere. It fades in with the
+   title, being part of it. */
+.hero-title { position: relative; isolation: isolate; }
+.hero-title::before {
+  content: ''; position: absolute; z-index: -1; inset: -18% -22%; pointer-events: none;
+  --s: var(--dark);
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--s) 72%, transparent) 0%,
+    color-mix(in srgb, var(--s) 66%, transparent) 30%,
+    color-mix(in srgb, var(--s) 46%, transparent) 55%,
+    color-mix(in srgb, var(--s) 20%, transparent) 76%,
+    color-mix(in srgb, var(--s) 5%, transparent) 91%,
+    transparent 100%);
 }
 /* Wide landscape screens (owner, 30 Oct 2026): the title sits beside the module; the film's box
    fills the screen's height. Title and module are one group, centred in the screen both ways
