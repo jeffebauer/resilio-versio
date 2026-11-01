@@ -642,6 +642,8 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* ---- Centred section intros (owner, 7 Oct) ---------------------------------------- */
 .centered { text-align: center; }
 .centered .lede { margin-inline: auto; }
+/* The sibling band takes Sublustris's cool black, so its blue contour lines sit on their own ground (owner, 1 Nov 2026). */
+.sibling.band-dark { --dark: #0c0d14; }
 .panel-list ul { list-style: none; padding: 0; margin: 0; }
 .panel-list li { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
 .panel-list + p { margin-top: var(--stack-4); }

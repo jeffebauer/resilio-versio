@@ -44,7 +44,7 @@ const panel = section(sections, 'the-panel');
 const safe = section(sections, 'safe-to-try');
 const shape = section(sections, 'help-shape-it');
 const plugin = section(sections, 'the-plugin');
-const sibling = section(sections, 'its-sibling');
+const sibling = section(sections, 'meet-sublustris-versio');
 const status = section(sections, 'status');
 
 const soundIntro = paras(sound.html)[0] ?? '';
@@ -204,8 +204,10 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
     </div>
   </section>
 
-  <!-- 6c Its sibling (white): Sublustris Versio, linked once its site is public (SIBLING_LIVE) -->
-  <section class="section sibling" aria-labelledby="sibling-h">
+  <!-- 6c Its sibling (dark, over Sublustris's own blue contour lines, as its site shows ours: owner,
+       1 Nov 2026): Sublustris Versio, linked once its site is public (SIBLING_LIVE) -->
+  <section class="section sibling band-dark has-contours" aria-labelledby="sibling-h">
+    <Contours strength={1} palette="sublustris" />
     <div class="column flow centered">
       <h2 class="h2" id="sibling-h">{sibling.title}</h2>
       <div class="lede" set:html={sibling.html} />

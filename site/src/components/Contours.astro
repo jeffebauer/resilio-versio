@@ -7,11 +7,16 @@
 // tab is visible. Live time only runs forward and starts on the still's frame, so it never repeats.
 // strength: the layer's brightness (opacity of the still, u_amt of the live shader; the band's
 // background is --dark, so both give the same picture).
-interface Props { strength: number; class?: string }
-const { strength, class: cls } = Astro.props;
+// palette: 'sublustris' draws Sublustris Versio's freeze blue on its cool black (its site's own
+// colours, from its contours.frag; the still is its public/visuals/contours.jpg), for the sibling
+// band (owner, 1 Nov 2026, as Sublustris's band uses ours). The band behind it needs Sublustris's
+// --dark (#0c0d14) to match.
+interface Props { strength: number; class?: string; palette?: 'resilio' | 'sublustris' }
+const { strength, class: cls, palette = 'resilio' } = Astro.props;
+const still = palette === 'sublustris' ? '/visuals/contours-sublustris.jpg' : '/visuals/contours.jpg';
 ---
-<div class:list={["contours", cls]} data-contours data-amt={strength} aria-hidden="true">
-  <img class="contours-still" src="/visuals/contours.jpg" alt="" width="1280" height="720" decoding="async" fetchpriority="low" style={`opacity: ${strength}`} />
+<div class:list={["contours", cls]} data-contours data-amt={strength} data-palette={palette} aria-hidden="true">
+  <img class="contours-still" src={still} alt="" width="1280" height="720" decoding="async" fetchpriority="low" style={`opacity: ${strength}`} />
   <canvas class="contours-live"></canvas>
 </div>
 
@@ -23,6 +28,11 @@ const { strength, class: cls } = Astro.props;
   const STILL_AT = 0.3;       // the still's phase in the loop
   const FRAME_MS = 1000 / 30;
   const SCALE = 0.5;          // of device pixels
+  // Sublustris's palette: its band's black, cool grey and freeze blue, in place of ours.
+  const SUBLUSTRIS = (src: string) => src
+    .replace(/vec3 dark = vec3\([^)]*\);/, 'vec3 dark = vec3(0.047, 0.051, 0.078);')
+    .replace(/vec3 mist = vec3\([^)]*\);/, 'vec3 mist = vec3(0.26, 0.28, 0.36);')
+    .replace(/vec3 sig = vec3\([^)]*\);/, 'vec3 sig = vec3(0.13, 0.33, 0.80);');
 
   function start(el: HTMLElement) {
     const canvas = el.querySelector('canvas')!;
@@ -37,7 +47,7 @@ const { strength, class: cls } = Astro.props;
       gl.compileShader(s);
       return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
     };
-    const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, FRAG);
+    const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, el.dataset.palette === 'sublustris' ? SUBLUSTRIS(FRAG) : FRAG);
     if (!vs || !fs) return;   // the still stays
     const p = gl.createProgram()!;
     gl.attachShader(p, vs);
