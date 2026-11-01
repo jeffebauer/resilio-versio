@@ -255,7 +255,7 @@ html.hero-film .hero-title { animation: hero-title-in 1.2s var(--ease-out) 0.5s 
 }
 .intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
 .intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.15; }
-.intro-copy .lede { max-width: 30em; font-size: clamp(1.125rem, 0.95rem + 0.45vw, 1.375rem); line-height: 1.5; }   /* the hero lede's size, 18 -> 22 px: the lede's 21 -> 28 in mono was too large on the image (owner, 1 Nov 2026) */
+.intro-copy .lede { max-width: 30em; }
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
 
 /* ---- The sound (dark) ------------------------------------------------------ */

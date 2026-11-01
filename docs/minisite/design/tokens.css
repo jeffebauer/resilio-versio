@@ -146,7 +146,7 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 .display { font-size: var(--fs-display); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h2      { font-size: var(--fs-h2); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.1; letter-spacing: -0.015em; }
-.lede    { font-family: var(--font-mono); font-size: calc(var(--fs-lede) * 0.88); line-height: 1.6; text-wrap: balance; }   /* Paper Mono, to set it apart from body (owner, 1 Nov 2026, as on Sublustris) */
+.lede    { font-family: var(--font-mono); font-size: clamp(1.125rem, 0.95rem + 0.45vw, 1.375rem); line-height: 1.5; text-wrap: balance; }   /* Paper Mono, to set it apart from body (owner, 1 Nov 2026, as on Sublustris); the hero lede's size, 18 -> 22 px, in every section (owner, 1 Nov 2026) */
 .small   { font-size: var(--fs-small); }
 /* MD UI's italic axis tops out at 12°, which read far too slanted (owner, 7 Oct): a gentler oblique. */
 em, i, cite { font-style: oblique 7deg; }
