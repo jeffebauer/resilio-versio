@@ -43,19 +43,19 @@
   --font-mono: "MD IO", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Fluid, rem-based (zoom and text size still work). min at 375 px, max at 1920 px. */
-  --fs-display: clamp(3rem, 1.6rem + 6vw, 7.5rem);         /* 48 -> 120: MD UI Bold, the title and big numbers */
-  --fs-h2:      clamp(2.25rem, 1.3rem + 4vw, 5.5rem);      /* 36 -> 88: section headings, Bold */
-  --fs-h3:      clamp(1.5rem, 1.1rem + 1.6vw, 2.5rem);     /* 24 -> 40: tile statements, Bold */
+  --fs-display: clamp(3.25rem, 1.6rem + 6vw, 7.5rem);      /* 52 -> 120: MD UI Bold, the title and big numbers */
+  --fs-h2:      clamp(2.5rem, 1.3rem + 4vw, 5.5rem);       /* 40 -> 88: section headings, Bold */
+  --fs-h3:      clamp(1.625rem, 1.1rem + 1.6vw, 2.5rem);   /* 26 -> 40: tile statements, Bold */
   --fs-lede:    clamp(1.3125rem, 1.15rem + 0.7vw, 1.75rem); /* 21 -> 28: a clear step above body on phones (from Sublustris, 30 Oct; 18 -> 24 sat one pixel above body; 7 Oct: was 20 -> 30) */
-  --fs-body:    clamp(1.0625rem, 0.9rem + 0.55vw, 1.375rem); /* 17 -> 22 */
-  --fs-small:   clamp(0.9375rem, 0.85rem + 0.3vw, 1.125rem); /* 15 -> 18 */
+  --fs-body:    clamp(1.125rem, 0.9rem + 0.55vw, 1.375rem);  /* 18 -> 22 (from Sublustris, 1 Nov: larger on phones) */
+  --fs-small:   clamp(1rem, 0.85rem + 0.3vw, 1.125rem);       /* 16 -> 18 */
   --fs-ui:      0.875rem;  /* 14: header links, buttons */
   --fs-micro:   0.75rem;   /* 12: labels, values (mono) */
 
-  --lh-display: 0.95;
-  --lh-tight:   1.0;
-  --lh-snug:    1.15;
-  --lh-body:    1.4;
+  --lh-display: 1.0;    /* more generous line heights (from Sublustris, 1 Nov 2026) */
+  --lh-tight:   1.05;
+  --lh-snug:    1.22;
+  --lh-body:    1.55;
 
   --wt-light:   300;  /* reading text */
   --wt-reg:     400;  /* UI, anything under 15 px */
@@ -85,6 +85,12 @@
   --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --dur-1: 160ms; --dur-2: 320ms; --dur-3: 700ms; --dur-4: 1200ms;
+}
+
+/* Phones get a step more on the small and UI sizes too; the minimums above already lift display, headings,
+   body and small text there. Ledes keep their size (from Sublustris, 1 Nov 2026). */
+@media (max-width: 39.99rem) {
+  :root { --fs-ui: 0.9375rem; --fs-micro: 0.8125rem; }   /* 15 and 13 px */
 }
 
 /* ---- Dark mode (owner, 8 Oct) ---------------------------------------------
@@ -138,8 +144,8 @@ a { color: inherit; text-decoration-thickness: var(--hair); text-underline-offse
 /* ---- Type styles --------------------------------------------------------- */
 .display { font-size: var(--fs-display); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
 .h2      { font-size: var(--fs-h2); font-weight: var(--wt-display); line-height: var(--lh-display); letter-spacing: var(--track-display); }
-.h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.05; letter-spacing: -0.015em; }
-.lede    { font-size: var(--fs-lede); line-height: 1.45; text-wrap: balance; }
+.h3      { font-size: var(--fs-h3); font-weight: var(--wt-display); line-height: 1.1; letter-spacing: -0.015em; }
+.lede    { font-size: var(--fs-lede); line-height: 1.6; text-wrap: balance; }
 .small   { font-size: var(--fs-small); }
 /* MD UI's italic axis tops out at 12°, which read far too slanted (owner, 7 Oct): a gentler oblique. */
 em, i, cite { font-style: oblique 7deg; }

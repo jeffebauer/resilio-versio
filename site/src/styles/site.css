@@ -153,16 +153,33 @@ html.hero-film .hero-still { visibility: hidden; }
 .hero-title {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gutter); row-gap: 0.5rem;
   padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); align-items: end;
-  --tagline-fs: clamp(1.375rem, 1rem + 1.5vw, 2.25rem);
+  --tagline-fs: clamp(1.125rem, 0.95rem + 0.45vw, 1.375rem);   /* 18 px on phones, about 22 on desktop (from Sublustris's hero lede, 1 Nov 2026; was 22 -> 36) */
 }
 .hero-title h1 { grid-column: 1; }
 .hero-tagline {
   grid-column: 1; max-width: 26em; color: var(--ink-2);
-  font-weight: var(--wt-light); font-size: var(--tagline-fs); line-height: 1.2; letter-spacing: -0.005em;
+  font-weight: var(--wt-light); font-size: var(--tagline-fs); line-height: 1.5; letter-spacing: 0;
 }
 /* The buttons' bottom edge sits on the tagline's last baseline (owner, 7 Oct): MD UI's baseline
-   is 0.283 em above the bottom of a 1.2 line box. */
-.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: end; margin-bottom: calc(var(--tagline-fs) * 0.283); display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
+   is 0.433 em above the bottom of a 1.5 line box (0.283 in a 1.2 box, plus the extra half-leading). */
+.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: end; margin-bottom: calc(var(--tagline-fs) * 0.433); display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
+/* Wide landscape screens (from Sublustris, 1 Nov 2026): title and module are one group, centred in
+   the screen both ways below the header; the title sits beside the module. The film here is opaque
+   (a lit floor, not Sublustris's transparent sides), so the frame crops it to a tall card around
+   the module instead of letting it overflow. The module is centred in the film both ways (its
+   middle at 50.7 % of the height, its width 28 % of the height), so the card needs no offset. */
+@media (orientation: landscape) and (min-width: 64rem) {
+  .hero { min-height: 100svh; display: grid; align-content: center; padding-bottom: var(--stack-2); }
+  .hero > .wide {
+    display: flex; align-items: center; justify-content: center; gap: clamp(3rem, 1rem + 6vw, 9rem);
+    container-type: inline-size;
+    --hero-fh: min(100cqw * 9 / 16, max(24rem, calc(100svh - var(--header-h) - var(--stack-2) - 3rem)));
+  }
+  .hero-frame { flex: none; aspect-ratio: auto; height: var(--hero-fh); width: calc(var(--hero-fh) * 0.56); }
+  .hero-still, .hero-video { left: 50%; right: auto; width: calc(var(--hero-fh) * 16 / 9); max-width: none; translate: -50% 0; }
+  .hero-title { order: -1; flex: 0 1 auto; min-width: 0; padding-top: 0; grid-template-columns: minmax(0, 1fr); }
+  .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-3); margin-bottom: 0; }
+}
 /* Portrait phones and tablets (owner, 8 Oct: the module was small in a 16:9 frame): the frame
    fills the screen as first seen, Safari's bars showing (svh), less the header, the gap and the
    title's first line, so the h1 stays in view; the film and still crop in around the module. */
@@ -182,7 +199,7 @@ html.hero-film .hero-still { visibility: hidden; }
 /* ---- Intro ---------------------------------------------------------------- */
 .statement {
   font-size: clamp(1.75rem, 1.05rem + 2.6vw, 3.5rem); font-weight: var(--wt-display);
-  line-height: 1.04; letter-spacing: var(--track-display);
+  line-height: 1.1; letter-spacing: var(--track-display);
 }
 /* The intro sits on the tank image under a dark scrim (owner, 7 Oct); the section keeps the
    standard section spacing above and below. */
@@ -209,7 +226,7 @@ html.hero-film .hero-still { visibility: hidden; }
   background: radial-gradient(closest-side, rgb(12 11 10 / 0.6), rgb(12 11 10 / 0.3) 60%, rgb(12 11 10 / 0));
 }
 .intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
-.intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
+.intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.15; }
 .intro-copy .lede { max-width: 30em; }
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
 
@@ -231,10 +248,10 @@ html.hero-film .hero-still { visibility: hidden; }
 }
 @supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
 .demo-head { display: grid; gap: var(--stack-2); align-content: start; }
-.demo-title { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); line-height: 1.1; letter-spacing: -0.015em; }
+.demo-title { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); line-height: 1.2; letter-spacing: -0.015em; }
 .demo-diagram { width: 100%; height: 3.25rem; color: var(--ink); }
 .demo.is-wide .demo-diagram { height: 4.5rem; }
-.demo-caption { font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }   /* sans, not the mono image captions (owner, 7 Oct) */
+.demo-caption { font-size: var(--fs-small); line-height: 1.55; color: var(--ink-2); }   /* sans, not the mono image captions (owner, 7 Oct) */
 .demo .player { align-self: end; }
 .demo .spec { font-size: var(--fs-ui); }
 .demo .spec th, .demo .spec td { padding-block: 0.5rem; vertical-align: middle; }
@@ -354,7 +371,6 @@ html.hero-film .hero-still { visibility: hidden; }
 .feature.is-wide .feature-diagram { max-width: 18rem; }
 .feature.is-big .feature-diagram { max-width: 36rem; height: clamp(5rem, 1.5rem + 8vw, 13rem); }
 .feature-big { font-size: clamp(1.375rem, 1.1rem + 0.8vw, 2rem); line-height: 1; letter-spacing: var(--track-display); padding-top: 0.5rem; }
-.feature.is-big .feature-big { font-size: clamp(2.75rem, 1.6rem + 4vw, 5.5rem); line-height: var(--lh-display); }
 .feature-line { color: var(--ink-2); max-width: 32em; }
 @media (max-width: 49.99rem) {
   .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -365,6 +381,11 @@ html.hero-film .hero-still { visibility: hidden; }
   .feature.is-wide, .feature.is-big { grid-column: auto; }
   .feature { min-height: 0; }
   .feature.is-big .feature-diagram { height: 4.5rem; }
+}
+/* Card titles a step larger on phones, one size in every section: the bento's, the demos', the two
+   ways' and the download targets' (from Sublustris, 1 Nov 2026). The big bento card's title matches the rest. */
+@media (max-width: 39.99rem) {
+  .feature-big, .demo-title, .way .h3, .download .target h3 { font-size: 1.75rem; line-height: 1.15; }
 }
 
 /* ---- Two ways to play -------------------------------------------------------- */
@@ -384,13 +405,13 @@ html.hero-film .hero-still { visibility: hidden; }
 .download { display: grid; gap: var(--stack-3); }
 /* One size, one family: only the version is in ink (owner: the line had too many styles) */
 .download .release-head { display: grid; gap: 0.4rem; }
-.download .release-title { font-size: var(--fs-h3); line-height: 1.05; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
+.download .release-title { font-size: var(--fs-h3); line-height: 1.1; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
 .download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
 .download .release-line > * { white-space: nowrap; }   /* each detail wraps whole, never mid-phrase */
 .download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-text); }   /* the accent (owner, 7 Oct); the AA-safe tone for text in either theme */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--raised); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
-.download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.1; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
+.download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.2; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
 .download .target .btn { justify-self: start; }
 .download .target ul { list-style: disc; padding-left: 1.15em; color: var(--ink); }
 .download .target li::marker { color: var(--ink-2); }
@@ -467,7 +488,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose a { overflow-wrap: anywhere; }
 .prose strong, .prose b { font-weight: 600; }   /* semibold in long-form text (owner, 7 Oct) */
 .prose > * + * { margin-top: var(--stack-3); }   /* roomier (owner, 7 Oct) */
-.prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
+.prose h2 { font-size: var(--fs-h3); line-height: 1.1; letter-spacing: -0.015em; margin-top: 6rem; }
 .prose > h2:first-child { margin-top: 0; }
 /* Subheads in the accent, so they stand apart from bold body copy (owner, 7 Oct); the AA-safe tone. */
 .prose h3, .prose .subhead { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-text); font-weight: var(--wt-display); line-height: var(--lh-snug); letter-spacing: -0.01em; }
@@ -500,7 +521,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose pre {
   position: relative; overflow-x: auto; padding: 1rem 1.1rem 1rem 1.4rem; padding-right: 5.5rem; background: var(--tile);
   border-radius: calc(1.125rem + 0.5rem);   /* concentric with the copy button: its radius plus its inset */
-  font-size: var(--fs-ui); line-height: 1.5;
+  font-size: var(--fs-ui); line-height: 1.6;
 }
 .prose pre code { font-size: inherit; white-space: pre; }
 .prose :not(pre) > code { background: var(--tile); padding: 0.05em 0.3em; border-radius: 3px; }
@@ -650,7 +671,7 @@ ul > li::marker { color: var(--signal); }
 .shape-steps li::before { content: ""; position: absolute; left: 0; top: 0; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--signal); }
 .shape-steps li:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) / 2); left: calc(var(--dot) + 0.5rem); right: calc(0.5rem - var(--gutter)); border-top: var(--hair) solid var(--line); }
 .shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); }
-.shape-title { font-size: var(--fs-body); line-height: 1.2; }
+.shape-title { font-size: var(--fs-body); line-height: 1.3; }
 .shape-steps p { color: var(--ink-2); max-width: 22em; text-wrap: pretty; }   /* the three lines are written to similar lengths (owner, 8 Oct) */
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
 @media (max-width: 47.99rem) {
