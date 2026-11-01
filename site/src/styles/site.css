@@ -197,7 +197,7 @@ html.hero-film.hero-lit .hero-title { opacity: 1; translate: 0 0; transition: op
    Two blurred shadows of the band's own dark, no offset: a blur has no edge. Set on each element,
    not the container, so the em sizes follow each one's type size. */
 .hero-title :is(h1, .hero-name, .hero-tagline, .hero-platform) {
-  text-shadow: 0 0 0.35em color-mix(in srgb, var(--dark) 45%, transparent), 0 0 1.4em color-mix(in srgb, var(--dark) 60%, transparent);
+  text-shadow: 0 0 0.4em color-mix(in srgb, var(--dark) 60%, transparent), 0 0 1.6em color-mix(in srgb, var(--dark) 80%, transparent);
 }
 /* Wide landscape screens (owner, 30 Oct 2026): the title sits beside the module; the film's box
    fills the screen's height. Title and module are one group, centred in the screen both ways
