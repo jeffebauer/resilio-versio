@@ -1,0 +1,87 @@
+---
+// Hero lede study (owner, 1 Nov 2026: "the hero lede needs refinement, the same approach we took
+// for Sublustris"): the home hero as it is, with candidate ledes switchable in place, for the
+// owner to compare and pick. Sublustris's picked lede (its study's Q) says what kind of reverb it
+// is and who it's for, the one move that defines it, then the range of its character, in short
+// plain sentences; the platform sits on the quieter line under it, so the lede doesn't repeat it.
+// Not in the sitemap, noindex.
+import Base from '../../layouts/Base.astro';
+import Button from '../../components/Button.astro';
+import Contours from '../../components/Contours.astro';
+import HeroMedia from '../../components/HeroMedia.astro';
+
+const now = 'A dub-inspired spring reverb and tape echo for the Noise Engineering Versio platform.';
+const ledes = [
+  { id: 'Now', text: now },
+  // A-C: Sublustris's Q shape (what it is and for whom; the defining move; the range)
+  { id: 'A', text: 'A spring reverb and tape echo for dub and dub techno. Throw a snare into the springs and let the tail ring on, or turn the decay up and it hangs under the groove. Then dirty it, from tape saturation to a valve that makes the tank howl.' },
+  { id: 'B', text: 'A spring reverb for dub, built to be played like a mixing desk. Throw single hits into the tank, ride King Tubby’s filter on the tail, and push the decay until the springs howl.' },
+  { id: 'C', text: 'A dub spring reverb with a worn tape echo in front. Every hit lands as a bright clang, then sweeps up into a dark wash. Throw snares into it, ride the filter like King Tubby, or kick the tank until it howls.' },
+  // D-E: shorter, one breath
+  { id: 'D', text: 'A spring reverb and tape echo for playing dub live. Throw it a snare, ride the filter, let it ring, make it howl.' },
+  { id: 'E', text: 'A dub spring reverb you play like the desk it came from. Throw hits into the tank, sweep the tail thin with King Tubby’s filter, and let it hang or howl.' },
+  // F: closest to the intro's own voice (the owner's first line)
+  { id: 'F', text: 'A spring reverb you can play the way dub engineers played theirs. Throw a snare into it, ride the filter like King Tubby, let the tail hang under the groove, or push it until it howls.' },
+];
+const platform = 'For the Noise Engineering Versio, and as an AU/VST3 plugin for macOS.';
+---
+<Base title="Hero lede study: Resilio Versio" description="The home hero with candidate ledes to compare." noindex bodyClass="home" darkTop>
+  <section class="hero band-dark has-contours" aria-labelledby="title">
+    <Contours strength={1} />
+    <div class="wide">
+      <HeroMedia />
+      <div class="hero-title">
+        <h1 class="display" id="title">Resilio Versio</h1>
+        <p class="hero-name"><em>Resilio</em>: Latin, “I leap back, rebound”.</p>
+        <p class="hero-tagline" data-lede>{now}</p>
+        <div class="actions">
+          <Button href="#" variant="ghost">Listen</Button>
+          <Button href="#" variant="primary" arrow>Download</Button>
+        </div>
+        <p class="hero-platform">{platform}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section hs-ledes" aria-labelledby="hs-ledes-h">
+    <div class="column flow">
+      <h2 id="hs-ledes-h" class="h2">Ledes</h2>
+      <p class="quiet">Written the way Sublustris’s lede was: what it is and who it’s for, the move that defines it, then how far its character goes, in short plain sentences. The platform stays on the quieter line under the buttons, so none of them repeat it. The switcher swaps them into the hero above.</p>
+      <ul class="hs-lede-list">{ledes.map((l) => <li><strong class="mono">{l.id}</strong> {l.text}</li>)}</ul>
+    </div>
+  </section>
+
+  <nav class="hs-switch" aria-label="Lede">
+    <span class="mono">Lede</span>
+    {ledes.map((l, i) => <button type="button" data-pick={i} aria-pressed={i === 0 ? "true" : "false"}>{l.id}</button>)}
+  </nav>
+</Base>
+
+<script define:vars={{ ledes }}>
+  const buttons = document.querySelectorAll('[data-pick]');
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    document.querySelector('[data-lede]').textContent = ledes[+b.dataset.pick].text;
+    buttons.forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+  }));
+</script>
+
+<style>
+  .hs-lede-list { display: grid; gap: 1.25rem; padding-left: 0; list-style: none; }
+  .hs-lede-list strong { display: inline-block; min-width: 2.5rem; color: var(--signal-text); }
+  .hs-switch {
+    position: fixed; z-index: 20; right: var(--margin); top: calc(var(--header-h) + 0.75rem);
+    display: flex; align-items: center; gap: 0.25rem; padding: 0.35rem 0.4rem 0.35rem 0.9rem; border-radius: 999px;
+    background: rgb(12 11 10 / 0.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); color: var(--on-dark);
+  }
+  .hs-switch .mono { font-size: var(--fs-micro); margin-right: 0.4rem; color: var(--on-dark-2); }
+  .hs-switch button {
+    min-width: 2.5rem; height: 2.5rem; padding: 0 0.6rem; border: 0; border-radius: 999px;
+    background: transparent; color: inherit; font: 600 0.95rem/1 var(--font-mono); cursor: pointer;
+  }
+  .hs-switch button[aria-pressed="true"] { background: var(--on-dark); color: var(--dark); }
+  @media (max-width: 47.99rem) {
+    .hs-switch { left: var(--margin); right: var(--margin); top: auto; bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)); justify-content: space-between; }
+    .hs-switch button { min-width: 2.2rem; height: 2.2rem; padding: 0 0.45rem; }
+  }
+</style>

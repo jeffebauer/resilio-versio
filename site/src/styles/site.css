@@ -114,11 +114,10 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
    bands flip dark / light, the colour change is the boundary. */
 .section:not(.band-dark, .band-tile) + .section:not(.band-dark, .band-tile) { border-top: var(--hair) solid var(--line); }
 
-/* The contour lines behind the dark bands (components/Contours.astro): content sits above them.
-   In the tall sound band they cover about the first screen and fade out before the demo cards end. */
+/* The contour lines behind the hero (components/Contours.astro): content sits above them. None
+   behind the sound band (owner, 1 Nov 2026, as on Sublustris). */
 .has-contours { position: relative; isolation: isolate; }
 .has-contours > :not(.contours) { position: relative; z-index: 1; }
-.contours.contours-top { bottom: auto; height: min(100%, 64rem); mask-image: linear-gradient(to bottom, #000 55%, transparent); }
 
 /* ---- Hero (dark) ----------------------------------------------------------- */
 /* Ported back from Sublustris Versio's hero (owner, 1 Nov 2026), whose dates below are Sublustris's:
@@ -197,10 +196,13 @@ html.hero-film .hero-title { animation: hero-title-in 1.2s var(--ease-out) 0.5s 
    it on its transparent sides. */
 @media (orientation: landscape) and (min-width: 64rem) {
   .hero { min-height: 100svh; display: grid; align-content: center; padding-bottom: var(--stack-2); }
+  /* The group spans most of the page's width, between the full width it had (too wide) and its
+     own width, centred (too narrow; owner, 1 Nov 2026): the title at the left, the module at
+     the right of a container 78 % of the screen wide. */
   .hero > .wide {
-    display: flex; align-items: center; justify-content: center; gap: clamp(3rem, 1rem + 6vw, 9rem);
-    container-type: inline-size;
-    --hero-fh: min(100cqw * 9 / 16, max(24rem, calc(100svh - var(--header-h) - var(--stack-2) - 3rem)));
+    display: flex; align-items: center; justify-content: space-between; gap: clamp(3rem, 1rem + 6vw, 9rem);
+    width: min(100% - 2 * var(--margin), 78vw, var(--wide));
+    --hero-fh: min(100vw * 9 / 16, max(24rem, calc(100svh - var(--header-h) - var(--stack-2) - 3rem)));
   }
   /* The frame is the module's width plus a little (Resilio's module is 0.28 of the film's height
      wide, measured in the still's alpha); its middle sits at 50.1 % of the height, so unlike
@@ -253,7 +255,7 @@ html.hero-film .hero-title { animation: hero-title-in 1.2s var(--ease-out) 0.5s 
 }
 .intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
 .intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.15; }
-.intro-copy .lede { max-width: 30em; }
+.intro-copy .lede { max-width: 30em; font-size: clamp(1.125rem, 0.95rem + 0.45vw, 1.375rem); line-height: 1.5; }   /* the hero lede's size, 18 -> 22 px: the lede's 21 -> 28 in mono was too large on the image (owner, 1 Nov 2026) */
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
 
 /* ---- The sound (dark) ------------------------------------------------------ */
