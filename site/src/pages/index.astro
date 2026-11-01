@@ -1,5 +1,5 @@
 ---
-// Home (DESIGN-v2 "Home page, revised order"): hero (dark, with the name) → intro → the sound (dark) →
+// Home (DESIGN-v2 "Home page, revised order"): hero (dark, with the name) → the sound (dark) →
 // the panel → features → colour → two ways to play → shape it with us → its sibling → download (tile band) → footer.
 // Copy comes from docs/minisite/content/overview.md, split at its headings.
 import Base from '../layouts/Base.astro';
@@ -17,7 +17,6 @@ import { mustRender, widthsFor } from '../lib/renders';
 import { getPage, pageHtml, section, splitSections, splitSlots, stripTags, takeH1 } from '../lib/content';
 
 const page = await getPage('overview');
-const tank = mustRender('tank-macro.jpg');
 const patched = mustRender('patched.jpg');
 const bkBanner = mustRender('bigknob-area.jpg');
 const bkGallery = [
@@ -31,15 +30,10 @@ const noSlots = (html: string) => splitSlots(html).filter((p) => p.kind === 'htm
 const paras = (html: string) => html.match(/<p>[\s\S]*?<\/p>/g) ?? [];
 const inner = (p = '') => p.replace(/^<p>|<\/p>$/g, '');
 
-// Lead: the tagline (bold line), the lede, and the name's meaning (in the hero, under the title,
+// Lead: the tagline (bold line) and the name's meaning (in the hero, under the title,
 // as on Sublustris; owner, 1 Nov 2026).
 const leadParas = paras(noSlots(lead));
 const tagline = stripTags(leadParas[0] ?? '');
-const lede = inner(leadParas[1]);
-// The intro's bold statement is the lede's first sentence; the rest follows as the paragraph.
-const cut = lede.indexOf('. ') + 1;
-const statement = cut > 0 ? lede.slice(0, cut) : lede;
-const ledeRest = cut > 0 ? lede.slice(cut + 1) : '';
 const etymology = inner(leadParas[2]);
 
 const sound = section(sections, 'what-it-sounds-like');
@@ -82,22 +76,6 @@ const safeHtml = safe.html.replace(/<p><a href="\/install">How to install<\/a><\
         <p class="hero-platform">For the Noise Engineering Versio, and as an AU/VST3 plugin for macOS.</p>
       </div>
     </div>
-  </section>
-
-  <!-- 2 Intro (white) -->
-  <section class="section intro" aria-labelledby="intro-h">
-    <h2 id="intro-h" class="visually-hidden">Introduction</h2>
-    <figure class="wide intro-media" data-reveal>
-      <div class="card-media intro-card">
-        <Picture class="intro-bg" src={tank} widths={widthsFor(tank)} sizes={wideSizes} formats={['avif', 'webp']} loading="lazy"
-          alt="Close-up inside a spring reverb tank: a copper-wound transducer on a steel plate, three coiled springs hooked to it, yellow and white wires running to the jack." />
-        <div class="intro-scrim" aria-hidden="true"></div>
-        <div class="intro-copy flow">
-          <p class="statement" data-rise set:html={statement} />
-          {ledeRest && <p class="lede quiet" set:html={ledeRest} />}
-        </div>
-      </div>
-    </figure>
   </section>
 
   <!-- 3 The sound (dark) -->
