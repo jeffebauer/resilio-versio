@@ -2,7 +2,7 @@
 
 Your running to-do list. Claude keeps it current: open items at the top in the suggested order, finished ones move to **Done** with the date. Tick boxes as you go, or just tell Claude.
 
-**Last updated:** 30 Oct 2026 (site: contour lines, bigger lede, the Sublustris cross-link, for review on `feat/site-refine`); before that 9 Oct 2026, session 12 (stepped TONE listening page; site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
+**Last updated:** 3 Nov 2026 (site: the 30 Oct and 1 Nov changes live, with the Sublustris Versio links on its launch day; PR #2 closed and the merged site branches deleted); before that 9 Oct 2026, session 12 (stepped TONE listening page; site: an offbeat hat under Echo chord, diagram colours; the dry/wet waveform tried and reverted; demos signed off; you're away for a few days, modular recordings early next week). **Resilio Versio is public:** the repo, the first public release [v2026.10.07-0671d22](https://github.com/jeffebauer/resilio-versio/releases/tag/v2026.10.07-0671d22) (Latest) and the site's downloads at https://resilio-versio.vercel.app. Plugin `1e02c96` in Ableton; firmware `1e02c96` on the Versio
 
 | Milestone | State |
 |---|---|
@@ -18,11 +18,7 @@ Your running to-do list. Claude keeps it current: open items at the top in the s
 
 ## Now (in this order)
 
-### 1. GitHub tidy-up (~5 minutes)
-Claude's session wasn't allowed to delete branches, so these are yours. All the branches named below are already fully on `main`, so nothing is lost.
-- [ ] **Close PR #2:** `gh pr close 2 --comment "Closing: this work landed on main via feat/site-refine."`
-- [ ] **Delete the merged site branches on GitHub:** `git push origin --delete feat/site feat/site-v2 feat/site-renders`
-- [ ] **Delete them on your Mac:** `git branch -d feat/site feat/site-v2 feat/site-renders worktree-agent-af8f70117b76a1b09` (keep `feat/site-refine`: it's the site review branch)
+### 1. GitHub tidy-up (~2 minutes)
 - [ ] **Protect `main`** (GitHub → Settings → Rules → Rulesets, target `main`): turn on **Block force pushes** and **Restrict deletions** only. Leave "Require a pull request" and "Require status checks" **off**, because Claude commits straight to `main` after the tests pass. Or tell Claude "set up branch protection" and it does it with `gh`
 
 ### 1b. Record modular parts for the demos (planned early in the week of 12 Oct; spec in `docs/minisite/demos-plan.md`)
@@ -38,9 +34,6 @@ Claude's session wasn't allowed to delete branches, so these are yours. All the 
 - [ ] **CV:** the Versio adds each CV to its knob in hardware, so the firmware can't step the knob and sweep the CV separately. If stepped: should a CV walk the steps too, should steps glide (softer by CV, still stepped by hand), or should stepped/smooth be a panel setting? (page §3)
 
 ### 2. The minisite (live)
-- [ ] **Review the 30 Oct site changes** on `feat/site-refine` (build preview http://localhost:4324, server `site-dist`): the contour lines behind the hero and the sound band, the bigger lede (21 -> 28 px, your pick), the "Its sibling" section above Download, and four small accessibility fixes. Say **"merge it"** to put them live (not pushed yet)
-- [ ] **Compare the 1 Nov type and hero changes with Sublustris** on `feat/site-type-hero` (built on `feat/site-refine`, so merging it brings both): more generous line heights, larger type on phones (ledes unchanged), card titles one size on phones, the hero's tagline a size down (about 22 px on desktop), and on wide screens the title beside the module as one centred group, the film cropped to a tall card around the module. Say **"merge it"** to put them live (not pushed yet)
-- [ ] **On Sublustris's launch day:** set `SIBLING_LIVE=1` in the Vercel project's environment variables and redeploy, so "Its sibling" gets its Visit Sublustris Versio button (until then it says "Its site opens soon")
 - [ ] **Check the hero film on your iPhone** (Safari): no white edges on load, no flicker when the loop takes over, and scroll away straight after load then back: the film carries on. (Claude couldn't watch these play: the in-app browser stops video when hidden)
 - [ ] **Read the “Big Knob” history copy** on the home page as the owner: it's a public claim about Tubby's history (facts from `docs/research/big-knob.md`, which says to re-check sources before quoting publicly)
 - [ ] **Try the five new dub and dub techno starting points** (Starting points page: Chord stab into the bed, Echo chord, Telephone snare, Murky tape echo, Siren swoop): set from the manual, not yet heard by anyone. Keep, retune or cut (Claude can render them for you first)
@@ -76,6 +69,7 @@ These judged builds that no longer exist, or were overtaken by newer work:
 - **SPLASH round 3 pick** (`renders/splash_voicings/`): replaced by round 4, built from your notes
 
 ## Done
+- 3 Nov 2026: **Site update live** (your OK; `feat/site-type-hero`, which carried all of `feat/site-refine`): contour lines behind the hero, Paper Mono and Sublustris's type and hero layout, the new hero film and panel stills with the new panel art, the intro section off the home page, knob settings as on Sublustris, axe-clean accessibility, and the **Meet Sublustris Versio** band with its Visit button on (Sublustris v1.0.68 went public today). The footer's Project list links "Sublustris Versio, its sibling" and the README says "A sibling to Sublustris Versio", as Sublustris links back. `SIBLING_LIVE` is now on by default, so no Vercel setting is needed. **Tidy-up done:** PR #2 closed; `feat/site`, `feat/site-v2`, `feat/site-renders` deleted on GitHub and here
 - 8 Oct 2026: **Demos signed off:** you're happy with all ten clips on the site as they are. The modular recordings (§1b) may replace some of them
 - 8 Oct 2026: **Site update live** (your notes): Echo chord gains a quiet offbeat hi-hat (the stabs unchanged); the tile diagrams draw the dry hit white and the reverb or echo orange (the echo, the throw, the single hit with its tail); the Howl drawing starts loud and dies away. Dry and wet in the players' waveforms were tried (overlaid, split, solid with the dry cut out) and reverted to the single wet trace
 - 8 Oct 2026: **New demos live**: ten musical clips written from your sample picks (one-drop with bass, organ bubble and trombone into echo, dub techno stabs into the bed and echo chord, vibes, zither, percussion throws, guitar warble, the rough end with a wheel-up siren), all CC0, each a dry/wet pair mixed by one floating BLEND fader (after the Intellijel crossfader). The old ten are retired

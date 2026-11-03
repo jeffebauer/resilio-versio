@@ -11,11 +11,11 @@ export const REPO_URL = `https://github.com/${REPO}`;
 export const DOWNLOADS_LIVE = process.env.DOWNLOADS_LIVE !== '0';
 
 /**
- * The sibling switch: Sublustris Versio's site isn't public yet. Until SIBLING_LIVE=1 is set in
- * the environment (Vercel, then redeploy), the home page's "Its sibling" section names it
- * without a link.
+ * The sibling switch: on since Sublustris Versio went public (3 Nov 2026), so the home page's
+ * sibling band and the footer link to its site. SIBLING_LIVE=0 in the environment names it
+ * without a link again.
  */
-export const SIBLING_LIVE = process.env.SIBLING_LIVE === '1';
+export const SIBLING_LIVE = process.env.SIBLING_LIVE !== '0';
 export const SIBLING_URL = 'https://sublustris-versio.vercel.app';
 
 export const DOWNLOAD = {

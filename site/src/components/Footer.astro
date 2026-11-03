@@ -1,5 +1,5 @@
 ---
-import { DOCS, LINKS } from '../data/site';
+import { DOCS, LINKS, SIBLING_LIVE, SIBLING_URL } from '../data/site';
 ---
 <footer class="site-footer">
   <div class="wide">
@@ -23,6 +23,7 @@ import { DOCS, LINKS } from '../data/site';
           <li><a href={LINKS.source}>Source on GitHub</a></li>
           <li><a href={LINKS.feedbackFaq}>Feedback</a></li>
           <li><a href="/#download">Download</a></li>
+          {SIBLING_LIVE && <li><a href={SIBLING_URL}>Sublustris Versio, its sibling</a></li>}
         </ul>
       </div>
       <div>

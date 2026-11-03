@@ -8,7 +8,7 @@
 
 [Download](https://resilio-versio.vercel.app/#download) · [Install](https://resilio-versio.vercel.app/install/) · [Manual](https://resilio-versio.vercel.app/manual/) · [Starting points](https://resilio-versio.vercel.app/presets/) · [Changelog](https://resilio-versio.vercel.app/changelog/) · [FAQ](https://resilio-versio.vercel.app/faq/)
 
-*Resilio*: Latin, "I leap back, rebound". By [Jesse Bauer](https://jessebauer.xyz). Not affiliated with or endorsed by Noise Engineering.
+*Resilio*: Latin, "I leap back, rebound". By [Jesse Bauer](https://jessebauer.xyz). Not affiliated with or endorsed by Noise Engineering. A sibling to [Sublustris Versio](https://github.com/jeffebauer/sublustris-versio).
 
 ## What it is
 
