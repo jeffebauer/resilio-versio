@@ -16,7 +16,7 @@ const IMG = { w: 2116, h: 1190 };
 const PANEL = { x: 872, y: 121, w: 372, h: 950 };
 const MM = { w: 50.5, h: 128.5 };
 // The phone crop: the panel and a little of the ground around it.
-const CROP = { x: 800, y: 80, w: 516, h: 1032 };
+const CROP = { x: 688, y: 80, w: 740, h: 1032 };   // wider, more of the render round the module (owner, 3 Nov 2026, as on Sublustris)
 
 const px = (mm: number) => PANEL.x + (mm / MM.w) * PANEL.w;
 const py = (mm: number) => PANEL.y + (mm / MM.h) * PANEL.h;
@@ -79,5 +79,4 @@ const stage = [
       </li>
     ))}
   </ol>
-  <figcaption class="micro quiet">The Noise Engineering Versio with Resilio’s panel.</figcaption>
 </figure>

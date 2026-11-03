@@ -11,8 +11,6 @@ Newest first. Each version is named by its date and build (`vYYYY.MM.DD-<build>`
 
 When a player suggests a change, I credit them in its entry. If you have an idea, [suggest a sound](https://github.com/jeffebauer/resilio-versio/issues/new?template=sound_idea.yml).
 
-<!-- LATEST: show the current version, date and download buttons here, from the release data. -->
-
 ## 7 October 2026
 
 <p class="release-version">v2026.10.07-0671d22</p>
