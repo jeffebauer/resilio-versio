@@ -70,7 +70,7 @@ const values = (s: PanelSettings) => [
       {b.level === 'h2' ? <h2 id={b.id}>{b.title}</h2> : <h3 id={b.id}>{b.title}</h3>}
       <div class="preset">
         <figure class="preset-panel">
-          <PanelWire settings={b.s} controls label={`${b.title}: panel settings`} />
+          <PanelWire settings={b.s} label={`${b.title}: panel settings`} />
         </figure>
         <div class="preset-text">
           <Fragment set:html={b.html} />
