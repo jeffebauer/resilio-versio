@@ -10,6 +10,14 @@ export const REPO_URL = `https://github.com/${REPO}`;
  */
 export const DOWNLOADS_LIVE = process.env.DOWNLOADS_LIVE !== '0';
 
+/**
+ * The sibling switch: on since Sublustris Versio went public (3 Nov 2026), so the home page's
+ * sibling band and the footer link to its site. SIBLING_LIVE=0 in the environment names it
+ * without a link again.
+ */
+export const SIBLING_LIVE = process.env.SIBLING_LIVE !== '0';
+export const SIBLING_URL = 'https://sublustris-versio.vercel.app';
+
 export const DOWNLOAD = {
   firmware: `${REPO_URL}/releases/latest/download/resilio-versio-firmware.bin`,
   plugin: `${REPO_URL}/releases/latest/download/resilio-versio-plugin-macos.zip`,

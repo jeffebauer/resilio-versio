@@ -1,0 +1,136 @@
+---
+// The contour lines behind a dark band (waves B, "contour lines, dissolving": the owner's pick
+// for Resilio, 30 Oct 2026, from the Sublustris site-visuals study, retuned to Resilio's
+// palette). A still always sits underneath: it is what shows without JavaScript, without
+// WebGL, and under reduced motion. With motion allowed, a live shader fades in over it, drawn
+// at half resolution, at most 30 frames a second, and only while the band is on screen and the
+// tab is visible. Live time only runs forward and starts on the still's frame, so it never repeats.
+// strength: the layer's brightness (opacity of the still, u_amt of the live shader; the band's
+// background is --dark, so both give the same picture).
+// palette: 'sublustris' draws Sublustris Versio's freeze blue on its cool black (its site's own
+// colours, from its contours.frag; the still is its public/visuals/contours.jpg), for the sibling
+// band (owner, 1 Nov 2026, as Sublustris's band uses ours). The band behind it needs Sublustris's
+// --dark (#0c0d14) to match.
+interface Props { strength: number; class?: string; palette?: 'resilio' | 'sublustris' }
+const { strength, class: cls, palette = 'resilio' } = Astro.props;
+const still = palette === 'sublustris' ? '/visuals/contours-sublustris.jpg' : '/visuals/contours.jpg';
+---
+<div class:list={["contours", cls]} data-contours data-amt={strength} data-palette={palette} aria-hidden="true">
+  <img class="contours-still" src={still} alt="" width="1280" height="720" decoding="async" fetchpriority="low" style={`opacity: ${strength}`} />
+  <canvas class="contours-live"></canvas>
+</div>
+
+<script>
+  import FRAG from '../shaders/contours.frag?raw';
+
+  const VERT = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}';
+  const LOOP_S = 30;          // the study's loop length: sets the drift speed
+  const STILL_AT = 0.3;       // the still's phase in the loop
+  const FRAME_MS = 1000 / 30;
+  const SCALE = 0.5;          // of device pixels
+  // Sublustris's palette: its band's black, cool grey and freeze blue, in place of ours.
+  const SUBLUSTRIS = (src: string) => src
+    .replace(/vec3 dark = vec3\([^)]*\);/, 'vec3 dark = vec3(0.047, 0.051, 0.078);')
+    .replace(/vec3 mist = vec3\([^)]*\);/, 'vec3 mist = vec3(0.26, 0.28, 0.36);')
+    .replace(/vec3 sig = vec3\([^)]*\);/, 'vec3 sig = vec3(0.13, 0.33, 0.80);');
+
+  function start(el: HTMLElement) {
+    const canvas = el.querySelector('canvas')!;
+    const gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: true });
+    if (!gl) return;
+    // no real GPU (software WebGL): the still stays
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    if (info && /swiftshader|llvmpipe|software/i.test(String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)))) return;
+    const sh = (type: number, src: string) => {
+      const s = gl.createShader(type)!;
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    };
+    const vs = sh(gl.VERTEX_SHADER, VERT), fs = sh(gl.FRAGMENT_SHADER, el.dataset.palette === 'sublustris' ? SUBLUSTRIS(FRAG) : FRAG);
+    if (!vs || !fs) return;   // the still stays
+    const p = gl.createProgram()!;
+    gl.attachShader(p, vs);
+    gl.attachShader(p, fs);
+    gl.bindAttribLocation(p, 0, 'a');
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) return;
+    gl.useProgram(p);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const U = (n: string) => gl.getUniformLocation(p, n);
+    gl.uniform1f(U('u_loopT'), LOOP_S);
+    gl.uniform1f(U('u_live'), 1);
+    gl.uniform1f(U('u_amt'), parseFloat(el.dataset.amt || '1'));
+    gl.uniform1f(U('u_ph'), 0);
+    const uRes = U('u_res'), uT = U('u_t');
+
+    let elapsed = 0, last = 0, raf = 0, onScreen = false, shown = false, dead = false;
+    // A slow device: time frames 2-6 (the first includes the shader compiling); if waiting for
+    // the draw holds the main thread over 12 ms (median), fall back to the still. A GPU browser
+    // returns almost at once; this catches software and very weak GPUs, which would jank scrolling.
+    let frame = 0;
+    const times: number[] = [];
+    const probe = () => {
+      if (++frame < 2 || frame > 6) return;
+      const t0 = performance.now();
+      gl.finish();
+      times.push(performance.now() - t0);
+      if (times.length < 5) return;
+      const median = times.sort((a, b) => a - b)[2];
+      el.dataset.frameMs = median.toFixed(1);   // for checking on a device
+      if (median > 12) { dead = true; stop(); el.classList.remove('is-live'); }
+    };
+    const fit = () => {
+      const r = Math.min(devicePixelRatio || 1, 2) * SCALE;
+      const w = Math.max(1, Math.round(canvas.clientWidth * r)), h = Math.max(1, Math.round(canvas.clientHeight * r));
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      gl.viewport(0, 0, w, h);
+      gl.uniform2f(uRes, w, h);
+    };
+    const draw = () => {
+      if (dead) return;
+      gl.uniform1f(uT, STILL_AT * LOOP_S + elapsed / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      probe();
+      if (!dead && !shown && frame > 6) { shown = true; el.classList.add('is-live'); }
+    };
+    const tick = (now: number) => {
+      raf = requestAnimationFrame(tick);
+      if (now - last < FRAME_MS - 2) return;
+      elapsed += Math.min(now - last, 100);   // a long gap (tab hidden) doesn't jump the lines
+      last = now;
+      draw();
+    };
+    const run = () => {
+      if (dead || raf || !onScreen || document.hidden) return;
+      last = performance.now();
+      raf = requestAnimationFrame(tick);
+    };
+    const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+    new IntersectionObserver(([e]) => {
+      onScreen = e.isIntersecting;
+      if (onScreen) { fit(); draw(); run(); } else stop();
+    }).observe(el);
+    new ResizeObserver(() => { if (onScreen) { fit(); draw(); } }).observe(canvas);
+    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : run()));
+  }
+
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  if (!motion.matches) {
+    const go = () => document.querySelectorAll<HTMLElement>('[data-contours]').forEach(start);
+    // after the page has loaded and settled, so the shader never competes with the first paint
+    const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(go, { timeout: 2000 }) : setTimeout(go, 200));
+    if (document.readyState === 'complete') idle(); else addEventListener('load', idle, { once: true });
+  }
+</script>
+
+<style>
+  .contours { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .contours-still, .contours-live { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .contours-still { object-fit: cover; }
+  .contours-live { opacity: 0; transition: opacity 1.2s ease; }
+  .contours.is-live .contours-live { opacity: 1; }
+</style>

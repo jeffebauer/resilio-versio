@@ -1,7 +1,13 @@
 """The animated hero: the monolith emerging from the dark.
 
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
-        --python site/renders/render_hero.py -- --frames DIR [--samples 48] [--only 1,60,120]
+        --python site/renders/render_hero.py -- --frames DIR [--samples 160] [--res 2400x1350] [--only 1,60,120]
+
+Sublustris's style (owner, 1 Nov 2026; ported back from Sublustris Versio's render_hero.py,
+which grew from this one): transparent PNG frames, the floor a shadow catcher keeping only a
+soft contact shadow, so the site's contour lines show through; a wider opening so the module
+is never cut off by the frame's edge; steadier edge highlights. The camera move, the monolith
+light and the dub LED groove below are Resilio's own.
 
 Timeline (30 fps, 1920 x 1080), v2 "product film" (owner, 7 Oct):
   frames   1-240  hero_reveal (8 s). The camera starts low and close in front of
@@ -24,8 +30,8 @@ LEDs, hand-animated as a dub groove at 75 bpm (a beat = 24 frames):
   Colour: green at normal level, amber on the loud hits. Each LED also drives
   a tiny point light so its glow spills onto the knobs and the panel.
 
-Frames are written as JPEG (quality 95) to keep the sequence small; encode
-with make_hero_video.sh.
+Frames are transparent PNGs (RGBA); encode with make_hero_video.sh. Frame 240 at 192 samples
+(--only 240) is also the site's hero-still.png.
 """
 import math
 import os
@@ -48,6 +54,10 @@ EDGES_ON = (50, 150)      # rim + top light: the edges and knob caps appear firs
 LIGHTS_ON = (110, 225)    # then the soft key, fills and world
 CAM_MOVE = (1, 236)
 EDGE_LIGHTS = ("rim", "top")
+# The opening camera: low, wide and close, looking up (mm; lens mm), wide enough that the whole
+# module stays in frame for the whole move (Sublustris, 31 Oct 2026: over the site's contour lines
+# a module cut off by the film's edge broke the "appearing from the dark").
+START, START_T, LENS0 = (0, -105, 3), (0, 0, 57), 15.0
 
 GREEN = (0.06, 1.0, 0.14)
 AMBER = (1.0, 0.40, 0.02)
@@ -157,9 +167,9 @@ def build():
     # slides down to the panel centre so the tilt reaches exactly 0 as it settles.
     mid = module.PH / 2
     end_dist = (module.PH / 0.72) * 100.0 / (36.0 / (16 / 9))   # 100 mm lens, 72 % of frame height
-    start, start_t = C.Vector((0, -62, 2.5)), C.Vector((0, 0, 118))
+    start, start_t = C.Vector(START), C.Vector(START_T)
     end, end_t = C.Vector((0, -end_dist, mid)), C.Vector((0, 0, mid))
-    lens0, lens1 = 20.0, 100.0
+    lens0, lens1 = LENS0, 100.0
     tgt = bpy.data.objects.new("cam_target", None)
     C.link(tgt)
     cd = bpy.data.cameras.new("hero")
@@ -195,19 +205,67 @@ def build():
     return ref
 
 
+def _steady_edges():
+    """Edge highlights that hold still from frame to frame (owner, 31 Oct 2026: the speculars
+    along the module's edges looked aliased and jittery). A 0.25 mm bevel made a highlight
+    thinner than a pixel, which the tight 1 px filter stair-stepped, so it crawled as the camera
+    moved (with the camera still, frames already matched). So: a wider, rounder panel bevel, the
+    default 1.5 px filter, enough samples on every pixel to antialias, a stricter noise
+    threshold, and a little glossy blur against fireflies."""
+    bev = bpy.data.objects["panel"].modifiers["bevel"]
+    bev.width, bev.segments = 0.6, 4
+    sc = bpy.context.scene
+    sc.render.filter_size = 1.5
+    sc.cycles.adaptive_threshold = 0.01
+    sc.cycles.adaptive_min_samples = 48   # every edge pixel gets enough samples to antialias
+    sc.cycles.blur_glossy = 0.5
+
+
+def _contact_shadow_only():
+    """The floor becomes a shadow catcher that keeps only a soft pool under the module.
+    As a plain catcher it also kept the long shadows the key, rim and LED lights throw
+    across the whole floor, with hard edges. So (light linking) none of the scene's lights
+    reach the floor, and one large soft light overhead lights the floor alone: its shadow,
+    fading in with the key, is the only one caught."""
+    cyc = bpy.data.objects["cyclorama"]
+    cyc.is_shadow_catcher = True
+    excl = bpy.data.collections.new("floor_unlit")
+    excl.objects.link(cyc)
+    excl.collection_objects[0].light_linking.link_state = "EXCLUDE"
+    for ob in [o for o in bpy.data.objects if o.type == "LIGHT"]:
+        ob.light_linking.receiver_collection = excl
+    incl = bpy.data.collections.new("floor_only")
+    incl.objects.link(cyc)
+    incl.collection_objects[0].light_linking.link_state = "INCLUDE"
+    size, height = (float(v) for v in os.environ.get("IV_HERO_SHADOW", "420,520").split(","))   # mm; env for tests
+    top = C.area_light("contact_shadow", (0, -20, height), (0, -20, 0), size, C.watts(40))
+    top.light_linking.receiver_collection = incl
+    full = top.data.energy
+    for f in range(1, REVEAL_END + 1, 3):
+        top.data.energy = full * _ease(f, *LIGHTS_ON)
+        top.data.keyframe_insert("energy", frame=f)
+    top.data.energy = full
+    top.data.keyframe_insert("energy", frame=REVEAL_END)
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     out = argv[argv.index("--frames") + 1]
-    samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 64
+    samples = int(argv[argv.index("--samples") + 1]) if "--samples" in argv else 160
     only = [int(x) for x in argv[argv.index("--only") + 1].split(",")] if "--only" in argv else None
-    scale = int(argv[argv.index("--scale") + 1]) if "--scale" in argv else 100
+    res = argv[argv.index("--res") + 1] if "--res" in argv else "2400x1350"
+    w, h = (int(n) for n in res.split("x"))
     build()
-    C.setup_cycles(samples=samples)
-    bpy.context.scene.render.resolution_percentage = scale
+    C.setup_cycles(samples=samples, width=w, height=h)
     sc = bpy.context.scene
     sc.render.use_persistent_data = True
-    sc.render.image_settings.file_format = "JPEG"
-    sc.render.image_settings.quality = 95
+    # Transparent (owner, 1 Nov 2026, as on Sublustris): the site's contour lines show through.
+    sc.render.film_transparent = True
+    _contact_shadow_only()
+    _steady_edges()
+    sc.render.image_settings.file_format = "PNG"
+    sc.render.image_settings.color_mode = "RGBA"
+    sc.render.image_settings.compression = 15
     os.makedirs(out, exist_ok=True)
     if "--still" in argv:
         # the site's hero still: the hold frame with the LEDs on the loud hit,
@@ -229,7 +287,7 @@ def main():
     t0 = time.time()
     for f in frames:
         sc.frame_set(f)
-        sc.render.filepath = os.path.join(out, f"f_{f:04d}.jpg")
+        sc.render.filepath = os.path.join(out, f"f_{f:04d}.png")
         bpy.ops.render.render(write_still=True)
         print(f"[hero] frame {f} done, {time.time() - t0:.0f} s elapsed", flush=True)
 

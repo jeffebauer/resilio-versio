@@ -7,7 +7,7 @@ order: 1
 
 # Resilio Versio
 
-**A dub-inspired spring reverb and tape echo for the Noise Engineering Versio platform.**
+**A spring reverb you can play the way dub engineers played theirs. Throw a snare into it, ride the filter like King Tubby, let the tail hang under the groove, or push it until it howls.**
 
 I wanted a spring reverb I could play the way dub engineers played theirs. Throw a snare into it, ride the filter like King Tubby, let the tail hang under the groove, or push it until it howls. There's a worn tape echo in front of it too. It's free firmware for the Versio, and the same sound runs as an AU/VST3 plugin on a Mac.
 
@@ -78,6 +78,10 @@ Resilio replaces the module's firmware completely, and it's just as easy to go b
 ## The plugin
 
 The same sound engine runs as an Audio Unit and VST3 plugin for macOS, laid out like the module's panel. You can sketch a patch in your DAW and throw from a MIDI clip, and in echo mode it follows your tempo. You don't need a Versio to use it.
+
+## Meet Sublustris Versio
+
+Resilio has a sibling, Sublustris Versio: a huge, warm, lush reverb for the same module. Resilio is for throwing hits into springs. Sublustris is for long, deep spaces.
 
 ## Status
 

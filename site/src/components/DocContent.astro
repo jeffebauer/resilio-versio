@@ -40,6 +40,6 @@ parts.forEach((p, i) => {
       />
     </div>
   ) : p.slot === 'downloads' || p.slot === 'latest' ? (
-    <div class="slot"><DownloadBlock compact idPrefix={`dl-${p.slot}`} /></div>
+    <div class="slot"><DownloadBlock compact headingLevel="h2" idPrefix={`dl-${p.slot}`} /></div>
   ) : null
 )}

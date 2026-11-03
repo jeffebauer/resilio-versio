@@ -23,12 +23,13 @@ const d = peaks
   .join('');
 const dur = clock(clip.duration_s);
 const diagram = diagramFor(clip.file);
-// "0.45 (11:30), the slider's start" -> a knob at 0.45, then "0.45, the slider's start" (the
-// knob drawing replaces the clock time; owner, 8 Oct).
+// "0.45 (11:30), the slider's start" -> a knob, its clock time and value, and the note, laid out
+// as on the presets page (owner, 1 Nov 2026, as on Sublustris). Other values stay as written.
 const rows = Object.entries(clip.settings).map(([name, value]) => {
-  const m = value.match(/^(\d*\.?\d+) \([^)]*\)(.*)$/);
+  const m = value.match(/^(\d*\.?\d+) \((\d{1,2})(?::(\d\d))?\)(?:, (.*))?$/);
   const v = m ? Number(m[1]) : NaN;
-  return m && v >= 0 && v <= 1 ? { name, value: m[1] + m[2], knob: v } : { name, value };
+  if (!m || !(v >= 0 && v <= 1)) return { name, value, mono: /^[A-Z]+$/.test(value) };   // a switch's position (TAPE) reads as a value
+  return { name, value: m[4] ?? '', knob: v, clock: `${m[2]}:${m[3] ?? '00'}` };
 });
 const blend = clip.blend ?? 0.5;
 ---

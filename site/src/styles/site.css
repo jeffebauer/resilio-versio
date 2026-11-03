@@ -114,26 +114,56 @@ code { font-family: var(--font-mono); font-size: 0.88em; overflow-wrap: anywhere
    bands flip dark / light, the colour change is the boundary. */
 .section:not(.band-dark, .band-tile) + .section:not(.band-dark, .band-tile) { border-top: var(--hair) solid var(--line); }
 
+/* The contour lines behind the hero (components/Contours.astro): content sits above them. None
+   behind the sound band (owner, 1 Nov 2026, as on Sublustris). */
+.has-contours { position: relative; isolation: isolate; }
+.has-contours > :not(.contours) { position: relative; z-index: 1; }
+
 /* ---- Hero (dark) ----------------------------------------------------------- */
-.hero { padding-top: calc(var(--header-h) + var(--stack-2)); padding-bottom: clamp(3.5rem, 2rem + 5vw, 7rem); }
-.hero-frame {
-  position: relative; overflow: hidden; border-radius: var(--radius-tile); background: #060505;
-  aspect-ratio: 16 / 9; width: 100%;   /* the whole film, uncropped; the title follows below (owner, 7 Oct) */
-  /* iOS Safari doesn't clip a video to rounded corners while it composites (the light floor
-     showed at the corners as white edges on load, owner 7 Oct): force the clip. */
-  isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black);
+/* Ported back from Sublustris Versio's hero (owner, 1 Nov 2026), whose dates below are Sublustris's:
+   a transparent film among the contour lines, the title beside the module on wide screens. */
+:root { --fs-hero: clamp(2.75rem, 1.4rem + 4.2vw, 5.5rem); }   /* below the display size, to sit with the tagline (owner, 30 Oct 2026); every page's title (owner, 1 Nov 2026) */
+.hero {
+  padding-top: calc(var(--header-h) + var(--stack-2)); padding-bottom: clamp(3.5rem, 2rem + 5vw, 7rem);
 }
-.hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
-.hero-video { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); border-radius: inherit; }
+/* The film is transparent and stands among the contour lines, with no card (owner, 30 Oct 2026). Its box
+   is 16:9 at most and never taller than the screen leaves room for, so on short screens the
+   module shrinks and the title stays above the fold; the film is contained, never cropped. */
+.hero { overflow-x: clip; }   /* the film shifted right runs past the edge (only transparent edges there) */
+.hero-frame {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  max-height: max(18rem, calc(100svh - var(--header-h) - 24rem));   /* the title, tagline and buttons */
+}
+.hero-still, .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 50%; }
+.hero-video { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
 .hero-frame.is-playing .hero-video:not(.hero-hold) { opacity: 1; }
 /* The hold sits on top and appears in one step, on the reveal's matching last frame. */
 .hero-hold { transition: none; }
 .hero-hold.is-on { opacity: 1; }
-/* The film will play (set before first paint): start on black, never on the lit still. */
+/* The film will play (set before first paint): start on the dark band, never on the lit still. */
 html.hero-film .hero-still { visibility: hidden; }
-/* Once the film is in, hide the still under it: its lighter floor showed through the film's
-   anti-aliased right edge as a thin white line (owner, 7 Oct). */
+/* Once the film is in, hide the still under it, or the two would double up through the
+   transparent edges. */
 .hero-frame.is-playing .hero-still { visibility: hidden; transition: visibility 0s linear var(--dur-3); }
+/* The film's edges fade out (owner, 31 Oct 2026), so wherever the module runs past the frame it
+   melts into the band instead of stopping on a hard line through the contour lines. */
+.hero-still, .hero-video {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 95%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 95%, transparent);
+  mask-composite: intersect;
+}
+/* The hero lights up with the film (owner, 31 Oct 2026): the contour lines start in darkness and
+   come up with the module's key light (HeroMedia sets --hero-lit from the film's time), so the
+   module appears out of the dark. The title comes in quickly, so nobody waits to read or click;
+   scrolling, a key or a tap lights everything at once. */
+html.hero-film .hero.has-contours > .contours { opacity: var(--hero-lit, 0); }
+html.hero-film.hero-lit .hero.has-contours > .contours { opacity: 1; transition: opacity 1s var(--ease-out); }
+/* The title comes in with the contour lines, on the same eased curve from the film's time, rising a
+   little as it fades up (owner, 1 Nov 2026: "in tandem with the other hero elements"; was a fixed
+   1.2 s fade at 0.5 s, whatever the film was doing). */
+html.hero-film .hero-title { opacity: var(--hero-lit, 0); translate: 0 calc((1 - var(--hero-lit, 0)) * 0.75rem); }
+html.hero-film.hero-lit .hero-title { opacity: 1; translate: 0 0; transition: opacity 1s var(--ease-out), translate 1s var(--ease-out); }
 .hero-pause {
   position: absolute; right: 0.75rem; bottom: 0.75rem; width: 2.75rem; height: 2.75rem; display: grid; place-items: center;
   border: 0; border-radius: 50%; background: rgb(12 11 10 / 0.7); color: var(--on-dark); cursor: pointer;
@@ -145,38 +175,79 @@ html.hero-film .hero-still { visibility: hidden; }
 .hero-pause .i-play, .hero-pause.is-paused .i-pause { display: none; }
 .hero-pause.is-paused .i-play { display: block; }
 .hero-title {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--gutter); row-gap: 0.5rem;
-  padding-top: clamp(1.5rem, 1rem + 2vw, 3rem); align-items: end;
+  display: flex; flex-direction: column; align-items: start; gap: 0.5rem;
+  padding-top: clamp(1.5rem, 1rem + 2vw, 3rem);
   --tagline-fs: clamp(1.375rem, 1rem + 1.5vw, 2.25rem);
 }
-.hero-title h1 { grid-column: 1; }
+.hero-platform { color: var(--on-dark-2); font-size: var(--fs-small); padding-top: 0.5rem; }   /* under the buttons: what it runs on (owner, 31 Oct 2026), a size down (owner, 1 Nov 2026) */
 .hero-tagline {
-  grid-column: 1; max-width: 26em; color: var(--ink-2);
-  font-weight: var(--wt-light); font-size: var(--tagline-fs); line-height: 1.2; letter-spacing: -0.005em;
+  max-width: 26em; color: var(--ink-2);
+  font-weight: var(--wt-light); font-size: clamp(1.125rem, 0.95rem + 0.45vw, 1.375rem); line-height: 1.5; letter-spacing: 0;
+  font-family: var(--font-mono);   /* the hero's lede: Paper Mono, like every lede (owner, 1 Nov 2026); 18 px on phones, about 22 on desktop, where 29 was far too large (owner, 1 Nov 2026) */
 }
-/* The buttons' bottom edge sits on the tagline's last baseline (owner, 7 Oct): MD UI's baseline
-   is 0.283 em above the bottom of a 1.2 line box. */
-.hero-title .actions { grid-column: 2; grid-row: 1 / 3; align-self: end; margin-bottom: calc(var(--tagline-fs) * 0.283); display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: end; }
-/* Portrait phones and tablets (owner, 8 Oct: the module was small in a 16:9 frame): the frame
-   fills the screen as first seen, Safari's bars showing (svh), less the header, the gap and the
-   title's first line, so the h1 stays in view; the film and still crop in around the module. */
+.hero-title h1 { font-size: var(--fs-hero); }
+/* The name's meaning, close under the title, then a wider gap to the lede (owner, 1 Nov 2026). */
+.hero-name { max-width: 34em; color: var(--on-dark-2); font-size: var(--fs-small); line-height: var(--lh-body); margin-top: -0.25rem; margin-bottom: clamp(1rem, 0.5rem + 1.5vw, 2rem); }
+.hero-name em { color: var(--ink-2); }
+/* The buttons sit under the tagline, a clear step below it, and a size up from the header's
+   (owner, 30 Oct 2026). */
+.hero-title .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: clamp(2.5rem, 1.5rem + 3vw, 5rem); }
+.hero-title .btn { min-height: 3rem; padding: 0.75rem 1.5rem; font-size: 1.0625rem; }
+/* A soft dark shadow behind the hero's text, so it reads over the contour lines (owner, 1 Nov 2026).
+   One wide pool of the band's own dark behind the whole block, not a text-shadow (a glyph's halo
+   follows its thin strokes and barely showed). The radial gradient reaches transparent exactly at
+   the pool's edge, on an eased curve, so there's no edge or step anywhere. It fades in with the
+   title, being part of it. */
+.hero-title { position: relative; isolation: isolate; }
+.hero-title::before {
+  content: ''; position: absolute; z-index: -1; inset: -18% -22%; pointer-events: none;
+  --s: var(--dark);
+  background: radial-gradient(closest-side,
+    color-mix(in srgb, var(--s) 72%, transparent) 0%,
+    color-mix(in srgb, var(--s) 66%, transparent) 30%,
+    color-mix(in srgb, var(--s) 46%, transparent) 55%,
+    color-mix(in srgb, var(--s) 20%, transparent) 76%,
+    color-mix(in srgb, var(--s) 5%, transparent) 91%,
+    transparent 100%);
+}
+/* Wide landscape screens (owner, 30 Oct 2026): the title sits beside the module; the film's box
+   fills the screen's height. Title and module are one group, centred in the screen both ways
+   (owner, 1 Nov 2026): the frame is only as wide as the module, and the film, wider, overflows
+   it on its transparent sides. */
+@media (orientation: landscape) and (min-width: 64rem) {
+  .hero { min-height: 100svh; display: grid; align-content: center; padding-bottom: var(--stack-2); }
+  /* The group spans most of the page's width, between the full width it had (too wide) and its
+     own width, centred (too narrow; owner, 1 Nov 2026): the title at the left, the module at
+     the right of a container 78 % of the screen wide. */
+  .hero > .wide {
+    display: flex; align-items: center; justify-content: space-between; gap: clamp(3rem, 1rem + 6vw, 9rem);
+    width: min(100% - 2 * var(--margin), 78vw, var(--wide));
+    --hero-fh: min(100vw * 9 / 16, max(24rem, calc(100svh - var(--header-h) - var(--stack-2) - 3rem)));
+  }
+  /* The frame is the module's width plus a little (Resilio's module is 0.28 of the film's height
+     wide, measured in the still's alpha); its middle sits at 50.1 % of the height, so unlike
+     Sublustris's the frame needs no ride up: the module is centred and the title lines up with it. */
+  .hero-frame { flex: none; aspect-ratio: auto; max-height: none; height: var(--hero-fh); width: calc(var(--hero-fh) * 0.31); }
+  .hero-still, .hero-video { left: 50%; right: auto; width: calc(var(--hero-fh) * 16 / 9); max-width: none; translate: -50% 0; }
+  .hero-pause { right: -3.5rem; }
+  .hero-title { order: -1; flex: 0 1 auto; min-width: 0; padding-top: 0; }
+}
+/* Portrait phones and tablets (owner, 8 Oct: the module was small in a 16:9 frame; 30 Oct: bigger
+   still, so its details read, even past the fold): a tall frame that the film and still fill,
+   cropping in around the module (the sides are only transparent). The film's top seventh is
+   empty above the panel (the module's top at 14 % of the height), so the frame rides up under the header's padding. */
 @media (orientation: portrait) and (max-width: 63.99rem) {
   .hero-frame {
-    --hero-cut: calc(var(--header-h) + var(--stack-2) + clamp(1.5rem, 1rem + 2vw, 3rem) + var(--fs-display) * var(--lh-display) + 1.25rem);
-    aspect-ratio: auto; min-height: 22rem;
-    height: calc(100vh - var(--hero-cut));
-    height: calc(100svh - var(--hero-cut));
+    --hero-fh: min(190vw, 120svh);
+    aspect-ratio: auto; max-height: none; height: var(--hero-fh); margin-top: calc(var(--hero-fh) * -0.10);
   }
-}
-@media (max-width: 47.99rem) {
-  .hero-title { grid-template-columns: minmax(0, 1fr); }
-  .hero-title .actions { grid-column: 1; grid-row: auto; justify-content: start; padding-top: var(--stack-1); margin-bottom: 0; }
+  .hero-still, .hero-video { object-fit: cover; }
 }
 
 /* ---- Intro ---------------------------------------------------------------- */
 .statement {
   font-size: clamp(1.75rem, 1.05rem + 2.6vw, 3.5rem); font-weight: var(--wt-display);
-  line-height: 1.04; letter-spacing: var(--track-display);
+  line-height: 1.1; letter-spacing: var(--track-display);
 }
 /* The intro sits on the tank image under a dark scrim (owner, 7 Oct); the section keeps the
    standard section spacing above and below. */
@@ -203,7 +274,7 @@ html.hero-film .hero-still { visibility: hidden; }
   background: radial-gradient(closest-side, rgb(12 11 10 / 0.6), rgb(12 11 10 / 0.3) 60%, rgb(12 11 10 / 0));
 }
 .intro-copy .statement, .intro-copy .lede { text-shadow: 0 0 1.25em rgb(12 11 10 / 0.55); }
-.intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.08; }
+.intro-copy .statement { text-wrap: balance; max-width: 18em; font-size: clamp(1.5rem, 1rem + 1.7vw, 2.5rem); line-height: 1.15; }
 .intro-copy .lede { max-width: 30em; }
 .intro-note { position: absolute; z-index: 1; top: var(--intro-pad); left: var(--intro-pad); right: var(--intro-pad); color: var(--on-dark-2); }
 
@@ -225,10 +296,10 @@ html.hero-film .hero-still { visibility: hidden; }
 }
 @supports not (grid-template-rows: subgrid) { .demo { grid-row: auto; grid-template-rows: none; align-self: start; } }
 .demo-head { display: grid; gap: var(--stack-2); align-content: start; }
-.demo-title { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); line-height: 1.1; letter-spacing: -0.015em; }
+.demo-title { font-size: clamp(1.25rem, 1rem + 0.8vw, 1.625rem); line-height: 1.2; letter-spacing: -0.015em; }
 .demo-diagram { width: 100%; height: 3.25rem; color: var(--ink); }
 .demo.is-wide .demo-diagram { height: 4.5rem; }
-.demo-caption { font-size: var(--fs-small); line-height: 1.4; color: var(--ink-2); }   /* sans, not the mono image captions (owner, 7 Oct) */
+.demo-caption { font-size: var(--fs-small); line-height: 1.55; color: var(--ink-2); }
 .demo .player { align-self: end; }
 .demo .spec { font-size: var(--fs-ui); }
 .demo .spec th, .demo .spec td { padding-block: 0.5rem; vertical-align: middle; }
@@ -348,8 +419,10 @@ html.hero-film .hero-still { visibility: hidden; }
 .feature.is-wide .feature-diagram { max-width: 18rem; }
 .feature.is-big .feature-diagram { max-width: 36rem; height: clamp(5rem, 1.5rem + 8vw, 13rem); }
 .feature-big { font-size: clamp(1.375rem, 1.1rem + 0.8vw, 2rem); line-height: 1; letter-spacing: var(--track-display); padding-top: 0.5rem; }
-.feature.is-big .feature-big { font-size: clamp(2.75rem, 1.6rem + 4vw, 5.5rem); line-height: var(--lh-display); }
 .feature-line { color: var(--ink-2); max-width: 32em; }
+/* Card descriptions in Paper Mono, a touch smaller so its wider letters sit at the sans's size
+   (owner, 1 Nov 2026, as on Sublustris; on 7 Oct the demo captions were sans, beside MD IO) */
+:is(.feature-line, .demo-caption, .way h3 + p) { font-family: var(--font-mono); font-size: calc(var(--fs-small) * 0.92); letter-spacing: 0; }
 @media (max-width: 49.99rem) {
   .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .feature.is-big { grid-row: span 1; }
@@ -359,6 +432,11 @@ html.hero-film .hero-still { visibility: hidden; }
   .feature.is-wide, .feature.is-big { grid-column: auto; }
   .feature { min-height: 0; }
   .feature.is-big .feature-diagram { height: 4.5rem; }
+}
+/* Card titles a step larger on phones, one size in every section: the bento's, the demos', the two
+   ways' and the download targets' (from Sublustris, 1 Nov 2026). The big bento card's title matches the rest. */
+@media (max-width: 39.99rem) {
+  .feature-big, .demo-title, .way .h3, .download .target h3 { font-size: 1.75rem; line-height: 1.15; }
 }
 
 /* ---- Two ways to play -------------------------------------------------------- */
@@ -378,13 +456,13 @@ html.hero-film .hero-still { visibility: hidden; }
 .download { display: grid; gap: var(--stack-3); }
 /* One size, one family: only the version is in ink (owner: the line had too many styles) */
 .download .release-head { display: grid; gap: 0.4rem; }
-.download .release-title { font-size: var(--fs-h3); line-height: 1.05; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
+.download .release-title { font-size: var(--fs-h3); line-height: 1.1; color: var(--ink); }   /* primary text, also inside docs' orange subheads (owner, 7 Oct) */
 .download .release-line { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: var(--fs-small); }
 .download .release-line > * { white-space: nowrap; }   /* each detail wraps whole, never mid-phrase */
 .download .version { font-weight: var(--wt-medium); font-variant-numeric: tabular-nums; color: var(--signal-text); }   /* the accent (owner, 7 Oct); the AA-safe tone for text in either theme */
 .download .targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gutter); }
 .download .target { display: grid; gap: var(--stack-2); align-content: start; background: var(--raised); border-radius: var(--radius-tile); padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem); }
-.download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.1; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
+.download .target h3 { font-size: clamp(1.25rem, 1.1rem + 0.4vw, 1.5rem); line-height: 1.2; }   /* a step under "Latest release": Download > Latest release > the two targets (owner, 7 Oct) */
 .download .target .btn { justify-self: start; }
 .download .target ul { list-style: disc; padding-left: 1.15em; color: var(--ink); }
 .download .target li::marker { color: var(--ink-2); }
@@ -434,6 +512,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* ---- Doc pages ----------------------------------------------------------------- */
 .doc-hero { padding-top: calc(var(--header-h) + clamp(3rem, 2rem + 4vw, 6rem)); padding-bottom: var(--stack-4); width: min(100% - 2 * var(--margin), 42rem); }   /* lines up with the reading column */
 .doc-hero .kicker { margin-bottom: var(--stack-2); }
+.doc-hero h1 { font-size: var(--fs-hero); }   /* the home hero's title size, not the display size (owner, 1 Nov 2026) */
 .doc-media { margin-bottom: var(--stack-5); }
 .doc-body {
   /* A narrower reading column (about 65 characters at body size, was about 80) and a wider gutter,
@@ -461,7 +540,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose a { overflow-wrap: anywhere; }
 .prose strong, .prose b { font-weight: 600; }   /* semibold in long-form text (owner, 7 Oct) */
 .prose > * + * { margin-top: var(--stack-3); }   /* roomier (owner, 7 Oct) */
-.prose h2 { font-size: var(--fs-h3); line-height: 1.05; letter-spacing: -0.015em; margin-top: 6rem; }
+.prose h2 { font-size: var(--fs-h3); line-height: 1.1; letter-spacing: -0.015em; margin-top: 6rem; }
 .prose > h2:first-child { margin-top: 0; }
 /* Subheads in the accent, so they stand apart from bold body copy (owner, 7 Oct); the AA-safe tone. */
 .prose h3, .prose .subhead { font-size: var(--fs-lede); margin-top: var(--stack-5); color: var(--signal-text); font-weight: var(--wt-display); line-height: var(--lh-snug); letter-spacing: -0.01em; }
@@ -494,7 +573,7 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 .prose pre {
   position: relative; overflow-x: auto; padding: 1rem 1.1rem 1rem 1.4rem; padding-right: 5.5rem; background: var(--tile);
   border-radius: calc(1.125rem + 0.5rem);   /* concentric with the copy button: its radius plus its inset */
-  font-size: var(--fs-ui); line-height: 1.5;
+  font-size: var(--fs-ui); line-height: 1.6;
 }
 .prose pre code { font-size: inherit; white-space: pre; }
 .prose :not(pre) > code { background: var(--tile); padding: 0.05em 0.3em; border-radius: 3px; }
@@ -583,6 +662,8 @@ figure.wide > .caption, .figure .caption { padding-block: var(--stack-1) 0; }
 /* ---- Centred section intros (owner, 7 Oct) ---------------------------------------- */
 .centered { text-align: center; }
 .centered .lede { margin-inline: auto; }
+/* The sibling band takes Sublustris's cool black, so its blue contour lines sit on their own ground (owner, 1 Nov 2026). */
+.sibling.band-dark { --dark: #0c0d14; }
 .panel-list ul { list-style: none; padding: 0; margin: 0; }
 .panel-list li { display: grid; grid-template-columns: 9rem minmax(0, 1fr); column-gap: var(--gutter); padding-block: 0.75rem; border-top: var(--hair) solid var(--line); }
 .panel-list + p { margin-top: var(--stack-4); }
@@ -644,7 +725,7 @@ ul > li::marker { color: var(--signal); }
 .shape-steps li::before { content: ""; position: absolute; left: 0; top: 0; width: var(--dot); height: var(--dot); border-radius: 50%; background: var(--signal); }
 .shape-steps li:not(:last-child)::after { content: ""; position: absolute; top: calc(var(--dot) / 2); left: calc(var(--dot) + 0.5rem); right: calc(0.5rem - var(--gutter)); border-top: var(--hair) solid var(--line); }
 .shape-num { font: var(--wt-reg) var(--fs-micro) / 1 var(--font-mono); color: var(--signal-text); }
-.shape-title { font-size: var(--fs-body); line-height: 1.2; }
+.shape-title { font-size: var(--fs-body); line-height: 1.3; }
 .shape-steps p { color: var(--ink-2); max-width: 22em; text-wrap: pretty; }   /* the three lines are written to similar lengths (owner, 8 Oct) */
 .shape-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.75rem 1rem; margin-top: var(--stack-4); }
 @media (max-width: 47.99rem) {
@@ -709,12 +790,25 @@ ul > li::marker { color: var(--signal); }
 .demo .demo-note { margin-top: 0.75rem; padding-top: 0.75rem; border-top: var(--hair) solid var(--line); font: var(--wt-reg) var(--fs-micro) / 1.45 var(--font-sans); color: var(--ink-2); }
 
 /* Knob glyphs beside setting values (owner, 8 Oct): the position at a glance, 7 to 5 o'clock. */
-.knob-value { display: flex; align-items: center; gap: 0.45rem; }
+.knob-value { display: grid; grid-template-columns: max-content 3em 2.6em minmax(0, auto); justify-content: start; justify-items: start; text-align: start; align-items: center; column-gap: 0.55rem; font-variant-numeric: tabular-nums; }
+/* the clock time, then the value in Paper Mono and the secondary colour, each in a column of its own so
+   their left edges line up row to row (owner, 1 Nov 2026, as on Sublustris); KnobValue.astro */
+.knob-value .kv-clock, .knob-value .kv-num { font-family: var(--font-mono); font-size: 0.9em; }
+.knob-value .kv-num { color: var(--ink-2); }
+/* the switches' values in Paper Mono too, like every other value in a settings table */
+.spec td.mono, .preset-values .pv-option { font-family: var(--font-mono); font-size: 0.9em; }
+.knob-value .kv-note { color: var(--ink-2); }
 /* Overhangs the line box (negative margins) so rows with and without knobs are the same height. */
 .knob-glyph { flex: none; width: 1.4em; height: 1.4em; margin-block: -0.45em; overflow: visible; }
 .spec th, .spec td { vertical-align: middle; }
 .knob-glyph path, .knob-glyph line { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
-.knob-glyph .kg-track { stroke: var(--line); stroke-width: 2; }
-.knob-glyph .kg-travel { stroke: var(--signal); stroke-width: 2; }
+.knob-glyph .kg-track { stroke: var(--line); stroke-width: 1.25; }   /* a thinner ring (owner, 1 Nov 2026, as on Sublustris; was 2) */
+.knob-glyph .kg-travel { stroke: var(--signal); stroke-width: 1.25; }
 .knob-glyph .kg-body { fill: none; stroke: var(--ink-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .knob-glyph .kg-pointer { stroke: var(--ink); stroke-width: 1.5; }
+
+/* ---- Paper Mono for the control-like labels (owner, 1 Nov 2026, as on Sublustris) ------------------------- */
+/* Names of parts of the module, buttons and nav read as labels, like the panel's print; headings and reading text stay MD UI. */
+:is(.btn, .site-header .nav a, .menu li a, .menu summary, .disclosure summary, .ap-name, .fader-end, .player .ab button) {
+  font-family: var(--font-mono); letter-spacing: 0;
+}

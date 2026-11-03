@@ -118,6 +118,11 @@ def module_variants(ref):
     v += [
         dict(id="R6_front_a", shot="R6", note="Front-on, 200 mm: flat, almost orthographic product view.",
              target=c, az=0, el=1, f=200, fit=0.64),
+        # The site's front-on-wide.jpg (the annotated panel, AnnotatedPanel.astro): R6_front_a's camera,
+        # closer, at 2116 x 1190, with the panel on the component's box (x 872, y 121, 372 x 950 px).
+        # Rebuilt 1 Nov 2026 to re-render it with the new panel art; checked against the 7 Oct image.
+        dict(id="R6_front_wide", shot="R6", note="The site's front-on: R6_front_a's 200 mm camera, the panel on the annotated box.",
+             target=c, az=0, el=1, f=200, fit=0.868),
         dict(id="R6_front_b", shot="R6", note="Front-on with a 7° turn, 135 mm: just enough depth to show the knobs and stack.",
              target=c, az=7, el=3, f=135, fit=1.04),
         dict(id="R6_front_c", shot="R6", mood="gloss",

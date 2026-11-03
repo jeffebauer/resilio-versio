@@ -102,6 +102,13 @@ VST 3 SDK (plugin only, bundled in JUCE)
   Copyright (c) 2025, Steinberg Media Technologies GmbH
   Licence: MIT
 
+Paper Mono (website only: site/public/type/)
+  https://paper.design
+  Licence: SIL Open Font License 1.1 (site/public/type/PaperMono-OFL.txt).
+  Built with three of its stylistic sets made the default (slashed zero,
+  duospace M W m w, narrow space). The site's MD UI webfont is licensed and
+  not in this repository; the build fetches it (site/README.md).
+
 
 TRADEMARKS
 ----------

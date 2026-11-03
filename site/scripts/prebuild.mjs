@@ -2,7 +2,7 @@
 // 1. Copies the demo audio, the panel art, the plugin screenshot and the renders (stills, and the
 //    hero reveal video when it exists) from docs/minisite/assets into public/
 //    (one source of truth: the site never keeps its own copy in git).
-// 2. Fetches the licensed MD UI / MD IO variable webfonts into public/fonts/ (git-ignored):
+// 2. Fetches the licensed MD UI variable webfont into public/fonts/ (git-ignored):
 //    - FONTS_DIR=/path/to/woff2s       copy from a local folder, or
 //    - FONTS_URL=https://…/ + FONTS_TOKEN=…   download each file with a bearer token
 //      (FONTS_TOKEN defaults to BLOB_READ_WRITE_TOKEN, else to VERCEL_OIDC_TOKEN, which Vercel
@@ -18,7 +18,7 @@ const pub = join(site, 'public');
 
 // The two variable fonts (the same list as src/lib/fonts.ts). Each one is used when
 // present; the site declares no @font-face for a missing file.
-const FONT_FILES = ['MDUI-VF.woff2', 'MDIO-VF.woff2'];
+const FONT_FILES = ['MDUI-VF.woff2'];
 
 async function copyDir(from, to, filter) {
   await mkdir(to, { recursive: true });
@@ -69,7 +69,7 @@ async function fonts() {
 const audio = await copyDir(join(minisite, 'assets', 'audio'), join(pub, 'audio'), (f) => f.endsWith('.mp3'));
 const panel = await copyDir(join(minisite, 'assets', 'panel'), join(pub, 'panel'), (f) => f.endsWith('-art.svg'));
 const shots = await copyDir(join(minisite, 'assets', 'screenshots'), join(pub, 'screenshots'), (f) => f.endsWith('.png'));
-// Stills, plus the hero reveal film when it exists (hero_reveal / hero_hold_loop .mp4 + .webm, hero_still.jpg).
+// Stills, plus the hero reveal film when it exists (hero-reveal / hero-hold-loop .mp4 HEVC + .webm VP9, both with alpha; the still is hero-still.png).
 const renders = await copyDir(join(minisite, 'assets', 'renders'), join(pub, 'renders'), (f) => /\.(jpe?g|webp|avif|mp4|webm)$/.test(f));
 console.log(`prebuild: ${audio} demo clip(s), ${panel} panel art file(s), ${shots} screenshot(s), ${renders} render(s) copied`);
 console.log(`prebuild: ${await fonts()}`);

@@ -1,0 +1,12 @@
+---
+// A knob setting, the same everywhere it's listed (the presets' tables, the demos' Settings):
+// a tiny knob, the clock position (two-digit hours: 03:00), then the value in the secondary
+// colour, both in Paper Mono, and an optional note. Fixed column widths, so the clock times and
+// the values line up row to row (owner, 1 Nov 2026).
+import KnobGlyph from './KnobGlyph.astro';
+interface Props { value: number; clock: string; note?: string }
+const { value, clock, note } = Astro.props;
+const shown = String(+value.toFixed(2));
+const time = clock.replace(/^(\d):/, '0$1:');   // 3:00 -> 03:00, so every time is five characters
+---
+<span class="knob-value"><KnobGlyph value={value} /><span class="kv-clock">{time}</span><span class="kv-num">{shown}</span>{note && <span class="kv-note">{note}</span>}</span>
